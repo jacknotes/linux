@@ -1,0 +1,19 @@
+
+
+***********************************************************************
+Fatal NI connect error 12538, connecting to:
+ (DESCRIPTION=(ADDRESS=(PROTOCOL=BEQ)(PROGRAM=oracle)(ARGV0=oracleORCL)(ARGS='(DESCRIPTION=(LOCAL=YES)(ADDRESS=(PROTOCOL=beq)))'))(CONNECT_DATA=(SID=ORCL)(CID=(PROGRAM=D:\海鼎软件\bin\HDMAIN.EXE)(HOST=ZHANGDENGMINGHD)(USER=zhangdengming))))
+
+  VERSION INFORMATION:
+	TNS for 32-bit Windows: Version 8.1.7.0.0 - Production
+  Time: 24-4月 -2013 16:44:32
+  Tracing not turned on.
+  Tns error struct:
+    nr err code: 0
+    ns main err code: 12538
+    TNS-12538: TNS：没有此协议适配器
+    ns secondary err code: 12560
+    nt main err code: 508
+    TNS-00508: 无此类协议适配器
+    nt secondary err code: 0
+    nt OS err code: 0

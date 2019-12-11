@@ -1,0 +1,24 @@
+$TTL 600
+@	IN	SOA	dns.jack.com.	admin.jack.com.(
+		2019010504    ;serial #修订版本号
+                1D      ;refresh        #服务器刷新时间
+                1H      ;retry          #重新刷新时间
+                1W      ;expire         #宣告失效的时间
+                3H      ;minimum        #缓存保留时间
+)
+	IN	NS	dns1.com.
+	IN	NS	dns2.com.
+235	IN	PTR 	dns1.com.
+234	IN	PTR	dns2.com.
+221	IN	PTR 	ad.jack.com.
+1	IN	PTR 	route.jack.com.
+254	IN	PTR 	switch.jack.com.
+235	IN	PTR 	salt-server.jack.com.
+237	IN	PTR 	cobbler-server.jack.com.
+201	IN	PTR 	zabbix-server.jack.com.
+234	IN	PTR 	zabbix-proxy.jack.com.
+233	IN	PTR 	linux-node1-salt.jack.com.
+232	IN	PTR 	Linux-node3-salt.jack.com.
+231	IN	PTR 	Linux-node4-salt.jack.com.
+238	IN	PTR 	Linux-node5-master-mysql.jack.com.
+239	IN	PTR 	Linux-node6-slave-mysql.jack.com.

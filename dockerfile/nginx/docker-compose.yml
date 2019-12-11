@@ -1,0 +1,21 @@
+version: "2"
+services:
+  nginx:
+    image: jack-nginx:v1
+    hostname: host-nginx
+    ports:
+      - "81:80"
+    volumes:
+      - "/root/nginx/nginx_mount/conf/:/usr/local/nginx/conf/"
+      - "/root/nginx/nginx_mount/html/:/usr/local/nginx/html/"
+      - "/root/nginx/nginx_mount/logs/:/usr/local/nginx/logs/"
+    container_name: nginx1
+    dns:
+      - 114.114.114.114
+    environment:
+      - TEST=123
+      - NAME
+    expose:
+      - "3000"
+    
+

@@ -1,0 +1,127 @@
+{
+  "ChName": "吴霞",
+  "Credential": {
+    "CredentialName": "身份证",
+    "CredentialNo": "",
+    "CredentialType": 1,
+    "ID": "",
+    "IsDefault": true,
+    "PassportType": 0
+  },
+  "Credentials": [
+    {
+      "CredentialName": "身份证",
+      "CredentialNo": "",
+      "CredentialType": 1,
+      "ID": "",
+      "IsDefault": true,
+      "PassportType": 0
+    },
+    {
+      "CredentialName": "护照",
+      "CredentialType": 2,
+      "ID": "",
+      "IsDefault": false,
+      "PassportType": 0
+    },
+    {
+      "CredentialName": "学生证",
+      "CredentialType": 3,
+      "ID": "",
+      "IsDefault": false,
+      "PassportType": 0
+    },
+    {
+      "CredentialName": "军人证",
+      "CredentialType": 4,
+      "ID": "",
+      "IsDefault": false,
+      "PassportType": 0
+    },
+    {
+      "CredentialName": "回乡证",
+      "CredentialType": 5,
+      "ID": "",
+      "IsDefault": false,
+      "PassportType": 0
+    },
+    {
+      "CredentialName": "外国人永久居留证",
+      "CredentialType": 6,
+      "ID": "",
+      "IsDefault": false,
+      "PassportType": 0
+    },
+    {
+      "CredentialName": "港澳通行证",
+      "CredentialType": 7,
+      "ID": "",
+      "IsDefault": false,
+      "PassportType": 0
+    },
+    {
+      "CredentialName": "台湾通行证",
+      "CredentialType": 8,
+      "ID": "",
+      "IsDefault": false,
+      "PassportType": 0
+    },
+    {
+      "CredentialName": "国际海员证",
+      "CredentialType": 9,
+      "ID": "",
+      "IsDefault": false,
+      "PassportType": 0
+    },
+    {
+      "CredentialName": "台胞证",
+      "CredentialType": 10,
+      "ID": "",
+      "IsDefault": false,
+      "PassportType": 0
+    },
+    {
+      "CredentialName": "其他",
+      "CredentialType": 11,
+      "ID": "",
+      "IsDefault": false,
+      "PassportType": 0
+    },
+    {
+      "CredentialName": "港澳台居民居住证",
+      "CredentialType": 12,
+      "ID": "",
+      "IsDefault": false,
+      "PassportType": 0
+    }
+  ],
+  "DefaultCredentialType": 1,
+  "DefaultNameType": 0,
+  "Email": "",
+  "FirstName": "",
+  "Gender": false,
+  "GuestToRoomNo": 0,
+  "GuestType": 0,
+  "IsSendBookEmail": false,
+  "IsSendBookSms": false,
+  "IsSendBookWechat": false,
+  "IsSendConfirmEmail": false,
+  "IsSendConfirmSms": false,
+  "IsSendConfirmWechat": false,
+  "IsSendIssuedEmail": false,
+  "IsSendIssuedSms": false,
+  "IsSendIssuedWechat": false,
+  "LastName": "",
+  "Mobile": "",
+  "Name": "吴霞",
+  "OrderBusinessType": 0,
+  "TrainIsSendBookEmail": false,
+  "TrainIsSendBookSms": false,
+  "TrainIsSendBookWechat": false,
+  "TravelCardList": [],
+  "TravelType": 0,
+  "UpType": 1,
+  "canDelete": false,
+  "canImport": false,
+  "isSelect": false
+}

@@ -1,0 +1,354 @@
+reloading configuration succeeded
+reloading zones succeeded
+all zones loaded
+running
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:231d::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:501:b1f9::30#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5304:3c00::1#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:eea3::30#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5303:7f00::1#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5307:df00::1#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:501:b1f9::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:1ca1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:eea3::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d2d::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:8cc::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:d937::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:7094::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:83eb::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:501:b1f9::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d414::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:231d::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d2d::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d414::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:7094::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:8cc::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:39c1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:501:b1f9::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:501:b1f9::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:8cc::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:501:b1f9::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:eea3::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:1ca1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:7094::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:1ca1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:d937::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:856e::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:eea3::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:83eb::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:231d::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d414::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:7094::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:8cc::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:856e::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d2d::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:39c1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:d937::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:501:b1f9::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:856e::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d2d::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:83eb::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:eea3::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:7094::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:856e::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:a83e::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:a83e::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:501:b1f9::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:39c1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:d937::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:a83e::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:1ca1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:856e::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:231d::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:eea3::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:a83e::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d414::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:39c1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:d937::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:1ca1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:231d::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:501:b1f9::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:856e::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:39c1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:7094::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:a83e::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:39c1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d2d::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:83eb::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:231d::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:8cc::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:7094::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:8cc::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:a83e::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:39c1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d2d::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:eea3::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:a83e::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:7094::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:d937::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:231d::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:7094::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d2d::30#53
+error (network unreachable) resolving './NS/IN': 2001:500:a8::e#53
+error (network unreachable) resolving 'ns-2015.awsdns-59.co.uk/A/IN': 2001:500:a8::e#53
+error (network unreachable) resolving 'ns-2015.awsdns-59.co.uk/AAAA/IN': 2001:500:a8::e#53
+error (network unreachable) resolving 'ns-1084.awsdns-07.org/A/IN': 2001:500:a8::e#53
+error (network unreachable) resolving 'ns-895.awsdns-47.net/A/IN': 2001:500:a8::e#53
+error (network unreachable) resolving 'ns-895.awsdns-47.net/AAAA/IN': 2001:500:a8::e#53
+error (network unreachable) resolving 'ns-2015.awsdns-59.co.uk/A/IN': 2600:9000:5303:bb00::1#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:1ca1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:856e::30#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5307:df00::1#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5304:3c00::1#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5303:7f00::1#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d414::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:d937::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:8cc::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:501:b1f9::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:83eb::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:39c1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:a83e::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:eea3::30#53
+error (network unreachable) resolving '2.centos.pool.ntp.org/AAAA/IN': 2001:500:c::1#53
+error (network unreachable) resolving '2.centos.pool.ntp.org/A/IN': 2001:500:c::1#53
+error (network unreachable) resolving '2.centos.pool.ntp.org/AAAA/IN': 2001:500:b::1#53
+error (network unreachable) resolving '2.centos.pool.ntp.org/A/IN': 2001:500:b::1#53
+error (network unreachable) resolving '2.centos.pool.ntp.org/AAAA/IN': 2001:500:f::1#53
+error (network unreachable) resolving '2.centos.pool.ntp.org/A/IN': 2001:500:f::1#53
+error (network unreachable) resolving 'ns4.p20.dynect.net/AAAA/IN': 2001:500:90:1::136#53
+error (network unreachable) resolving 'ns2.p20.dynect.net/AAAA/IN': 2001:500:90:1::136#53
+error (network unreachable) resolving 'anyns.pch.net/A/IN': 2620:0:872::231:3#53
+error (network unreachable) resolving 'anyns.pch.net/AAAA/IN': 2620:0:872::231:3#53
+error (network unreachable) resolving 'anyns.pch.net/A/IN': 2001:418:3f4::5#53
+error (network unreachable) resolving 'anyns.pch.net/AAAA/IN': 2001:418:3f4::5#53
+error (network unreachable) resolving 'dns2.udel.edu/A/IN': 2607:f470:1001::1:a#53
+error (network unreachable) resolving 'dns2.udel.edu/A/IN': 2607:f470:1002::2:3#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:231d::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:7094::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d2d::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:1ca1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:856e::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d414::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:d937::30#53
+error (network unreachable) resolving '2.centos.pool.ntp.org/AAAA/IN': 2a00:14b0:4200:32e0::1e5#53
+error (network unreachable) resolving '2.centos.pool.ntp.org/A/IN': 2a00:14b0:4200:32e0::1e5#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:a83e::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:83eb::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:eea3::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:8cc::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:39c1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:501:b1f9::30#53
+error (network unreachable) resolving '2.centos.pool.ntp.org/A/IN': 2a02:a00:2000:89::1#53
+error (network unreachable) resolving 'g.ntpns.org/A/IN': 2a02:a00:2000:89::1#53
+error (network unreachable) resolving '2.centos.pool.ntp.org/AAAA/IN': 2a02:a00:2000:89::1#53
+error (network unreachable) resolving 'g.ntpns.org/AAAA/IN': 2a02:a00:2000:89::1#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5307:df00::1#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5303:7f00::1#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5304:3c00::1#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:231d::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:7094::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d2d::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:1ca1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:856e::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d414::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:d937::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:a83e::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:83eb::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:eea3::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:8cc::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:39c1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:501:b1f9::30#53
+error (network unreachable) resolving 'ns-2015.awsdns-59.co.uk/AAAA/IN': 2001:502:ad09::3#53
+error (network unreachable) resolving 'ns-2015.awsdns-59.co.uk/AAAA/IN': 2a01:618:400::1#53
+error (network unreachable) resolving 'ns-2015.awsdns-59.co.uk/A/IN': 2a01:618:400::1#53
+error (network unreachable) resolving 'ns-1084.awsdns-07.org/AAAA/IN': 2001:500:48::1#53
+error (network unreachable) resolving 'ns-1084.awsdns-07.org/A/IN': 2001:500:48::1#53
+error (network unreachable) resolving 'ns-895.awsdns-47.net/AAAA/IN': 2600:9000:5301:f000::1#53
+error (network unreachable) resolving 'ns-895.awsdns-47.net/AAAA/IN': 2600:9000:5303:3100::1#53
+error (network unreachable) resolving 'ns-2015.awsdns-59.co.uk/AAAA/IN': 2600:9000:5303:bb00::1#53
+error (network unreachable) resolving 'ns-2015.awsdns-59.co.uk/AAAA/IN': 2600:9000:5307:3f00::1#53
+error (network unreachable) resolving 'ns-2015.awsdns-59.co.uk/AAAA/IN': 2600:9000:5301:7b00::1#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5307:df00::1#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5303:7f00::1#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5304:3c00::1#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:231d::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:7094::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d2d::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:1ca1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:856e::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d414::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:d937::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:a83e::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:83eb::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:eea3::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:8cc::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:39c1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:501:b1f9::30#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5304:3c00::1#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5307:df00::1#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5303:7f00::1#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:231d::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:7094::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d2d::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:1ca1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:856e::30#53
+error (network unreachable) resolving 'ns-2015.awsdns-59.co.uk/AAAA/IN': 2a01:618:400::1#53
+error (network unreachable) resolving 'ns-2015.awsdns-59.co.uk/AAAA/IN': 2a01:618:404::1#53
+error (network unreachable) resolving 'ns-2015.awsdns-59.co.uk/A/IN': 2600:9000:5307:3f00::1#53
+error (network unreachable) resolving 'ns-2015.awsdns-59.co.uk/AAAA/IN': 2600:9000:5307:3f00::1#53
+error (network unreachable) resolving 'ns-2015.awsdns-59.co.uk/A/IN': 2600:9000:5305:fe00::1#53
+error (network unreachable) resolving 'ns-2015.awsdns-59.co.uk/AAAA/IN': 2600:9000:5305:fe00::1#53
+error (network unreachable) resolving 'ns-2015.awsdns-59.co.uk/A/IN': 2600:9000:5303:bb00::1#53
+error (network unreachable) resolving 'ns-2015.awsdns-59.co.uk/AAAA/IN': 2600:9000:5303:bb00::1#53
+error (network unreachable) resolving 'ns-2015.awsdns-59.co.uk/A/IN': 2600:9000:5301:7b00::1#53
+error (network unreachable) resolving 'ns-2015.awsdns-59.co.uk/AAAA/IN': 2600:9000:5301:7b00::1#53
+error (network unreachable) resolving 'ns-1084.awsdns-07.org/A/IN': 2600:9000:5306:4700::1#53
+error (network unreachable) resolving 'ns-1084.awsdns-07.org/A/IN': 2600:9000:5304:a00::1#53
+error (network unreachable) resolving 'ns-895.awsdns-47.net/AAAA/IN': 2600:9000:5301:f000::1#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5303:7f00::1#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5304:3c00::1#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5307:df00::1#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d414::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:d937::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:a83e::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:83eb::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:eea3::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:8cc::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:39c1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:501:b1f9::30#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5303:7f00::1#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:231d::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:7094::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d2d::30#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5304:3c00::1#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5307:df00::1#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:856e::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:1ca1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:d414::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:500:d937::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:a83e::2:30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:83eb::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:eea3::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:502:8cc::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:503:39c1::30#53
+error (network unreachable) resolving 'SaltstackServer.com/AAAA/IN': 2001:501:b1f9::30#53
+error (network unreachable) resolving 'ns-895.awsdns-47.net/AAAA/IN': 2600:9000:5305:6f00::1#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5307:df00::1#53
+error (network unreachable) resolving 'SaltstackServer.com.com/AAAA/IN': 2600:9000:5303:7f00::1#53
+received control channel command 'reload'
+loading configuration from '/etc/named.conf'
+reading built-in trusted keys from file '/etc/named.iscdlv.key'
+initializing GeoIP Country (IPv4) (type 1) DB
+GEO-106FREE 20160607 Build 1 Copyright (c) 2016 MaxMind 
+initializing GeoIP Country (IPv6) (type 12) DB
+GEO-106FREE 20160607 Build 1 Copy
+GeoIP City (IPv4) (type 2) DB not available
+GeoIP City (IPv4) (type 6) DB not available
+GeoIP City (IPv6) (type 30) DB not available
+GeoIP City (IPv6) (type 31) DB not available
+GeoIP Region (type 3) DB not available
+GeoIP Region (type 7) DB not available
+GeoIP ISP (type 4) DB not available
+GeoIP Org (type 5) DB not available
+GeoIP AS (type 9) DB not available
+GeoIP Domain (type 11) DB not available
+GeoIP NetSpeed (type 10) DB not available
+using default UDP/IPv4 port range: [1024, 65535]
+using default UDP/IPv6 port range: [1024, 65535]
+sizing zone task pool based on 5 zones
+automatic empty zone: 10.IN-ADDR.ARPA
+automatic empty zone: 16.172.IN-ADDR.ARPA
+automatic empty zone: 17.172.IN-ADDR.ARPA
+automatic empty zone: 18.172.IN-ADDR.ARPA
+automatic empty zone: 19.172.IN-ADDR.ARPA
+automatic empty zone: 20.172.IN-ADDR.ARPA
+automatic empty zone: 21.172.IN-ADDR.ARPA
+automatic empty zone: 22.172.IN-ADDR.ARPA
+automatic empty zone: 23.172.IN-ADDR.ARPA
+automatic empty zone: 24.172.IN-ADDR.ARPA
+automatic empty zone: 25.172.IN-ADDR.ARPA
+automatic empty zone: 26.172.IN-ADDR.ARPA
+automatic empty zone: 27.172.IN-ADDR.ARPA
+automatic empty zone: 28.172.IN-ADDR.ARPA
+automatic empty zone: 29.172.IN-ADDR.ARPA
+automatic empty zone: 30.172.IN-ADDR.ARPA
+automatic empty zone: 31.172.IN-ADDR.ARPA
+automatic empty zone: 168.192.IN-ADDR.ARPA
+automatic empty zone: 64.100.IN-ADDR.ARPA
+automatic empty zone: 65.100.IN-ADDR.ARPA
+automatic empty zone: 66.100.IN-ADDR.ARPA
+automatic empty zone: 67.100.IN-ADDR.ARPA
+automatic empty zone: 68.100.IN-ADDR.ARPA
+automatic empty zone: 69.100.IN-ADDR.ARPA
+automatic empty zone: 70.100.IN-ADDR.ARPA
+automatic empty zone: 71.100.IN-ADDR.ARPA
+automatic empty zone: 72.100.IN-ADDR.ARPA
+automatic empty zone: 73.100.IN-ADDR.ARPA
+automatic empty zone: 74.100.IN-ADDR.ARPA
+automatic empty zone: 75.100.IN-ADDR.ARPA
+automatic empty zone: 76.100.IN-ADDR.ARPA
+automatic empty zone: 77.100.IN-ADDR.ARPA
+automatic empty zone: 78.100.IN-ADDR.ARPA
+automatic empty zone: 79.100.IN-ADDR.ARPA
+automatic empty zone: 80.100.IN-ADDR.ARPA
+automatic empty zone: 81.100.IN-ADDR.ARPA
+automatic empty zone: 82.100.IN-ADDR.ARPA
+automatic empty zone: 83.100.IN-ADDR.ARPA
+automatic empty zone: 84.100.IN-ADDR.ARPA
+automatic empty zone: 85.100.IN-ADDR.ARPA
+automatic empty zone: 86.100.IN-ADDR.ARPA
+automatic empty zone: 87.100.IN-ADDR.ARPA
+automatic empty zone: 88.100.IN-ADDR.ARPA
+automatic empty zone: 89.100.IN-ADDR.ARPA
+automatic empty zone: 90.100.IN-ADDR.ARPA
+automatic empty zone: 91.100.IN-ADDR.ARPA
+automatic empty zone: 92.100.IN-ADDR.ARPA
+automatic empty zone: 93.100.IN-ADDR.ARPA
+automatic empty zone: 94.100.IN-ADDR.ARPA
+automatic empty zone: 95.100.IN-ADDR.ARPA
+automatic empty zone: 96.100.IN-ADDR.ARPA
+automatic empty zone: 97.100.IN-ADDR.ARPA
+automatic empty zone: 98.100.IN-ADDR.ARPA
+automatic empty zone: 99.100.IN-ADDR.ARPA
+automatic empty zone: 100.100.IN-ADDR.ARPA
+automatic empty zone: 101.100.IN-ADDR.ARPA
+automatic empty zone: 102.100.IN-ADDR.ARPA
+automatic empty zone: 103.100.IN-ADDR.ARPA
+automatic empty zone: 104.100.IN-ADDR.ARPA
+automatic empty zone: 105.100.IN-ADDR.ARPA
+automatic empty zone: 106.100.IN-ADDR.ARPA
+automatic empty zone: 107.100.IN-ADDR.ARPA
+automatic empty zone: 108.100.IN-ADDR.ARPA
+automatic empty zone: 109.100.IN-ADDR.ARPA
+automatic empty zone: 110.100.IN-ADDR.ARPA
+automatic empty zone: 111.100.IN-ADDR.ARPA
+automatic empty zone: 112.100.IN-ADDR.ARPA
+automatic empty zone: 113.100.IN-ADDR.ARPA
+automatic empty zone: 114.100.IN-ADDR.ARPA
+automatic empty zone: 115.100.IN-ADDR.ARPA
+automatic empty zone: 116.100.IN-ADDR.ARPA
+automatic empty zone: 117.100.IN-ADDR.ARPA
+automatic empty zone: 118.100.IN-ADDR.ARPA
+automatic empty zone: 119.100.IN-ADDR.ARPA
+automatic empty zone: 120.100.IN-ADDR.ARPA
+automatic empty zone: 121.100.IN-ADDR.ARPA
+automatic empty zone: 122.100.IN-ADDR.ARPA
+automatic empty zone: 123.100.IN-ADDR.ARPA
+automatic empty zone: 124.100.IN-ADDR.ARPA
+automatic empty zone: 125.100.IN-ADDR.ARPA
+automatic empty zone: 126.100.IN-ADDR.ARPA
+automatic empty zone: 127.100.IN-ADDR.ARPA
+automatic empty zone: 127.IN-ADDR.ARPA
+automatic empty zone: 254.169.IN-ADDR.ARPA
+automatic empty zone: 2.0.192.IN-ADDR.ARPA
+automatic empty zone: 100.51.198.IN-ADDR.ARPA
+automatic empty zone: 113.0.203.IN-ADDR.ARPA
+automatic empty zone: 255.255.255.255.IN-ADDR.ARPA
+automatic empty zone: 0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.IP6.ARPA
+automatic empty zone: 1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.IP6.ARPA
+automatic empty zone: D.F.IP6.ARPA
+automatic empty zone: 8.E.F.IP6.ARPA
+automatic empty zone: 9.E.F.IP6.ARPA
+automatic empty zone: A.E.F.IP6.ARPA
+automatic empty zone: B.E.F.IP6.ARPA
+automatic empty zone: 8.B.D.0.1.0.0.2.IP6.ARPA

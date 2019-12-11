@@ -1,0 +1,32 @@
+version: "2"
+services:
+  cachecloud-mysql:
+    image: jackidocker/centos_mysql
+    hostname: cachecloud-mysql
+    ports:
+      - "3306:3306"
+    volumes:
+      - "/git/Linux/dockerfile/cachecloud/cachecloud-mysql:/data"
+    container_name: cachecloud-mysql 
+    restart: always
+    environment:
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/mysql/bin
+  
+#cachecloud mysql account:cachecloud  password:redis  host:cachecloud-mysql
+#cachecloud WEB account:admin password:homsom+4006
+  cachecloud:
+    depends_on: 
+      - cachecloud-mysql
+    image: jackidocker/cachecloud
+    hostname: cachecloud
+    ports:
+      - "8585:8585"
+    container_name: cachecloud
+    restart: always
+    environment:
+      PATH: /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/jdk/bin:/usr/local/maven/bin
+    links:
+      - "cachecloud-mysql"
+    
+    
+

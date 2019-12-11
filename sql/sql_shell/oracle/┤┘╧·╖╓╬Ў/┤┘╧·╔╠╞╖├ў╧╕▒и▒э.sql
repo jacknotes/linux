@@ -1,0 +1,1159 @@
+<VERSION>4.1.1</VERSION>
+<SQLQUERY>
+<REMARK>
+[标题]
+
+[应用背景]
+
+[结果列描述]
+
+[必要的查询条件]
+
+[实现方法]
+
+[其它]
+modify on 2010.07.01 by ym
+注释掉---      and (r.fildate = vdate or vdate is null)这个限制条件
+
+modify on 2010.10.11 by liukai
+-- Create table
+create global temporary table HDTMP_SALDRPT0
+(
+  ORGKEY        INTEGER,
+  SALEDATE      DATE,
+  SALEQTY       NUMBER(24,4),
+  SALEAMT       NUMBER(24,4),
+  SALETAX       NUMBER(24,4),
+  SALECAMT      NUMBER(24,4),
+  SALECTAX      NUMBER(24,4),
+  SALECOUNTS    INTEGER,
+  CLIENTPERSALE NUMBER(24,4)
+)
+on commit preserve rows;
+-- Grant/Revoke object privileges 
+grant insert, update, delete on HDTMP_SALDRPT0 to ROLE_HDAPP;
+grant insert, update, delete on HDTMP_SALDRPT0 to ROLE_HDQRY;
+</REMARK>
+<BEFORERUN>
+declare
+
+vbegdate date;
+venddate date;
+vstorecode varchar2(200);
+
+begin
+  
+
+  vbegdate := to_date('\(1,1)','yyyy.mm.dd');
+  venddate := to_date('\(2,1)','yyyy.mm.dd');
+  vstorecode :=trim('\(3,1)');
+  
+  /*vbegdate := to_date('2017-1-1','yyyy.mm.dd');
+  venddate := to_date('2017-1-9','yyyy.mm.dd');
+  vstorecode :=trim('');*/
+  
+    
+  delete from tmp_test1;
+  commit;
+  delete from tmp_test2;
+  commit;
+  delete from tmp_test3;
+  commit;
+
+insert into tmp_test2 
+            (char1,--省份
+             char2,--店号
+             char3,--店名
+             int2,--门店gid
+             char4,--品类
+             char5,--大类
+             char6,--中类
+             char7,--小类
+             char8,--商品代码
+             char9,--商品条码
+             int1,--商品gid
+             char10,--商品名称
+             num1,--商品价格
+             char11,--季节
+             char12,--促销类型
+             char13,--促销单号
+             num2,--参与促销数量 
+             num3,--优惠金额 
+             num4,--参与促销金额 
+             date1,--查询开始日期
+             date2--查询结束日期
+            )
+select d.province,
+       d.code,
+       d.name,
+       d.gid,
+       c.asname,
+       c.bsname,
+       c.csname,
+       c.dsname,
+       b.code,
+       b.code2,
+       a.gdgid,
+       b.name,
+       b.RTLPRC,
+       b.C_FASEASON,
+       a.promcls,
+       a.promnum,
+       sum(a.promqty),
+       sum(a.FAVAMOUNT),
+       sum(a.promamt),
+       vbegdate,
+       venddate
+from PROMDRPTS a left join  goods b on a.gdgid=b.gid
+                 left join  h4v_goodssort c on a.gdgid=c.gid
+                 left join  store d on a.storegid=d.gid            
+where ( a.storegid=(select gid from store where code=vstorecode) or vstorecode is null)
+and a.adate >=vbegdate
+and a.adate <=venddate
+and c.ascode like '1%'
+group by d.province,
+       d.code,
+       d.name,
+       c.asname,
+       c.bsname,
+       c.csname,
+       c.dsname,
+       b.code,
+       b.code2,
+       a.gdgid,
+       b.name,
+       b.RTLPRC,
+       b.C_FASEASON,
+       a.promcls,
+       d.gid,
+       vbegdate,
+       venddate,
+       a.promnum
+;
+
+--整合 ，带上活动名称
+insert into tmp_test1
+(char1,
+ char2,
+ char3) 
+select a.num,a.cls,b.name from prom  a left join PrmTopic b on  a.topic=b.code
+union all
+select a.num,a.cls,b.name from promA  a left join PrmTopic b on  a.topic=b.code
+union all
+select a.num,'组合',b.name from promB  a left join PrmTopic b on  a.topic=b.code
+union all
+select a.num,'赠品',b.name from promC  a left join PrmTopic b on  a.topic=b.code
+;
+
+
+--插入活动名称
+insert into tmp_test3
+(char1,--省份
+             char2,--店号
+             char3,--店名
+             int2,--门店gid
+             char4,--品类
+             char5,--大类
+             char6,--中类
+             char7,--小类
+             char8,--商品代码
+             char9,--商品条码
+             int1,--商品gid
+             char10,--商品名称
+             num1,--商品价格
+             char11,--季节
+             char12,--促销类型
+             char14,--活动名称
+             char13,--促销单号
+             num2,--参与促销数量 
+             num3,--优惠金额 
+             num4,--参与促销金额 
+             date1,--查询开始日期
+             date2--查询结束日期
+             )
+select       a.char1,--省份
+             a.char2,--店号
+             a.char3,--店名
+             a.int2,--门店gid
+             a.char4,--品类
+             a.char5,--大类
+             a.char6,--中类
+             a.char7,--小类
+             a.char8,--商品代码
+             a.char9,--商品条码
+             a.int1,--商品gid
+             a.char10,--商品名称
+             a.num1,--商品价格
+             a.char11,--季节
+             a.char12,--促销类型
+             b.char3,--活动名称
+             a.char13,--促销单号
+             a.num2,--参与促销数量 
+             a.num3,--优惠金额 
+             a.num4,--参与促销金额 
+             a.date1,--查询开始日期
+             a.date2--查询结束日期
+             from tmp_test2 a  left join tmp_test1 b on ( a.char13=b.char1 and a.char12=b.char2);
+ 
+             
+delete from tmp_test1;
+  commit;               
+
+--  插入库存数据
+insert into tmp_test1
+            (char1,--省份
+             char2,--店号
+             char3,--店名
+             int2,--门店gid
+             char4,--品类
+             char5,--大类
+             char6,--中类
+             char7,--小类
+             char8,--商品代码
+             char9,--商品条码
+             int1,--商品gid
+             char10,--商品名称
+             num1,--商品价格
+             char11,--季节
+             char12,--促销类型
+             char14,--活动名称
+             char13,--促销单号
+             num2,--参与促销数量 
+             num3,--优惠金额 
+             num4,--参与促销金额 
+             date1,--查询开始日期
+             date2,--查询结束日期
+             num5,--库存数量
+             num6,--库存金额
+             num9--库存价
+              )
+            select char1,--省份
+             char2,--店号
+             char3,--店名
+             int2,--门店gid
+             char4,--品类
+             char5,--大类
+             char6,--中类
+             char7,--小类
+             char8,--商品代码
+             char9,--商品条码
+             int1,--商品gid
+             char10,--商品名称
+             num1,--商品价格
+             char11,--季节
+             char12,--促销类型
+             char14,--活动名称
+             char13,--促销单号
+            sum( num2),--参与促销数量 
+             sum( num3),--优惠金额 
+             sum( num4),--参与促销金额 
+            vbegdate,
+            venddate,
+            sum(e.qty),sum(e.qty*tmp_test3.num1), e.invprc
+            from tmp_test3 
+            left join (select gdgid,store,qty,INVPRC from actinvs where store=(select gid from store where code=vstorecode) or vstorecode is null ) e 
+            on (tmp_test3.int1=e.gdgid and tmp_test3.int2=e.store)
+            group by char1,--省份
+             char2,--店号
+             char3,--店名
+             int2,--门店gid
+             char4,--品类
+             char5,--大类
+             char6,--中类
+             char7,--小类
+             char8,--商品代码
+             char9,--商品条码
+             int1,--商品gid
+             char10,--商品名称
+             num1,--商品价格
+             char11,--季节
+             date1,--查询开始日期
+             date2,--查询结束日期
+             char12,--促销类型
+             char13,--促销单号
+             char14,--
+             e.invprc
+            ;
+ 
+delete from tmp_test3;
+  commit;            
+--插入销售数据  
+insert into tmp_test3
+           （char1,--省份
+             char2,--店号
+             char3,--店名
+             int2,--门店gid
+             char4,--品类
+             char5,--大类
+             char6,--中类
+             char7,--小类
+             char8,--商品代码
+             char9,--商品条码
+             int1,--商品gid
+             char10,--商品名称
+             num1,--商品价格
+             char11,--季节
+             char12,--促销类型
+             char14,--活动名称
+             char13,--促销单号
+             num2,--参与促销数量 
+             num3,--优惠金额 
+             num4,--参与促销金额 
+             date1,--查询开始日期
+             date2,--查询结束日期
+             num5,--库存数量
+             num6,--库存金额
+             num9,--库存价
+             num7,--销售数量
+             num8--销售金额
+             )
+  select char1,--省份
+             char2,--店号
+             char3,--店名
+             int2,--门店gid
+             char4,--品类
+             char5,--大类
+             char6,--中类
+             char7,--小类
+             char8,--商品代码
+             char9,--商品条码
+             int1,--商品gid
+             char10,--商品名称
+             num1,--商品价格
+             char11,--季节
+             char12,--促销类型
+             char14,--活动名称
+             char13,--促销单号
+             sum(num2),--参与促销数量 
+             sum(num3),--优惠金额 
+             sum(num4),--参与促销金额 
+             vbegdate,
+             venddate,
+             sum(num5),--库存数量
+             sum(num6),--库存金额
+             num9,
+            sum(f.qty), sum(f.xe)
+    from tmp_test1
+    left join (select 
+                      snd,
+                      gdgid,
+                      sum(decode(cls, '零售', 1, '零售退', -1, 0) * qty) qty,
+                      sum(amt + tax) xe
+                 from sdrpts
+                where ocrdate >= vbegdate
+                  and ocrdate <= venddate
+                  and (snd = (select gid from store where code = vstorecode) or vstorecode is null)
+                  and cls in ('零售', '零售退')
+                group by  snd,  gdgid) f
+      on tmp_test1.int2 = f.snd
+     and tmp_test1.int1 = f.gdgid
+     group by char1,--省份
+             char2,--店号
+             char3,--店名
+             int2,--门店gid
+             char4,--品类
+             char5,--大类
+             char6,--中类
+             char7,--小类
+             char8,--商品代码
+             char9,--商品条码
+             int1,--商品gid
+             char10,--商品名称
+             num1,--商品价格
+             char11,--季节
+             date1,--查询开始日期
+             date2,--查询结束日期
+             char12,--促销类型
+             char14,--活动名称
+             char13,--促销单号
+             num9
+    ;
+
+
+ commit;
+
+end;
+</BEFORERUN>
+<AFTERRUN>
+</AFTERRUN>
+<TABLELIST>
+  <TABLEITEM>
+    <TABLE>tmp_test3</TABLE>
+    <ALIAS>tmp_test3</ALIAS>
+    <INDEXNAME></INDEXNAME>
+    <INDEXMETHOD></INDEXMETHOD>
+  </TABLEITEM>
+</TABLELIST>
+<JOINLIST>
+</JOINLIST>
+<COLUMNLIST>
+  <FIXEDCOLUMNS>4</FIXEDCOLUMNS>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>char1</COLUMN>
+    <TITLE>省份</TITLE>
+    <FIELDTYPE>1</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>char1</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>char2</COLUMN>
+    <TITLE>店号</TITLE>
+    <FIELDTYPE>1</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>char2</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>char3</COLUMN>
+    <TITLE>店名</TITLE>
+    <FIELDTYPE>1</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>char3</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>int2</COLUMN>
+    <TITLE>门店gid</TITLE>
+    <FIELDTYPE>0</FIELDTYPE>
+    <VISIBLE>FALSE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>int2</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>char4</COLUMN>
+    <TITLE>品类</TITLE>
+    <FIELDTYPE>1</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>char4</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>char5</COLUMN>
+    <TITLE>大类</TITLE>
+    <FIELDTYPE>1</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>char5</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>char6</COLUMN>
+    <TITLE>中类</TITLE>
+    <FIELDTYPE>1</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>char6</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>char7</COLUMN>
+    <TITLE>小类</TITLE>
+    <FIELDTYPE>1</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>char7</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>char8</COLUMN>
+    <TITLE>商品代码</TITLE>
+    <FIELDTYPE>1</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>char8</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>char9</COLUMN>
+    <TITLE>商品条码</TITLE>
+    <FIELDTYPE>1</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>char9</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>int1</COLUMN>
+    <TITLE>商品gid</TITLE>
+    <FIELDTYPE>0</FIELDTYPE>
+    <VISIBLE>FALSE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>int1</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>char10</COLUMN>
+    <TITLE>商品名称</TITLE>
+    <FIELDTYPE>1</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>char10</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>num1</COLUMN>
+    <TITLE>商品价格</TITLE>
+    <FIELDTYPE>6</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>num1</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>char11</COLUMN>
+    <TITLE>季节</TITLE>
+    <FIELDTYPE>1</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>char11</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>char13</COLUMN>
+    <TITLE>促销单号</TITLE>
+    <FIELDTYPE>1</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>char13</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>char14</COLUMN>
+    <TITLE>活动名称</TITLE>
+    <FIELDTYPE>1</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>char14</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>char12</COLUMN>
+    <TITLE>促销类型</TITLE>
+    <FIELDTYPE>1</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>char12</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>num2</COLUMN>
+    <TITLE>参与促销数量</TITLE>
+    <FIELDTYPE>6</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION>SUM</GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>num2</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>num3</COLUMN>
+    <TITLE>优惠金额</TITLE>
+    <FIELDTYPE>6</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION>SUM</GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>num3</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>num4</COLUMN>
+    <TITLE>参与促销金额</TITLE>
+    <FIELDTYPE>6</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION>SUM</GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>num4</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>num5</COLUMN>
+    <TITLE>库存数量</TITLE>
+    <FIELDTYPE>6</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION>SUM</GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>num5</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>num9</COLUMN>
+    <TITLE>库存价</TITLE>
+    <FIELDTYPE>6</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>num9</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT>,0.00</CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>num6</COLUMN>
+    <TITLE>库存金额</TITLE>
+    <FIELDTYPE>6</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION>SUM</GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>num6</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>num7</COLUMN>
+    <TITLE>销售数量</TITLE>
+    <FIELDTYPE>6</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION>SUM</GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>num7</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>num8</COLUMN>
+    <TITLE>销售金额</TITLE>
+    <FIELDTYPE>6</FIELDTYPE>
+    <VISIBLE>TRUE</VISIBLE>
+    <GAGGREGATION>SUM</GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>num8</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>date1</COLUMN>
+    <TITLE>查询开始时间</TITLE>
+    <FIELDTYPE>0</FIELDTYPE>
+    <VISIBLE>FALSE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>date1</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+  <COLUMNITEM>
+    <AGGREGATION></AGGREGATION>
+    <COLUMN>date2</COLUMN>
+    <TITLE>查询结束时间</TITLE>
+    <FIELDTYPE>0</FIELDTYPE>
+    <VISIBLE>FALSE</VISIBLE>
+    <GAGGREGATION></GAGGREGATION>
+    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+    <ISKEY>FALSE</ISKEY>
+    <COLUMNNAME>date2</COLUMNNAME>
+    <CFILTER>FALSE</CFILTER>
+    <CFONTCOLOR>0</CFONTCOLOR>
+    <CDISFORMAT></CDISFORMAT>
+    <CGROUPINDEX>-1</CGROUPINDEX>
+  </COLUMNITEM>
+</COLUMNLIST>
+<COLUMNWIDTH>
+  <COLUMNWIDTHITEM>44</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>38</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>104</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>62</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>56</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>86</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>68</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>68</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>86</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>242</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>56</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>32</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>141</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>80</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>56</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>97</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>122</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>83</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>84</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>74</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>86</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>77</COLUMNWIDTHITEM>
+  <COLUMNWIDTHITEM>64</COLUMNWIDTHITEM>
+</COLUMNWIDTH>
+<GROUPLIST>
+</GROUPLIST>
+<ORDERLIST>
+  <ORDERITEM>
+    <COLUMN>销售数量</COLUMN>
+    <ORDER>ASC</ORDER>
+  </ORDERITEM>
+</ORDERLIST>
+<CRITERIALIST>
+  <WIDTHLIST>
+  </WIDTHLIST>
+  <CRITERIAITEM>
+    <LEFT>date1</LEFT>
+    <OPERATOR>=</OPERATOR>
+    <RIGHT>
+      <RIGHTITEM>2017.01.01</RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+    </RIGHT>
+    <ISHAVING>FALSE</ISHAVING>
+    <ISQUOTED>2</ISQUOTED>
+    <PICKNAME>
+    </PICKNAME>
+    <PICKVALUE>
+    </PICKVALUE>
+    <DEFAULTVALUE></DEFAULTVALUE>
+    <ISREQUIRED>FALSE</ISREQUIRED>
+    <WIDTH>0</WIDTH>
+  </CRITERIAITEM>
+  <CRITERIAITEM>
+    <LEFT>date2</LEFT>
+    <OPERATOR>=</OPERATOR>
+    <RIGHT>
+      <RIGHTITEM>2017.01.09</RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+    </RIGHT>
+    <ISHAVING>FALSE</ISHAVING>
+    <ISQUOTED>2</ISQUOTED>
+    <PICKNAME>
+    </PICKNAME>
+    <PICKVALUE>
+    </PICKVALUE>
+    <DEFAULTVALUE></DEFAULTVALUE>
+    <ISREQUIRED>FALSE</ISREQUIRED>
+    <WIDTH>0</WIDTH>
+  </CRITERIAITEM>
+  <CRITERIAITEM>
+    <LEFT>char2</LEFT>
+    <OPERATOR>=</OPERATOR>
+    <RIGHT>
+      <RIGHTITEM></RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+    </RIGHT>
+    <ISHAVING>FALSE</ISHAVING>
+    <ISQUOTED>0</ISQUOTED>
+    <PICKNAME>
+    </PICKNAME>
+    <PICKVALUE>
+    </PICKVALUE>
+    <DEFAULTVALUE></DEFAULTVALUE>
+    <ISREQUIRED>FALSE</ISREQUIRED>
+    <WIDTH>0</WIDTH>
+  </CRITERIAITEM>
+  <CRITERIAITEM>
+    <LEFT>char1</LEFT>
+    <OPERATOR>=</OPERATOR>
+    <RIGHT>
+      <RIGHTITEM></RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+    </RIGHT>
+    <ISHAVING>FALSE</ISHAVING>
+    <ISQUOTED>0</ISQUOTED>
+    <PICKNAME>
+      <PICKNAMEITEM>#TABLE
+</PICKNAMEITEM>
+      <PICKNAMEITEM>province</PICKNAMEITEM>
+    </PICKNAME>
+    <PICKVALUE>
+      <PICKVALUEITEM>select province from province</PICKVALUEITEM>
+      <PICKVALUEITEM>province</PICKVALUEITEM>
+    </PICKVALUE>
+    <DEFAULTVALUE></DEFAULTVALUE>
+    <ISREQUIRED>FALSE</ISREQUIRED>
+    <WIDTH>0</WIDTH>
+  </CRITERIAITEM>
+  <CRITERIAITEM>
+    <LEFT>char4</LEFT>
+    <OPERATOR>=</OPERATOR>
+    <RIGHT>
+      <RIGHTITEM></RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+    </RIGHT>
+    <ISHAVING>FALSE</ISHAVING>
+    <ISQUOTED>0</ISQUOTED>
+    <PICKNAME>
+      <PICKNAMEITEM>#TABLE</PICKNAMEITEM>
+      <PICKNAMEITEM>asname</PICKNAMEITEM>
+    </PICKNAME>
+    <PICKVALUE>
+      <PICKVALUEITEM>select distinct asname from h4v_goodssort</PICKVALUEITEM>
+      <PICKVALUEITEM>asname</PICKVALUEITEM>
+    </PICKVALUE>
+    <DEFAULTVALUE></DEFAULTVALUE>
+    <ISREQUIRED>FALSE</ISREQUIRED>
+    <WIDTH>0</WIDTH>
+  </CRITERIAITEM>
+  <CRITERIAITEM>
+    <LEFT>char8</LEFT>
+    <OPERATOR>IN</OPERATOR>
+    <RIGHT>
+      <RIGHTITEM></RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+    </RIGHT>
+    <ISHAVING>FALSE</ISHAVING>
+    <ISQUOTED>0</ISQUOTED>
+    <PICKNAME>
+    </PICKNAME>
+    <PICKVALUE>
+    </PICKVALUE>
+    <DEFAULTVALUE></DEFAULTVALUE>
+    <ISREQUIRED>FALSE</ISREQUIRED>
+    <WIDTH>0</WIDTH>
+  </CRITERIAITEM>
+  <CRITERIAITEM>
+    <LEFT>char9</LEFT>
+    <OPERATOR>IN</OPERATOR>
+    <RIGHT>
+      <RIGHTITEM></RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+      <RIGHTITEM></RIGHTITEM>
+    </RIGHT>
+    <ISHAVING>FALSE</ISHAVING>
+    <ISQUOTED>0</ISQUOTED>
+    <PICKNAME>
+    </PICKNAME>
+    <PICKVALUE>
+    </PICKVALUE>
+    <DEFAULTVALUE></DEFAULTVALUE>
+    <ISREQUIRED>FALSE</ISREQUIRED>
+    <WIDTH>0</WIDTH>
+  </CRITERIAITEM>
+</CRITERIALIST>
+<CRITERIAWIDTH>
+  <CRITERIAWIDTHITEM>135</CRITERIAWIDTHITEM>
+  <CRITERIAWIDTHITEM>134</CRITERIAWIDTHITEM>
+  <CRITERIAWIDTHITEM>64</CRITERIAWIDTHITEM>
+  <CRITERIAWIDTHITEM>88</CRITERIAWIDTHITEM>
+  <CRITERIAWIDTHITEM>88</CRITERIAWIDTHITEM>
+  <CRITERIAWIDTHITEM>88</CRITERIAWIDTHITEM>
+  <CRITERIAWIDTHITEM>88</CRITERIAWIDTHITEM>
+</CRITERIAWIDTH>
+<SG>
+  <LINE>
+  </LINE>
+  <LINE>
+    <SGLINEITEM>条件 1：</SGLINEITEM>
+    <SGLINEITEM>2017.01.01</SGLINEITEM>
+    <SGLINEITEM>2017.01.09</SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+  </LINE>
+  <LINE>
+    <SGLINEITEM>  或 2：</SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+  </LINE>
+  <LINE>
+    <SGLINEITEM>  或 3：</SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+  </LINE>
+  <LINE>
+    <SGLINEITEM>  或 4：</SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+    <SGLINEITEM></SGLINEITEM>
+  </LINE>
+  <LINE>
+  </LINE>
+</SG>
+<CHECKLIST>
+  <CAPTION>
+  </CAPTION>
+  <EXPRESSION>
+  </EXPRESSION>
+  <CHECKED>
+  </CHECKED>
+  <ANDOR> and </ANDOR>
+</CHECKLIST>
+<UNIONLIST>
+</UNIONLIST>
+<NCRITERIAS>
+  <NUMOFNEXTQRY>4</NUMOFNEXTQRY>
+  <NCRITERIALIST>
+    <NEXTQUERY>门店日期段商品销售明细.sql</NEXTQUERY>
+    <NCRITERIAITEM>
+      <LEFT>记帐日期大于等于</LEFT>
+      <RIGHT>记帐日期大于等于</RIGHT>
+    </NCRITERIAITEM>
+    <NCRITERIAITEM>
+      <LEFT>记帐日期小于</LEFT>
+      <RIGHT>记帐日期小于</RIGHT>
+    </NCRITERIAITEM>
+    <NCRITERIAITEM>
+      <LEFT>门店代码等于</LEFT>
+      <RIGHT>门店代码</RIGHT>
+    </NCRITERIAITEM>
+  </NCRITERIALIST>
+  <NCRITERIALIST>
+    <NEXTQUERY>门店日期段类别销售汇总(大类).sql</NEXTQUERY>
+    <NCRITERIAITEM>
+      <LEFT>记帐日期大于等于</LEFT>
+      <RIGHT>记帐日期大于等于</RIGHT>
+    </NCRITERIAITEM>
+    <NCRITERIAITEM>
+      <LEFT>记帐日期小于</LEFT>
+      <RIGHT>记帐日期小于</RIGHT>
+    </NCRITERIAITEM>
+    <NCRITERIAITEM>
+      <LEFT>门店代码等于</LEFT>
+      <RIGHT>门店代码</RIGHT>
+    </NCRITERIAITEM>
+  </NCRITERIALIST>
+  <NCRITERIALIST>
+    <NEXTQUERY>门店日期段类别销售汇总(中类).sql</NEXTQUERY>
+    <NCRITERIAITEM>
+      <LEFT>记帐日期大于等于</LEFT>
+      <RIGHT>记帐日期大于等于</RIGHT>
+    </NCRITERIAITEM>
+    <NCRITERIAITEM>
+      <LEFT>记帐日期小于</LEFT>
+      <RIGHT>记帐日期小于</RIGHT>
+    </NCRITERIAITEM>
+    <NCRITERIAITEM>
+      <LEFT>门店代码等于</LEFT>
+      <RIGHT>门店代码</RIGHT>
+    </NCRITERIAITEM>
+  </NCRITERIALIST>
+  <NCRITERIALIST>
+    <NEXTQUERY>门店日期段类别销售汇总(小类).sql</NEXTQUERY>
+    <NCRITERIAITEM>
+      <LEFT>记帐日期大于等于</LEFT>
+      <RIGHT>记帐日期大于等于</RIGHT>
+    </NCRITERIAITEM>
+    <NCRITERIAITEM>
+      <LEFT>记帐日期小于</LEFT>
+      <RIGHT>记帐日期小于</RIGHT>
+    </NCRITERIAITEM>
+    <NCRITERIAITEM>
+      <LEFT>门店代码等于</LEFT>
+      <RIGHT>门店代码</RIGHT>
+    </NCRITERIAITEM>
+  </NCRITERIALIST>
+</NCRITERIAS>
+<MULTIQUERIES>
+  <NUMOFMULTIQRY>0</NUMOFMULTIQRY>
+</MULTIQUERIES>
+<FUNCTIONLIST>
+</FUNCTIONLIST>
+<DXDBGRIDITEM>
+  <DXLOADMETHOD>FALSE</DXLOADMETHOD>
+  <DXSHOWGROUP>FALSE</DXSHOWGROUP>
+  <DXSHOWFOOTER>TRUE</DXSHOWFOOTER>
+  <DXSHOWSUMMARY>FALSE</DXSHOWSUMMARY>
+  <DXSHOWPREVIEW>FALSE</DXSHOWPREVIEW>
+  <DXSHOWFILTER>FALSE</DXSHOWFILTER>
+  <DXPREVIEWFIELD></DXPREVIEWFIELD>
+  <DXCOLORODDROW>16777215</DXCOLORODDROW>
+  <DXCOLOREVENROW>15921906</DXCOLOREVENROW>
+  <DXFILTERNAME></DXFILTERNAME>
+  <DXFILTERTYPE></DXFILTERTYPE>
+  <DXFILTERLIST>
+  </DXFILTERLIST>
+  <DXSHOWGRIDLINE>1</DXSHOWGRIDLINE>
+</DXDBGRIDITEM>
+</SQLQUERY>
+<SQLREPORT>
+<RPTTITLE>门店日期段销售汇总</RPTTITLE>
+<RPTGROUPCOUNT>0</RPTGROUPCOUNT>
+<RPTGROUPLIST>
+</RPTGROUPLIST>
+<RPTCOLUMNCOUNT>8</RPTCOLUMNCOUNT>
+<RPTCOLUMNWIDTHLIST>
+  <RPTCOLUMNWIDTHITEM>73</RPTCOLUMNWIDTHITEM>
+  <RPTCOLUMNWIDTHITEM>58</RPTCOLUMNWIDTHITEM>
+  <RPTCOLUMNWIDTHITEM>58</RPTCOLUMNWIDTHITEM>
+  <RPTCOLUMNWIDTHITEM>79</RPTCOLUMNWIDTHITEM>
+  <RPTCOLUMNWIDTHITEM>99</RPTCOLUMNWIDTHITEM>
+  <RPTCOLUMNWIDTHITEM>162</RPTCOLUMNWIDTHITEM>
+  <RPTCOLUMNWIDTHITEM>142</RPTCOLUMNWIDTHITEM>
+  <RPTCOLUMNWIDTHITEM>125</RPTCOLUMNWIDTHITEM>
+</RPTCOLUMNWIDTHLIST>
+<RPTLEFTMARGIN>40</RPTLEFTMARGIN>
+<RPTORIENTATION>0</RPTORIENTATION>
+<RPTCOLUMNS>1</RPTCOLUMNS>
+<RPTHEADERLEVEL>0</RPTHEADERLEVEL>
+<RPTPRINTCRITERIA>TRUE</RPTPRINTCRITERIA>
+<RPTVERSION></RPTVERSION>
+<RPTNOTE></RPTNOTE>
+<RPTFONTSIZE>9</RPTFONTSIZE>
+<RPTLINEHEIGHT>宋体</RPTLINEHEIGHT>
+<RPTPAGEHEIGHT>66</RPTPAGEHEIGHT>
+<RPTPAGEWIDTH>80</RPTPAGEWIDTH>
+<RPTTITLETYPE>0</RPTTITLETYPE>
+<RPTCURREPORT></RPTCURREPORT>
+<RPTREPORTLIST>
+</RPTREPORTLIST>
+</SQLREPORT>
+

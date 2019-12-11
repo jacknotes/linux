@@ -1,0 +1,5 @@
+SELECT * from homsomDB..Trv_ItktBookings where id='73acbe6e-a788-4b09-be3c-5820e570047b'
+update homsomDB..Trv_ItktBookings set FaceValue=1010,Coupon=30 where id='73acbe6e-a788-4b09-be3c-5820e570047b'
+SELECT *FROM homsomDB..Trv_PnrInfos WHERE ItktBookingID='73acbe6e-a788-4b09-be3c-5820e570047b'
+SELECT * FROM homsomDB..Trv_ITktSeats WHERE PnrInfoID='ABBA106B-2365-4951-8E14-250A15E11E36'
+update homsomDB..Trv_ITktSeats set FaceValue=1010,Coupon=30 WHERE PnrInfoID='ABBA106B-2365-4951-8E14-250A15E11E36'

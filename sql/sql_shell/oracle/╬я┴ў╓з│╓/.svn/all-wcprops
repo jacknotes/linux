@@ -1,0 +1,113 @@
+K 25
+svn:wc:ra_dav:version-url
+V 119
+/svn/rptgrp/!svn/ver/274/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E7%89%A9%E6%B5%81%E6%94%AF%E6%8C%81
+END
+采购入库查询.sql
+K 25
+svn:wc:ra_dav:version-url
+V 178
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E7%89%A9%E6%B5%81%E6%94%AF%E6%8C%81/%E9%87%87%E8%B4%AD%E5%85%A5%E5%BA%93%E6%9F%A5%E8%AF%A2.sql
+END
+周转箱发货流水查询.sql
+K 25
+svn:wc:ra_dav:version-url
+V 205
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E7%89%A9%E6%B5%81%E6%94%AF%E6%8C%81/%E5%91%A8%E8%BD%AC%E7%AE%B1%E5%8F%91%E8%B4%A7%E6%B5%81%E6%B0%B4%E6%9F%A5%E8%AF%A2.sql
+END
+配货池管理.sql
+K 25
+svn:wc:ra_dav:version-url
+V 169
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E7%89%A9%E6%B5%81%E6%94%AF%E6%8C%81/%E9%85%8D%E8%B4%A7%E6%B1%A0%E7%AE%A1%E7%90%86.sql
+END
+拆零明细查询.sql
+K 25
+svn:wc:ra_dav:version-url
+V 178
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E7%89%A9%E6%B5%81%E6%94%AF%E6%8C%81/%E6%8B%86%E9%9B%B6%E6%98%8E%E7%BB%86%E6%9F%A5%E8%AF%A2.sql
+END
+配货差异查询.sql
+K 25
+svn:wc:ra_dav:version-url
+V 178
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E7%89%A9%E6%B5%81%E6%94%AF%E6%8C%81/%E9%85%8D%E8%B4%A7%E5%B7%AE%E5%BC%82%E6%9F%A5%E8%AF%A2.sql
+END
+复查人员统计表.sql
+K 25
+svn:wc:ra_dav:version-url
+V 187
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E7%89%A9%E6%B5%81%E6%94%AF%E6%8C%81/%E5%A4%8D%E6%9F%A5%E4%BA%BA%E5%91%98%E7%BB%9F%E8%AE%A1%E8%A1%A8.sql
+END
+出车查询（明细）.sql
+K 25
+svn:wc:ra_dav:version-url
+V 196
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E7%89%A9%E6%B5%81%E6%94%AF%E6%8C%81/%E5%87%BA%E8%BD%A6%E6%9F%A5%E8%AF%A2%EF%BC%88%E6%98%8E%E7%BB%86%EF%BC%89.sql
+END
+配送商品门店与配送仓库存对比.sql
+K 25
+svn:wc:ra_dav:version-url
+V 250
+/svn/rptgrp/!svn/ver/274/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E7%89%A9%E6%B5%81%E6%94%AF%E6%8C%81/%E9%85%8D%E9%80%81%E5%95%86%E5%93%81%E9%97%A8%E5%BA%97%E4%B8%8E%E9%85%8D%E9%80%81%E4%BB%93%E5%BA%93%E5%AD%98%E5%AF%B9%E6%AF%94.sql
+END
+拣货量统计查询.sql
+K 25
+svn:wc:ra_dav:version-url
+V 187
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E7%89%A9%E6%B5%81%E6%94%AF%E6%8C%81/%E6%8B%A3%E8%B4%A7%E9%87%8F%E7%BB%9F%E8%AE%A1%E6%9F%A5%E8%AF%A2.sql
+END
+不动销商品查询（总部）.sql
+K 25
+svn:wc:ra_dav:version-url
+V 223
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E7%89%A9%E6%B5%81%E6%94%AF%E6%8C%81/%E4%B8%8D%E5%8A%A8%E9%94%80%E5%95%86%E5%93%81%E6%9F%A5%E8%AF%A2%EF%BC%88%E6%80%BB%E9%83%A8%EF%BC%89.sql
+END
+配货缺货汇总查询(实时).sql
+K 25
+svn:wc:ra_dav:version-url
+V 216
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E7%89%A9%E6%B5%81%E6%94%AF%E6%8C%81/%E9%85%8D%E8%B4%A7%E7%BC%BA%E8%B4%A7%E6%B1%87%E6%80%BB%E6%9F%A5%E8%AF%A2(%E5%AE%9E%E6%97%B6).sql
+END
+总部库存调整单明细.sql
+K 25
+svn:wc:ra_dav:version-url
+V 205
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E7%89%A9%E6%B5%81%E6%94%AF%E6%8C%81/%E6%80%BB%E9%83%A8%E5%BA%93%E5%AD%98%E8%B0%83%E6%95%B4%E5%8D%95%E6%98%8E%E7%BB%86.sql
+END
+配货缺货查询(实时).sql
+K 25
+svn:wc:ra_dav:version-url
+V 198
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E7%89%A9%E6%B5%81%E6%94%AF%E6%8C%81/%E9%85%8D%E8%B4%A7%E7%BC%BA%E8%B4%A7%E6%9F%A5%E8%AF%A2(%E5%AE%9E%E6%97%B6).sql
+END
+配货商品频次表.sql
+K 25
+svn:wc:ra_dav:version-url
+V 187
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E7%89%A9%E6%B5%81%E6%94%AF%E6%8C%81/%E9%85%8D%E8%B4%A7%E5%95%86%E5%93%81%E9%A2%91%E6%AC%A1%E8%A1%A8.sql
+END
+出车查询（汇总）.sql
+K 25
+svn:wc:ra_dav:version-url
+V 196
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E7%89%A9%E6%B5%81%E6%94%AF%E6%8C%81/%E5%87%BA%E8%BD%A6%E6%9F%A5%E8%AF%A2%EF%BC%88%E6%B1%87%E6%80%BB%EF%BC%89.sql
+END
+配货锁定明细.sql
+K 25
+svn:wc:ra_dav:version-url
+V 178
+/svn/rptgrp/!svn/ver/274/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E7%89%A9%E6%B5%81%E6%94%AF%E6%8C%81/%E9%85%8D%E8%B4%A7%E9%94%81%E5%AE%9A%E6%98%8E%E7%BB%86.sql
+END
+总部配退出货单明细查询.sql
+K 25
+svn:wc:ra_dav:version-url
+V 223
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E7%89%A9%E6%B5%81%E6%94%AF%E6%8C%81/%E6%80%BB%E9%83%A8%E9%85%8D%E9%80%80%E5%87%BA%E8%B4%A7%E5%8D%95%E6%98%8E%E7%BB%86%E6%9F%A5%E8%AF%A2.sql
+END
+拆零差异查询.sql
+K 25
+svn:wc:ra_dav:version-url
+V 178
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E7%89%A9%E6%B5%81%E6%94%AF%E6%8C%81/%E6%8B%86%E9%9B%B6%E5%B7%AE%E5%BC%82%E6%9F%A5%E8%AF%A2.sql
+END

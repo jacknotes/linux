@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>姓名填写说明</title>
+    <style>
+      .nameExplain-box * {
+        margin: 0;
+        padding: 0;
+      }
+      .nameExplain-box i {
+        font-style: normal;
+      }
+      .nameExplain-box p {
+        line-height: 1.2em;
+        text-align: justify;
+      }
+      .nameExplain-box {
+        width: 100%;
+        /* background: #f6f7f8; */
+        color: #626262;
+        font-size: 14px;
+      }
+      .nameExplain-box > div {
+        padding: 20px;
+        margin: 0 auto;
+      }
+      .nameExplain-box .tip {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        vertical-align: middle;
+        text-align: center;
+        line-height: 20px;
+        margin-right: 10px;
+        background: #d81725;
+        color: #fff;
+        border-radius: 50%;
+      }
+      .nameExplain-box .input {
+        /* width: 320px; */
+        color: #626262;
+        height: 40px;
+        line-height: 40px;
+        background: #fff;
+        box-shadow: 0 0 20px #cccccc;
+        padding-left: 20px;
+      }
+      .nameExplain-box .input > span {
+        padding-right: 30px;
+      }
+      .nameExplain-box .paddingB20 {
+        padding-bottom: 20px;
+      }
+      .nameExplain-box .inputTow {
+        /* width: 320px; */
+        position: relative;
+        box-shadow: 0 0 20px #cccccc;
+      }
+      .nameExplain-box .inputTow > .input {
+        box-shadow: none;
+      }
+      .nameExplain-box .inputTow > .line {
+        position: absolute;
+        top: 40px;
+        width: 300px;
+        left: 20px;
+        border-bottom: 1px solid #e9e9e9;
+      }
+      .nameExplain-box .title {
+        font-weight: bold;
+        padding-right: 20px;
+      }
+      .nameExplain-box .pic {
+        display: block;
+        height: 160px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="nameExplain-box">
+      <div>
+        <div class="paddingB20">
+          <p>姓名需与乘机所持证件一致。</p>
+          <p>香港、台湾、澳门的护照不支持国内航班，请改用其他证件。</p>
+        </div>
+        <div class="paddingB20">
+          <div><i class="tip">1</i><span>中文姓名</span></div>
+        </div>
+        <div class="paddingB20">
+          <p class="paddingB20">
+            生僻字可用拼音代替，拼音之后不可再输入汉子，需用拼音代替。例如：“王鬳军”可输入为“王yanjun”。
+          </p>
+          <div class="input">
+            <span>中文姓名</span>
+            <i>王yanjun</i>
+          </div>
+        </div>
+        <div class="paddingB20">
+          <p>
+            姓名中有特殊符号“.”，如：“汉祖然·买卖提”，在购买火车票时请填写完整；在购买机票时需省略，填写为“汉祖然买卖提”。
+          </p>
+        </div>
+        <div class="paddingB20">
+          <div><i class="tip">2</i><span>英文姓名</span></div>
+        </div>
+        <div class="paddingB20">
+          <p class="paddingB20">
+            若持护照乘机，必须按照护照现实区分姓与名；Middlename填写在Given
+            name(英文名)栏，并填写在given name之后，以空格区分。如：“Losie Smith
+            Paul”填写为：
+          </p>
+          <div class="inputTow">
+            <div class="input">
+              <span>英文姓</span>
+              <i>Paul</i>
+            </div>
+            <div class="line"></div>
+            <div class="input">
+              <span>英文名</span>
+              <i>Losie Smith</i>
+            </div>
+          </div>
+        </div>
+        <div class="paddingB20">
+          <p class="paddingB20">
+            姓与名总长度小于等于26字符，若过长请使用缩写。如Alejandro Gomez
+            Monteverde 缩写为：
+          </p>
+          <div class="inputTow">
+            <div class="input">
+              <span>英文姓</span>
+              <i>Monteverde</i>
+            </div>
+            <div class="line"></div>
+            <div class="input">
+              <span>英文名</span>
+              <i>A G</i>
+            </div>
+          </div>
+        </div>
+        <div class="paddingB20">
+          <p class="paddingB20">
+            姓名中含特殊符号时，在姓中不输入，名中用空格代替。如“jame.M-C
+            Black.S-A” 填写为
+          </p>
+          <div class="inputTow">
+            <div class="input">
+              <span>英文姓</span>
+              <i>BLACKSA</i>
+            </div>
+            <div class="line"></div>
+            <div class="input">
+              <span>英文名</span>
+              <i>JAME M C</i>
+            </div>
+          </div>
+        </div>
+        <div class="paddingB20">
+          <p class="paddingB20">
+            <span class="title">图示说明</span> <i>(新版护照)</i>
+          </p>
+          <p class="paddingB20">
+            <img class="pic" src="https://wap.homsom.com/static/image/personal-center/passengers/explain_1.png"/>
+          </p>
+        </div>
+        <div class="paddingB20">
+          <p class="paddingB20">
+            <span class="title">图示说明</span> <i>(老版护照)</i>
+          </p>
+          <p class="paddingB20">
+            <img class="pic" src="https://wap.homsom.com/static/image/personal-center/passengers/explain_2.png"/>
+          </p>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,1441 @@
+Index: 加盟商资金帐户往来明细报表.sql
+===================================================================
+--- 加盟商资金帐户往来明细报表.sql	(revision 10)
++++ 加盟商资金帐户往来明细报表.sql	(working copy)
+@@ -1,696 +0,0 @@
+-<VERSION>4.1.0</VERSION>
+-<SQLQUERY>
+-<REMARK>
+-[标题]
+-
+-[应用背景]
+-
+-[结果列描述]
+-
+-[必要的查询条件]
+-
+-[实现方法]
+-create global temporary table H4RTMP_DOORPRICE
+-(
+-  JCODE     VARCHAR2(20),
+-  JNAME     VARCHAR2(40),
+-  JSTORE    VARCHAR2(20),
+-  JOCRDATE  DATE,
+-  JSRCCLS   VARCHAR2(20),
+-  JSRCNUM   VARCHAR2(20),
+-  JADDPRICE NUMBER(24,4),
+-  JENDPRICE NUMBER(24,4),
+-  JPRICE    NUMBER(24,4).
+-  dpscode   varchar2(20),
+-  dpsname   varchar2(80),
+-  chcode    varchar2(20),
+-  chname    varchar2(80),
+-  scode    varchar2(20),
+-  sname    varchar2(80)  
+-)
+-on commit preserve rows;
+--- Grant/Revoke object privileges 
+-grant insert, update, delete on H4RTMP_DOORPRICE to ROLE_HDAPP;
+-grant insert, update, delete on H4RTMP_DOORPRICE to ROLE_HDQRY;
+-[其它]
+-</REMARK>
+-<BEFORERUN>
+-declare 
+-  vscode varchar(20);
+-  vsname varchar(80);
+-  vdcode varchar(20);
+-  vccode varchar(20);
+-  vdpsgid int;
+-  vstcode varchar(20);
+-  vstname varchar(80);
+-  cursor i is 
+-  select SNUM,SCLS,SNOTE,BNAME from H4RTMP_STORSUBJ;
+-begin
+-    vscode := '\(1,1)';
+-    vsname := '\(2,1)';
+-    vdcode := '\(3,1)';
+-    vccode := '\(4,1)';
+-    delete from H4RTMP_DOORPRICE;
+-    commit;
+-    delete from H4RTMP_STORSUBJ;
+-    commit;
+-  if vscode is not null then
+-    select  sa.dpsgid,st.code,st.name into vdpsgid,vstcode,vstname from 
+-storeaccount sa,store st where sa.stgid=st.gid and st.code=vscode;
+-     insert into H4RTMP_DOORPRICE(jcode,jname,jstore,jocrdate,jsrccls,jsrcnum,
+-jaddprice,jprice,dpscode,dpsname,chcode,chname,cls,scode,sname,stat)
+-    select s.code,s.name,g.actcls,g.ocrdate,g.srccls,g.srcnum,nvl(g.alctotal,0),
+-nvl(g.orialctotal,0) + nvl(g.alctotal,0),d.code,d.name,null,null,
+-decode(g.srccls,'加盟金缴款','缴款','加盟金扣款','扣款'),
+-           vstcode,vstname,g.srcstat
+-     from storealcctrllog g,store s, dpsaccount d
+-    where g.store = s.gid and g.alctotal >=0 
+-      and d.gid=g.dpsgid
+-      and d.code like vdcode||'%' 
+-      --and s.code like vscode||'%'
+-      and d.gid =vdpsgid; 
+-
+-  insert into H4RTMP_DOORPRICE(jcode,jname,jstore,jocrdate,jsrccls,jsrcnum,
+-jendprice,jprice,dpscode,dpsname,chcode,chname,cls,scode,sname,stat)
+-    select s.code,s.name,g.actcls,g.ocrdate,g.srccls,g.srcnum,nvl(g.alctotal,0),
+-nvl(g.orialctotal,0) + nvl(g.alctotal,0),d.code,d.name,null,null,
+-decode(g.srccls,'加盟金缴款','缴款','加盟金扣款','扣款'),
+-           vstcode,vstname,g.srcstat
+-     from storealcctrllog g,store s, dpsaccount d
+-    where g.store = s.gid and g.alctotal <0 
+-      and d.gid=g.dpsgid
+-      and d.code like vdcode||'%'
+-      --and s.code like vscode||'%'
+-      and d.gid = vdpsgid; 
+-  else
+-     insert into H4RTMP_DOORPRICE(jcode,jname,jstore,jocrdate,jsrccls,jsrcnum,
+-jaddprice,jprice,dpscode,dpsname,chcode,chname,cls,stat)
+-    select s.code,s.name,g.actcls,g.ocrdate,g.srccls,g.srcnum,nvl(g.alctotal,0),
+-nvl(g.orialctotal,0) + nvl(g.alctotal,0),d.code,d.name,
+-      null,null,decode(g.srccls,'加盟金缴款','缴款','加盟金扣款','扣款'),
+-g.srcstat
+-     from storealcctrllog g,store s, dpsaccount d
+-    where g.store = s.gid and g.alctotal >=0 
+-      and d.gid=g.dpsgid
+-      --and d.code like vdcode||'%'
+-      and s.code like vscode||'%'
+-; 
+-
+-  insert into H4RTMP_DOORPRICE(jcode,jname,jstore,jocrdate,jsrccls,jsrcnum,
+-jendprice,jprice,dpscode,dpsname,chcode,chname,cls,stat)
+-    select s.code,s.name,g.actcls,g.ocrdate,g.srccls,g.srcnum,nvl(g.alctotal,0),
+-nvl(g.orialctotal,0) + nvl(g.alctotal,0),d.code,d.name,null,null,
+-     decode(g.srccls,'加盟金缴款','缴款','加盟金扣款','扣款'),g.srcstat
+-     from storealcctrllog g,store s, dpsaccount d
+-    where g.store = s.gid and g.alctotal <0 
+-      and d.gid=g.dpsgid
+-      and d.code like vdcode||'%'
+-      --and s.code like vscode||'%'
+-; 
+-   end if;
+-  commit;
+-  
+-  insert into H4RTMP_STORSUBJ(snum,scls,snote,Bname)
+-    select s.num,s.cls,s.note,b.name from STOREALCPAY s,SUBJECTATT b where 
+-s.scode = b.code;   commit;
+-    FOR R IN I LOOP
+-      UPDATE H4RTMP_DOORPRICE SET H4RTMP_DOORPRICE.Stnote = R.SNOTE,
+-H4RTMP_DOORPRICE.Bname = R.BNAME WHERE H4RTMP_DOORPRICE.Jsrcnum = R.SNUM AND 
+-H4RTMP_DOORPRICE.Cls = R.SCLS;
+-    END LOOP;
+-  COMMIT;
+-delete from H4RTMP_DOORPRICE
+- where nvl(jaddprice, 0) = 0
+-   and nvl(jendprice, 0) = 0;
+-   commit ;
+-end;
+-</BEFORERUN>
+-<AFTERRUN>
+-</AFTERRUN>
+-<TABLELIST>
+-  <TABLEITEM>
+-    <TABLE>H4RTMP_DOORPRICE</TABLE>
+-    <ALIAS>H4RTMP_DOORPRICE</ALIAS>
+-    <INDEXNAME></INDEXNAME>
+-    <INDEXMETHOD></INDEXMETHOD>
+-  </TABLEITEM>
+-  <TABLEITEM>
+-    <TABLE>MODULESTAT</TABLE>
+-    <ALIAS>MODULESTAT</ALIAS>
+-    <INDEXNAME></INDEXNAME>
+-    <INDEXMETHOD></INDEXMETHOD>
+-  </TABLEITEM>
+-</TABLELIST>
+-<JOINLIST>
+-  <JOINITEM>
+-    <LEFT>H4RTMP_DOORPRICE.stat</LEFT>
+-    <OPERATOR>=</OPERATOR>
+-    <RIGHT>MODULESTAT.NO</RIGHT>
+-  </JOINITEM>
+-</JOINLIST>
+-<COLUMNLIST>
+-  <FIXEDCOLUMNS>0</FIXEDCOLUMNS>
+-  <COLUMNITEM>
+-    <AGGREGATION></AGGREGATION>
+-    <COLUMN>H4RTMP_DOORPRICE.jcode</COLUMN>
+-    <TITLE>门店代码</TITLE>
+-    <FIELDTYPE>1</FIELDTYPE>
+-    <VISIBLE>TRUE</VISIBLE>
+-    <GAGGREGATION></GAGGREGATION>
+-    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
+-    <ISKEY>FALSE</ISKEY>
+-    <COLUMNNAME>jcode</COLUMNNAME>
+-    <CFILTER>FALSE</CFILTER>
+-    <CFONTCOLOR>0</CFONTCOLOR>
+-    <CDISFORMAT></CDISFORMAT>
+-    <CGROUPINDEX>-1</CGROUPINDEX>
+-  </COLUMNITEM>
+-  <COLUMNITEM>
+-    <AGGREGATION></AGGREGATION>
+-    <COLUMN>H4RTMP_DOORPRICE.jname</COLUMN>
+-    <TITLE>门店名称</TITLE>
+-    <FIELDTYPE>1</FIELDTYPE>
+-    <VISIBLE>TRUE</VISIBLE>
+-    <GAGGREGATION></GAGGREGATION>
+-    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
+-    <ISKEY>FALSE</ISKEY>
+-    <COLUMNNAME>jname</COLUMNNAME>
+-    <CFILTER>FALSE</CFILTER>
+-    <CFONTCOLOR>0</CFONTCOLOR>
+-    <CDISFORMAT></CDISFORMAT>
+-    <CGROUPINDEX>-1</CGROUPINDEX>
+-  </COLUMNITEM>
+-  <COLUMNITEM>
+-    <AGGREGATION></AGGREGATION>
+-    <COLUMN>H4RTMP_DOORPRICE.jstore</COLUMN>
+-    <TITLE>账户类型</TITLE>
+-    <FIELDTYPE>1</FIELDTYPE>
+-    <VISIBLE>TRUE</VISIBLE>
+-    <GAGGREGATION></GAGGREGATION>
+-    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
+-    <ISKEY>FALSE</ISKEY>
+-    <COLUMNNAME>jstore</COLUMNNAME>
+-    <CFILTER>FALSE</CFILTER>
+-    <CFONTCOLOR>0</CFONTCOLOR>
+-    <CDISFORMAT></CDISFORMAT>
+-    <CGROUPINDEX>-1</CGROUPINDEX>
+-  </COLUMNITEM>
+-  <COLUMNITEM>
+-    <AGGREGATION></AGGREGATION>
+-    <COLUMN>H4RTMP_DOORPRICE.jocrdate</COLUMN>
+-    <TITLE>发生日期</TITLE>
+-    <FIELDTYPE>11</FIELDTYPE>
+-    <VISIBLE>TRUE</VISIBLE>
+-    <GAGGREGATION></GAGGREGATION>
+-    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
+-    <ISKEY>FALSE</ISKEY>
+-    <COLUMNNAME>jocrdate</COLUMNNAME>
+-    <CFILTER>FALSE</CFILTER>
+-    <CFONTCOLOR>0</CFONTCOLOR>
+-    <CDISFORMAT></CDISFORMAT>
+-    <CGROUPINDEX>-1</CGROUPINDEX>
+-  </COLUMNITEM>
+-  <COLUMNITEM>
+-    <AGGREGATION></AGGREGATION>
+-    <COLUMN>H4RTMP_DOORPRICE.jsrccls</COLUMN>
+-    <TITLE>发生业务</TITLE>
+-    <FIELDTYPE>1</FIELDTYPE>
+-    <VISIBLE>TRUE</VISIBLE>
+-    <GAGGREGATION></GAGGREGATION>
+-    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
+-    <ISKEY>FALSE</ISKEY>
+-    <COLUMNNAME>jsrccls</COLUMNNAME>
+-    <CFILTER>FALSE</CFILTER>
+-    <CFONTCOLOR>0</CFONTCOLOR>
+-    <CDISFORMAT></CDISFORMAT>
+-    <CGROUPINDEX>-1</CGROUPINDEX>
+-  </COLUMNITEM>
+-  <COLUMNITEM>
+-    <AGGREGATION></AGGREGATION>
+-    <COLUMN>H4RTMP_DOORPRICE.jsrcnum</COLUMN>
+-    <TITLE>业务单号</TITLE>
+-    <FIELDTYPE>1</FIELDTYPE>
+-    <VISIBLE>TRUE</VISIBLE>
+-    <GAGGREGATION></GAGGREGATION>
+-    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
+-    <ISKEY>FALSE</ISKEY>
+-    <COLUMNNAME>jsrcnum</COLUMNNAME>
+-    <CFILTER>FALSE</CFILTER>
+-    <CFONTCOLOR>0</CFONTCOLOR>
+-    <CDISFORMAT></CDISFORMAT>
+-    <CGROUPINDEX>-1</CGROUPINDEX>
+-  </COLUMNITEM>
+-  <COLUMNITEM>
+-    <AGGREGATION></AGGREGATION>
+-    <COLUMN>MODULESTAT.STATNAME</COLUMN>
+-    <TITLE>状态名称</TITLE>
+-    <FIELDTYPE>1</FIELDTYPE>
+-    <VISIBLE>TRUE</VISIBLE>
+-    <GAGGREGATION></GAGGREGATION>
+-    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
+-    <ISKEY>FALSE</ISKEY>
+-    <COLUMNNAME>STATNAME</COLUMNNAME>
+-    <CFILTER>FALSE</CFILTER>
+-    <CFONTCOLOR>0</CFONTCOLOR>
+-    <CDISFORMAT></CDISFORMAT>
+-    <CGROUPINDEX>-1</CGROUPINDEX>
+-  </COLUMNITEM>
+-  <COLUMNITEM>
+-    <AGGREGATION></AGGREGATION>
+-    <COLUMN>H4RTMP_DOORPRICE.jaddprice</COLUMN>
+-    <TITLE>增加+</TITLE>
+-    <FIELDTYPE>6</FIELDTYPE>
+-    <VISIBLE>TRUE</VISIBLE>
+-    <GAGGREGATION>SUM</GAGGREGATION>
+-    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
+-    <ISKEY>FALSE</ISKEY>
+-    <COLUMNNAME>jaddprice</COLUMNNAME>
+-    <CFILTER>FALSE</CFILTER>
+-    <CFONTCOLOR>0</CFONTCOLOR>
+-    <CDISFORMAT></CDISFORMAT>
+-    <CGROUPINDEX>-1</CGROUPINDEX>
+-  </COLUMNITEM>
+-  <COLUMNITEM>
+-    <AGGREGATION></AGGREGATION>
+-    <COLUMN>H4RTMP_DOORPRICE.jendprice
+-</COLUMN>
+-    <TITLE>减少-</TITLE>
+-    <FIELDTYPE>6</FIELDTYPE>
+-    <VISIBLE>TRUE</VISIBLE>
+-    <GAGGREGATION>SUM</GAGGREGATION>
+-    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
+-    <ISKEY>FALSE</ISKEY>
+-    <COLUMNNAME>jendprice</COLUMNNAME>
+-    <CFILTER>FALSE</CFILTER>
+-    <CFONTCOLOR>0</CFONTCOLOR>
+-    <CDISFORMAT></CDISFORMAT>
+-    <CGROUPINDEX>-1</CGROUPINDEX>
+-  </COLUMNITEM>
+-  <COLUMNITEM>
+-    <AGGREGATION></AGGREGATION>
+-    <COLUMN>H4RTMP_DOORPRICE.jprice</COLUMN>
+-    <TITLE>账户余额</TITLE>
+-    <FIELDTYPE>6</FIELDTYPE>
+-    <VISIBLE>TRUE</VISIBLE>
+-    <GAGGREGATION></GAGGREGATION>
+-    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
+-    <ISKEY>FALSE</ISKEY>
+-    <COLUMNNAME>jprice</COLUMNNAME>
+-    <CFILTER>FALSE</CFILTER>
+-    <CFONTCOLOR>0</CFONTCOLOR>
+-    <CDISFORMAT></CDISFORMAT>
+-    <CGROUPINDEX>-1</CGROUPINDEX>
+-  </COLUMNITEM>
+-  <COLUMNITEM>
+-    <AGGREGATION></AGGREGATION>
+-    <COLUMN>H4RTMP_DOORPRICE.dpscode</COLUMN>
+-    <TITLE>账户代码</TITLE>
+-    <FIELDTYPE>1</FIELDTYPE>
+-    <VISIBLE>TRUE</VISIBLE>
+-    <GAGGREGATION></GAGGREGATION>
+-    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
+-    <ISKEY>FALSE</ISKEY>
+-    <COLUMNNAME>dpscode</COLUMNNAME>
+-    <CFILTER>FALSE</CFILTER>
+-    <CFONTCOLOR>0</CFONTCOLOR>
+-    <CDISFORMAT></CDISFORMAT>
+-    <CGROUPINDEX>-1</CGROUPINDEX>
+-  </COLUMNITEM>
+-  <COLUMNITEM>
+-    <AGGREGATION></AGGREGATION>
+-    <COLUMN>H4RTMP_DOORPRICE.dpsname</COLUMN>
+-    <TITLE>账户名称</TITLE>
+-    <FIELDTYPE>1</FIELDTYPE>
+-    <VISIBLE>TRUE</VISIBLE>
+-    <GAGGREGATION></GAGGREGATION>
+-    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
+-    <ISKEY>FALSE</ISKEY>
+-    <COLUMNNAME>dpsname</COLUMNNAME>
+-    <CFILTER>FALSE</CFILTER>
+-    <CFONTCOLOR>0</CFONTCOLOR>
+-    <CDISFORMAT></CDISFORMAT>
+-    <CGROUPINDEX>-1</CGROUPINDEX>
+-  </COLUMNITEM>
+-  <COLUMNITEM>
+-    <AGGREGATION></AGGREGATION>
+-    <COLUMN>H4RTMP_DOORPRICE.chcode</COLUMN>
+-    <TITLE>加盟商代码</TITLE>
+-    <FIELDTYPE>0</FIELDTYPE>
+-    <VISIBLE>FALSE</VISIBLE>
+-    <GAGGREGATION></GAGGREGATION>
+-    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+-    <ISKEY>FALSE</ISKEY>
+-    <COLUMNNAME>chcode</COLUMNNAME>
+-    <CFILTER>FALSE</CFILTER>
+-    <CFONTCOLOR>0</CFONTCOLOR>
+-    <CDISFORMAT></CDISFORMAT>
+-    <CGROUPINDEX>-1</CGROUPINDEX>
+-  </COLUMNITEM>
+-  <COLUMNITEM>
+-    <AGGREGATION></AGGREGATION>
+-    <COLUMN>H4RTMP_DOORPRICE.chname</COLUMN>
+-    <TITLE>加盟商名称</TITLE>
+-    <FIELDTYPE>0</FIELDTYPE>
+-    <VISIBLE>FALSE</VISIBLE>
+-    <GAGGREGATION></GAGGREGATION>
+-    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+-    <ISKEY>FALSE</ISKEY>
+-    <COLUMNNAME>chname</COLUMNNAME>
+-    <CFILTER>FALSE</CFILTER>
+-    <CFONTCOLOR>0</CFONTCOLOR>
+-    <CDISFORMAT></CDISFORMAT>
+-    <CGROUPINDEX>-1</CGROUPINDEX>
+-  </COLUMNITEM>
+-  <COLUMNITEM>
+-    <AGGREGATION></AGGREGATION>
+-    <COLUMN>H4RTMP_DOORPRICE.scode</COLUMN>
+-    <TITLE>门店编码</TITLE>
+-    <FIELDTYPE>0</FIELDTYPE>
+-    <VISIBLE>FALSE</VISIBLE>
+-    <GAGGREGATION></GAGGREGATION>
+-    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+-    <ISKEY>FALSE</ISKEY>
+-    <COLUMNNAME>scode</COLUMNNAME>
+-    <CFILTER>FALSE</CFILTER>
+-    <CFONTCOLOR>0</CFONTCOLOR>
+-    <CDISFORMAT></CDISFORMAT>
+-    <CGROUPINDEX>-1</CGROUPINDEX>
+-  </COLUMNITEM>
+-  <COLUMNITEM>
+-    <AGGREGATION></AGGREGATION>
+-    <COLUMN>H4RTMP_DOORPRICE.sname</COLUMN>
+-    <TITLE>门店名称筛选</TITLE>
+-    <FIELDTYPE>0</FIELDTYPE>
+-    <VISIBLE>FALSE</VISIBLE>
+-    <GAGGREGATION></GAGGREGATION>
+-    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
+-    <ISKEY>FALSE</ISKEY>
+-    <COLUMNNAME>sname</COLUMNNAME>
+-    <CFILTER>FALSE</CFILTER>
+-    <CFONTCOLOR>0</CFONTCOLOR>
+-    <CDISFORMAT></CDISFORMAT>
+-    <CGROUPINDEX>-1</CGROUPINDEX>
+-  </COLUMNITEM>
+-  <COLUMNITEM>
+-    <AGGREGATION></AGGREGATION>
+-    <COLUMN>H4RTMP_DOORPRICE.STNOTE</COLUMN>
+-    <TITLE>备注</TITLE>
+-    <FIELDTYPE>1</FIELDTYPE>
+-    <VISIBLE>TRUE</VISIBLE>
+-    <GAGGREGATION></GAGGREGATION>
+-    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
+-    <ISKEY>FALSE</ISKEY>
+-    <COLUMNNAME>STNOTE</COLUMNNAME>
+-    <CFILTER>FALSE</CFILTER>
+-    <CFONTCOLOR>0</CFONTCOLOR>
+-    <CDISFORMAT></CDISFORMAT>
+-    <CGROUPINDEX>-1</CGROUPINDEX>
+-  </COLUMNITEM>
+-  <COLUMNITEM>
+-    <AGGREGATION></AGGREGATION>
+-    <COLUMN>H4RTMP_DOORPRICE.Bname</COLUMN>
+-    <TITLE>科目</TITLE>
+-    <FIELDTYPE>1</FIELDTYPE>
+-    <VISIBLE>TRUE</VISIBLE>
+-    <GAGGREGATION></GAGGREGATION>
+-    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
+-    <ISKEY>FALSE</ISKEY>
+-    <COLUMNNAME>Bname</COLUMNNAME>
+-    <CFILTER>FALSE</CFILTER>
+-    <CFONTCOLOR>0</CFONTCOLOR>
+-    <CDISFORMAT></CDISFORMAT>
+-    <CGROUPINDEX>-1</CGROUPINDEX>
+-  </COLUMNITEM>
+-</COLUMNLIST>
+-<COLUMNWIDTH>
+-  <COLUMNWIDTHITEM>81</COLUMNWIDTHITEM>
+-  <COLUMNWIDTHITEM>56</COLUMNWIDTHITEM>
+-  <COLUMNWIDTHITEM>56</COLUMNWIDTHITEM>
+-  <COLUMNWIDTHITEM>122</COLUMNWIDTHITEM>
+-  <COLUMNWIDTHITEM>68</COLUMNWIDTHITEM>
+-  <COLUMNWIDTHITEM>92</COLUMNWIDTHITEM>
+-  <COLUMNWIDTHITEM>119</COLUMNWIDTHITEM>
+-  <COLUMNWIDTHITEM>94</COLUMNWIDTHITEM>
+-  <COLUMNWIDTHITEM>93</COLUMNWIDTHITEM>
+-  <COLUMNWIDTHITEM>123</COLUMNWIDTHITEM>
+-  <COLUMNWIDTHITEM>56</COLUMNWIDTHITEM>
+-  <COLUMNWIDTHITEM>116</COLUMNWIDTHITEM>
+-  <COLUMNWIDTHITEM>137</COLUMNWIDTHITEM>
+-  <COLUMNWIDTHITEM>68</COLUMNWIDTHITEM>
+-</COLUMNWIDTH>
+-<GROUPLIST>
+-</GROUPLIST>
+-<ORDERLIST>
+-  <ORDERITEM>
+-    <COLUMN>发生日期</COLUMN>
+-    <ORDER>DESC</ORDER>
+-  </ORDERITEM>
+-  <ORDERITEM>
+-    <COLUMN>门店代码</COLUMN>
+-    <ORDER>ASC</ORDER>
+-  </ORDERITEM>
+-</ORDERLIST>
+-<CRITERIALIST>
+-  <WIDTHLIST>
+-  </WIDTHLIST>
+-  <CRITERIAITEM>
+-    <LEFT>H4RTMP_DOORPRICE.scode</LEFT>
+-    <OPERATOR>LIKE</OPERATOR>
+-    <RIGHT>
+-      <RIGHTITEM>J01052</RIGHTITEM>
+-      <RIGHTITEM></RIGHTITEM>
+-      <RIGHTITEM></RIGHTITEM>
+-      <RIGHTITEM></RIGHTITEM>
+-    </RIGHT>
+-    <ISHAVING>FALSE</ISHAVING>
+-    <ISQUOTED>0</ISQUOTED>
+-    <PICKNAME>
+-      <PICKNAMEITEM>#TABLE</PICKNAMEITEM>
+-      <PICKNAMEITEM>NAME</PICKNAMEITEM>
+-    </PICKNAME>
+-    <PICKVALUE>
+-      <PICKVALUEITEM>SELECT CODE,'['||CODE||']'||NAME  NAME FROM STORE WHERE CODE<>'9219' AND GID<>1 AND STAT<>1 ORDER BY CODE</PICKVALUEITEM>
+-      <PICKVALUEITEM>CODE</PICKVALUEITEM>
+-    </PICKVALUE>
+-    <DEFAULTVALUE></DEFAULTVALUE>
+-    <ISREQUIRED>FALSE</ISREQUIRED>
+-    <WIDTH>0</WIDTH>
+-  </CRITERIAITEM>
+-  <CRITERIAITEM>
+-    <LEFT>H4RTMP_DOORPRICE.jname</LEFT>
+-    <OPERATOR>LIKE</OPERATOR>
+-    <RIGHT>
+-      <RIGHTITEM></RIGHTITEM>
+-      <RIGHTITEM></RIGHTITEM>
+-      <RIGHTITEM></RIGHTITEM>
+-      <RIGHTITEM></RIGHTITEM>
+-    </RIGHT>
+-    <ISHAVING>FALSE</ISHAVING>
+-    <ISQUOTED>0</ISQUOTED>
+-    <PICKNAME>
+-    </PICKNAME>
+-    <PICKVALUE>
+-    </PICKVALUE>
+-    <DEFAULTVALUE></DEFAULTVALUE>
+-    <ISREQUIRED>FALSE</ISREQUIRED>
+-    <WIDTH>0</WIDTH>
+-  </CRITERIAITEM>
+-  <CRITERIAITEM>
+-    <LEFT>H4RTMP_DOORPRICE.dpscode</LEFT>
+-    <OPERATOR>LIKE</OPERATOR>
+-    <RIGHT>
+-      <RIGHTITEM></RIGHTITEM>
+-      <RIGHTITEM></RIGHTITEM>
+-      <RIGHTITEM></RIGHTITEM>
+-      <RIGHTITEM></RIGHTITEM>
+-    </RIGHT>
+-    <ISHAVING>FALSE</ISHAVING>
+-    <ISQUOTED>0</ISQUOTED>
+-    <PICKNAME>
+-    </PICKNAME>
+-    <PICKVALUE>
+-    </PICKVALUE>
+-    <DEFAULTVALUE></DEFAULTVALUE>
+-    <ISREQUIRED>FALSE</ISREQUIRED>
+-    <WIDTH>0</WIDTH>
+-  </CRITERIAITEM>
+-  <CRITERIAITEM>
+-    <LEFT>H4RTMP_DOORPRICE.jocrdate</LEFT>
+-    <OPERATOR>>=</OPERATOR>
+-    <RIGHT>
+-      <RIGHTITEM>2011.08.31</RIGHTITEM>
+-      <RIGHTITEM></RIGHTITEM>
+-      <RIGHTITEM></RIGHTITEM>
+-      <RIGHTITEM></RIGHTITEM>
+-    </RIGHT>
+-    <ISHAVING>FALSE</ISHAVING>
+-    <ISQUOTED>2</ISQUOTED>
+-    <PICKNAME>
+-    </PICKNAME>
+-    <PICKVALUE>
+-    </PICKVALUE>
+-    <DEFAULTVALUE>月初</DEFAULTVALUE>
+-    <ISREQUIRED>FALSE</ISREQUIRED>
+-    <WIDTH>0</WIDTH>
+-  </CRITERIAITEM>
+-  <CRITERIAITEM>
+-    <LEFT>H4RTMP_DOORPRICE.jocrdate</LEFT>
+-    <OPERATOR><</OPERATOR>
+-    <RIGHT>
+-      <RIGHTITEM>2011.11.06</RIGHTITEM>
+-      <RIGHTITEM></RIGHTITEM>
+-      <RIGHTITEM></RIGHTITEM>
+-      <RIGHTITEM></RIGHTITEM>
+-    </RIGHT>
+-    <ISHAVING>FALSE</ISHAVING>
+-    <ISQUOTED>2</ISQUOTED>
+-    <PICKNAME>
+-    </PICKNAME>
+-    <PICKVALUE>
+-    </PICKVALUE>
+-    <DEFAULTVALUE>明天</DEFAULTVALUE>
+-    <ISREQUIRED>FALSE</ISREQUIRED>
+-    <WIDTH>0</WIDTH>
+-  </CRITERIAITEM>
+-  <CRITERIAITEM>
+-    <LEFT>H4RTMP_DOORPRICE.jsrccls</LEFT>
+-    <OPERATOR>=</OPERATOR>
+-    <RIGHT>
+-      <RIGHTITEM></RIGHTITEM>
+-      <RIGHTITEM></RIGHTITEM>
+-      <RIGHTITEM></RIGHTITEM>
+-      <RIGHTITEM></RIGHTITEM>
+-    </RIGHT>
+-    <ISHAVING>FALSE</ISHAVING>
+-    <ISQUOTED>0</ISQUOTED>
+-    <PICKNAME>
+-      <PICKNAMEITEM>统配出</PICKNAMEITEM>
+-      <PICKNAMEITEM>统配出退</PICKNAMEITEM>
+-      <PICKNAMEITEM>加盟金缴款</PICKNAMEITEM>
+-      <PICKNAMEITEM>加盟金扣款</PICKNAMEITEM>
+-      <PICKNAMEITEM>直配出</PICKNAMEITEM>
+-      <PICKNAMEITEM>直配出退</PICKNAMEITEM>
+-    </PICKNAME>
+-    <PICKVALUE>
+-      <PICKVALUEITEM>统配出</PICKVALUEITEM>
+-      <PICKVALUEITEM>统配出退</PICKVALUEITEM>
+-      <PICKVALUEITEM>加盟金缴款</PICKVALUEITEM>
+-      <PICKVALUEITEM>加盟金扣款</PICKVALUEITEM>
+-      <PICKVALUEITEM>直配出</PICKVALUEITEM>
+-      <PICKVALUEITEM>直配出退</PICKVALUEITEM>
+-    </PICKVALUE>
+-    <DEFAULTVALUE></DEFAULTVALUE>
+-    <ISREQUIRED>FALSE</ISREQUIRED>
+-    <WIDTH>0</WIDTH>
+-  </CRITERIAITEM>
+-</CRITERIALIST>
+-<CRITERIAWIDTH>
+-  <CRITERIAWIDTHITEM>103</CRITERIAWIDTHITEM>
+-  <CRITERIAWIDTHITEM>118</CRITERIAWIDTHITEM>
+-  <CRITERIAWIDTHITEM>117</CRITERIAWIDTHITEM>
+-  <CRITERIAWIDTHITEM>110</CRITERIAWIDTHITEM>
+-  <CRITERIAWIDTHITEM>100</CRITERIAWIDTHITEM>
+-  <CRITERIAWIDTHITEM>76</CRITERIAWIDTHITEM>
+-</CRITERIAWIDTH>
+-<SG>
+-  <LINE>
+-  </LINE>
+-  <LINE>
+-    <SGLINEITEM>条件 1：</SGLINEITEM>
+-    <SGLINEITEM>J01052</SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-    <SGLINEITEM>2011.08.31</SGLINEITEM>
+-    <SGLINEITEM>2011.11.06</SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-  </LINE>
+-  <LINE>
+-    <SGLINEITEM>  或 2：</SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-  </LINE>
+-  <LINE>
+-    <SGLINEITEM>  或 3：</SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-  </LINE>
+-  <LINE>
+-    <SGLINEITEM>  或 4：</SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-    <SGLINEITEM></SGLINEITEM>
+-  </LINE>
+-  <LINE>
+-  </LINE>
+-</SG>
+-<CHECKLIST>
+-  <CAPTION>
+-  </CAPTION>
+-  <EXPRESSION>
+-  </EXPRESSION>
+-  <CHECKED>
+-  </CHECKED>
+-  <ANDOR> and </ANDOR>
+-</CHECKLIST>
+-<UNIONLIST>
+-</UNIONLIST>
+-<NCRITERIAS>
+-  <NUMOFNEXTQRY>0</NUMOFNEXTQRY>
+-</NCRITERIAS>
+-<MULTIQUERIES>
+-  <NUMOFMULTIQRY>0</NUMOFMULTIQRY>
+-</MULTIQUERIES>
+-<FUNCTIONLIST>
+-</FUNCTIONLIST>
+-<DXDBGRIDITEM>
+-  <DXLOADMETHOD>FALSE</DXLOADMETHOD>
+-  <DXSHOWGROUP>FALSE</DXSHOWGROUP>
+-  <DXSHOWFOOTER>TRUE</DXSHOWFOOTER>
+-  <DXSHOWSUMMARY>FALSE</DXSHOWSUMMARY>
+-  <DXSHOWPREVIEW>FALSE</DXSHOWPREVIEW>
+-  <DXSHOWFILTER>FALSE</DXSHOWFILTER>
+-  <DXPREVIEWFIELD></DXPREVIEWFIELD>
+-  <DXCOLORODDROW>16777215</DXCOLORODDROW>
+-  <DXCOLOREVENROW>15921906</DXCOLOREVENROW>
+-  <DXFILTERNAME></DXFILTERNAME>
+-  <DXFILTERLIST>
+-  </DXFILTERLIST>
+-  <DXSHOWGRIDLINE>1</DXSHOWGRIDLINE>
+-</DXDBGRIDITEM>
+-</SQLQUERY>
+-<SQLREPORT>
+-<RPTTITLE></RPTTITLE>
+-<RPTGROUPCOUNT>0</RPTGROUPCOUNT>
+-<RPTGROUPLIST>
+-</RPTGROUPLIST>
+-<RPTCOLUMNCOUNT>0</RPTCOLUMNCOUNT>
+-<RPTCOLUMNWIDTHLIST>
+-</RPTCOLUMNWIDTHLIST>
+-<RPTLEFTMARGIN>20</RPTLEFTMARGIN>
+-<RPTORIENTATION>0</RPTORIENTATION>
+-<RPTCOLUMNS>1</RPTCOLUMNS>
+-<RPTHEADERLEVEL>0</RPTHEADERLEVEL>
+-<RPTPRINTCRITERIA>TRUE</RPTPRINTCRITERIA>
+-<RPTVERSION></RPTVERSION>
+-<RPTNOTE></RPTNOTE>
+-<RPTFONTSIZE>10</RPTFONTSIZE>
+-<RPTLINEHEIGHT>宋体</RPTLINEHEIGHT>
+-<RPTPAGEHEIGHT>66</RPTPAGEHEIGHT>
+-<RPTPAGEWIDTH>80</RPTPAGEWIDTH>
+-<RPTTITLETYPE>0</RPTTITLETYPE>
+-<RPTCURREPORT></RPTCURREPORT>
+-<RPTREPORTLIST>
+-</RPTREPORTLIST>
+-</SQLREPORT>
+-
+Index: 加盟商资金帐户往来明细报表.sql
+===================================================================
+--- 加盟商资金帐户往来明细报表.sql	(revision 0)
++++ 加盟商资金帐户往来明细报表.sql	(revision 10)
+@@ -0,0 +1,735 @@
++<VERSION>4.1.1</VERSION>
++<SQLQUERY>
++<REMARK>
++[标题]
++
++[应用背景]
++
++[结果列描述]
++
++[必要的查询条件]
++
++[实现方法]
++create global temporary table H4RTMP_DOORPRICE
++(
++  JCODE     VARCHAR2(20),    
++  JNAME     VARCHAR2(40),    
++  JSTORE    VARCHAR2(20),    
++  JOCRDATE  DATE,              
++  JSRCCLS   VARCHAR2(20),   
++  JSRCNUM   VARCHAR2(20),  
++  JADDPRICE NUMBER(24,4), 
++  JENDPRICE NUMBER(24,4),
++  JPRICE    NUMBER(24,4),  
++  dpscode   varchar2(20),    
++  dpsname   varchar2(80), 
++  chcode    varchar2(20),    
++  chname    varchar2(80),    
++  scode    varchar2(20),
++  sname    varchar2(80),
++  stat        integer,
++  STNOTE  varchar2(100),
++  BNAME   varchar2(40),
++  cls         varchar2(20)
++)
++on commit preserve rows;
++BEGIN
++    HDCREATESYNONYM('H4RTMP_DOORPRICE');
++    GRANTTOQRYROLE2('H4RTMP_DOORPRICE');
++END; 
++----------------------------
++create global temporary table H4RTMP_STORSUBJ
++(    num    CHAR(14),
++     cls       VARCHAR2(10),
++     note     VARCHAR2(100),
++     name   VARCHAR2(40)
++)
++on commit preserve rows;
++BEGIN
++    HDCREATESYNONYM('H4RTMP_STORSUBJ');
++    GRANTTOQRYROLE2('H4RTMP_STORSUBJ');
++END; 
++-- Grant/Revoke object privileges 
++grant insert, update, delete on H4RTMP_DOORPRICE to ROLE_HDAPP;
++grant insert, update, delete on H4RTMP_DOORPRICE to ROLE_HDQRY;
++[其它]
++</REMARK>
++<BEFORERUN>
++declare 
++  vscode varchar(20);
++  vsname varchar(80);
++  vdcode varchar(20);
++  vccode varchar(20);
++  vdpsgid int;
++  vstcode varchar(20);
++  vstname varchar(80);
++  cursor i is 
++  select SNUM,SCLS,SNOTE,BNAME from H4RTMP_STORSUBJ;
++begin
++    vscode := '\(1,1)';
++    vsname := '\(2,1)';
++    vdcode := '\(3,1)';
++    vccode := '\(4,1)';
++    delete from H4RTMP_DOORPRICE;
++    commit;
++    delete from H4RTMP_STORSUBJ;
++    commit;
++  if vscode is not null then
++    select  sa.dpsgid,st.code,st.name into vdpsgid,vstcode,vstname from 
++storeaccount sa,store st where sa.stgid=st.gid and st.code=vscode;
++     insert into H4RTMP_DOORPRICE(jcode,jname,jstore,jocrdate,jsrccls,jsrcnum,
++jaddprice,jprice,dpscode,dpsname,chcode,chname,cls,scode,sname,stat)
++    select s.code,s.name,g.actcls,g.ocrdate,g.srccls,g.srcnum,nvl(g.alctotal,0),
++nvl(g.orialctotal,0) + nvl(g.alctotal,0),d.code,d.name,c.code,c.name,
++decode(g.srccls,'加盟金缴款','缴款','加盟金扣款','扣款'),
++           vstcode,vstname,g.srcstat
++     from storealcctrllog g,store s, dpsaccount d,chainh c
++    where g.store = s.gid and g.alctotal >=0 
++      and d.gid=g.dpsgid
++      and d.code like vdcode||'%' 
++      --and s.code like vscode||'%'
++      and d.chain = c.gid(+)
++      and d.gid =vdpsgid; 
++
++  insert into H4RTMP_DOORPRICE(jcode,jname,jstore,jocrdate,jsrccls,jsrcnum,
++jendprice,jprice,dpscode,dpsname,chcode,chname,cls,scode,sname,stat)
++    select s.code,s.name,g.actcls,g.ocrdate,g.srccls,g.srcnum,nvl(g.alctotal,0),
++nvl(g.orialctotal,0) + nvl(g.alctotal,0),d.code,d.name,c.code,c.name,
++decode(g.srccls,'加盟金缴款','缴款','加盟金扣款','扣款'),
++           vstcode,vstname,g.srcstat
++     from storealcctrllog g,store s, dpsaccount d,chainh c
++    where g.store = s.gid and g.alctotal <0 
++      and d.gid=g.dpsgid
++      and d.code like vdcode||'%'
++      and d.chain = c.gid(+) 
++      --and s.code like vscode||'%'
++      and d.gid = vdpsgid; 
++  else
++     insert into H4RTMP_DOORPRICE(jcode,jname,jstore,jocrdate,jsrccls,jsrcnum,
++jaddprice,jprice,dpscode,dpsname,chcode,chname,cls,stat)
++    select s.code,s.name,g.actcls,g.ocrdate,g.srccls,g.srcnum,nvl(g.alctotal,0),
++nvl(g.orialctotal,0) + nvl(g.alctotal,0),d.code,d.name,
++      c.code,c.name,decode(g.srccls,'加盟金缴款','缴款','加盟金扣款','扣款'),
++g.srcstat
++     from storealcctrllog g,store s, dpsaccount d,chainh c
++    where g.store = s.gid and g.alctotal >=0 
++      and d.gid=g.dpsgid
++      and d.chain = c.gid(+)
++      --and d.code like vdcode||'%'
++      and s.code like vscode||'%'
++; 
++
++  insert into H4RTMP_DOORPRICE(jcode,jname,jstore,jocrdate,jsrccls,jsrcnum,
++jendprice,jprice,dpscode,dpsname,chcode,chname,cls,stat)
++    select s.code,s.name,g.actcls,g.ocrdate,g.srccls,g.srcnum,nvl(g.alctotal,0),
++nvl(g.orialctotal,0) + nvl(g.alctotal,0),d.code,d.name,c.code,c.name,
++     decode(g.srccls,'加盟金缴款','缴款','加盟金扣款','扣款'),g.srcstat
++     from storealcctrllog g,store s, dpsaccount d,chainh c
++    where g.store = s.gid and g.alctotal <0 
++      and d.gid=g.dpsgid
++      and d.chain = c.gid(+)
++      and d.code like vdcode||'%'
++      --and s.code like vscode||'%'
++; 
++   end if;
++  commit;
++  
++  insert into H4RTMP_STORSUBJ(snum,scls,snote,Bname)
++    select s.num,s.cls,s.note,b.name from STOREALCPAY s,SUBJECTATT b where 
++s.scode = b.code;   commit;
++    FOR R IN I LOOP
++      UPDATE H4RTMP_DOORPRICE SET H4RTMP_DOORPRICE.Stnote = R.SNOTE,
++H4RTMP_DOORPRICE.Bname = R.BNAME WHERE H4RTMP_DOORPRICE.Jsrcnum = R.SNUM AND 
++H4RTMP_DOORPRICE.Cls = R.SCLS;
++    END LOOP;
++  COMMIT;
++delete from H4RTMP_DOORPRICE
++ where nvl(jaddprice, 0) = 0
++   and nvl(jendprice, 0) = 0;
++   commit ;
++---增加门店小计
++  insert into H4RTMP_DOORPRICE(jcode,jname,jstore,jocrdate,jsrccls,jsrcnum,
++jaddprice,jendprice,jprice,dpscode,dpsname,chcode,chname,cls,stat)
++select jcode,jname,'门店小计',max(jocrdate)+0.01,null,null,
++sum(jaddprice),sum(jendprice),null,dpscode,dpsname,chcode,chname,null,null
++from H4RTMP_DOORPRICE group by jcode,jname,dpscode,dpsname,chcode,chname;
++commit;
++end;
++</BEFORERUN>
++<AFTERRUN>
++</AFTERRUN>
++<TABLELIST>
++  <TABLEITEM>
++    <TABLE>H4RTMP_DOORPRICE</TABLE>
++    <ALIAS>H4RTMP_DOORPRICE</ALIAS>
++    <INDEXNAME></INDEXNAME>
++    <INDEXMETHOD></INDEXMETHOD>
++  </TABLEITEM>
++  <TABLEITEM>
++    <TABLE>MODULESTAT</TABLE>
++    <ALIAS>MODULESTAT</ALIAS>
++    <INDEXNAME></INDEXNAME>
++    <INDEXMETHOD></INDEXMETHOD>
++  </TABLEITEM>
++</TABLELIST>
++<JOINLIST>
++  <JOINITEM>
++    <LEFT>H4RTMP_DOORPRICE.stat</LEFT>
++    <OPERATOR>*=</OPERATOR>
++    <RIGHT>MODULESTAT.NO</RIGHT>
++  </JOINITEM>
++</JOINLIST>
++<COLUMNLIST>
++  <FIXEDCOLUMNS>0</FIXEDCOLUMNS>
++  <COLUMNITEM>
++    <AGGREGATION></AGGREGATION>
++    <COLUMN>H4RTMP_DOORPRICE.chcode</COLUMN>
++    <TITLE>加盟商代码</TITLE>
++    <FIELDTYPE>1</FIELDTYPE>
++    <VISIBLE>TRUE</VISIBLE>
++    <GAGGREGATION></GAGGREGATION>
++    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
++    <ISKEY>FALSE</ISKEY>
++    <COLUMNNAME>chcode</COLUMNNAME>
++    <CFILTER>FALSE</CFILTER>
++    <CFONTCOLOR>0</CFONTCOLOR>
++    <CDISFORMAT></CDISFORMAT>
++    <CGROUPINDEX>-1</CGROUPINDEX>
++  </COLUMNITEM>
++  <COLUMNITEM>
++    <AGGREGATION></AGGREGATION>
++    <COLUMN>H4RTMP_DOORPRICE.chname</COLUMN>
++    <TITLE>加盟商名称</TITLE>
++    <FIELDTYPE>1</FIELDTYPE>
++    <VISIBLE>TRUE</VISIBLE>
++    <GAGGREGATION></GAGGREGATION>
++    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
++    <ISKEY>FALSE</ISKEY>
++    <COLUMNNAME>chname</COLUMNNAME>
++    <CFILTER>FALSE</CFILTER>
++    <CFONTCOLOR>0</CFONTCOLOR>
++    <CDISFORMAT></CDISFORMAT>
++    <CGROUPINDEX>-1</CGROUPINDEX>
++  </COLUMNITEM>
++  <COLUMNITEM>
++    <AGGREGATION></AGGREGATION>
++    <COLUMN>H4RTMP_DOORPRICE.dpscode</COLUMN>
++    <TITLE>账户代码</TITLE>
++    <FIELDTYPE>1</FIELDTYPE>
++    <VISIBLE>TRUE</VISIBLE>
++    <GAGGREGATION></GAGGREGATION>
++    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
++    <ISKEY>FALSE</ISKEY>
++    <COLUMNNAME>dpscode</COLUMNNAME>
++    <CFILTER>FALSE</CFILTER>
++    <CFONTCOLOR>0</CFONTCOLOR>
++    <CDISFORMAT></CDISFORMAT>
++    <CGROUPINDEX>-1</CGROUPINDEX>
++  </COLUMNITEM>
++  <COLUMNITEM>
++    <AGGREGATION></AGGREGATION>
++    <COLUMN>H4RTMP_DOORPRICE.dpsname</COLUMN>
++    <TITLE>账户名称</TITLE>
++    <FIELDTYPE>1</FIELDTYPE>
++    <VISIBLE>TRUE</VISIBLE>
++    <GAGGREGATION></GAGGREGATION>
++    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
++    <ISKEY>FALSE</ISKEY>
++    <COLUMNNAME>dpsname</COLUMNNAME>
++    <CFILTER>FALSE</CFILTER>
++    <CFONTCOLOR>0</CFONTCOLOR>
++    <CDISFORMAT></CDISFORMAT>
++    <CGROUPINDEX>-1</CGROUPINDEX>
++  </COLUMNITEM>
++  <COLUMNITEM>
++    <AGGREGATION></AGGREGATION>
++    <COLUMN>H4RTMP_DOORPRICE.jcode</COLUMN>
++    <TITLE>门店代码</TITLE>
++    <FIELDTYPE>1</FIELDTYPE>
++    <VISIBLE>TRUE</VISIBLE>
++    <GAGGREGATION></GAGGREGATION>
++    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
++    <ISKEY>FALSE</ISKEY>
++    <COLUMNNAME>jcode</COLUMNNAME>
++    <CFILTER>FALSE</CFILTER>
++    <CFONTCOLOR>0</CFONTCOLOR>
++    <CDISFORMAT></CDISFORMAT>
++    <CGROUPINDEX>-1</CGROUPINDEX>
++  </COLUMNITEM>
++  <COLUMNITEM>
++    <AGGREGATION></AGGREGATION>
++    <COLUMN>H4RTMP_DOORPRICE.jname</COLUMN>
++    <TITLE>门店名称</TITLE>
++    <FIELDTYPE>1</FIELDTYPE>
++    <VISIBLE>TRUE</VISIBLE>
++    <GAGGREGATION></GAGGREGATION>
++    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
++    <ISKEY>FALSE</ISKEY>
++    <COLUMNNAME>jname</COLUMNNAME>
++    <CFILTER>FALSE</CFILTER>
++    <CFONTCOLOR>0</CFONTCOLOR>
++    <CDISFORMAT></CDISFORMAT>
++    <CGROUPINDEX>-1</CGROUPINDEX>
++  </COLUMNITEM>
++  <COLUMNITEM>
++    <AGGREGATION></AGGREGATION>
++    <COLUMN>H4RTMP_DOORPRICE.jstore</COLUMN>
++    <TITLE>账户类型</TITLE>
++    <FIELDTYPE>1</FIELDTYPE>
++    <VISIBLE>TRUE</VISIBLE>
++    <GAGGREGATION></GAGGREGATION>
++    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
++    <ISKEY>FALSE</ISKEY>
++    <COLUMNNAME>jstore</COLUMNNAME>
++    <CFILTER>FALSE</CFILTER>
++    <CFONTCOLOR>0</CFONTCOLOR>
++    <CDISFORMAT></CDISFORMAT>
++    <CGROUPINDEX>-1</CGROUPINDEX>
++  </COLUMNITEM>
++  <COLUMNITEM>
++    <AGGREGATION></AGGREGATION>
++    <COLUMN>H4RTMP_DOORPRICE.jocrdate</COLUMN>
++    <TITLE>发生日期</TITLE>
++    <FIELDTYPE>11</FIELDTYPE>
++    <VISIBLE>TRUE</VISIBLE>
++    <GAGGREGATION></GAGGREGATION>
++    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
++    <ISKEY>FALSE</ISKEY>
++    <COLUMNNAME>jocrdate</COLUMNNAME>
++    <CFILTER>FALSE</CFILTER>
++    <CFONTCOLOR>0</CFONTCOLOR>
++    <CDISFORMAT></CDISFORMAT>
++    <CGROUPINDEX>-1</CGROUPINDEX>
++  </COLUMNITEM>
++  <COLUMNITEM>
++    <AGGREGATION></AGGREGATION>
++    <COLUMN>H4RTMP_DOORPRICE.jsrccls</COLUMN>
++    <TITLE>发生业务</TITLE>
++    <FIELDTYPE>1</FIELDTYPE>
++    <VISIBLE>TRUE</VISIBLE>
++    <GAGGREGATION></GAGGREGATION>
++    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
++    <ISKEY>FALSE</ISKEY>
++    <COLUMNNAME>jsrccls</COLUMNNAME>
++    <CFILTER>FALSE</CFILTER>
++    <CFONTCOLOR>0</CFONTCOLOR>
++    <CDISFORMAT></CDISFORMAT>
++    <CGROUPINDEX>-1</CGROUPINDEX>
++  </COLUMNITEM>
++  <COLUMNITEM>
++    <AGGREGATION></AGGREGATION>
++    <COLUMN>H4RTMP_DOORPRICE.jsrcnum</COLUMN>
++    <TITLE>业务单号</TITLE>
++    <FIELDTYPE>1</FIELDTYPE>
++    <VISIBLE>TRUE</VISIBLE>
++    <GAGGREGATION></GAGGREGATION>
++    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
++    <ISKEY>FALSE</ISKEY>
++    <COLUMNNAME>jsrcnum</COLUMNNAME>
++    <CFILTER>FALSE</CFILTER>
++    <CFONTCOLOR>0</CFONTCOLOR>
++    <CDISFORMAT></CDISFORMAT>
++    <CGROUPINDEX>-1</CGROUPINDEX>
++  </COLUMNITEM>
++  <COLUMNITEM>
++    <AGGREGATION></AGGREGATION>
++    <COLUMN>MODULESTAT.STATNAME</COLUMN>
++    <TITLE>状态名称</TITLE>
++    <FIELDTYPE>1</FIELDTYPE>
++    <VISIBLE>TRUE</VISIBLE>
++    <GAGGREGATION></GAGGREGATION>
++    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
++    <ISKEY>FALSE</ISKEY>
++    <COLUMNNAME>STATNAME</COLUMNNAME>
++    <CFILTER>FALSE</CFILTER>
++    <CFONTCOLOR>0</CFONTCOLOR>
++    <CDISFORMAT></CDISFORMAT>
++    <CGROUPINDEX>-1</CGROUPINDEX>
++  </COLUMNITEM>
++  <COLUMNITEM>
++    <AGGREGATION></AGGREGATION>
++    <COLUMN>H4RTMP_DOORPRICE.jaddprice</COLUMN>
++    <TITLE>增加+</TITLE>
++    <FIELDTYPE>6</FIELDTYPE>
++    <VISIBLE>TRUE</VISIBLE>
++    <GAGGREGATION>SUM</GAGGREGATION>
++    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
++    <ISKEY>FALSE</ISKEY>
++    <COLUMNNAME>jaddprice</COLUMNNAME>
++    <CFILTER>FALSE</CFILTER>
++    <CFONTCOLOR>0</CFONTCOLOR>
++    <CDISFORMAT></CDISFORMAT>
++    <CGROUPINDEX>-1</CGROUPINDEX>
++  </COLUMNITEM>
++  <COLUMNITEM>
++    <AGGREGATION></AGGREGATION>
++    <COLUMN>H4RTMP_DOORPRICE.jendprice
++</COLUMN>
++    <TITLE>减少-</TITLE>
++    <FIELDTYPE>6</FIELDTYPE>
++    <VISIBLE>TRUE</VISIBLE>
++    <GAGGREGATION>SUM</GAGGREGATION>
++    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
++    <ISKEY>FALSE</ISKEY>
++    <COLUMNNAME>jendprice</COLUMNNAME>
++    <CFILTER>FALSE</CFILTER>
++    <CFONTCOLOR>0</CFONTCOLOR>
++    <CDISFORMAT></CDISFORMAT>
++    <CGROUPINDEX>-1</CGROUPINDEX>
++  </COLUMNITEM>
++  <COLUMNITEM>
++    <AGGREGATION></AGGREGATION>
++    <COLUMN>H4RTMP_DOORPRICE.jprice</COLUMN>
++    <TITLE>账户余额</TITLE>
++    <FIELDTYPE>6</FIELDTYPE>
++    <VISIBLE>TRUE</VISIBLE>
++    <GAGGREGATION></GAGGREGATION>
++    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
++    <ISKEY>FALSE</ISKEY>
++    <COLUMNNAME>jprice</COLUMNNAME>
++    <CFILTER>FALSE</CFILTER>
++    <CFONTCOLOR>0</CFONTCOLOR>
++    <CDISFORMAT></CDISFORMAT>
++    <CGROUPINDEX>-1</CGROUPINDEX>
++  </COLUMNITEM>
++  <COLUMNITEM>
++    <AGGREGATION></AGGREGATION>
++    <COLUMN>H4RTMP_DOORPRICE.scode</COLUMN>
++    <TITLE>门店编码</TITLE>
++    <FIELDTYPE>0</FIELDTYPE>
++    <VISIBLE>FALSE</VISIBLE>
++    <GAGGREGATION></GAGGREGATION>
++    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
++    <ISKEY>FALSE</ISKEY>
++    <COLUMNNAME>scode</COLUMNNAME>
++    <CFILTER>FALSE</CFILTER>
++    <CFONTCOLOR>0</CFONTCOLOR>
++    <CDISFORMAT></CDISFORMAT>
++    <CGROUPINDEX>-1</CGROUPINDEX>
++  </COLUMNITEM>
++  <COLUMNITEM>
++    <AGGREGATION></AGGREGATION>
++    <COLUMN>H4RTMP_DOORPRICE.sname</COLUMN>
++    <TITLE>门店名称筛选</TITLE>
++    <FIELDTYPE>0</FIELDTYPE>
++    <VISIBLE>FALSE</VISIBLE>
++    <GAGGREGATION></GAGGREGATION>
++    <DISPLAYINNEXT>FALSE</DISPLAYINNEXT>
++    <ISKEY>FALSE</ISKEY>
++    <COLUMNNAME>sname</COLUMNNAME>
++    <CFILTER>FALSE</CFILTER>
++    <CFONTCOLOR>0</CFONTCOLOR>
++    <CDISFORMAT></CDISFORMAT>
++    <CGROUPINDEX>-1</CGROUPINDEX>
++  </COLUMNITEM>
++  <COLUMNITEM>
++    <AGGREGATION></AGGREGATION>
++    <COLUMN>H4RTMP_DOORPRICE.STNOTE</COLUMN>
++    <TITLE>备注</TITLE>
++    <FIELDTYPE>1</FIELDTYPE>
++    <VISIBLE>TRUE</VISIBLE>
++    <GAGGREGATION></GAGGREGATION>
++    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
++    <ISKEY>FALSE</ISKEY>
++    <COLUMNNAME>STNOTE</COLUMNNAME>
++    <CFILTER>FALSE</CFILTER>
++    <CFONTCOLOR>0</CFONTCOLOR>
++    <CDISFORMAT></CDISFORMAT>
++    <CGROUPINDEX>-1</CGROUPINDEX>
++  </COLUMNITEM>
++  <COLUMNITEM>
++    <AGGREGATION></AGGREGATION>
++    <COLUMN>H4RTMP_DOORPRICE.Bname</COLUMN>
++    <TITLE>科目</TITLE>
++    <FIELDTYPE>1</FIELDTYPE>
++    <VISIBLE>TRUE</VISIBLE>
++    <GAGGREGATION></GAGGREGATION>
++    <DISPLAYINNEXT>TRUE</DISPLAYINNEXT>
++    <ISKEY>FALSE</ISKEY>
++    <COLUMNNAME>Bname</COLUMNNAME>
++    <CFILTER>FALSE</CFILTER>
++    <CFONTCOLOR>0</CFONTCOLOR>
++    <CDISFORMAT></CDISFORMAT>
++    <CGROUPINDEX>-1</CGROUPINDEX>
++  </COLUMNITEM>
++</COLUMNLIST>
++<COLUMNWIDTH>
++  <COLUMNWIDTHITEM>68</COLUMNWIDTHITEM>
++  <COLUMNWIDTHITEM>92</COLUMNWIDTHITEM>
++  <COLUMNWIDTHITEM>56</COLUMNWIDTHITEM>
++  <COLUMNWIDTHITEM>104</COLUMNWIDTHITEM>
++  <COLUMNWIDTHITEM>56</COLUMNWIDTHITEM>
++  <COLUMNWIDTHITEM>68</COLUMNWIDTHITEM>
++  <COLUMNWIDTHITEM>70</COLUMNWIDTHITEM>
++  <COLUMNWIDTHITEM>122</COLUMNWIDTHITEM>
++  <COLUMNWIDTHITEM>68</COLUMNWIDTHITEM>
++  <COLUMNWIDTHITEM>92</COLUMNWIDTHITEM>
++  <COLUMNWIDTHITEM>56</COLUMNWIDTHITEM>
++  <COLUMNWIDTHITEM>74</COLUMNWIDTHITEM>
++  <COLUMNWIDTHITEM>64</COLUMNWIDTHITEM>
++  <COLUMNWIDTHITEM>56</COLUMNWIDTHITEM>
++  <COLUMNWIDTHITEM>32</COLUMNWIDTHITEM>
++  <COLUMNWIDTHITEM>56</COLUMNWIDTHITEM>
++</COLUMNWIDTH>
++<GROUPLIST>
++</GROUPLIST>
++<ORDERLIST>
++  <ORDERITEM>
++    <COLUMN>发生日期</COLUMN>
++    <ORDER>ASC</ORDER>
++  </ORDERITEM>
++  <ORDERITEM>
++    <COLUMN>门店代码</COLUMN>
++    <ORDER>ASC</ORDER>
++  </ORDERITEM>
++</ORDERLIST>
++<CRITERIALIST>
++  <WIDTHLIST>
++  </WIDTHLIST>
++  <CRITERIAITEM>
++    <LEFT>H4RTMP_DOORPRICE.scode</LEFT>
++    <OPERATOR>LIKE</OPERATOR>
++    <RIGHT>
++      <RIGHTITEM></RIGHTITEM>
++      <RIGHTITEM></RIGHTITEM>
++      <RIGHTITEM></RIGHTITEM>
++      <RIGHTITEM></RIGHTITEM>
++    </RIGHT>
++    <ISHAVING>FALSE</ISHAVING>
++    <ISQUOTED>0</ISQUOTED>
++    <PICKNAME>
++      <PICKNAMEITEM>#TABLE</PICKNAMEITEM>
++      <PICKNAMEITEM>NAME</PICKNAMEITEM>
++    </PICKNAME>
++    <PICKVALUE>
++      <PICKVALUEITEM>SELECT CODE,'['||CODE||']'||NAME  NAME FROM STORE WHERE CODE<>'9219' AND GID<>1 AND STAT<>1 ORDER BY CODE</PICKVALUEITEM>
++      <PICKVALUEITEM>CODE</PICKVALUEITEM>
++    </PICKVALUE>
++    <DEFAULTVALUE></DEFAULTVALUE>
++    <ISREQUIRED>FALSE</ISREQUIRED>
++    <WIDTH>0</WIDTH>
++  </CRITERIAITEM>
++  <CRITERIAITEM>
++    <LEFT>H4RTMP_DOORPRICE.jname</LEFT>
++    <OPERATOR>LIKE</OPERATOR>
++    <RIGHT>
++      <RIGHTITEM></RIGHTITEM>
++      <RIGHTITEM></RIGHTITEM>
++      <RIGHTITEM></RIGHTITEM>
++      <RIGHTITEM></RIGHTITEM>
++    </RIGHT>
++    <ISHAVING>FALSE</ISHAVING>
++    <ISQUOTED>0</ISQUOTED>
++    <PICKNAME>
++    </PICKNAME>
++    <PICKVALUE>
++    </PICKVALUE>
++    <DEFAULTVALUE></DEFAULTVALUE>
++    <ISREQUIRED>FALSE</ISREQUIRED>
++    <WIDTH>0</WIDTH>
++  </CRITERIAITEM>
++  <CRITERIAITEM>
++    <LEFT>H4RTMP_DOORPRICE.dpscode</LEFT>
++    <OPERATOR>LIKE</OPERATOR>
++    <RIGHT>
++      <RIGHTITEM></RIGHTITEM>
++      <RIGHTITEM></RIGHTITEM>
++      <RIGHTITEM></RIGHTITEM>
++      <RIGHTITEM></RIGHTITEM>
++    </RIGHT>
++    <ISHAVING>FALSE</ISHAVING>
++    <ISQUOTED>0</ISQUOTED>
++    <PICKNAME>
++    </PICKNAME>
++    <PICKVALUE>
++    </PICKVALUE>
++    <DEFAULTVALUE></DEFAULTVALUE>
++    <ISREQUIRED>FALSE</ISREQUIRED>
++    <WIDTH>0</WIDTH>
++  </CRITERIAITEM>
++  <CRITERIAITEM>
++    <LEFT>H4RTMP_DOORPRICE.jocrdate</LEFT>
++    <OPERATOR>>=</OPERATOR>
++    <RIGHT>
++      <RIGHTITEM>2013.07.01</RIGHTITEM>
++      <RIGHTITEM></RIGHTITEM>
++      <RIGHTITEM></RIGHTITEM>
++      <RIGHTITEM></RIGHTITEM>
++    </RIGHT>
++    <ISHAVING>FALSE</ISHAVING>
++    <ISQUOTED>2</ISQUOTED>
++    <PICKNAME>
++    </PICKNAME>
++    <PICKVALUE>
++    </PICKVALUE>
++    <DEFAULTVALUE>月初</DEFAULTVALUE>
++    <ISREQUIRED>FALSE</ISREQUIRED>
++    <WIDTH>0</WIDTH>
++  </CRITERIAITEM>
++  <CRITERIAITEM>
++    <LEFT>H4RTMP_DOORPRICE.jocrdate</LEFT>
++    <OPERATOR><</OPERATOR>
++    <RIGHT>
++      <RIGHTITEM>2013.07.25</RIGHTITEM>
++      <RIGHTITEM></RIGHTITEM>
++      <RIGHTITEM></RIGHTITEM>
++      <RIGHTITEM></RIGHTITEM>
++    </RIGHT>
++    <ISHAVING>FALSE</ISHAVING>
++    <ISQUOTED>2</ISQUOTED>
++    <PICKNAME>
++    </PICKNAME>
++    <PICKVALUE>
++    </PICKVALUE>
++    <DEFAULTVALUE>明天</DEFAULTVALUE>
++    <ISREQUIRED>FALSE</ISREQUIRED>
++    <WIDTH>0</WIDTH>
++  </CRITERIAITEM>
++  <CRITERIAITEM>
++    <LEFT>H4RTMP_DOORPRICE.jsrccls</LEFT>
++    <OPERATOR>=</OPERATOR>
++    <RIGHT>
++      <RIGHTITEM></RIGHTITEM>
++      <RIGHTITEM></RIGHTITEM>
++      <RIGHTITEM></RIGHTITEM>
++      <RIGHTITEM></RIGHTITEM>
++    </RIGHT>
++    <ISHAVING>FALSE</ISHAVING>
++    <ISQUOTED>0</ISQUOTED>
++    <PICKNAME>
++      <PICKNAMEITEM>统配出</PICKNAMEITEM>
++      <PICKNAMEITEM>统配出退</PICKNAMEITEM>
++      <PICKNAMEITEM>加盟金缴款</PICKNAMEITEM>
++      <PICKNAMEITEM>加盟金扣款</PICKNAMEITEM>
++      <PICKNAMEITEM>直配出</PICKNAMEITEM>
++      <PICKNAMEITEM>直配出退</PICKNAMEITEM>
++    </PICKNAME>
++    <PICKVALUE>
++      <PICKVALUEITEM>统配出</PICKVALUEITEM>
++      <PICKVALUEITEM>统配出退</PICKVALUEITEM>
++      <PICKVALUEITEM>加盟金缴款</PICKVALUEITEM>
++      <PICKVALUEITEM>加盟金扣款</PICKVALUEITEM>
++      <PICKVALUEITEM>直配出</PICKVALUEITEM>
++      <PICKVALUEITEM>直配出退</PICKVALUEITEM>
++    </PICKVALUE>
++    <DEFAULTVALUE></DEFAULTVALUE>
++    <ISREQUIRED>FALSE</ISREQUIRED>
++    <WIDTH>0</WIDTH>
++  </CRITERIAITEM>
++</CRITERIALIST>
++<CRITERIAWIDTH>
++  <CRITERIAWIDTHITEM>103</CRITERIAWIDTHITEM>
++  <CRITERIAWIDTHITEM>118</CRITERIAWIDTHITEM>
++  <CRITERIAWIDTHITEM>117</CRITERIAWIDTHITEM>
++  <CRITERIAWIDTHITEM>110</CRITERIAWIDTHITEM>
++  <CRITERIAWIDTHITEM>100</CRITERIAWIDTHITEM>
++  <CRITERIAWIDTHITEM>76</CRITERIAWIDTHITEM>
++</CRITERIAWIDTH>
++<SG>
++  <LINE>
++  </LINE>
++  <LINE>
++    <SGLINEITEM>条件 1：</SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++    <SGLINEITEM>2013.07.01</SGLINEITEM>
++    <SGLINEITEM>2013.07.25</SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++  </LINE>
++  <LINE>
++    <SGLINEITEM>  或 2：</SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++  </LINE>
++  <LINE>
++    <SGLINEITEM>  或 3：</SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++  </LINE>
++  <LINE>
++    <SGLINEITEM>  或 4：</SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++    <SGLINEITEM></SGLINEITEM>
++  </LINE>
++  <LINE>
++  </LINE>
++</SG>
++<CHECKLIST>
++  <CAPTION>
++  </CAPTION>
++  <EXPRESSION>
++  </EXPRESSION>
++  <CHECKED>
++  </CHECKED>
++  <ANDOR> and </ANDOR>
++</CHECKLIST>
++<UNIONLIST>
++</UNIONLIST>
++<NCRITERIAS>
++  <NUMOFNEXTQRY>0</NUMOFNEXTQRY>
++</NCRITERIAS>
++<MULTIQUERIES>
++  <NUMOFMULTIQRY>0</NUMOFMULTIQRY>
++</MULTIQUERIES>
++<FUNCTIONLIST>
++</FUNCTIONLIST>
++<DXDBGRIDITEM>
++  <DXLOADMETHOD>FALSE</DXLOADMETHOD>
++  <DXSHOWGROUP>FALSE</DXSHOWGROUP>
++  <DXSHOWFOOTER>TRUE</DXSHOWFOOTER>
++  <DXSHOWSUMMARY>FALSE</DXSHOWSUMMARY>
++  <DXSHOWPREVIEW>FALSE</DXSHOWPREVIEW>
++  <DXSHOWFILTER>FALSE</DXSHOWFILTER>
++  <DXPREVIEWFIELD></DXPREVIEWFIELD>
++  <DXCOLORODDROW>16777215</DXCOLORODDROW>
++  <DXCOLOREVENROW>15659448</DXCOLOREVENROW>
++  <DXFILTERNAME>jstore</DXFILTERNAME>
++  <DXFILTERTYPE>STRING</DXFILTERTYPE>
++  <DXFILTERLIST>
++    <DXFILTERITEM>
++      <DXFILTEROPERATOR>'='</DXFILTEROPERATOR>
++      <DXFILTERVALUE>门店小计</DXFILTERVALUE>
++      <DXFILTERCOLOR>255</DXFILTERCOLOR>
++    </DXFILTERITEM>
++  </DXFILTERLIST>
++  <DXSHOWGRIDLINE>1</DXSHOWGRIDLINE>
++</DXDBGRIDITEM>
++</SQLQUERY>
++<SQLREPORT>
++<RPTTITLE></RPTTITLE>
++<RPTGROUPCOUNT>0</RPTGROUPCOUNT>
++<RPTGROUPLIST>
++</RPTGROUPLIST>
++<RPTCOLUMNCOUNT>0</RPTCOLUMNCOUNT>
++<RPTCOLUMNWIDTHLIST>
++</RPTCOLUMNWIDTHLIST>
++<RPTLEFTMARGIN>20</RPTLEFTMARGIN>
++<RPTORIENTATION>0</RPTORIENTATION>
++<RPTCOLUMNS>1</RPTCOLUMNS>
++<RPTHEADERLEVEL>0</RPTHEADERLEVEL>
++<RPTPRINTCRITERIA>TRUE</RPTPRINTCRITERIA>
++<RPTVERSION></RPTVERSION>
++<RPTNOTE></RPTNOTE>
++<RPTFONTSIZE>10</RPTFONTSIZE>
++<RPTLINEHEIGHT>宋体</RPTLINEHEIGHT>
++<RPTPAGEHEIGHT>66</RPTPAGEHEIGHT>
++<RPTPAGEWIDTH>80</RPTPAGEWIDTH>
++<RPTTITLETYPE>0</RPTTITLETYPE>
++<RPTCURREPORT></RPTCURREPORT>
++<RPTREPORTLIST>
++</RPTREPORTLIST>
++</SQLREPORT>
++

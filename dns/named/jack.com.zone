@@ -1,0 +1,26 @@
+$TTL 600
+@	IN	SOA	dns.jack.com.	admin.jack.com.(
+		2019010504	;serial	#修订版本号
+		1D	;refresh	#服务器刷新时间
+		1H	;retry		#重新刷新时间
+		1W	;expire		#宣告失效的时间		
+		3H	;minimum	#缓存保留时间
+)
+	IN	NS	dns1
+	IN	NS	dns2
+	IN	MX 10	mail
+dns1	IN	A	192.168.1.235
+dns2	IN	A	192.168.1.234
+ad	IN	A	192.168.1.221
+route	IN	A	192.168.1.1
+switch	IN	A	192.168.1.254
+salt-server	IN	A	192.168.1.235
+zabbix-server	IN	A	192.168.1.201
+zabbix-proxy	IN	A	192.168.1.234
+cobbler-server	IN	A	192.168.1.237
+Linux-node1-salt	IN	A	192.168.1.233
+Linux-node3-salt	IN	A	192.168.1.232
+Linux-node4-salt	IN	A	192.168.1.231
+Linux-node5-master-mysql	IN	A	192.168.1.238
+Linux-node6-slave-mysql	IN	A	192.168.1.239
+

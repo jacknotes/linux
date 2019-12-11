@@ -1,0 +1,1086 @@
+{
+    "FlightNumber": "MU2370",
+    "DepartureTime": "/Date(1542211200000-0000)/",
+    "Departure": "CIF",
+    "Arrival": "PVG",
+    "AirEquipType": "320",
+    "Cabin": "S",
+    "Maps": [
+        {
+            "RowNumber": "31",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "X",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "X",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "X",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "I",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "I",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "32",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "$",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "!",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "$",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "$",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "$",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "33",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "$",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "!",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "$",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "$",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "$",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "34",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "$",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "$",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "$",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "$",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "35",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "$",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "$",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "$",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "$",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "36",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "$",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "$",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "$",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "$",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "37",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "X",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "X",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "X",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "38",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "X",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "X",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "X",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "E",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "E",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "39",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "X",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "X",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "X",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "E",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "E",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "40",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "X",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "X",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "X",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "41",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "!",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "!",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "!",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "!",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "42",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "!",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "!",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "43",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "!",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "!",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "!",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "!",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "44",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "45",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "!",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "!",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "46",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "!",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "47",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "48",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "49",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "50",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "X",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "51",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "52",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "53",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "54",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "*",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "*",
+                    "SeatPosition": "R"
+                }
+            ]
+        },
+        {
+            "RowNumber": "55",
+            "SeatDetail": [
+                {
+                    "SeatNumber": "A",
+                    "SeatStatus": "X",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "B",
+                    "SeatStatus": "X",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatNumber": "C",
+                    "SeatStatus": "X",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "L"
+                },
+                {
+                    "SeatStatus": "=",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "J",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "K",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                },
+                {
+                    "SeatNumber": "L",
+                    "SeatStatus": "X",
+                    "SeatPosition": "R"
+                }
+            ]
+        }
+    ],
+    "IsSuccess": true
+}

@@ -1,0 +1,2 @@
+webpackJsonp([29],{"2T4e":function(e,t){},w7iy:function(e,t,n){"use strict";Object.defineProperty(t,"__esModule",{value:!0});var i={created:function(){this._gotoShareUrl()},methods:{_gotoShareUrl:function(){window.location.href="https://mp.weixin.qq.com/mp/profile_ext?action=home&__biz=MjM5OTIzOTA4MA==&scene=123#wechat_redirect"}}},o={render:function(){var e=this.$createElement;return(this._self._c||e)("div")},staticRenderFns:[]};var r=n("VU/8")(i,o,!1,function(e){n("2T4e")},"data-v-9d87462e",null);t.default=r.exports}});
+//# sourceMappingURL=29.4ff84a1fbf6557b8fa88.js.map

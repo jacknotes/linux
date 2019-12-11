@@ -1,0 +1,65 @@
+K 25
+svn:wc:ra_dav:version-url
+V 156
+/svn/rptgrp/!svn/ver/280/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E5%BA%93%E5%AD%98%E7%AE%A1%E7%90%86/%E9%97%A8%E5%BA%97%E5%BA%93%E5%AD%98
+END
+总部财务库存查询.sql
+K 25
+svn:wc:ra_dav:version-url
+V 233
+/svn/rptgrp/!svn/ver/362/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E5%BA%93%E5%AD%98%E7%AE%A1%E7%90%86/%E9%97%A8%E5%BA%97%E5%BA%93%E5%AD%98/%E6%80%BB%E9%83%A8%E8%B4%A2%E5%8A%A1%E5%BA%93%E5%AD%98%E6%9F%A5%E8%AF%A2.sql
+END
+总部及门店库存调拨查询.sql
+K 25
+svn:wc:ra_dav:version-url
+V 260
+/svn/rptgrp/!svn/ver/270/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E5%BA%93%E5%AD%98%E7%AE%A1%E7%90%86/%E9%97%A8%E5%BA%97%E5%BA%93%E5%AD%98/%E6%80%BB%E9%83%A8%E5%8F%8A%E9%97%A8%E5%BA%97%E5%BA%93%E5%AD%98%E8%B0%83%E6%8B%A8%E6%9F%A5%E8%AF%A2.sql
+END
+总部及门店业务库存查询.sql
+K 25
+svn:wc:ra_dav:version-url
+V 260
+/svn/rptgrp/!svn/ver/367/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E5%BA%93%E5%AD%98%E7%AE%A1%E7%90%86/%E9%97%A8%E5%BA%97%E5%BA%93%E5%AD%98/%E6%80%BB%E9%83%A8%E5%8F%8A%E9%97%A8%E5%BA%97%E4%B8%9A%E5%8A%A1%E5%BA%93%E5%AD%98%E6%9F%A5%E8%AF%A2.sql
+END
+总部单品流水帐.sql
+K 25
+svn:wc:ra_dav:version-url
+V 224
+/svn/rptgrp/!svn/ver/353/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E5%BA%93%E5%AD%98%E7%AE%A1%E7%90%86/%E9%97%A8%E5%BA%97%E5%BA%93%E5%AD%98/%E6%80%BB%E9%83%A8%E5%8D%95%E5%93%81%E6%B5%81%E6%B0%B4%E5%B8%90.sql
+END
+总部及门店财务库存按供应商查询.sql
+K 25
+svn:wc:ra_dav:version-url
+V 296
+/svn/rptgrp/!svn/ver/334/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E5%BA%93%E5%AD%98%E7%AE%A1%E7%90%86/%E9%97%A8%E5%BA%97%E5%BA%93%E5%AD%98/%E6%80%BB%E9%83%A8%E5%8F%8A%E9%97%A8%E5%BA%97%E8%B4%A2%E5%8A%A1%E5%BA%93%E5%AD%98%E6%8C%89%E4%BE%9B%E5%BA%94%E5%95%86%E6%9F%A5%E8%AF%A2.sql
+END
+门店库存额度查询.sql
+K 25
+svn:wc:ra_dav:version-url
+V 233
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E5%BA%93%E5%AD%98%E7%AE%A1%E7%90%86/%E9%97%A8%E5%BA%97%E5%BA%93%E5%AD%98/%E9%97%A8%E5%BA%97%E5%BA%93%E5%AD%98%E9%A2%9D%E5%BA%A6%E6%9F%A5%E8%AF%A2.sql
+END
+总部业务库存查询.sql
+K 25
+svn:wc:ra_dav:version-url
+V 233
+/svn/rptgrp/!svn/ver/270/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E5%BA%93%E5%AD%98%E7%AE%A1%E7%90%86/%E9%97%A8%E5%BA%97%E5%BA%93%E5%AD%98/%E6%80%BB%E9%83%A8%E4%B8%9A%E5%8A%A1%E5%BA%93%E5%AD%98%E6%9F%A5%E8%AF%A2.sql
+END
+配送商品门店与配送仓库存对比.sql
+K 25
+svn:wc:ra_dav:version-url
+V 287
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E5%BA%93%E5%AD%98%E7%AE%A1%E7%90%86/%E9%97%A8%E5%BA%97%E5%BA%93%E5%AD%98/%E9%85%8D%E9%80%81%E5%95%86%E5%93%81%E9%97%A8%E5%BA%97%E4%B8%8E%E9%85%8D%E9%80%81%E4%BB%93%E5%BA%93%E5%AD%98%E5%AF%B9%E6%AF%94.sql
+END
+门店单品流水帐.sql
+K 25
+svn:wc:ra_dav:version-url
+V 224
+/svn/rptgrp/!svn/ver/334/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E5%BA%93%E5%AD%98%E7%AE%A1%E7%90%86/%E9%97%A8%E5%BA%97%E5%BA%93%E5%AD%98/%E9%97%A8%E5%BA%97%E5%8D%95%E5%93%81%E6%B5%81%E6%B0%B4%E5%B8%90.sql
+END
+门店库存明细查询.sql
+K 25
+svn:wc:ra_dav:version-url
+V 233
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E5%BA%93%E5%AD%98%E7%AE%A1%E7%90%86/%E9%97%A8%E5%BA%97%E5%BA%93%E5%AD%98/%E9%97%A8%E5%BA%97%E5%BA%93%E5%AD%98%E6%98%8E%E7%BB%86%E6%9F%A5%E8%AF%A2.sql
+END

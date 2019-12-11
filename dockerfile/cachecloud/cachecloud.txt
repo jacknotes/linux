@@ -1,0 +1,64 @@
+docker run --name cachec -it centos:centos7.6.1810 /bin/sh
+
+jdk:
+docker cp ./jdk-8u201-linux-x64.tar.gz  cachec:/download
+docker cp mysql-5.6.43-linux-glibc2.12-x86_64.tar.gz cachec:/download
+tar xf jdk-8u201-linux-x64.tar.gz -C /usr/local/ 
+ln -sv /usr/local/jdk1.8.0_201/ /usr/local/jdk
+cat > /etc/profile.d/jdk.sh << EOF
+#!/bin/sh
+export PATH=$PATH:/usr/local/jdk/bin
+EOF
+source /etc/profile
+java -version
+
+cachecloud:
+yum install  net-tools unzip which net-tools epel-release -y
+curl -o cachecloud.zip https://codeload.github.com/sohutv/cachecloud/zip/master
+unzip cachecloud.zip
+mv cachecloud-master/ /opt/cachecloud && cd /opt/cachecloud
+
+wget https://mirrors.tuna.tsinghua.edu.cn/apache/maven/maven-3/3.2.5/binaries/apache-maven-3.2.5-bin.tar.gz
+tar xf apache-maven-3.2.5-bin.tar.gz -C /usr/local/
+ln -sv /usr/local/apache-maven-3.2.5/ /usr/local/maven
+mvn -v 
+
+
+cat /opt/cachecloud/cachecloud-open-web/src/main/swap/online.properties
+cachecloud.db.url = jdbc:mysql://cachecloud-mysql:3306/cachecloud
+cachecloud.db.user = cachecloud
+cachecloud.db.password = redis
+cachecloud.maxPoolSize = 20
+
+isClustered = true
+isDebug = false
+spring-file=classpath:spring/spring-online.xml
+log_base=/opt/cachecloud-web/logs
+web.port=8585
+log.level=WARN
+
+docker cp cachec:/opt/cachecloud/script/cachecloud.sql .
+ mysql -uroot -p -h 127.0.0.1
+use cachecloud;
+source /download/cachecloud.sql
+cd /opt/cachecloud/
+mvn clean compile install -Ponline
+sh /opt/cachecloud/script/deploy.sh /opt
+cp /opt/cachecloud/cachecloud-open-web/target/cachecloud-open-web-1.0-SNAPSHOT.war /opt/cachecloud-web
+cp /opt/cachecloud/cachecloud-open-web/src/main/resources/cachecloud-web.conf /opt/cachecloud-web/cachecloud-open-web-1.0-SNAPSHOT.conf
+sh /opt/cachecloud-web/start.sh
+
+supervisor:
+yum install -y supervisor.noarch
+
+
+sh-4.2# cat /root/boot.sh 
+#!/bin/sh
+/etc/init.d/mysql.server start
+/usr/local/mysql/bin/mysqladmin -uroot password "$MYSQL_ROOT_PASSWORD"
+/usr/local/mysql/bin/mysql -uroot -p$MYSQL_ROOT_PASSWORD -e "create database $DB_NAME;"
+/usr/local/mysql/bin/mysql -uroot -p$MYSQL_ROOT_PASSWORD -e "grant all on $DB_NAME.* to $DB_USER@'%' identified by '$DB_PASS';"
+
+1. docker run --name cachecloud-mysql -p 3306:3306 -v /tmp/ddd/data:/data -d jackidocker/centos_mysql
+2. docker run --name cachec -p 8585:8585 --link cachecloud-mysql -e PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/jdk/bin:/usr/local/maven/bin -d cachecloud:v2 sh /root/entrypoint.sh
+

@@ -1,0 +1,30 @@
+
+//自定义com正解的区域
+zone "jack.com" IN {
+	type master;
+	file "jack.com.zone";
+	allow-transfer{127.0.0.1;192.168.1.234;};//只允许特定的dns服务器来同步zone
+	notify yes;
+};
+//自定义com反解的区域
+zone "1.168.192.in-addr.arpa" IN {
+	type master;
+	file "1.168.192.in-addr-arpa";
+	allow-transfer{127.0.0.1;192.168.1.234;};//只允许特定的dns服务器来同步zone
+	notify yes;
+};
+
+
+
+//本地zone
+zone "1.0.0.127.in-addr.arpa" IN {
+	type master;
+	file "named.loopback";
+	allow-update { none; };
+};
+
+zone "0.in-addr.arpa" IN {
+	type master;
+	file "named.empty";
+	allow-update { none; };
+};
