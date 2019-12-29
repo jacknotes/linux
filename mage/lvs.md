@@ -28,11 +28,36 @@ TUN:
 	5. 只有支持隧道功能的os才能用于realserver
 	6. 不支持端口映射
 
+知识回顾：
+	LB：Load Balance
+	HA：High Availability
+	HP：High Performance
+LB：
+	Hardware:
+		F5 BIG-IP 
+		Citrix NetScaler
+		A10
+	Software
+		四层：
+			LVS
+		七层：
+			nginx
+			haproxy
+
+LVS: Linux Virtual Server
+
+Type:
+	NAT:
+		类似DNAT
+	DR:
+
+	TUN:
+
 
 #关于ipvsadm:
 ipvs的命令行管理工具
 ipvsadm是运行于用户空间、用来与ipvs交互的命令行工具，它的作用表现在：
-1、定义在Director上进行dispatching的服务(service)，以及哪此服务器(server)用来提供此服务；
+1、定义在Director上进行dispatching的服务(service)，以及哪些服务器(server)用来提供此服务；
 2、为每台同时提供某一种服务的服务器定义其权重（即概据服务器性能确定的其承担负载的能力）；
 注：权重用整数来表示，有时候也可以将其设置为atomic_t；其有效表示值范围为24bit整数空间，即（2^24-1）；
 因此，ipvsadm命令的主要作用表现在以下方面：
@@ -52,18 +77,30 @@ ipvsadm下载地址： http://www.linuxvirtualserver.org/software/ipvs.html#kern
 默认情况下，ipvsadm在输出主机信息时使用其主机名而非IP地址，因此，Director需要使用名称解析服务。如果没有设置名称解析服务、服务不可用或设置错误，ipvsadm将会一直等到名称解析超时后才返回。当然，ipvsadm需要解析的名称仅限于RealServer，考虑到DNS提供名称解析服务效率不高的情况，建议将所有RealServer的名称解析通过/etc/hosts文件来实现；
 
 三、调度算法
+固定调度
+	rr: 轮叫，轮询
+	wrr: Weight, 加权
+	sh: source hash, 源地址hash
 四种静态算法：
 	1. rr
 	2. wrr
 	3. dh
 	4. sh
 六种动态算法：
-	1. lc
-	2. wlc
-	3. sed
-	4. nq
-	5. lblc
-	6. lblcr
+	lc: 最少连接
+		active*256+inactive
+		谁的小，挑谁
+	wlc: 加权最少连接
+		(active*256+inactive)/weight
+	sed: 最短期望延迟
+		（active+1)*256/weight
+	nq: never queue
+	LBLC: 基于本地的最少连接
+		DH: 
+	LBLCR: 基于本地的带复制功能的最少连接
+
+默认方法：wlc
+
 详解调度算法：
 Director在接收到来自于Client的请求时，会基于"schedule"从RealServer中选择一个响应给Client。ipvs支持以下调度算法：
 1、轮询（round robin, rr),加权轮询(Weighted round robin, wrr)——新的连接请求被轮流分配至各RealServer；算法的优点是其简洁性，它无需记录当前所有连接的状态，所以它是一种无状态调度。轮叫调度算法假设所有服务器处理性能均相同，不管服务器的当前连接数和响应速度。该算法相对简单，不适用于服务器组中处理性能不一的情况，而且当请求服务时间变化比较大时，轮叫调度算法容易导致服务器间的负载不平衡。
@@ -76,7 +113,91 @@ Director在接收到来自于Client的请求时，会基于"schedule"从RealServ
 四、关于LVS追踪标记fwmark：
 如果LVS放置于多防火墙的网络中，并且每个防火墙都用到了状态追踪的机制，那么在回应一个针对于LVS的连接请求时必须经过此请求连接进来时的防火墙，否则，这个响应的数据包将会被丢弃。
 
+#IPVS安装
+[root@lvs ~]# grep -i 'ipvs' /boot/config-2.6.32-696.el6.x86_64   #查看内核是否支持ipvs
+# IPVS transport protocol load balancing support
+# IPVS scheduler
+# IPVS application helper
+[root@lvs ~]# grep -i 'vs' /boot/config-2.6.32-696.el6.x86_64   
+CONFIG_GENERIC_TIME_VSYSCALL=y
+# CONFIG_X86_VSMP is not set
+CONFIG_HIBERNATION_NVS=y
+CONFIG_IP_VS=m
+CONFIG_IP_VS_IPV6=y
+# CONFIG_IP_VS_DEBUG is not set
+CONFIG_IP_VS_TAB_BITS=12
+# IPVS transport protocol load balancing support
+CONFIG_IP_VS_PROTO_TCP=y
+CONFIG_IP_VS_PROTO_UDP=y
+CONFIG_IP_VS_PROTO_AH_ESP=y
+CONFIG_IP_VS_PROTO_ESP=y
+CONFIG_IP_VS_PROTO_AH=y
+CONFIG_IP_VS_PROTO_SCTP=y
+# IPVS scheduler
+CONFIG_IP_VS_RR=m
+CONFIG_IP_VS_WRR=m
+CONFIG_IP_VS_LC=m
+CONFIG_IP_VS_WLC=m
+CONFIG_IP_VS_LBLC=m
+CONFIG_IP_VS_LBLCR=m
+CONFIG_IP_VS_DH=m
+CONFIG_IP_VS_SH=m
+CONFIG_IP_VS_SED=m
+CONFIG_IP_VS_NQ=m
+# IPVS application helper
+CONFIG_IP_VS_FTP=m
+CONFIG_IP_VS_PE_SIP=m
+CONFIG_OPENVSWITCH=m
+CONFIG_OPENVSWITCH_GRE=y
+CONFIG_OPENVSWITCH_VXLAN=y
+CONFIG_MTD_BLKDEVS=m
+CONFIG_SCSI_MVSAS=m
+# CONFIG_SCSI_MVSAS_DEBUG is not set
+# CONFIG_SCSI_MVSAS_TASKLET is not set
+CONFIG_VMWARE_PVSCSI=m
+CONFIG_MOUSE_VSXXXAA=m
+CONFIG_MAX_RAW_DEVS=8192
+CONFIG_USB_SEVSEG=m
+CONFIG_USB_VST=m
+[root@lvs ~]# yum install ipvsadm -y
+
+
 #命令详解
+ipvsadm:
+	管理集群服务：
+		添加：-A -t|u|f service-address [-s scheduler] [-p [timeout]] [-M netmask]	
+			-t:tcp
+			-u:udp
+			-f:防火墙标记
+		修改：-E -t|u|f service-address [-s scheduler] [-p [timeout]] [-M netmask]
+		删除：-D -t|u|f service-address	
+	管理集群服务中的RS:
+		添加：-a|e -t|u|f service-address -r server-address [-g|i|m] [-w weight] 
+			-t|u|f service-address：事先定义好的某集群服务
+			-r server-address：某RS的地址，在NAT模型中，可使用IP:PORT实现端口映射
+			[-g|i|m]：lvs类型，-g:DR,-i:TUN,-m:NAT
+			[-w weight]:定义服务器权重
+		修改：-e
+		删除：-d
+		# ipvsadm -a -t 172.16.100.1:80 -r 192.168.10.8 -m 
+		# ipvsadm -a -t 172.16.100.1:80 -r 192.168.10.9 -m
+	查看：
+		-L|-l
+			-n: 数字格式显示主机地址和端口
+			--stats：统计数据
+			--rate: 速率
+			--timeout: 显示tcp、tcpfin和udp的会话超时时长
+			-c: 显示当前的ipvs连接状况
+	删除所有集群服务
+		-C：清空ipvs规则
+	保存规则
+		-S 
+		# ipvsadm -S > /path/to/somefile
+	载入此前的规则：
+		-R
+		# ipvsadm -R < /path/form/somefile
+注：各节点之间的时间偏差不应该超出1秒钟；
+
 查看LVS上当前的所有连接
 # ipvsadm -Lcn   
 或者
@@ -124,6 +245,7 @@ Director:
 打开路由转发功能
 # echo "1" > /proc/sys/net/ipv4/ip_forward
 
+#NAT模型脚本
 服务控制脚本：
 #!/bin/bash
 #
@@ -236,6 +358,57 @@ arp_ignore: Define different modes for sending replies in response to received A
 	3 - do not reply for local address configured with scope host, only resolutions for golbal and link addresses are replied.
 	4-7 - reserved
 	8 - do not reply for all local addresses
+	
+	VIP: MAC(DVIP)
+	arptables：
+	kernel parameter:
+		arp_ignore: 定义接收到ARP请求时的响应级别；
+			0：只要本地配置的有相应地址，就给予响应；
+			1：仅在请求的目标地址配置请求到达的接口上的时候，才给予响应；
+
+		arp_announce：定义将自己地址向外通告时的通告级别；
+			0：将本地任何接口上的任何地址向外通告；
+			1：试图仅向目标网络通告与其网络匹配的地址；
+			2：仅向与本地接口上地址匹配的网络进行通告；
+
+部署DR环境：
+Director:
+	eth2,DIP:192.168.2.121 
+	eth2,VIP:192.168.2.130
+RealServer1:
+	eth0,Rip:192.168.2.120
+	lo,VIP: 192.168.2.130
+RealServer2:
+	eth2,Rip:192.168.2.120 
+	lo,VIP: 192.168.2.130
+
+部署：
+##Director:
+[root@lvs ~]# ifconfig eth2:0 192.168.2.130/24 
+[root@lvs ~]# ifconfig 
+eth2      Link encap:Ethernet  HWaddr 00:0C:29:06:03:4A  
+          inet addr:192.168.2.121  Bcast:192.168.2.255  Mask:255.255.255.0
+          inet6 addr: fe80::20c:29ff:fe06:34a/64 Scope:Link
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:13586 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:3843 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000 
+          RX bytes:15767265 (15.0 MiB)  TX bytes:331703 (323.9 KiB)
+
+eth2:0    Link encap:Ethernet  HWaddr 00:0C:29:06:03:4A  
+          inet addr:192.168.2.130  Bcast:192.168.2.255  Mask:255.255.255.0
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+
+lo        Link encap:Local Loopback  
+          inet addr:127.0.0.1  Mask:255.0.0.0
+          inet6 addr: ::1/128 Scope:Host
+          UP LOOPBACK RUNNING  MTU:65536  Metric:1
+          RX packets:3 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:3 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:0 
+          RX bytes:336 (336.0 b)  TX bytes:336 (336.0 b)
+##RealServer1:
+部署RealServer的VIP一定先不要在没有设置arp_ignore和arp_announce前设置，可以先设置RIP。
 在RealServers上，VIP配置在本地回环接口lo上。如果回应给Client的数据包路由到了eth0接口上，则arp通告或请应该通过eth0实现，因此，需要在sysctl.conf文件中定义如下配置：
 #vim /etc/sysctl.conf
 net.ipv4.conf.eth0.arp_ignore = 1
@@ -244,6 +417,83 @@ net.ipv4.conf.all.arp_ignore = 1
 net.ipv4.conf.all.arp_announce = 2
 以上选项需要在启用VIP之前进行，否则，则需要在Drector上清空arp表才能正常使用LVS。
 #到达Director的数据包首先会经过PREROUTING，而后经过路由发现其目标地址为本地某接口的地址，因此，接着就会将数据包发往INPUT(LOCAL_IN HOOK)。此时，正在运行内核中的ipvs（始终监控着LOCAL_IN HOOK）进程会发现此数据包请求的是一个集群服务，因为其目标地址是VIP。于是，此数据包的本来到达本机(Director)目标行程被Director改变为经由POSTROUTING HOOK发往RealServer。这种改变数据包正常行程的过程是根据IPVS表(由管理员通过ipvsadm定义)来实现的。
+[root@www ~]# sysctl -p
+[root@www ~]# cat /proc/sys/net/ipv4/conf/eth0/arp_ignore 
+1
+[root@www ~]# cat /proc/sys/net/ipv4/conf/eth0/arp_announce 
+2
+[root@www ~]# cat /proc/sys/net/ipv4/conf/all/arp_ignore         
+1
+[root@www ~]# cat /proc/sys/net/ipv4/conf/all/arp_announce 
+2
+[root@www ~]# ifconfig lo:0 192.168.2.130 broadcast 192.168.2.130 netmask 255.255.255.255 up
+[root@www ~]# route add -host 192.168.2.130 dev lo:0
+[root@www ~]# ifconfig 
+eth0      Link encap:Ethernet  HWaddr 00:0C:29:5F:97:D7  
+          inet addr:192.168.2.120  Bcast:192.168.2.255  Mask:255.255.255.0
+          inet6 addr: fe80::20c:29ff:fe5f:97d7/64 Scope:Link
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:3630 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:1309 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000 
+          RX bytes:308168 (300.9 KiB)  TX bytes:161580 (157.7 KiB)
+
+lo        Link encap:Local Loopback  
+          inet addr:127.0.0.1  Mask:255.0.0.0
+          inet6 addr: ::1/128 Scope:Host
+          UP LOOPBACK RUNNING  MTU:65536  Metric:1
+          RX packets:52 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:52 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:0 
+          RX bytes:2860 (2.7 KiB)  TX bytes:2860 (2.7 KiB)
+
+lo:0      Link encap:Local Loopback  
+          inet addr:192.168.2.130  Mask:255.255.255.255
+          UP LOOPBACK RUNNING  MTU:65536  Metric:1
+
+##RealServer2:
+#vim /etc/sysctl.conf
+net.ipv4.conf.eth0.arp_ignore = 1
+net.ipv4.conf.eth0.arp_announce = 2
+net.ipv4.conf.all.arp_ignore = 1
+net.ipv4.conf.all.arp_announce = 2
+[root@www ~]# sysctl -p
+[root@httpd1 ~]# ifconfig lo:0 192.168.2.130 broadcast 192.168.2.130 netmask 255.255.255.255 up
+[root@httpd1 ~]# route add -host 192.168.2.130 dev lo:0
+[root@httpd1 ~]# ifconfig 
+eth2      Link encap:Ethernet  HWaddr 00:0C:29:D2:A3:F8  
+          inet addr:192.168.2.122  Bcast:192.168.2.255  Mask:255.255.255.0
+          inet6 addr: fe80::20c:29ff:fed2:a3f8/64 Scope:Link
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:2545 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:625 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000 
+          RX bytes:213583 (208.5 KiB)  TX bytes:77383 (75.5 KiB)
+
+lo        Link encap:Local Loopback  
+          inet addr:127.0.0.1  Mask:255.0.0.0
+          inet6 addr: ::1/128 Scope:Host
+          UP LOOPBACK RUNNING  MTU:65536  Metric:1
+          RX packets:48 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:48 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:0 
+          RX bytes:2512 (2.4 KiB)  TX bytes:2512 (2.4 KiB)
+
+lo:0      Link encap:Local Loopback  
+          inet addr:192.168.2.130  Mask:255.255.255.255
+          UP LOOPBACK RUNNING  MTU:65536  Metric:1
+##Director上进行ipvsadm操作
+[root@lvs ~]# ipvsadm -C
+[root@lvs ~]# ipvsadm -A -t 192.168.2.130:80 -s wlc
+[root@lvs ~]# ipvsadm -a -t 192.168.2.130:80 -r 192.168.2.120 -g -w 2
+[root@lvs ~]# ipvsadm -a -t 192.168.2.130:80 -r 192.168.2.122 -g -w 1 
+[root@lvs ~]# ipvsadm -ln --stats
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port               Conns   InPkts  OutPkts  InBytes OutBytes
+  -> RemoteAddress:Port
+TCP  192.168.2.130:80                    2        2        0      104        0
+  -> 192.168.2.120:80                    1        1        0       52        0
+  -> 192.168.2.122:80                    1        1        0       52        0
 
 如果有多台Realserver，在某些应用场景中，Director还需要基于“连接追踪”实现将由同一个客户机的请求始终发往其第一次被分配至的Realserver，以保证其请求的完整性等。其连接追踪的功能由Hash table实现。Hash table的大小等属性可通过下面的命令查看：
 # ipvsadm -lcn
@@ -267,17 +517,17 @@ ipvs的持久连接：
 #
 . /etc/rc.d/init.d/functions
 #
-VIP=192.168.0.210
-RIP1=192.168.0.221
-RIP2=192.168.0.222
+VIP=192.168.2.130
+RIP1=192.168.2.120
+RIP2=192.168.2.122
 PORT=80
 
 #
 case "$1" in
 start)           
 
-  /sbin/ifconfig eth0:1 $VIP broadcast $VIP netmask 255.255.255.255 up
-  /sbin/route add -host $VIP dev eth0:1
+  /sbin/ifconfig eth2:0 $VIP broadcast $VIP netmask 255.255.255.255 up
+  /sbin/route add -host $VIP dev eth2:0
 
 # Since this is the Director we must be able to forward packets
   echo 1 > /proc/sys/net/ipv4/ip_forward
@@ -343,7 +593,7 @@ RealServer脚本:
 #
 .  /etc/rc.d/init.d/functions
 
-VIP=192.168.0.219
+VIP=192.168.2.130
 host=`/bin/hostname`
 
 case "$1" in
@@ -389,6 +639,10 @@ status)
             exit 1
 ;;
 esac
+
+
+
+
 
 #HeartBeat（检查心跳信息）
 运行于备用主机上的Heartbeat可以通过以太网连接检测主服务器的运行状态，一旦其无法检测到主服务器的“心跳”则自动接管主服务器的资源。通常情况下，主、备服务器间的心跳连接是一个独立的物理连接，这个连接可以是串行线缆、一个由“交叉线”实现的以太网连接。Heartbeat甚至可同时通过多个物理连接检测主服务器的工作状态，而其只要能通过其中一个连接收到主服务器处于活动状态的信息，就会认为主服务器处于正常状态。从实践经验的角度来说，建议为Heartbeat配置多条独立的物理连接，以避免Heartbeat通信线路本身存在单点故障。
