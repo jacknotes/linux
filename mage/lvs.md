@@ -50,9 +50,9 @@ Type:
 	NAT:
 		类似DNAT
 	DR:
-
+		只接收入丫请求，出站响应则由后端RealServer响应给Client,Director和RealServer通信是通过MAC地址，Director不解开ip层包
 	TUN:
-
+		只接收入丫请求，出站响应则由后端RealServer响应给Client,Director和RealServer通信是通过TUNNING隧道模式进行通信，Director接收到Client包时，为了与后端的RealServer通信，Director对Client发过来的包加一个ip包，这样一来Director访问RealServer就成了外部是DIP和RIP，内部还是CIP和VIP,由于后端RealServer解开外部ip包，得到内部ip包，所以RealServer最后成功发向了Client
 
 #关于ipvsadm:
 ipvs的命令行管理工具
@@ -82,10 +82,10 @@ ipvsadm下载地址： http://www.linuxvirtualserver.org/software/ipvs.html#kern
 	wrr: Weight, 加权
 	sh: source hash, 源地址hash
 四种静态算法：
-	1. rr
-	2. wrr
-	3. dh
-	4. sh
+	1. rr:Round Robin
+	2. wrr:Weight Round Robin
+	3. dh:destination hash (常用来选择目标是Cache Server)
+	4. sh:source hash (session affinity)
 六种动态算法：
 	lc: 最少连接
 		active*256+inactive
@@ -94,7 +94,7 @@ ipvsadm下载地址： http://www.linuxvirtualserver.org/software/ipvs.html#kern
 		(active*256+inactive)/weight
 	sed: 最短期望延迟
 		（active+1)*256/weight
-	nq: never queue
+	nq: never queue(永远不排除)
 	LBLC: 基于本地的最少连接
 		DH: 
 	LBLCR: 基于本地的带复制功能的最少连接
@@ -205,7 +205,10 @@ ipvsadm:
 查看虚拟服务和RealServer上当前的连接数、数据包数和字节数的统计值，则可以使用下面的命令实现：
 # ipvsadm -l --stats
 查看包传递速率的近似精确值，可以使用下面的命令：
-# ipvsadm -l --rate
+# ipvsadm -l --rate 
+# ipvsadm -l --timeout #查看tcp,tcpfin,udp包超时时间
+# ipvsadm -S > /tmp/ipvs.save #保存ipvs规则
+# ipvsadm -R < /tmp/ipvs.save #载入ipvs规则
 
 #NAT:
 LVS-NAT基于cisco的LocalDirector。VS/NAT不需要在RealServer上做任何设置，其只要能提供一个tcp/ip的协议栈即可，甚至其无论基于什么OS。基于VS/NAT，所有的入站数据包均由Director进行目标地址转换后转发至内部的RealServer，RealServer响应的数据包再由Director转换源地址后发回客户端。 
