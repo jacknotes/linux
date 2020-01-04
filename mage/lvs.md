@@ -75,6 +75,7 @@ ipvsadm下载地址： http://www.linuxvirtualserver.org/software/ipvs.html#kern
 
 二、ipvsadm使用中应注意的问题
 默认情况下，ipvsadm在输出主机信息时使用其主机名而非IP地址，因此，Director需要使用名称解析服务。如果没有设置名称解析服务、服务不可用或设置错误，ipvsadm将会一直等到名称解析超时后才返回。当然，ipvsadm需要解析的名称仅限于RealServer，考虑到DNS提供名称解析服务效率不高的情况，建议将所有RealServer的名称解析通过/etc/hosts文件来实现；
+#iptables应该避免进行服务，主要是INPUT,FORWARD,OUTPUT Chain上不能启动。
 
 三、调度算法
 固定调度
@@ -257,15 +258,16 @@ Director:
 #
 . /etc/rc.d/init.d/functions
 #
-VIP=192.168.0.219
-DIP=192.168.10.10
-RIP1=192.168.10.11
-RIP2=192.168.10.12
+VIP=192.168.1.200
+DIP=192.168.200.201
+RIP1=192.168.200.202
+RIP2=192.168.200.203
+
 #
 case "$1" in
 start)           
 
-  /sbin/ifconfig eth0:1 $VIP netmask 255.255.255.0 up
+  /sbin/ifconfig eth1:1 $VIP netmask 255.255.255.0 up
 
 # Since this is the Director we must be able to forward packets
   echo 1 > /proc/sys/net/ipv4/ip_forward
@@ -300,7 +302,7 @@ stop)
   /sbin/ipvsadm -C
 
 # Bring down the VIP interface
-  ifconfig eth0:1 down
+  ifconfig eth1:1 down
   
   rm -rf /var/lock/subsys/ipvsadm.lock
 ;;
@@ -313,7 +315,8 @@ status)
 ;;
 esac
 
-#DR:
+
+#DR模型实例:
 ARP问题：
                      __________
                      |        |
@@ -376,43 +379,44 @@ arp_ignore: Define different modes for sending replies in response to received A
 
 部署DR环境：
 Director:
-	eth2,DIP:192.168.2.121 
-	eth2,VIP:192.168.2.130
+	eth0,DIP:192.168.1.199 
+	eth0:1,VIP:192.168.1.200
 RealServer1:
-	eth0,Rip:192.168.2.120
-	lo,VIP: 192.168.2.130
+	eth3,Rip:192.168.1.198
+	lo,VIP:192.168.1.200
 RealServer2:
-	eth2,Rip:192.168.2.120 
-	lo,VIP: 192.168.2.130
+	eth2,Rip:192.168.1.197
+	lo,VIP:192.168.1.200
 
 部署：
 ##Director:
-[root@lvs ~]# ifconfig eth2:0 192.168.2.130/24 
+[root@lvs ~]# ifconfig eth0:0 192.168.1.200/32 broadcast 192.168.1.200 up
+[root@lvs ~]# route add -host 192.168.1.200 dev eth0:0
 [root@lvs ~]# ifconfig 
-eth2      Link encap:Ethernet  HWaddr 00:0C:29:06:03:4A  
-          inet addr:192.168.2.121  Bcast:192.168.2.255  Mask:255.255.255.0
-          inet6 addr: fe80::20c:29ff:fe06:34a/64 Scope:Link
+eth0      Link encap:Ethernet  HWaddr 00:0C:29:5F:97:D7  
+          inet addr:192.168.1.199  Bcast:192.168.1.255  Mask:255.255.255.0
+          inet6 addr: fe80::20c:29ff:fe5f:97d7/64 Scope:Link
           UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
-          RX packets:13586 errors:0 dropped:0 overruns:0 frame:0
-          TX packets:3843 errors:0 dropped:0 overruns:0 carrier:0
+          RX packets:17767 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:12874 errors:0 dropped:0 overruns:0 carrier:0
           collisions:0 txqueuelen:1000 
-          RX bytes:15767265 (15.0 MiB)  TX bytes:331703 (323.9 KiB)
+          RX bytes:2000374 (1.9 MiB)  TX bytes:1516017 (1.4 MiB)
 
-eth2:0    Link encap:Ethernet  HWaddr 00:0C:29:06:03:4A  
-          inet addr:192.168.2.130  Bcast:192.168.2.255  Mask:255.255.255.0
+eth0:0    Link encap:Ethernet  HWaddr 00:0C:29:5F:97:D7  
+          inet addr:192.168.1.200  Bcast:192.168.1.200  Mask:0.0.0.0
           UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
 
 lo        Link encap:Local Loopback  
           inet addr:127.0.0.1  Mask:255.0.0.0
           inet6 addr: ::1/128 Scope:Host
           UP LOOPBACK RUNNING  MTU:65536  Metric:1
-          RX packets:3 errors:0 dropped:0 overruns:0 frame:0
-          TX packets:3 errors:0 dropped:0 overruns:0 carrier:0
+          RX packets:240 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:240 errors:0 dropped:0 overruns:0 carrier:0
           collisions:0 txqueuelen:0 
-          RX bytes:336 (336.0 b)  TX bytes:336 (336.0 b)
+          RX bytes:15076 (14.7 KiB)  TX bytes:15076 (14.7 KiB)
 ##RealServer1:
-部署RealServer的VIP一定先不要在没有设置arp_ignore和arp_announce前设置，可以先设置RIP。
-在RealServers上，VIP配置在本地回环接口lo上。如果回应给Client的数据包路由到了eth0接口上，则arp通告或请应该通过eth0实现，因此，需要在sysctl.conf文件中定义如下配置：
+部署RealServer的VIP不要在没有设置arp_ignore和arp_announce前设置，可以先设置RIP。在RealServers上，VIP配置在本地回环接口lo上。
+注：arp响应一定是由内向外响应的，lo如果向外响应会到达eth0，然后最终到达目标ip。所以我们把vip配置在lo接口上，只要关掉eth0或者lo接口的响应级别和通行级别即可。
 #vim /etc/sysctl.conf
 net.ipv4.conf.eth0.arp_ignore = 1
 net.ipv4.conf.eth0.arp_announce = 2
@@ -429,31 +433,43 @@ net.ipv4.conf.all.arp_announce = 2
 1
 [root@www ~]# cat /proc/sys/net/ipv4/conf/all/arp_announce 
 2
-[root@www ~]# ifconfig lo:0 192.168.2.130 broadcast 192.168.2.130 netmask 255.255.255.255 up
-[root@www ~]# route add -host 192.168.2.130 dev lo:0
-[root@www ~]# ifconfig 
-eth0      Link encap:Ethernet  HWaddr 00:0C:29:5F:97:D7  
-          inet addr:192.168.2.120  Bcast:192.168.2.255  Mask:255.255.255.0
-          inet6 addr: fe80::20c:29ff:fe5f:97d7/64 Scope:Link
+[root@httpd1 ~]# ifconfig lo:0 192.168.1.200 netmask 255.255.255.255 broadcast 192.168.1.200 up
+[root@httpd1 ~]# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+192.168.1.0     0.0.0.0         255.255.255.0   U     0      0        0 eth3
+169.254.0.0     0.0.0.0         255.255.0.0     U     1002   0        0 eth3
+0.0.0.0         192.168.1.1     0.0.0.0         UG    0      0        0 eth3
+[root@httpd1 ~]# route add -host 192.168.1.200 dev lo:0
+[root@httpd1 ~]# ifconfig 
+eth3      Link encap:Ethernet  HWaddr 00:0C:29:06:03:54  
+          inet addr:192.168.1.198  Bcast:192.168.1.255  Mask:255.255.255.0
+          inet6 addr: fe80::20c:29ff:fe06:354/64 Scope:Link
           UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
-          RX packets:3630 errors:0 dropped:0 overruns:0 frame:0
-          TX packets:1309 errors:0 dropped:0 overruns:0 carrier:0
+          RX packets:9846 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:5138 errors:0 dropped:0 overruns:0 carrier:0
           collisions:0 txqueuelen:1000 
-          RX bytes:308168 (300.9 KiB)  TX bytes:161580 (157.7 KiB)
+          RX bytes:933215 (911.3 KiB)  TX bytes:898759 (877.6 KiB)
 
 lo        Link encap:Local Loopback  
           inet addr:127.0.0.1  Mask:255.0.0.0
           inet6 addr: ::1/128 Scope:Host
           UP LOOPBACK RUNNING  MTU:65536  Metric:1
-          RX packets:52 errors:0 dropped:0 overruns:0 frame:0
-          TX packets:52 errors:0 dropped:0 overruns:0 carrier:0
+          RX packets:188 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:188 errors:0 dropped:0 overruns:0 carrier:0
           collisions:0 txqueuelen:0 
-          RX bytes:2860 (2.7 KiB)  TX bytes:2860 (2.7 KiB)
+          RX bytes:10582 (10.3 KiB)  TX bytes:10582 (10.3 KiB)
 
 lo:0      Link encap:Local Loopback  
-          inet addr:192.168.2.130  Mask:255.255.255.255
+          inet addr:192.168.1.200  Mask:255.255.255.255
           UP LOOPBACK RUNNING  MTU:65536  Metric:1
-
+[root@httpd1 ~]# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+192.168.1.200   0.0.0.0         255.255.255.255 UH    0      0        0 lo
+192.168.1.0     0.0.0.0         255.255.255.0   U     0      0        0 eth3
+169.254.0.0     0.0.0.0         255.255.0.0     U     1002   0        0 eth3
+0.0.0.0         192.168.1.1     0.0.0.0         UG    0      0        0 eth3
 ##RealServer2:
 #vim /etc/sysctl.conf
 net.ipv4.conf.eth0.arp_ignore = 1
@@ -461,43 +477,55 @@ net.ipv4.conf.eth0.arp_announce = 2
 net.ipv4.conf.all.arp_ignore = 1
 net.ipv4.conf.all.arp_announce = 2
 [root@www ~]# sysctl -p
-[root@httpd1 ~]# ifconfig lo:0 192.168.2.130 broadcast 192.168.2.130 netmask 255.255.255.255 up
-[root@httpd1 ~]# route add -host 192.168.2.130 dev lo:0
-[root@httpd1 ~]# ifconfig 
+[root@httpd2 ~]# ifconfig lo:0 192.168.1.200/32 broadcast 192.168.1.200 up
+[root@httpd2 ~]# ifconfig 
 eth2      Link encap:Ethernet  HWaddr 00:0C:29:D2:A3:F8  
-          inet addr:192.168.2.122  Bcast:192.168.2.255  Mask:255.255.255.0
+          inet addr:192.168.1.197  Bcast:192.168.1.255  Mask:255.255.255.0
           inet6 addr: fe80::20c:29ff:fed2:a3f8/64 Scope:Link
           UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
-          RX packets:2545 errors:0 dropped:0 overruns:0 frame:0
-          TX packets:625 errors:0 dropped:0 overruns:0 carrier:0
+          RX packets:5698 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:3751 errors:0 dropped:0 overruns:0 carrier:0
           collisions:0 txqueuelen:1000 
-          RX bytes:213583 (208.5 KiB)  TX bytes:77383 (75.5 KiB)
+          RX bytes:504132 (492.3 KiB)  TX bytes:402358 (392.9 KiB)
 
 lo        Link encap:Local Loopback  
           inet addr:127.0.0.1  Mask:255.0.0.0
           inet6 addr: ::1/128 Scope:Host
           UP LOOPBACK RUNNING  MTU:65536  Metric:1
-          RX packets:48 errors:0 dropped:0 overruns:0 frame:0
-          TX packets:48 errors:0 dropped:0 overruns:0 carrier:0
+          RX packets:477 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:477 errors:0 dropped:0 overruns:0 carrier:0
           collisions:0 txqueuelen:0 
-          RX bytes:2512 (2.4 KiB)  TX bytes:2512 (2.4 KiB)
+          RX bytes:26148 (25.5 KiB)  TX bytes:26148 (25.5 KiB)
 
 lo:0      Link encap:Local Loopback  
-          inet addr:192.168.2.130  Mask:255.255.255.255
+          inet addr:192.168.1.200  Mask:0.0.0.0
           UP LOOPBACK RUNNING  MTU:65536  Metric:1
+[root@httpd2 ~]# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+192.168.1.0     0.0.0.0         255.255.255.0   U     0      0        0 eth2
+169.254.0.0     0.0.0.0         255.255.0.0     U     1002   0        0 eth2
+0.0.0.0         192.168.1.1     0.0.0.0         UG    0      0        0 eth2
+[root@httpd2 ~]# route add -host 192.168.1.200 dev lo:0
+[root@httpd2 ~]# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+192.168.1.200   0.0.0.0         255.255.255.255 UH    0      0        0 lo
+192.168.1.0     0.0.0.0         255.255.255.0   U     0      0        0 eth2
+169.254.0.0     0.0.0.0         255.255.0.0     U     1002   0        0 eth2
+0.0.0.0         192.168.1.1     0.0.0.0         UG    0      0        0 eth2
 ##Director上进行ipvsadm操作
 [root@lvs ~]# ipvsadm -C
-[root@lvs ~]# ipvsadm -A -t 192.168.2.130:80 -s wlc
-[root@lvs ~]# ipvsadm -a -t 192.168.2.130:80 -r 192.168.2.120 -g -w 2
-[root@lvs ~]# ipvsadm -a -t 192.168.2.130:80 -r 192.168.2.122 -g -w 1 
-[root@lvs ~]# ipvsadm -ln --stats
+[root@lvs ~]# ipvsadm -A -t 192.168.1.200:80 -s wlc
+[root@lvs ~]# ipvsadm -a -t 192.168.1.200:80 -r 192.168.1.198 -g -w 3
+[root@lvs ~]# ipvsadm -a -t 192.168.1.200:80 -r 192.168.1.197 -g -w 1
+[root@lvs ~]# ipvsadm -ln
 IP Virtual Server version 1.2.1 (size=4096)
-Prot LocalAddress:Port               Conns   InPkts  OutPkts  InBytes OutBytes
-  -> RemoteAddress:Port
-TCP  192.168.2.130:80                    2        2        0      104        0
-  -> 192.168.2.120:80                    1        1        0       52        0
-  -> 192.168.2.122:80                    1        1        0       52        0
-
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  192.168.1.200:80 wlc
+  -> 192.168.1.197:80             Route   1      0          0         
+  -> 192.168.1.198:80             Route   3      0          0   
 如果有多台Realserver，在某些应用场景中，Director还需要基于“连接追踪”实现将由同一个客户机的请求始终发往其第一次被分配至的Realserver，以保证其请求的完整性等。其连接追踪的功能由Hash table实现。Hash table的大小等属性可通过下面的命令查看：
 # ipvsadm -lcn
 
@@ -520,17 +548,17 @@ ipvs的持久连接：
 #
 . /etc/rc.d/init.d/functions
 #
-VIP=192.168.2.130
-RIP1=192.168.2.120
-RIP2=192.168.2.122
+VIP=192.168.1.200
+RIP1=192.168.1.198
+RIP2=192.168.1.197
 PORT=80
 
 #
 case "$1" in
 start)           
 
-  /sbin/ifconfig eth2:0 $VIP broadcast $VIP netmask 255.255.255.255 up
-  /sbin/route add -host $VIP dev eth2:0
+  /sbin/ifconfig eth0:0 $VIP broadcast $VIP netmask 255.255.255.255 up
+  /sbin/route add -host $VIP dev eth0:0
 
 # Since this is the Director we must be able to forward packets
   echo 1 > /proc/sys/net/ipv4/ip_forward
@@ -554,37 +582,33 @@ start)
   /sbin/ipvsadm -a -t $VIP:80 -r $RIP1 -g -w 1
   /sbin/ipvsadm -a -t $VIP:80 -r $RIP2 -g -w 2
 
-  /bin/touch /var/lock/subsys/ipvsadm &> /dev/null
+  /bin/touch /var/lock/subsys/ipvsadm.lock &> /dev/null
 ;; 
 
 stop)
 # Stop forwarding packets
   echo 0 > /proc/sys/net/ipv4/ip_forward
-
 # Reset ipvsadm
   /sbin/ipvsadm -C
-
 # Bring down the VIP interface
-  /sbin/ifconfig eth0:1 down
-  /sbin/route del $VIP
-  
-  /bin/rm -f /var/lock/subsys/ipvsadm
-  
+  /sbin/ifconfig eth0:0 down
+  /sbin/route del $VIP >& /dev/null
+  /bin/rm -rf /var/lock/subsys/ipvsadm.lock >& /dev/null
   echo "ipvs is stopped..."
 ;;
 
 status)
-  if [ ! -e /var/lock/subsys/ipvsadm ]; then
+  if [ ! -e /var/lock/subsys/ipvsadm.lock ]; then
     echo "ipvsadm is stopped ..."
   else
     echo "ipvs is running ..."
-    ipvsadm -L -n
   fi
 ;;
 *)
   echo "Usage: $0 {start|stop|status}"
 ;;
 esac
+
 
 
 RealServer脚本:
@@ -596,7 +620,7 @@ RealServer脚本:
 #
 .  /etc/rc.d/init.d/functions
 
-VIP=192.168.2.130
+VIP=192.168.1.200
 host=`/bin/hostname`
 
 case "$1" in
@@ -627,7 +651,7 @@ status)
 
         # Status of LVS-DR real server.
         islothere=`/sbin/ifconfig lo:0 | grep $VIP`
-        isrothere=`netstat -rn | grep "lo:0" | grep $VIP`
+        isrothere=`netstat -rn | grep "lo" | grep $VIP`
         if [ ! "$islothere" -o ! "isrothere" ];then
             # Either the route or the lo:0 device
             # not found.
@@ -643,382 +667,76 @@ status)
 ;;
 esac
 
-
-
-
-
-#HeartBeat（检查心跳信息）
-运行于备用主机上的Heartbeat可以通过以太网连接检测主服务器的运行状态，一旦其无法检测到主服务器的“心跳”则自动接管主服务器的资源。通常情况下，主、备服务器间的心跳连接是一个独立的物理连接，这个连接可以是串行线缆、一个由“交叉线”实现的以太网连接。Heartbeat甚至可同时通过多个物理连接检测主服务器的工作状态，而其只要能通过其中一个连接收到主服务器处于活动状态的信息，就会认为主服务器处于正常状态。从实践经验的角度来说，建议为Heartbeat配置多条独立的物理连接，以避免Heartbeat通信线路本身存在单点故障。
-	1、串行电缆：被认为是比以太网连接安全性稍好些的连接方式，因为hacker无法通过串行连接运行诸如telnet、ssh或rsh类的程序，从而可以降低其通过已劫持的服务器再次侵入备份服务器的几率。但串行线缆受限于可用长度，因此主、备服务器的距离必须非常短。
-	2、以太网连接：使用此方式可以消除串行线缆的在长度方面限制，并且可以通过此连接在主备服务器间同步文件系统，从而减少了从正常通信连接带宽的占用。
-
-基于冗余的角度考虑，应该在主、备服务器使用两个物理连接传输heartbeat的控制信息；这样可以避免在一个网络或线缆故障时导致两个节点同时认为自已是唯一处于活动状态的服务器从而出现争用资源的情况，这种争用资源的场景即是所谓的“脑裂”（split-brain）或“partitioned cluster”。在两个节点共享同一个物理设备资源的情况下，脑裂会产生相当可怕的后果。
-为了避免出现脑裂，可采用下面的预防措施：
-1、如前所述，在主、备节点间建立一个冗余的、可靠的物理连接来同时传送控制信息；
-2、一旦发生脑裂时，借助额外设备强制性地关闭其中一个节点；
-第二种方式即是俗称的“将其它节点‘爆头’（shoot the other node in the head）”，简称为STONITH。基于能够通过软件指令关闭某节点特殊的硬件设备，Heartbeat即可实现可配置的Stonith。但当主、备服务器是基于WAN进行通信时，则很难避免“脑裂”情景的出现。因此，当构建异地“容灾”的应用时，应尽量避免主、备节点共享物理资源。
-
-#Heartbeat的控制信息：
-1. “心跳”信息: （也称为状态信息）仅150 bytes大小的广播、组播或多播数据包。可为以每个节点配置其向其它节点通报“心跳”信息的频率，以及其它节点上的heartbeat进程为了确认主节点出节点出现了运行等错误之前的等待时间。
-2. 集群变动事务（transition）信息：ip-request和ip-request-rest是相对较常见的两种集群变动信息，它们在节点间需要进行资源迁移时为不同节点上heartbeat进程间会话传递信息。比如，当修复了主节点并且使其重新“上线”后，主节点会使用ip-request要求备用节点释放其此前从因主节点故障而从主节点那里接管的资源。此时，备用节点则关闭服务并使用ip-request-resp通知主节点其已经不再占用此前接管的资源。主接点收到ip-request-resp后就会重新启动服务。
-3. 重传请求：在某集群节点发现其从其它节点接收到的heartbeat控制信息“失序”（heartbeat进程使用序列号来确保数据包在传输过程中没有被丢弃或出现错误）时，会要求对方重新传送此控制信息。 Heartbeat一般每一秒发送一次重传请求，以避免洪泛。
-
-上面三种控制信息均基于UDP协议进行传送，可以在/etc/ha.d/ha.cf中指定其使用的UDP端口或者多播地址（使用以太网连接的情况下）。此外，除了使用“序列号/确认”机制来确保控制信息的可靠传输外，Heartbeat还会使用MD5或SHA1为每个数据包进行签名以确保传输中的控制信息的安全性。
-
-#资源脚本：
-资源脚本（resource scripts）即Heartbeat控制下的脚本。这些脚本可以添加或移除IP别名（IP alias)或从属IP地址（secondary IP address），或者包含了可以启动/停止服务能力之外数据包的处理功能等。通常，Heartbeat会到/etc/init.d/或/etc/ha.d/resource.d/目录中读取脚本文件。Heartbeat需要一直明确了解“资源”归哪个节点拥有或由哪个节点提供。在编写一个脚本来启动或停止某个资源时，一定在要脚本中明确判断出相关服务是否由当前系统所提供。
-
-
-#Heartbeat的配置文件：
-/etc/ha.d/ha.cf
-定义位于不同节点上的heartbeat进程间如何进行通信；
-/etc/ha.d/haresources
-定义对某个资源来说哪个服务器是主节点，以及哪个节点应该拥有客户端访问资源时的目标IP地址。
-/etc/ha.d/authkeys
-定义Heartbeat包在通信过程中如何进行加密。
-
-当ha.cf或authkeys文件发生改变时，需要重新加载它们就可以使用之生效；而如果haresource文件发生了改变，则只能重启heartbeat服务方可使之生效。
-
-尽管Heartbeat并不要求主从节点间进行时钟同步，但它们彼此间的时间差距不能超过1分钟，否则一些配置为高可用的服务可能会出异常。
-
-Heartbeat当前也不监控其所控制的资源的状态，比如它们是否正在运行，是否运行良好以及是否可供客户端访问等。要想监控这些资源，冉要使用额外的Mon软件包来实现。
-
-haresources配置文件介绍：
-主从节点上的/etc/ra.d/raresource文件必须完全相同。文件每行通常包含以下组成部分：
-1、服务器名字：指正常情况下资源运行的那个节点（即主节点），后跟一个空格或tab；这里指定的名字必须跟某个节点上的命令"uname -n"的返回值相同；
-2、IP别名（即额外的IP地址，可选）：在启动资源之前添加至系统的附加IP地址，后跟空格或tab；IP地址后面通常会跟一个子网掩码和广播地址，彼此间用“/”隔开；
-3、资源脚本：即用来启动或停止资源的脚本，位于/etc/init.d/或/etc/ha.d/resourcd.d目录中；如果需要传递参数给资源脚本，脚本和参数之间需要用两个冒号分隔，多个参数时彼此间也需要用两个冒号分隔；如果有多个资源脚本，彼此间也需要使用空格隔开；
-
- 格式如下：
- primary-server [IPaddress[/mask/interface/broadcast]]  resource1[::arg1::arg2]  resource2[::arg1::arg2]
- 
- 例如：
- primary-server 221.67.132.195 sendmail httpd
-
-安装配置Heartbeat
-yum install
-
-cp /usr/share/doc/heartbeat-2*/authkeys, ha.cf, haresources
-
-( echo -ne "auth 1\n1 sha1 "; \
-  dd if=/dev/urandom bs=512 count=1 | openssl md5 ) \
-  > /etc/ha.d/authkeys
-chmod 0600 /etc/ha.d/authkeys
-
-/usr/lib/heartbeat/ha_propagate
-
-
-HA的LVS集群有两台Director，在启动时，主节点占有集群负载均衡资源（VIP和LVS的转发及高度规则），备用节点监听主节点的“心跳”信息并在主节点出现异常时进行“故障转移”而取得资源使用权，这包括如下步骤：
-	1、添加VIP至其网络接口；
-	2、广播GARP信息，通知网络内的其它主机目前本Director其占有VIP；
-	3、创建IPVS表以实现入站请求连接的负载均衡；
-	4、Stonith；	
-	
-弃用resource脚本，改用ldirecotord来控制LVS：
-ldirectord用来实现LVS负载均衡资源的在主、备节点间的故障转移。在首次启动时，ldirectord可以自动创建IPVS表。此外，它还可以监控各Realserver的运行状态，一旦发现某Realserver运行异常时，还可以将其从IPVS表中移除。
-ldirectord进程通过向Realserver的RIP发送资源访问请求并通过由Realserver返回的响应信息来确定Realserver的运行状态。在Director上，每一个VIP需要一个单独的ldirector进程。如果Realserver不能正常响应Directord上ldirectord的请求，ldirectord进程将通过ipvsadm命令将此Realserver从IPVS表中移除。而一旦Realserver再次上线，ldirectord会使用正确的ipvsadm命令将其信息重新添加至IPVS表中。
-例如，为了监控一组提供web服务的Realserver，ldirectord进程使用HTTP协议请求访问每台Realserver上的某个特定网页。ldirectord进程根据自己的配置文件中事先定义了的Realserver的正常响应结果来判断当前的返回结果是否正常。比如，在每台web服务器的网站目录中存放一个页面".ldirector.html"，其内容为"GOOD"，ldirectord进程每隔一段时间就访问一次此网页，并根据获取到的响应信息来判断Realserver的运行状态是否正常。如果其返回的信息不是"GOOD"，则表明服务不正常。
-ldirectord需要从/etc/ha.d/目录中读取配置文件，文件名可以任意，但建议最好见名知义。
-实现过程：
-
-创建/etc/ha.d/ldirectord-192.168.0.219.cf，添加如下内容：
-# Global Directives
-checktimeout=20    
-# ldirectord等待Realserver健康检查完成的时间，单位为秒；
-# 任何原因的检查错误或超过此时间限制，ldirector将会将此Realserver从IPVS表中移除；
-checkinterval=5
-# 每次检查的时间间隔，即检查的频率；
-autoreload=yes
-# 此项用来定义ldirectord是否定期每隔一段时间检查此配置文件是否发生改变并自动重新加载此文件；
-logfile="/var/log/ldirectord.log"
-# 定义日志文件存放位置；
-quiescent=yes
-# 当某台Realserver出现异常，此项可将其设置为静默状态（即其权重为“0”）从而不再响应客户端的访问请求；
-
-# For an http virtual service
-virtual=192.168.0.219:80
-# 此项用来定义LVS服务及其使用的VIP和PORT
-        real=192.168.0.221:80 gate 100
-        # 定义Realserver，语法：real=RIP:port gate|masq|ipip [weight]
-        real=192.168.0.223:80 gate 300
-        fallback=127.0.0.1:80 gate
-        # 当IPVS表没有任何可用的Realserver时，此“地址：端口”作为最后响应的服务；
-        # 一般指向127.0.0.1，并可以通过一个包含错误信息的页面通知用户服务发生了异常；
-        service=http
-        # 定义基于什么服务来测试Realserver；
-        request=".ldirectord.html"
-        receive="GOOD"
-        scheduler=wlc 
-        #persistent=600
-        #netmask=255.255.255.255
-        protocol=tcp
-        # 定义此虚拟服务用到的协议；
-        checktype=negotiate
-        # ldirectord进程用于监控Realserver的方法；{negotiate|connect|A number|off}
-        checkport=80
-        
-在/etc/hd.d/haresources中添加类似如下行：
- node1.example.com 192.168.0.219 ldirectord::ldirectord-192.168.0.219.cf       
-
-# yum install docbook-stype-xsl
-# yum install net-snmp-devel
-# yum install OpenIPMI-devel
-
-
-# groupadd -g 694 haclient
-# useradd -G haclient -d /dev/null -s /sbin/nologin -u 694 hacluster
-
-安装glue和heartbeat
-# wget http://hg.linux-ha.org/glue/archive/glue-1.0.3.tar.bz2
-# tar jxvf glue-1.0.3.tar.bz2
-# cd glue-1.0.3
-# ./autogen.sh
-# ./configure
-# make
-# make install
-
-# wget http://hg.linux-ha.org/heartbeat-STABLE_3_0/archive/STABLE-3.0.2.tar.bz2
-# tar jxvf STABLE-3.0.2.tar.bz2
-# cd Heartbeat-3-0-STABLE-3.0.2/
-# ./bootstrap
-# ./ConfigureMe configure
-# make
-# make install
-# cp doc/{ha.cf,haresources} /etc/ha.d/
-
-生成authkeys：
-# echo -ne "auth 1\n1 sha1 " >> /etc/ha.d/authkeys
-# dd if=/dev/urandom bs=512 count=1 | openssl md5  >> /etc/ha.d/authkeys
-# chmod 0600 /etc/ha.d/authkeys
-
-将heartbeat服务加入到自动启动队列：
-# chkconfig --add heartbeat
-# chkconfig heartbeat on
-
-# /usr/share/heartbeat/ha_propagate
-
-
-
-####LVS & Heartbeat
-# yum -y --nogpgcheck localinstall libnet-1.1.4-3.el5.i386.rpm  
-# yum -y --nogpgcheck localinstall perl-MailTools-1.77-1.el5.noarch.rpm 
-# yum -y --nogpgcheck localinstall heartbeat-pils-2.1.4-10.el5.i386.rpm  
-# yum -y --nogpgcheck localinstall heartbeat-stonith-2.1.4-10.el5.i386.rpm 
-# yum -y --nogpgcheck localinstall heartbeat-gui-2.1.4-10.el5.i386.rpm
-# yum -y --nogpgcheck localinstall heartbeat-ldirectord-2.1.4-10.el5.i386.rpm
-# yum -y --nogpgcheck localinstall heartbeat-devel-2.1.4-10.el5.i386.rpm
-# yum -y --nogpgcheck localinstall heartbeat-2.1.4-10.el5.i386.rpm
-
-perl-Compress-Zlib
-perl-HTML-Parser
-perl-HTML-Tagset
-perl-URI
-perl-libwww-perl
-perl-MailTools
-perl-TimeDate
-perl-String-CRC32
-net-snmp-libs
-
-# cp -v /usr/share/doc/heartbeat-2.1.4/{ha.cf,authkeys,haresources} /etc/ha.d/
-# cp /usr/share/doc/heartbeat-ldirectord-2.1.4/ldirectord.cf /etc/ha.d/
-
-Director:
-eth0 , 192.168.0.209
-
-ifconfig eth0:1 $VIP broadcast $VIP netmask 255.255.255.255
-route add -host $VIP dev eth0:1
-
-ipvsadm -A -t $VIP:80 -s wrr
-ipvsadm -a -t $VIP:80 -r $RIP1 -w 5 -g
-ipvsadm -a -t $VIP:80 -r $RIP2 -w 50 -g
-
-RealServer
-
-iptables -t nat -F
-iptables -F
-
-ipvsadm -C
-
-ifdown lo
-ifup lo
-
-echo 1 > /proc/sys/net/ipv4/conf/lo/arp_ignore
-echo 2 > /proc/sys/net/ipv4/conf/lo/arp_announce
-echo 1 > /proc/sys/net/ipv4/conf/all/arp_ignore
-echo 2 > /proc/sys/net/ipv4/conf/all/arp_announce
- 
-ifconfig lo:0 $VIP broadcast $VIP netmask 255.255.255.255 up
-route add -host $VIP dev lo:0
-
-primary.mydomain.com 209.100.100.3/24/eth0/209.100.100.255 httpd
-
-heartbeat (HA), keepalived, ultramokey, openais/corosync
-
-RHCS:RedHat Cluster Suite, (openais/corosync), CRM
-
-pacemaker
-
-方法：
-heartbeat v1
-/etc/init.d/httpd
-CIF
-
-web
-
-IP：192.168.0.186
-
-primary:
-	IP:192.168.0.181
-	192.168.10.6
-	
-standby
-	192.168.0.182
-	192.168.10.7
-
-web
-
-/etc/ha.d/authkeys 该文件在两个版本作用是完全相同的，都必须设置，并且保证每个节点（node）内容一样；
-/etc/ha.d/ha.cf 这个是主要配置文件，由其决定v1或v2 style格式
-/etc/ha.d/haresources 这是v1的资源配置文件
-/var/lib/heartbeat/crm/cib.xml 这是v2的资源配置文件，两者根据ha.cf的设定只能选其一
-
-v2版本使用CRM管理工具，而cib.xml文件可有几种方式来编写：
-	a）人工编写XML文件；
-	b）使用admintools工具，其已经包含在heartbeat包中；
-	c）使用GUI图形工具配置，也包含在heartbeat-gui包里面；
-	d）使用python脚本转换1.x style的格式配置文件。
-
-# more /etc/ha.d/ha.cf
-#发送keepalive包的间隔时间
-keepalive 2
-#定义节点的失效时间
-deadtime 30
-#定义heartbeat服务启动后，等待外围其他设备（如网卡启动等）的等待时间
-initdead 30
-#使用udp端口694 进行心跳监测
-udpport 694
-#定义心跳
-bcast   eth0 eth1               # Linux
-#定义是否使用auto_failback功能
-auto_failback off
-#定义集群的节点
-node    hatest3
-node    hatest4
-#使用heartbeat提供的日志服务，若use_logd设置为yes后，下面的三个选项会失效
-use_logd yes
-#logfile /var/log/ha_log/ha-log.log
-#logfacility local7
-#debugfile /var/log/ha_log/ha-debug.log
-#设定一个监控网关，用于判断心跳是否正常
-ping 192.168.0.254
-deadping 5
-#指定和heartbeat一起启动、关闭的进程
-respawn hacluster /usr/local/lib64/heartbeat/ipfail
-apiauth ipfail gid=haclient uid=hacluster
-
-先停止heartbeat
-service heartbeat stop
-
-vim /etc/ha.d/ha.cf
-
-添加/启用如下选项：
-crm respawn
-#下面是对传输的数据进行压缩，是可选项
-compression     bz2
-compression_threshold 2
-
-转换v1.x为v2.x格式文件
-heartbeat提供了一个使用python写的转换工具，可直接转换v1 style的配置文件为v2 style：
-	# /usr/lib/heartbeat/haresources2cib.py /etc/ha.d/haresources
-	
-查看资源列表：
-crm_resource -L
-
-查看某资源在哪个节点上运行:
-# crm_resource -W -r
-
-查看节点运行状态信息：
-# crm_mon -1
-
-CRM:
-	heartbeat v1, haresources
-	crm
-		crm
-		pacemaker
-	
-heartbeat v2
-
-1、停止heartbeat：
-2、vim /etc/ha.d/ha.cf
-	crm respawn
-	
-3、
-# cd /usr/lib/heartbeat
-# ./haresources2cib.py  /etc/ha.d/haresources  
-	转换后的文件：/var/lib/heartbeat/crm/cib.xml
-mv /etc/ha.d/haresources /root
-
-# scp /var/lib/heartbeat/crm/cib.xml standby:/var/lib/heartbeat/crm
-
-4、启动heartbeat
-
-piranha, LVS
-
-pacemaker, heartbeat
-
-heartbeat2, heartbeat3
-
-/usr/lib/ocf/resource.d/heartbeat/IPaddr meta-data
-
-隔离
-级别：
-	节点级别
-		STONITH: Shoot The Other Node In The Head
-	资源级别
-		fencing
-
-active/active
-active/passive
-
-n/n-1
-n/m
-n/n
-
-HA:
-
-fencing
-	节点
-	资源
-	
-Message and Infrastructure Layer
-Membership, CCM
-Resource Allcation, CRM, LRM, CIB, PE, TE
-Resource Layer, RA           
-
-Linux: HA
-	Heartbeat(v1, v2, v3) (heartbeat, pacemaker, cluster-glue)
-	Keepalive
-	Ultramonkey
-	Corosync/openais + pacemaker
-	RHCS( heartbeat )
-
-Types of Resources
-
-Primitives
-A primitive resource, the most basic type of a resource.
-
-Groups
-Groups contain a set of resources that need to be located together, started sequentially and stopped in the reverse order.
-
-Clones
-Clones are resources that can be active on multiple hosts. Any resource can be cloned, provided the respective resource agent supports it.
-
-Masters
-Masters are a special type of clone resources, they can have multiple modes.
-
-
-
-
+##LVS持久连接
+无论使用算法，LVS持久都能实现在一定时间内，将来自同一个客户端请求派发至此前选定的RS。
+	持久连接模板(内存缓冲区)：
+		每一个客户端  及分配给它的RS的映射关系；
+	ipvsadm -A|E ... -p timeout:
+		timeout: 持久连接时长，默认300秒；单位是秒；
+	在基于SSL，需要用到持久连接；
+	PPC：将来自于同一个客户端对同一个集群服务的请求，始终定向至此前选定的RS；     持久端口连接
+	PCC：将来自于同一个客户端对所有端口的请求，始终定向至此前选定的RS；           持久客户端连接
+		把所有端口统统定义为集群服务，一律向RS转发；
+	PNMPP：持久防火墙标记连接
+#PPC
+[root@lvs lvs]# ipvsadm -E -t 192.168.1.200:80 -s wlc -p 600  #设置持久连接时间为600秒，这个是PPC持久端口连接
+[root@lvs lvs]# ipvsadm -L -n
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  192.168.1.200:80 wlc persistent 600
+  -> 192.168.1.197:80             Route   2      0          0         
+  -> 192.168.1.198:80             Route   1      0          0     
+#PCC
+[root@lvs lvs]# ipvsadm -A -t 192.168.1.200:0 -s rr -p 600
+[root@lvs lvs]# ipvsadm -a -t 192.168.1.200:0 -r 192.168.1.198 -g -w 2
+[root@lvs lvs]# ipvsadm -a -t 192.168.1.200:0 -r 192.168.1.197 -g -w 1
+[root@lvs lvs]# ipvsadm -L -n 
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  192.168.1.200:0 rr persistent 600
+  -> 192.168.1.197:0              Route   1      0          0         
+  -> 192.168.1.198:0              Route   2      0          0    
+#httpd2
+[root@httpd2 lvs_RS]# yum install telnet-server -y
+[root@httpd2 lvs_RS]# vim /etc/xinetd.d/telnet
+disable		= no
+[root@httpd2 lvs_RS]# /etc/init.d/xinetd start 
+正在启动 xinetd：                                          [确定]
+[root@httpd2 lvs_RS]# netstat -tunlp | grep 23
+tcp        0      0 :::23                       :::*                        LISTEN      6410/xinetd
+[root@httpd2 ~]# useradd hadoop
+[root@httpd2 ~]# passwd hadoop
+#httpd1
+[root@httpd1 ~]# vim /etc/xinetd.d/telnet 
+disable		= no
+[root@httpd1 ~]# service xinetd start 
+正在启动 xinetd：                                          [确定]
+[root@httpd1 ~]# netstat -tunlp | grep 23
+tcp        0      0 :::23                       :::*                        LISTEN      5636/xinetd         
+[root@httpd1 ~]# useradd hadoop
+[root@httpd1 ~]# passwd hadoop
+[root@lvs lvs]# ipvsadm -l -n -c
+IPVS connection entries
+pro expire state       source             virtual            destination
+TCP 08:34  NONE        192.168.1.101:0    192.168.1.200:0    192.168.1.197:0
+#经过实践证明，同一个客户端访问80和23端口都会被定向到同一台服务器，这个就是PCC持久客户端连接
+##防火墙标记
+[root@lvs lvs]# iptables -t mangle -A PREROUTING -d 192.168.1.200 -i eth0 -p tcp --dport 80 -j MARK --set-mark 8
+[root@lvs lvs]# iptables -t mangle -A PREROUTING -d 192.168.1.200 -i eth0 -p tcp --dport 23 -j MARK --set-mark 8
+#给80和23端口打上同一个防火墙标记8
+[root@lvs lvs]# ipvsadm -A -f 8 -s rr
+[root@lvs lvs]# ipvsadm -a -f 8 -r 192.168.1.198 -w 2 -g
+[root@lvs lvs]# ipvsadm -a -f 8 -r 192.168.1.197 -w 2 -g
+[root@lvs lvs]# ipvsadm -ln
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+FWM  8 rr
+  -> 192.168.1.197:0              Route   2      0          0         
+  -> 192.168.1.198:0              Route   2      0          0         
+#经过实践证明，同一个客户端访问80和23端口都会被定向到同一台服务器，这个就是防火墙标记将两个不相关的服务绑定在一起。
 
 
 </pre>
