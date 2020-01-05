@@ -667,6 +667,93 @@ status)
 ;;
 esac
 
+##RS健康状态检查脚本最终版：
+#!/bin/bash
+#
+VIP=192.168.1.200
+CPORT=80
+FAIL_BACK=127.0.0.1
+RS=("192.168.1.198" "192.168.1.197")
+declare -a RSSTATUS
+RW=("2" "1")
+RPORT=80
+TYPE=g
+CHKLOOP=3
+LOG=/var/log/ipvsmonitor.log
+
+addrs() {
+  ipvsadm -a -t $VIP:$CPORT -r $1:$RPORT -$TYPE -w $2
+  [ $? -eq 0 ] && return 0 || return 1
+}
+
+delrs() {
+  ipvsadm -d -t $VIP:$CPORT -r $1:$RPORT 
+  [ $? -eq 0 ] && return 0 || return 1
+}
+
+checkrs() {
+  local I=1
+  while [ $I -le $CHKLOOP ]; do 
+    if curl --connect-timeout 1 http://$1 &> /dev/null; then
+      return 0
+    fi
+    let I++
+  done
+  return 1
+}
+
+initstatus() {
+  local I
+  local COUNT=0;
+  for I in ${RS[*]}; do
+    if ipvsadm -L -n | grep "$I:$RPORT" &> /dev/null ; then
+      RSSTATUS[$COUNT]=1
+    else 
+      RSSTATUS[$COUNT]=0
+    fi
+  let COUNT++
+  done
+}
+
+checklvslist() {
+  /sbin/ipvsadm -ln | grep $1 &> /dev/null && return 0 || return 1
+}
+
+failback(){
+  local SUM=0
+  for n in ${RSSTATUS[*]} ; do
+    let SUM=$SUM+$n
+  done
+  if [[ $SUM -eq 0 ]] && `checklvslist $FAIL_BACK;[ $? -eq 1 ]` ;then
+    addrs $FAIL_BACK 1
+    [ $? -eq 0 ] &&  echo "`date +'%F %H:%M:%S'`, $FAIL_BACK is back." >> $LOG
+  elif [[ $SUM -ne 0 ]] && `checklvslist $FAIL_BACK;[ $? -eq 0 ]`; then
+    delrs $FAIL_BACK
+    [ $? -eq 0 ] &&  echo "`date +'%F %H:%M:%S'`, $FAIL_BACK is gone." >> $LOG
+  fi
+}
+
+initstatus
+while :; do
+  let COUNT=0
+  for I in ${RS[*]}; do
+    if checkrs $I; then
+      if [[ ${RSSTATUS[$COUNT]} -eq 0 ]] || [[ ${RSSTATUS[$COUNT]} -eq 1 ]] &&  `checklvslist $I;[ $? -eq 1 ]` ;then
+         addrs $I ${RW[$COUNT]}
+         [ $? -eq 0 ] && RSSTATUS[$COUNT]=1 && echo "`date +'%F %H:%M:%S'`, $I is back." >> $LOG
+      fi
+    else
+      if [[ ${RSSTATUS[$COUNT]} -eq 1 ]] || [[ ${RSSTATUS[$COUNT]} -eq 0 ]] &&  `checklvslist $I;[ $? -eq 0 ]`; then
+         delrs $I
+         [ $? -eq 0 ] && RSSTATUS[$COUNT]=0 && echo "`date +'%F %H:%M:%S'`, $I is gone." >> $LOG
+      fi
+    fi
+    let COUNT++
+  done 
+  failback
+  sleep 5
+done
+
 ##LVS持久连接
 无论使用算法，LVS持久都能实现在一定时间内，将来自同一个客户端请求派发至此前选定的RS。
 	持久连接模板(内存缓冲区)：
