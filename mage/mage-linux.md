@@ -1,4 +1,4 @@
-#Linux基础
+﻿#Linux基础
 <pre>
 man命令：
 1.用户命令
@@ -674,11 +674,96 @@ echo -e "\tWelcome to \033[31mMagEdu Team\033[0m Linux."
 [root@localhost sysroot]# sync 
 [root@localhost sysroot]# sync 
 
+#linux网络基础
+以太网：ethX
+ifconfig [ethX] 
+	-a: 显示所有接口的配置	
+ifconfig ethX IP/MASK [up|down] 
+	配置的地址立即生效，但重启网络服务或主机，都会失效；
+	
+网络服务：
+RHEL5:	/etc/init.d/network {start|stop|restart|status}
+RHEL6: /etc/init.d/NetworkManager {start|stop|restart|status}  #NETWORK_NM=no关闭掉此功能
 
+网关：
+route 
+	add: 添加
+		-host: 主机路由
+		-net：网络路由
+			-net 0.0.0.0
+	route add -net|-host DEST gw NEXTHOP
+	route add default gw NEXTHOP
+	del：删除
+		-host
+		-net 
+	route del -net 10.0.0.0/8 
+	route del -net 0.0.0.0
+	route del default
 
+	所做出的改动重启网络服务或主机后失效；
 
+查看：
+	route -n: 以数字方式显示各主机或端口等相关信息
 
+ip地址永久生效：
+	编辑/etc/sysconfig/network-scripts/ifcfg-eth0文件
+	DEVICE=eth0  #必须跟文件名后半部分一样
+	HWADDR=
+	ONBOOT={yes|no}
+	BOOTPROTO={static|none|dhcp|bootp}
+	IPADDR=
+	NETMASK=/PREFIX=
+	GATEWAY=
+	USERCTL={yes|no} #表示是否让普通用户控制启动
+	PEERDNS={yes|no} #是否允许使用dhcp的DNS服务器地址
+路由条目永久生效：
+	在/etc/sysconfig/network-scripts目录下新建route-ethx文件，编写路由条目并重启network服务而永久生效
+		network    via  gw  || network   dev  interface  || ADDRESS0=    NETMASK0=    GATEWAY0=  (这里的0要跟你接口相匹配)
+DNS永久生效：
+	/etc/resolv.conf文件内永久生效
+		nameserver 114.114.114.114 （注:当你的ip地址文件中以dhcp获取ip时，且PEERDNS=YES时不会生效，会被dhcp的DNS所覆盖，默认PEERDNS为yes）
 
+/etc/hosts 主机名文件，比DNS优先使用
+/etc/sysconfig/network  #主机名文件，REDHAT5
+	NETWORKING={yes|no}  #本地主机网络总开头
+	HOSTNAME=linuxhost  #主机名
+	GATEWAY=192.168.0.1  #总的默认网关，如果接口设置则以接口为准
+##新的ip管理包iproute2
+	ip
+		link: 网络接口属性
+		addr: 协议地址
+		route: 路由
+
+	link
+		show
+			ip -s link show
+		set
+			ip link set DEV {up|down}
+			
+	addr
+		add
+			ip addr add ADDRESS dev DEV
+		del
+			ip addr del ADDRESS dev DEV
+		show
+			ip addr show dev DEV to PREFIX
+		flush
+			ip addr flush dev DEV to PREFIX  #to 10/8
+一块网卡可以使用多个地址：
+网络设备可以别名：
+eth0
+	ethX:X, eth0:0, eth0:1, ...
+配置方法：
+	ifconfig ethX:X IP/NETMASK
+	/etc/sysconfig/network-scripts/ifcfg-ethX:X  #永久生效
+	DEVICE=ethX:X
+路由:
+route add -net 10.0.1.0/24 gw 192.168.100.6
+
+ip route add to 10.0.1.0/24 dev eth1 via 192.168.100.6
+	add, change, show, flush, replace
+
+tc命令叫流量控制
 
 
 
