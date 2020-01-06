@@ -683,7 +683,7 @@ ifconfig ethX IP/MASK [up|down]
 	
 网络服务：
 RHEL5:	/etc/init.d/network {start|stop|restart|status}
-RHEL6: /etc/init.d/NetworkManager {start|stop|restart|status}  #NETWORK_NM=no关闭掉此功能
+RHEL6: /etc/init.d/NetworkManager {start|stop|restart|status}  #NM_CONTROLLED=no关闭掉此功能
 
 网关：
 route 
