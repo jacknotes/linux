@@ -538,9 +538,6 @@ TCP  192.168.1.200:80 wlc
 
 数据包在由Direcotr发往Realserver时，只有目标MAC地址发生了改变(变成了Realserver的MAC地址)。Realserver在接收到数据包后会根据本地路由表将数据包路由至本地回环设备，接着，监听于本地回环设备VIP上的服务则对进来的数据库进行相应的处理，而后将处理结果回应至RIP，但数据包的原地址依然是VIP。
 
-ipvs的持久连接：
-无论基于什么样的算法，只要期望源于同一个客户端的请求都由同一台Realserver响应时，就需要用到持久连接。比如，某一用户连续打开了三个telnet连接请求时，根据RR算法，其请求很可能会被分配至不同的Realserver，这通常不符合使用要求。
-##DR模式脚本
 #Director脚本:
 #!/bin/bash
 #
@@ -610,9 +607,7 @@ status)
 esac
 
 
-
-RealServer脚本:
-
+#RealServer脚本:
 #!/bin/bash
 #
 # Script to start LVS DR real server.
@@ -755,6 +750,8 @@ while :; do
 done
 
 ##LVS持久连接
+无论基于什么样的算法，只要期望源于同一个客户端的请求都由同一台Realserver响应时，就需要用到持久连接。比如，某一用户连续打开了三个telnet连接请求时，根据RR算法，其请求很可能会被分配至不同的Realserver，这通常不符合使用要求。
+##DR模式脚本
 无论使用算法，LVS持久都能实现在一定时间内，将来自同一个客户端请求派发至此前选定的RS。
 	持久连接模板(内存缓冲区)：
 		每一个客户端  及分配给它的RS的映射关系；
