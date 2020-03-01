@@ -691,8 +691,20 @@ function F_NAME([variable])
 	statements
 }
 函数还可以使用return语句返回值，格式为“return value”。
-
-
+#常用例子，以nginx日志和网络状态为例：
+#nginx IP
+[root@jack ~]# awk '{count[$1]++} END {for (i in count) {print i,count[i]}}' access-2019-12-26-02\:00\:01.log | sort -t ' ' -k 2
+#nginx PV
+[root@jack ~]# awk '{count[$7]++} END{ for (i in count) {print i,count[i]}}' access-2019-12-26-02\:00\:01.log | sort -t ' ' -k 2
+#Network Status Statistic
+[root@localhost ~]# netstat -tan | awk '/^tcp/{count[$NF]++} END {for (i in count) {print i,count[i]}}'  
+TIME_WAIT 113
+FIN_WAIT1 2
+SYN_SENT 1
+FIN_WAIT2 23
+ESTABLISHED 649
+LAST_ACK 1
+LISTEN 6
 
 #echo
 echo -e "next\n" #意思是在引号内容中""引用回车键
