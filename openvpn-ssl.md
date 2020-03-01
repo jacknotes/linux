@@ -9,6 +9,7 @@ wget https://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
 （2）安装openvpn
 yum install openvpn -y
 （3）在github 上，下载最新的easy-rsa
+mkdir /download && cd /download
 wget https://github.com/OpenVPN/easy-rsa/archive/master.zip
 或者git clone https://github.com/OpenVPN/easy-rsa
 
@@ -31,8 +32,8 @@ set_var EASYRSA_REQ_OU          "My OpenVPN"
  初始化：./easyrsa init-pki   # 初始化
  创建根证书：./easyrsa build-ca  
 ---------------
-Enter New CA Key Passphrase:  #输入CA密码用做签发证书用
-Re-Enter New CA Key Passphrase:
+Enter New CA Key Passphrase:password  #输入CA密码用做签发证书用
+Re-Enter New CA Key Passphrase:password  #重新再输一次
 Common Name (eg: your user, host, or server name) [Easy-RSA CA]:myopenvpn.com  #设定通用名
 ---------------
  创建服务器端证书：./easyrsa gen-req server nopass
@@ -48,54 +49,56 @@ Enter pass phrase for /etc/openvpn/easy-rsa/easyrsa3/pki/private/ca.key:  #提�
 
 4、创建客户端证书
 进入root目录新建client文件夹，文件夹可随意命名，然后拷贝前面解压得到的easy-ras文件夹到client文件夹,进入下列目录：
-mkdir client
-cp -a /etc/openvpn/easy-rsa/ client/
-cd client/easy-rsa/easyrsa3/
-客户端初始化：./easyrsa init-pki    #需输入yes 确定
+mkdir /etc/openvpn/client -p
+cp -a /etc/openvpn/easy-rsa/ /etc/openvpn/client/
+cd /etc/openvpn/client/easy-rsa/easyrsa3/
+客户端初始化：./easyrsa init-pki    #需输入yes 确定，重新初始化pki目录
 创建客户端key及生成证书（记住生成是自己客户端登录输入的密码）：
  ./easyrsa gen-req along  #名字自己定义
 ----------------
 Enter PEM pass phrase:666666  #输入客户端登录时的密码，输入两次
-Verifying - Enter PEM pass phrase:
+Verifying - Enter PEM pass phrase:666666  #再输入一次
 Common Name (eg: your user, host, or server name) [along]:  #输入通用名，默认为along，前面设置过
 ----------------
 将客户端的along.req导入然后签约证书：
 a. 进入到/etc/openvpn/easy-rsa/easyrsa3/：
 cd /etc/openvpn/easy-rsa/easyrsa3/
 b. 导入req：
-./easyrsa import-req /root/client/easy-rsa/easyrsa3/pki/reqs/along.req along #ca导入客户端请求并命名为along
+./easyrsa import-req /etc/openvpn/client/easy-rsa/easyrsa3/pki/reqs/along.req along #ca导入客户端请求并命名为along
 c. 签约证书:
  ./easyrsa sign client along  #签署客户端请求并指定的请求名为along//这里生成client所以必须为client，along要与之前导入名字一致
 ------------------
 Confirm request details: yes
-Enter pass phrase for /etc/openvpn/easy-rsa/easyrsa3/pki/private/ca.key:jackli  #输入ca的密码
+Enter pass phrase for /etc/openvpn/easy-rsa/easyrsa3/pki/private/ca.key:  #输入ca的密码
 ------------------
 
 5、把服务器端必要文件放到etc/openvpn/ 目录下
 ca的证书、服务端的证书、秘钥，DH的公钥：
 cp /etc/openvpn/easy-rsa/easyrsa3/pki/ca.crt /etc/openvpn/ #把ca的证书放到/etc/openvpn/目录下
 cp /etc/openvpn/easy-rsa/easyrsa3/pki/private/server.key /etc/openvpn/ #把服务器的私钥放到/etc/openvpn/目录下
-cp /etc/openvpn//easy-rsa/easyrsa3/pki/issued/server.crt /etc/openvpn/ #把服务器的证书放到/etc/openvpn/目录下
+cp /etc/openvpn/easy-rsa/easyrsa3/pki/issued/server.crt /etc/openvpn/ #把服务器的证书放到/etc/openvpn/目录下
 cp /etc/openvpn/easy-rsa/easyrsa3/pki/dh.pem /etc/openvpn/ #把dh算法的密钥交换协议文件放到/etc/openvpn目录下
 
 6、把客户端必要文件放到root/openvpn/ 目录下
 客户端的证书、秘钥：
-cp /etc/openvpn/easy-rsa/easyrsa3/pki/ca.crt /root/client/ #把ca证书放到/root/client/ 目录下
-cp /etc/openvpn/easy-rsa/easyrsa3/pki/issued/along.crt /root/client/ #把客户端证书放到/root/client/ 目录下
-cp /root/client/easy-rsa/easyrsa3/pki/private/along.key /root/client #把客户端秘钥放到/root/client/ 目录下
+cp /etc/openvpn/easy-rsa/easyrsa3/pki/ca.crt /etc/openvpn/client/ #把ca证书放到/root/client/ 目录下
+cp /etc/openvpn/easy-rsa/easyrsa3/pki/issued/along.crt /etc/openvpn/client/ #把客户端证书放到/root/client/ 目录下
+cp /etc/openvpn/client/easy-rsa/easyrsa3/pki/private/along.key /etc/openvpn/client/#把客户端秘钥放到/root/client/ 目录下
 
 7、为服务端编写配置文件
-（1）当你安装好了openvpn时候，他会提供一个server配置的文件例子，在/usr/share/doc/openvpn-2.3.2/sample/sample-config-files 下会有一个server.conf文件，我们将这个文件复制到/etc/openvpn：
+（1）当你安装好了openvpn时候，他会提供一个server配置的文件例子，在cp /etc/openvpn/client/easy-rsa/easyrsa3/pki/private/along.key /etc/openvpn/client/ 下会有一个server.conf文件，我们将这个文件复制到/etc/openvpn：
 rpm -ql openvpn |grep server.conf
 --------------
-/usr/share/doc/openvpn-2.4.7/sample/sample-config-files/roadwarrior-server.conf
-/usr/share/doc/openvpn-2.4.7/sample/sample-config-files/server.conf
-/usr/share/doc/openvpn-2.4.7/sample/sample-config-files/xinetd-server-config
+/usr/share/doc/openvpn-2.4.8/sample/sample-config-files/roadwarrior-server.conf
+/usr/share/doc/openvpn-2.4.8/sample/sample-config-files/server.conf
+/usr/share/doc/openvpn-2.4.8/sample/sample-config-files/xinetd-server-config
 --------------
-cp /usr/share/doc/openvpn-2.4.7/sample/sample-config-files/server.conf /etc/openvpn/ 
+cp /usr/share/doc/openvpn-2.4.8/sample/sample-config-files/server.conf /etc/openvpn/
  （2）修改配置文件：
 [root@localhost easyrsa3]# vim /etc/openvpn/server.conf
 [root@localhost easyrsa3]# grep '^[^#|;]' /etc/openvpn/server.conf #编辑后的设置
+##############证书认证###############
+#server:
 local 0.0.0.0 #监听地址
 port 1194  #监听端口
 proto tcp  #监听协议
@@ -104,7 +107,7 @@ ca /etc/openvpn/ca.crt  #指定ca证书路径
 cert /etc/openvpn/server.crt  #指定服务器端证书路径
 key /etc/openvpn/server.key  #指定服务器端秘钥路径
 dh /etc/openvpn/dh.pem #指定dh算法密钥交换协议文件
-server 10.8.0.0 255.255.255.0 #设定客户端分配的地址池，不能与内网地址段一样
+server 172.31.254.0 255.255.255.0 #设定客户端分配的地址池，不能与内网地址段一样
 ifconfig-pool-persist ipp.txt
 push "redirect-gateway def1 bypass-dhcp" #设定给网关
 push "dhcp-option DNS 8.8.8.8"  #设定dhcp分配dns
@@ -116,25 +119,106 @@ user openvpn #用户
 group openvpn  #用户组
 persist-key
 persist-tun
-status /var/log/openvpn/openvpn-status.log #openvpn的状态日志路径
-log         /var/log/openvpn/openvpn.log #openvpn的日志路径
+status 	/var/log/openvpn/openvpn-status.log #openvpn的状态日志路径
+log     /var/log/openvpn/openvpn.log #openvpn的日志路径
 verb 3
+##############密码认证###############
+local 0.0.0.0 #监听地址
+port 1194  #监听端口
+proto tcp  #监听协议
+dev tun  #采用隧道模式
+ca /etc/openvpn/ca.crt  #指定ca证书路径
+cert /etc/openvpn/server.crt  #指定服务器端证书路径
+key /etc/openvpn/server.key  #指定服务器端秘钥路径
+dh /etc/openvpn/dh.pem #指定dh算法密钥交换协议文件
+server 172.31.254.0 255.255.255.0 #设定客户端分配的地址池，不能与内网地址段一样
+ifconfig-pool-persist ipp.txt
+push "redirect-gateway def1 bypass-dhcp" #设定给网关
+push "dhcp-option DNS 8.8.8.8"  #设定dhcp分配dns
+client-to-client #客户端之间互相通信
+keepalive 10 120 #存活时间，10秒ping一次，120秒如果未收到响应则视为断线
+comp-lzo #传输数据压缩
+max-clients 100 #最大客户端连接数
+user openvpn #用户
+group openvpn  #用户组
+persist-key
+persist-tun
+status 	/var/log/openvpn/openvpn-status.log #openvpn的状态日志路径
+log     /var/log/openvpn/openvpn.log #openvpn的日志路径
+verb 3
+auth-user-pass-verify /etc/openvpn/checkpsw.sh via-env  #开启密码认证文件路径 
+client-cert-not-required  #不需要客户端使用证书
+script-security 3  #脚本运行级别为3，这三个密码相关一定要开启，缺一不可
+###########checkpsw.sh脚本############
+#!/bin/sh
+PASSFILE="/etc/openvpn/test.key"  #用户认证帐号密码文件一行一个帐号和密码，如：test test
+LOG_FILE="/var/log/openvpn/test.key.log"
+TIME_STAMP=`date "+%Y-%m-%d %T"`
+if [ ! -r "${PASSFILE}" ]; then
+  echo "${TIME_STAMP}: Could not open password file \"${PASSFILE}\" for reading." >> ${LOG_FILE}
+  exit 1
+fi
+CORRECT_PASSWORD=`awk '!/^;/&&!/^#/&&$1=="'${username}'"{print $2;exit}' ${PASSFILE}`
+if [ "${CORRECT_PASSWORD}" = "" ]; then
+  echo "${TIME_STAMP}: User does not exist: username=\"${username}\", password=\"${password}\"." >> ${LOG_FILE}
+  exit 1
+fi
+if [ "${password}" = "${CORRECT_PASSWORD}" ]; then
+  echo "${TIME_STAMP}: Successful authentication: username=\"${username}\"." >> ${LOG_FILE}
+  exit 0
+fi
+echo "${TIME_STAMP}: Incorrect password: username=\"${username}\", password=\"${password}\"." >> ${LOG_FILE}
+exit 1
+####################################
 注：每个项目都会由一大堆介绍,上述修改，openvpn提供的server.conf已经全部提供，我们只需要去掉前面的注释#，然后修改我们自己的有关配置
 （3）配置后的设置：
-[root@localhost easyrsa3]# mkdir /var/log/openvpn
-[root@localhost easyrsa3]# chown -R openvpn.openvpn /var/log/openvpn/
+[root@localhost easyrsa3]# mkdir /var/log/openvpn -p
+[root@localhost easyrsa3]# chown -R openvpn.openvpn /var/log/openvpn/  #用户openvpn在安装openvpn软件时就已经自动创建
 [root@localhost easyrsa3]# chown -R openvpn.openvpn /etc/openvpn/
 
 8、iptables 设置nat 规则和打开路由转发
-[root@localhost easyrsa3]# iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -j MASQUERADE #设定防火墙，来自10.8.0.0/24的ip都转换为wan口上的ip
+[root@localhost easyrsa3]# iptables -t nat -A POSTROUTING -s 172.31.254.0/24 -j MASQUERADE #设定防火墙，来自172.31.254.0/24的ip都转换为wan口上的ip，172.31.254.0/24是vpn拨进来的虚拟Ip
 [root@along ~]# vim /etc/sysctl.conf //打开路由转发
 net.ipv4.ip_forward = 1
 [root@along ~]# sysctl -p
+###高级路由，需要设置###
+[root@openssl openvpn]# cat /etc/iproute2/rt_tables 
+#
+# reserved values
+#
+255	local
+254	main
+253	default
+0	unspec
+#
+# local
+#
+#1	inr.ruhep
+10 eth0table  #增加一张路由表，优先级为10，值越小越优先
+--增加策略路由
+[root@openssl openvpn]#/sbin/ip rule add to 192.168.0.0/16 table eth0table  #添加策略路由，指向eth0table路由表
+[root@openssl openvpn]# ip rule show 
+0:	from all lookup local 
+32765:	from all to 192.168.0.0/16 lookup eth0table   #添加一条策略路由后优先级为32765，值越小越优先
+32766:	from all lookup main 
+32767:	from all lookup default
+--设置路由表
+[root@openssl openvpn]#/sbin/ip route add default via 192.168.1.254 table eth0table  #设置et0table路由表，所有进来的路由都指向网关
+[root@openssl openvpn]# ip route show table eth0table
+default via 192.168.1.254 dev eth0 
+##################
 
 9、开启openvpn 服务
 [root@localhost easyrsa3]# openvpn /etc/openvpn/server.conf  & #开启服务
 [root@localhost easyrsa3]# ss -tnlu | grep 1194  #检查服务是否启动
 tcp    LISTEN     0      1                      *:1194                  *:*
+
+##设置服务端开机自启动
+[root@openssl openvpn]# grep '^[^#]' /etc/rc.local 
+touch /var/lock/subsys/local
+/sbin/ip rule add to 192.168.0.0/16 table eth0table
+/sbin/ip route add default via 192.168.1.254 table eth0table
+/usr/sbin/openvpn /etc/openvpn/.server.conf &
 
 
 三、客户端连接openvpn
@@ -142,11 +226,12 @@ tcp    LISTEN     0      1                      *:1194                  *:*
 Windows客户端下载： https://swupdate.openvpn.org/community/releases/openvpn-install-2.4.7-I603.exe
 在windows客户端上安装.exe安装包，在C:\Program Files\OpenVPN\sample-config目录下找到client.ovpn文件，这个是客户端配置文件，在linux下编辑更改
 2、[root@smb-server ~]# grep '^[^#|;]' /Share/Info/linux/client.ovpn  #在linux下编辑更改配置如下
--------------
+-------------证书认证------------
+#client:
 client
 dev tun
 proto tcp
-remote 172.16.1.1 1194
+remote 180.168.251.182 1194
 resolv-retry infinite
 nobind
 persist-key
@@ -154,9 +239,25 @@ persist-tun
 ca ca.crt
 cert client.crt
 key client.key
+;auth-user-pass
+cipher AES-256-CBC
 comp-lzo
 verb 3
--------------
+-------------密码认证------------
+client
+dev tun
+proto tcp
+remote 180.168.251.182 1194
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+ca ca.crt
+auth-user-pass  #开启密码认证
+cipher AES-256-CBC
+comp-lzo
+verb 3
+--------------------------------
 3、把服务器端的证书文件复制到C:\Program Files\OpenVPN\config目录下
 ca.crt along.crt along.key #这三个文件，在/root/client/目录下有这三个文件，并把along.crt和along.key改名为client.crt和client.key，因为你的openvpn客户端配置文件已经注明公私钥名称
 4、启动客户端
