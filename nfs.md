@@ -4,16 +4,16 @@ nfs服务端：
 1，使用yum -y install nfs-utils rpcbind    #因为centos7自带了rpcbind，所以不用安装rpc服务，rpc监听在111端口，可以使用ss -tnulp | grep 111查看rpc服务是否自动启动，如果没有启动，就systemctl start rpcbind 启动rpc服务。rpc在nfs服务器搭建过程中至关重要，因为rpc能够获得nfs服务器端的端口号等信息，nfs客户器端通过rpc获得这些信息后才能连接nfs服务器端。
 2，使用 rpm -qa | grep nfs-utils || rpcbind 查看是否安装成功，
 3，编辑/etc/exports ，添加以下内容           
-/data    192.168.1.0/24(rw,async,no_root_squash)  #no_root_squash为允许root用户使用
+/nfs    192.168.1.0/24(rw,async,no_root_squash)  #no_root_squash为允许root用户使用
 或   
-/data    192.168.1.1(rw,async)
-/data    192.168.1.2(rw,async)
+/nfs    192.168.1.1(rw,async)
+/nfs    192.168.1.2(rw,async)
 或   
-/data 192.168.248.0/24(rw,sync,fsid=0)
+/nfs 192.168.248.0/24(rw,sync,fsid=0)
 或   
-/data 192.168.248.*(rw,sync,fsid=0)
+/nfs 192.168.248.*(rw,sync,fsid=0)
 同192.168.248.0/24一个网络号的主机可以挂载NFS服务器上的/home/nfs/目录到自己的文件系统中
-rw表示可读写；sync表示同步写，fsid=0表示将/data这个目录包装成根目录
+rw表示可读写；async表示同步写，fsid=0表示将/data这个目录包装成根目录
 4,启动服务:
 启动rpcbind服务:systemctl start rpcbind ,启动后 使用systemctl status rpcbind 查看
 开机启动rpcbind服务:systemctl enable rpcbind 
