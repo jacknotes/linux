@@ -4,3 +4,4 @@ base:
 prod:
   'node*':
     - docker.docker
+    - redis-cluster.redis
