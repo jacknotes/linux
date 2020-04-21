@@ -932,9 +932,9 @@ appendfsync always   #同步持久化，每次发生数据变更会被立即记�
 appendfsync everysec #折中方案,异步操作，每秒记录，如果一秒钟内宕机，有数据丢失 
 appendfilename "appendonly.aof" #设定aof文件名,默认路径是在之前设置的路径dir /var/rdb/下
 appendfsync no      #将缓存回写的策略交给系统，linux 默认是30秒将缓冲区的数据回写硬盘的 
-no-appendfsync-on-rewrite  yes: #表示是否在手动重写aof操作时不同步自动aof写入，为yes,则其他线程的数据放内存里,合并写入(速度快,容易丢失的多)，为no安全，只是io会上升，但数据不易丢失
-auto-aof-rewrite-percentage 100 #aof文件大小比起上次重写时的大小,增长率100%时,重写
-auto-aof-rewrite-min-size 64mb #aof文件,至少超过64M时,重写
+no-appendfsync-on-rewrite  yes: #表示是否在手动重写aof操作时不自动同步aof写入，为yes表示其他线程的数据放内存里,合并写入(速度快,容易丢失的多)，为no安全，只是io会上升，但数据不易丢失
+auto-aof-rewrite-percentage 100 #aof文件大小比起上次重写时的大小,增长率100%时,自动重写
+auto-aof-rewrite-min-size 64mb #aof文件,至少超过64M时,自动重写
 #[root@lnmp rdb]# egrep -v '#|^$' /usr/local/redis/redis.conf
 appendonly yes
 appendfsync everysec
@@ -943,7 +943,7 @@ no-appendfsync-on-rewrite  yes
 auto-aof-rewrite-percentage 100
 auto-aof-rewrite-min-size 32mb
 #aof重写:把记录redis-cli中的每个命令记入到aof文件时的命令重写成一条命令.
-#注:现在我设置的是当appendonly.aof文件大于32M时就重写,这个场景会在用户一直接操作redis生成命令,aof会记录每条命令到aof日志当中,此aof日志文件会不断变大,当达到32M时就会重写,最后会变成几M大小不等,这个就是重写的效果
+#注:现在我设置的是当appendonly.aof文件大于32M时就重写,这个场景会在用户直接操作redis生成命令,aof会记录每条命令到aof日志当中,此aof日志文件会不断变大,当达到32M时就会重写,最后会变成几M大小不等,这个就是重写的效果
 bgrewriteaof  #在redis-cli中手动命令aof日志文件重写
 
 问: 2种是否可以同时用?
@@ -955,8 +955,7 @@ bgrewriteaof  #在redis-cli中手动命令aof日志文件重写
 注: 在aof手动重写过程中,aof如果停止同步,会不会丢失?
 答: 如果redis服务down掉后则会丢失,因为aof缓存在内存的队列里
 注: aof重写是指什么?
-答: aof重写是指把内存中的数据,逆化成命令,写入到.aof日志里.
-以解决 aof日志过大的问题.
+答: aof重写是指把内存中的数据,逆化成命令,写入到.aof格式文件日志里以解决 aof日志过大的问题
 
 #redis集群
 #主从复制架构1
@@ -1219,7 +1218,7 @@ Background append only file rewriting started
 -rw-r--r-- 1 root root 207 Jul 16 22:45 dump.rdb
 127.0.0.1:6379> save  #在当前进程手动执行rdb快照生成
 OK
-127.0.0.1:6379> lastsave
+127.0.0.1:6379> lastsave  #最后一次保存的时间
 (integer) 1563289039
 [root@lnmp 6379]# ll
 -rw-r--r-- 1 root root 239 Jul 16 22:57 dump.rdb
@@ -1277,7 +1276,10 @@ www.mumuso.com  #删除后面的flushall段并保存退出
 127.0.0.1:6379> get www
 "www.mumuso.com"
 #rdb服务器间迁移：
-[root@lnmp 6379]# cp dump.rdb ../6381/  #复制rdb到另外一个redisServer上，名称为dump.rdb
+[root@lnmp 6379]# bgrewriteaof
+[root@lnmp 6379]# shutdown save 
+[root@lnmp 6379]# cp dump.rdb ../6381/ #复制rdb到另外一个redisServer上，名称为dump.rdb
+[root@lnmp 6379]# cp appendonly.aof ../6381/   
 [root@lnmp ~]# redis-server /usr/local/redis/redis6381.conf #让另外一台redisServer载入rdb，事前必须先在服务器设置好dir目录，此目录包含rdb和aof文件 
 [root@lnmp ~]# redis-cli -p 6381  #连接另外一个redisServer
 127.0.0.1:6381> keys *   #已经恢复
@@ -1517,7 +1519,7 @@ hz 10
 dynamic-hz yes
 aof-rewrite-incremental-fsync yes
 rdb-save-incremental-fsync yes
-#这下面3行每个实例都要配置一样，唯一不是集群配置文件名称不能一样
+#这下面3行每个实例都要配置一样，唯一是集群配置文件名称不能一样
 cluster-enabled yes
 cluster-node-timeout 15000
 cluster-config-file "node-6379.conf"  #此文件自动生成不需要手动创建
@@ -1602,7 +1604,7 @@ S: 9fdc0ccf2ab5427bba92f694efb43e718f8d2208 127.0.0.1:6383
 127.0.0.1:6380 (d49674ba...) -> 0 keys | 5462 slots | 1 slaves.
 [OK] 0 keys in 3 masters.
 0.00 keys per slot on average.
-[root@localhost master_slave]# redis-cli -c -p 127.0.0.1 -p 6381 #-c为进入集群模式，连接master 6381进行设置key看下
+[root@localhost master_slave]# redis-cli -c -h 127.0.0.1 -p 6381 #-c为进入集群模式，连接master 6381进行设置key看下
 127.0.0.1:6381> info replication
 # Replication
 role:master
@@ -1621,7 +1623,7 @@ repl_backlog_histlen:1568
 127.0.0.1:6381> set jack 25
 -> Redirected to slot [7830] located at 127.0.0.1:6380
 OK
-[root@localhost ~]# redis-cli -c -h 127.0.0.1 -p 6384 #6384是6383的从，下面可以看到已经同步
+[root@localhost ~]# redis-cli -c -h 127.0.0.1 -p 6384 #6384是6381的从，下面可以看到已经同步
 127.0.0.1:6384> keys *
 1) "jack"
 ##添加一个新节点到已存储的集群中
@@ -1895,7 +1897,7 @@ S: 9fdc0ccf2ab5427bba92f694efb43e718f8d2208 127.0.0.1:6383
 >>> Check slots coverage...
 [OK] All 16384 slots covered.
 #模拟master故障
-[root@localhost master_slave]# redis-cli -c -p 127.0.0.1 -p 6390 #6390有key，这里模拟6390 master故障
+[root@localhost master_slave]# redis-cli -c -h 127.0.0.1 -p 6390 #6390有key，这里模拟6390 master故障
 127.0.0.1:6390> keys *
 1) "cluster"
 #从集群信息中可看出6391，6382是6390的slave，看slave是否自动升级为master
@@ -1915,7 +1917,7 @@ tcp        0      0 0.0.0.0:16383           0.0.0.0:*               LISTEN      
 tcp        0      0 0.0.0.0:16384           0.0.0.0:*               LISTEN      6083/redis-server 0 
 tcp        0      0 0.0.0.0:16390           0.0.0.0:*               LISTEN      7591/redis-server 0 
 [root@localhost master_slave]# kill -9 7591 #模拟杀死6390 master
-[root@localhost master_slave]# redis-cli --cluster check 127.0.0.1:6379 #经过一段时间，6382和6391竞争赢了，从而成为新的master
+[root@localhost master_slave]# redis-cli --cluster check 127.0.0.1:6379 #经过一段时间，6382竞争赢了6391，从而成为新的master
 Could not connect to Redis at 127.0.0.1:6390: Connection refused
 127.0.0.1:6379 (bc9b7cd5...) -> 0 keys | 5120 slots | 1 slaves.
 127.0.0.1:6380 (d49674ba...) -> 2 keys | 5120 slots | 1 slaves.
@@ -1945,7 +1947,7 @@ S: 9fdc0ccf2ab5427bba92f694efb43e718f8d2208 127.0.0.1:6383
 >>> Check for open slots...
 >>> Check slots coverage...
 [OK] All 16384 slots covered.
-[root@localhost master_slave]# redis-cli -c -p 127.0.0.1 -p 6382 #连接6382，数据依然存在
+[root@localhost master_slave]# redis-cli -c -h 127.0.0.1 -p 6382 #连接6382，数据依然存在
 127.0.0.1:6382> keys *
 1) "cluster"
 #重新平衡slot
