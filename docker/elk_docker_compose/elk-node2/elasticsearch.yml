@@ -1,0 +1,3 @@
+network.host: 0.0.0.0
+http.cors.enabled: true      # 设置跨域，主要用于head插件访问es
+http.cors.allow-origin: "*"  # 允许所有域名访问

@@ -1,0 +1,54 @@
+version: '3'
+services:
+  elasticsearch:                    # 服务名称
+    image: elasticsearch:7.1.1      # 使用的镜像
+    container_name: elasticsearch7.1.1   # 容器名称
+    restart: always                 # 失败自动重启策略
+    environment:                                    
+      - node.name=node-202                   # 节点名称，集群模式下每个节点名称唯一
+      - network.publish_host=192.168.43.202  # 用于集群内各机器间通信,其他机器访问本机器的es服务
+      - network.host=0.0.0.0                # 设置绑定的ip地址，可以是ipv4或ipv6的，默认为0.0.0.0，
+      - discovery.seed_hosts=192.168.43.204,192.168.43.201,192.168.43.202          # es7.x 之后新增的配置，写入候选主节点的设备地址，在开启服务后可以被选为主节点
+      - cluster.initial_master_nodes=192.168.43.204,192.168.43.201,192.168.43.202 # es7.x 之后新增的配置，初始化一个新的集群时需要此配置来选举master
+      - cluster.name=es-cluster     # 集群名称，相同名称为一个集群
+      - bootstrap.memory_lock=true  # 内存交换的选项，官网建议为true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"    # 设置内存
+    ulimits:             
+      memlock:
+        soft: -1      
+        hard: -1
+    volumes:
+      - /data/elk/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml  # 将容器中es的配置文件映射到本地，设置跨域， 否则head插件无法连接该节点
+      - esdata:/usr/share/elasticsearch/data  # 存放数据的文件， 注意：这里的esdata为 顶级volumes下的一项。
+    ports:
+      - 9200:9200    # http端口
+      - 9300:9300    # es节点直接交互的端口，非http
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.1.1
+    container_name: kibana7.1.1
+    environment:
+      - elasticsearch.hosts=http://elasticsearch:9200  #设置连接的es节点
+    hostname: kibana
+    depends_on:
+      - elasticsearch   #依赖es服务，会先启动es容器在启动kibana
+    restart: always
+    volumes:
+      - /data/elk/kibana.yml:/usr/share/kibana/config/kibana.yml
+    ports:
+      - 5601:5601 #对外访问端口
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.1.1
+    container_name: logstash7.1.1
+    hostname: logstash
+    restart: always
+    volumes:
+      - /data/elk/test_port.conf:/usr/share/logstash/pipeline/test_port.conf
+    depends_on:
+      - elasticsearch
+    ports:
+      - 6666:6666         # 这两个端口， 我进行测试其他功能用的，在本文中不用配置问题应该也不大。
+      - 9600:9600
+      - 5044:5044        #从filebeat读取消息输出到logstash
+volumes:
+  esdata:
+    driver: local  
