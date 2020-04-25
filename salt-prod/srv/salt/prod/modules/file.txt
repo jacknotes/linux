@@ -1,0 +1,1339 @@
+node1:
+----------
+          ID: /etc/resolv.conf
+    Function: file.managed
+      Result: True
+     Comment: File /etc/resolv.conf is in the correct state
+     Started: 18:56:20.636309
+    Duration: 68.566 ms
+     Changes:   
+----------
+          ID: /etc/profile
+    Function: file.append
+      Result: True
+     Comment: File /etc/profile is in correct state
+     Started: 18:56:20.705258
+    Duration: 18.052 ms
+     Changes:   
+----------
+          ID: /etc/profile.d/audit.sh
+    Function: file.append
+      Result: True
+     Comment: File /etc/profile.d/audit.sh is in correct state
+     Started: 18:56:20.723693
+    Duration: 9.183 ms
+     Changes:   
+----------
+          ID: net.ipv4.ip_local_port_range
+    Function: sysctl.present
+      Result: True
+     Comment: Sysctl value net.ipv4.ip_local_port_range = 10000 65000 is already set
+     Started: 18:56:20.736454
+    Duration: 40.02 ms
+     Changes:   
+----------
+          ID: fs.file-max
+    Function: sysctl.present
+      Result: True
+     Comment: Sysctl value fs.file-max = 2000000 is already set
+     Started: 18:56:20.776820
+    Duration: 10.064 ms
+     Changes:   
+----------
+          ID: net.ipv4.ip_forward
+    Function: sysctl.present
+      Result: True
+     Comment: Sysctl value net.ipv4.ip_forward = 1 is already set
+     Started: 18:56:20.787510
+    Duration: 22.432 ms
+     Changes:   
+----------
+          ID: vm.swappiness
+    Function: sysctl.present
+      Result: True
+     Comment: Sysctl value vm.swappiness = 0 is already set
+     Started: 18:56:20.810584
+    Duration: 15.892 ms
+     Changes:   
+----------
+          ID: /etc/yum.repos.d/epel.repo
+    Function: file.managed
+      Result: True
+     Comment: File /etc/yum.repos.d/epel.repo is in the correct state
+     Started: 18:56:20.827108
+    Duration: 18.485 ms
+     Changes:   
+----------
+          ID: /etc/yum.repos.d/Centos-7.repo
+    Function: file.managed
+      Result: True
+     Comment: File /etc/yum.repos.d/Centos-7.repo is in the correct state
+     Started: 18:56:20.845986
+    Duration: 17.414 ms
+     Changes:   
+----------
+          ID: /etc/yum.repos.d/salt-py3-CentOS7.repo
+    Function: file.managed
+      Result: True
+     Comment: File /etc/yum.repos.d/salt-py3-CentOS7.repo is in the correct state
+     Started: 18:56:20.863709
+    Duration: 15.353 ms
+     Changes:   
+----------
+          ID: /etc/yum.repos.d/zabbix.repo
+    Function: file.managed
+      Result: True
+     Comment: File /etc/yum.repos.d/zabbix.repo is in the correct state
+     Started: 18:56:20.879393
+    Duration: 17.09 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: gcc
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:29.921176
+    Duration: 1163.538 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: glibc
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:31.084983
+    Duration: 22.935 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: gcc-c++
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:31.108091
+    Duration: 22.407 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: pcre-devel
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:31.130654
+    Duration: 34.554 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: openssl-devel
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:31.165379
+    Duration: 23.019 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: net-tools
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:31.188593
+    Duration: 25.117 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: tree
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:31.213880
+    Duration: 25.739 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: iproute
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:31.239848
+    Duration: 31.592 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: nmap-ncat
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:31.271737
+    Duration: 26.047 ms
+     Changes:   
+----------
+          ID: zabbix-agent
+    Function: pkg.installed
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:31.297960
+    Duration: 22.258 ms
+     Changes:   
+----------
+          ID: zabbix-agent
+    Function: file.managed
+        Name: /etc/zabbix/zabbix_agentd.conf
+      Result: True
+     Comment: File /etc/zabbix/zabbix_agentd.conf is in the correct state
+     Started: 18:56:31.320894
+    Duration: 15.202 ms
+     Changes:   
+----------
+          ID: zabbix_agentd.d
+    Function: file.directory
+        Name: /etc/zabbix/zabbix_agentd.d
+      Result: True
+     Comment: The directory /etc/zabbix/zabbix_agentd.d is in the correct state
+     Started: 18:56:31.345133
+    Duration: 1.029 ms
+     Changes:   
+----------
+          ID: zabbix-agent
+    Function: service.running
+      Result: True
+     Comment: The service zabbix-agent is already running
+     Started: 18:56:31.346564
+    Duration: 30.96 ms
+     Changes:   
+----------
+          ID: /etc/yum.repos.d/docker-ce.repo
+    Function: file.managed
+      Result: True
+     Comment: File /etc/yum.repos.d/docker-ce.repo is in the correct state
+     Started: 18:56:31.377790
+    Duration: 12.768 ms
+     Changes:   
+----------
+          ID: docker-ce
+    Function: cmd.run
+        Name: yum install -y yum-utils device-mapper-persistent-data lvm2 container-selinux
+      Result: True
+     Comment: unless condition is true
+     Started: 18:56:31.392604
+    Duration: 614.539 ms
+     Changes:   
+----------
+          ID: docker-ce
+    Function: pkg.installed
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:32.008879
+    Duration: 24.453 ms
+     Changes:   
+----------
+          ID: /etc/docker
+    Function: file.directory
+      Result: True
+     Comment: The directory /etc/docker is in the correct state
+     Started: 18:56:32.034875
+    Duration: 1.038 ms
+     Changes:   
+----------
+          ID: /etc/docker/daemon.json
+    Function: file.managed
+      Result: True
+     Comment: File /etc/docker/daemon.json is in the correct state
+     Started: 18:56:32.036252
+    Duration: 13.481 ms
+     Changes:   
+----------
+          ID: docker-ce
+    Function: service.running
+        Name: docker
+      Result: True
+     Comment: The service docker is already running
+     Started: 18:56:32.050268
+    Duration: 32.357 ms
+     Changes:   
+----------
+          ID: /usr/local/bin/docker-compose
+    Function: file.managed
+      Result: True
+     Comment: File /usr/local/bin/docker-compose is in the correct state
+     Started: 18:56:32.083283
+    Duration: 237.758 ms
+     Changes:   
+----------
+          ID: /etc/security/limits.conf
+    Function: file.managed
+      Result: True
+     Comment: File /etc/security/limits.conf is in the correct state
+     Started: 18:56:32.321274
+    Duration: 11.829 ms
+     Changes:   
+----------
+          ID: reload_sysctl.conf
+    Function: cmd.run
+        Name: echo "vm.max_map_count=262144" >> /etc/sysctl.conf && sysctl -p
+      Result: True
+     Comment: unless condition is true
+     Started: 18:56:32.333262
+    Duration: 8.445 ms
+     Changes:   
+
+Summary for node1
+-------------
+Succeeded: 33
+Failed:     0
+-------------
+Total states run:     33
+Total run time:    2.654 s
+node3:
+----------
+          ID: /etc/resolv.conf
+    Function: file.managed
+      Result: True
+     Comment: File /etc/resolv.conf is in the correct state
+     Started: 18:56:20.539333
+    Duration: 67.872 ms
+     Changes:   
+----------
+          ID: /etc/profile
+    Function: file.append
+      Result: True
+     Comment: File /etc/profile is in correct state
+     Started: 18:56:20.607439
+    Duration: 12.114 ms
+     Changes:   
+----------
+          ID: /etc/profile.d/audit.sh
+    Function: file.append
+      Result: True
+     Comment: File /etc/profile.d/audit.sh is in correct state
+     Started: 18:56:20.619855
+    Duration: 9.901 ms
+     Changes:   
+----------
+          ID: net.ipv4.ip_local_port_range
+    Function: sysctl.present
+      Result: True
+     Comment: Sysctl value net.ipv4.ip_local_port_range = 10000 65000 is already set
+     Started: 18:56:20.634051
+    Duration: 28.474 ms
+     Changes:   
+----------
+          ID: fs.file-max
+    Function: sysctl.present
+      Result: True
+     Comment: Sysctl value fs.file-max = 2000000 is already set
+     Started: 18:56:20.663048
+    Duration: 12.907 ms
+     Changes:   
+----------
+          ID: net.ipv4.ip_forward
+    Function: sysctl.present
+      Result: True
+     Comment: Sysctl value net.ipv4.ip_forward = 1 is already set
+     Started: 18:56:20.676486
+    Duration: 18.618 ms
+     Changes:   
+----------
+          ID: vm.swappiness
+    Function: sysctl.present
+      Result: True
+     Comment: Sysctl value vm.swappiness = 0 is already set
+     Started: 18:56:20.695624
+    Duration: 17.208 ms
+     Changes:   
+----------
+          ID: /etc/yum.repos.d/epel.repo
+    Function: file.managed
+      Result: True
+     Comment: File /etc/yum.repos.d/epel.repo is in the correct state
+     Started: 18:56:20.713394
+    Duration: 28.222 ms
+     Changes:   
+----------
+          ID: /etc/yum.repos.d/Centos-7.repo
+    Function: file.managed
+      Result: True
+     Comment: File /etc/yum.repos.d/Centos-7.repo is in the correct state
+     Started: 18:56:20.742030
+    Duration: 24.045 ms
+     Changes:   
+----------
+          ID: /etc/yum.repos.d/salt-py3-CentOS7.repo
+    Function: file.managed
+      Result: True
+     Comment: File /etc/yum.repos.d/salt-py3-CentOS7.repo is in the correct state
+     Started: 18:56:20.766387
+    Duration: 20.057 ms
+     Changes:   
+----------
+          ID: /etc/yum.repos.d/zabbix.repo
+    Function: file.managed
+      Result: True
+     Comment: File /etc/yum.repos.d/zabbix.repo is in the correct state
+     Started: 18:56:20.786744
+    Duration: 18.325 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: gcc
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:29.846092
+    Duration: 1092.338 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: glibc
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:30.938648
+    Duration: 34.768 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: gcc-c++
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:30.973693
+    Duration: 24.64 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: pcre-devel
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:30.998525
+    Duration: 25.064 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: openssl-devel
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:31.023758
+    Duration: 24.166 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: net-tools
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:31.048094
+    Duration: 24.668 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: tree
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:31.072939
+    Duration: 24.101 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: iproute
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:31.097206
+    Duration: 24.109 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: nmap-ncat
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:31.121494
+    Duration: 51.096 ms
+     Changes:   
+----------
+          ID: zabbix-agent
+    Function: pkg.installed
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:31.172771
+    Duration: 24.69 ms
+     Changes:   
+----------
+          ID: zabbix-agent
+    Function: file.managed
+        Name: /etc/zabbix/zabbix_agentd.conf
+      Result: True
+     Comment: File /etc/zabbix/zabbix_agentd.conf is in the correct state
+     Started: 18:56:31.198315
+    Duration: 15.659 ms
+     Changes:   
+----------
+          ID: zabbix_agentd.d
+    Function: file.directory
+        Name: /etc/zabbix/zabbix_agentd.d
+      Result: True
+     Comment: The directory /etc/zabbix/zabbix_agentd.d is in the correct state
+     Started: 18:56:31.216306
+    Duration: 1.085 ms
+     Changes:   
+----------
+          ID: zabbix-agent
+    Function: service.running
+      Result: True
+     Comment: The service zabbix-agent is already running
+     Started: 18:56:31.217986
+    Duration: 27.797 ms
+     Changes:   
+----------
+          ID: /etc/yum.repos.d/docker-ce.repo
+    Function: file.managed
+      Result: True
+     Comment: File /etc/yum.repos.d/docker-ce.repo is in the correct state
+     Started: 18:56:31.246085
+    Duration: 13.589 ms
+     Changes:   
+----------
+          ID: docker-ce
+    Function: cmd.run
+        Name: yum install -y yum-utils device-mapper-persistent-data lvm2 container-selinux
+      Result: True
+     Comment: unless condition is true
+     Started: 18:56:31.261277
+    Duration: 741.313 ms
+     Changes:   
+----------
+          ID: docker-ce
+    Function: pkg.installed
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:32.003936
+    Duration: 27.914 ms
+     Changes:   
+----------
+          ID: /etc/docker
+    Function: file.directory
+      Result: True
+     Comment: The directory /etc/docker is in the correct state
+     Started: 18:56:32.033733
+    Duration: 0.931 ms
+     Changes:   
+----------
+          ID: /etc/docker/daemon.json
+    Function: file.managed
+      Result: True
+     Comment: File /etc/docker/daemon.json is in the correct state
+     Started: 18:56:32.035062
+    Duration: 12.167 ms
+     Changes:   
+----------
+          ID: docker-ce
+    Function: service.running
+        Name: docker
+      Result: True
+     Comment: The service docker is already running
+     Started: 18:56:32.047910
+    Duration: 30.777 ms
+     Changes:   
+----------
+          ID: /usr/local/bin/docker-compose
+    Function: file.managed
+      Result: True
+     Comment: File /usr/local/bin/docker-compose is in the correct state
+     Started: 18:56:32.079150
+    Duration: 259.159 ms
+     Changes:   
+----------
+          ID: /etc/security/limits.conf
+    Function: file.managed
+      Result: True
+     Comment: File /etc/security/limits.conf is in the correct state
+     Started: 18:56:32.338500
+    Duration: 12.778 ms
+     Changes:   
+----------
+          ID: reload_sysctl.conf
+    Function: cmd.run
+        Name: echo "vm.max_map_count=262144" >> /etc/sysctl.conf && sysctl -p
+      Result: True
+     Comment: unless condition is true
+     Started: 18:56:32.351476
+    Duration: 10.266 ms
+     Changes:   
+----------
+          ID: hosts
+    Function: file.managed
+        Name: /etc/hosts
+      Result: True
+     Comment: File /etc/hosts is in the correct state
+     Started: 18:56:32.362066
+    Duration: 17.782 ms
+     Changes:   
+----------
+          ID: rabbitmq-erlang.repo
+    Function: file.managed
+        Name: /etc/yum.repos.d/rabbitmq-erlang.repo
+      Result: True
+     Comment: File /etc/yum.repos.d/rabbitmq-erlang.repo is in the correct state
+     Started: 18:56:32.380015
+    Duration: 12.131 ms
+     Changes:   
+----------
+          ID: rabbitmq.repo
+    Function: file.managed
+        Name: /etc/yum.repos.d/rabbitmq.repo
+      Result: True
+     Comment: File /etc/yum.repos.d/rabbitmq.repo is in the correct state
+     Started: 18:56:32.392324
+    Duration: 14.061 ms
+     Changes:   
+----------
+          ID: erlang-install
+    Function: cmd.run
+        Name: yum clean metadata
+      Result: True
+     Comment: Command "yum clean metadata" run
+     Started: 18:56:32.406579
+    Duration: 320.769 ms
+     Changes:   
+              ----------
+              pid:
+                  22625
+              retcode:
+                  0
+              stderr:
+                  Repository base is listed more than once in the configuration
+                  Repository updates is listed more than once in the configuration
+                  Repository extras is listed more than once in the configuration
+                  Repository centosplus is listed more than once in the configuration
+                  Repository contrib is listed more than once in the configuration
+              stdout:
+                  Loaded plugins: fastestmirror, langpacks
+                  Cleaning repos: base bintray-rabbitmq-server core-0 docker-ce-stable epel extras
+                                : rabbitmq-erlang salt-py3-latest updates zabbix
+                                : zabbix-non-supported
+                  35 metadata files removed
+                  20 sqlite files removed
+                  0 metadata files removed
+----------
+          ID: erlang-install
+    Function: pkg.installed
+        Name: erlang
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:32.728379
+    Duration: 26.578 ms
+     Changes:   
+----------
+          ID: rabbitmq-install
+    Function: cmd.run
+        Name: rpm --import https://github.com/rabbitmq/signing-keys/releases/download/2.0/rabbitmq-release-signing-key.asc
+      Result: True
+     Comment: Command "rpm --import https://github.com/rabbitmq/signing-keys/releases/download/2.0/rabbitmq-release-signing-key.asc" run
+     Started: 18:56:32.755136
+    Duration: 2331.597 ms
+     Changes:   
+              ----------
+              pid:
+                  22627
+              retcode:
+                  0
+              stderr:
+              stdout:
+----------
+          ID: rabbitmq-install
+    Function: pkg.installed
+        Name: rabbitmq-server
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:35.087979
+    Duration: 29.767 ms
+     Changes:   
+----------
+          ID: /etc/rabbitmq/rabbitmq.conf
+    Function: file.managed
+      Result: True
+     Comment: File /etc/rabbitmq/rabbitmq.conf is in the correct state
+     Started: 18:56:35.118500
+    Duration: 15.458 ms
+     Changes:   
+----------
+          ID: /etc/rabbitmq/enabled_plugins
+    Function: file.managed
+      Result: True
+     Comment: File /etc/rabbitmq/enabled_plugins is in the correct state
+     Started: 18:56:35.134579
+    Duration: 14.346 ms
+     Changes:   
+----------
+          ID: rabbitmq-service
+    Function: service.running
+        Name: rabbitmq-server
+      Result: True
+     Comment: The service rabbitmq-server is already running
+     Started: 18:56:35.150650
+    Duration: 30.067 ms
+     Changes:   
+----------
+          ID: rabbitmq-useradd
+    Function: cmd.run
+        Name: rabbitmqctl add_user admin password && rabbitmqctl set_user_tags admin administrator &&  rabbitmqctl set_permissions -p '/' admin '.*' '.*' '.*'
+      Result: True
+     Comment: unless condition is true
+     Started: 18:56:35.181942
+    Duration: 593.167 ms
+     Changes:   
+----------
+          ID: redis-require-package
+    Function: pkg.installed
+        Name: tcl
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:35.775433
+    Duration: 28.938 ms
+     Changes:   
+----------
+          ID: redis-require-package
+    Function: file.managed
+        Name: /usr/local/src/redis-5.0.5.tar.gz
+      Result: True
+     Comment: File /usr/local/src/redis-5.0.5.tar.gz is in the correct state
+     Started: 18:56:35.804563
+    Duration: 34.242 ms
+     Changes:   
+----------
+          ID: redis-install
+    Function: file.directory
+        Name: /usr/local/redis
+      Result: True
+     Comment: The directory /usr/local/redis is in the correct state
+     Started: 18:56:35.839039
+    Duration: 0.97 ms
+     Changes:   
+----------
+          ID: redis-install
+    Function: cmd.run
+        Name: cd /usr/local/src && tar xf redis-5.0.5.tar.gz && cd redis-5.0.5 && make && make PREFIX=/usr/local/redis install && echo 'export PATH=$PATH:/usr/local/redis/bin' >> /etc/profile.d/redis.sh
+      Result: True
+     Comment: unless condition is true
+     Started: 18:56:35.841461
+    Duration: 14.758 ms
+     Changes:   
+----------
+          ID: redis-service
+    Function: file.managed
+        Name: /usr/local/redis/redis.conf
+      Result: True
+     Comment: File /usr/local/redis/redis.conf is in the correct state
+     Started: 18:56:35.857071
+    Duration: 14.912 ms
+     Changes:   
+----------
+          ID: redis-service
+    Function: cmd.run
+        Name: /usr/local/redis/bin/redis-server /usr/local/redis/redis.conf
+      Result: True
+     Comment: unless condition is true
+     Started: 18:56:35.873233
+    Duration: 14.886 ms
+     Changes:   
+----------
+          ID: sentinel-service
+    Function: file.managed
+        Name: /usr/local/redis/sentinel.conf
+      Result: True
+     Comment: File /usr/local/redis/sentinel.conf updated
+     Started: 18:56:35.888967
+    Duration: 19.989 ms
+     Changes:   
+              ----------
+              diff:
+                  --- 
+                  +++ 
+                  @@ -1,14 +1,11 @@
+                   port 26379
+                   daemonize yes
+                  -pidfile "/var/run/redis-sentinel.pid"
+                  +pidfile /var/run/redis-sentinel.pid
+                   logfile "sentinel.log"
+                  -dir "/usr/local/redis"
+                  -sentinel myid fe629b3ff4c5f4eeb765d126364389fe4c412062
+                  +dir /usr/local/redis
+                  +sentinel monitor mymaster 192.168.43.201 6379 1
+                  +sentinel down-after-milliseconds mymaster 30000
+                  +sentinel parallel-syncs mymaster 1
+                  +sentinel failover-timeout mymaster 180000
+                   sentinel deny-scripts-reconfig yes
+                  -sentinel monitor mymaster 192.168.43.201 6379 1
+                  -sentinel config-epoch mymaster 0
+                  -sentinel leader-epoch mymaster 2
+                   
+                  -# Generated by CONFIG REWRITE
+                  -protected-mode no
+                  -sentinel current-epoch 2
+----------
+          ID: sentinel-service
+    Function: cmd.run
+        Name: /usr/local/redis/bin/redis-sentinel /usr/local/redis/sentinel.conf
+      Result: True
+     Comment: unless condition is true
+     Started: 18:56:35.909606
+    Duration: 13.772 ms
+     Changes:   
+
+Summary for node3
+-------------
+Succeeded: 52 (changed=3)
+Failed:     0
+-------------
+Total states run:     52
+Total run time:    6.309 s
+node2:
+----------
+          ID: /etc/resolv.conf
+    Function: file.managed
+      Result: True
+     Comment: File /etc/resolv.conf is in the correct state
+     Started: 18:56:20.453252
+    Duration: 64.973 ms
+     Changes:   
+----------
+          ID: /etc/profile
+    Function: file.append
+      Result: True
+     Comment: File /etc/profile is in correct state
+     Started: 18:56:20.518576
+    Duration: 12.377 ms
+     Changes:   
+----------
+          ID: /etc/profile.d/audit.sh
+    Function: file.append
+      Result: True
+     Comment: File /etc/profile.d/audit.sh is in correct state
+     Started: 18:56:20.531290
+    Duration: 9.641 ms
+     Changes:   
+----------
+          ID: net.ipv4.ip_local_port_range
+    Function: sysctl.present
+      Result: True
+     Comment: Sysctl value net.ipv4.ip_local_port_range = 10000 65000 is already set
+     Started: 18:56:20.546948
+    Duration: 38.327 ms
+     Changes:   
+----------
+          ID: fs.file-max
+    Function: sysctl.present
+      Result: True
+     Comment: Sysctl value fs.file-max = 2000000 is already set
+     Started: 18:56:20.585613
+    Duration: 13.275 ms
+     Changes:   
+----------
+          ID: net.ipv4.ip_forward
+    Function: sysctl.present
+      Result: True
+     Comment: Sysctl value net.ipv4.ip_forward = 1 is already set
+     Started: 18:56:20.599204
+    Duration: 13.739 ms
+     Changes:   
+----------
+          ID: vm.swappiness
+    Function: sysctl.present
+      Result: True
+     Comment: Sysctl value vm.swappiness = 0 is already set
+     Started: 18:56:20.613387
+    Duration: 13.964 ms
+     Changes:   
+----------
+          ID: /etc/yum.repos.d/epel.repo
+    Function: file.managed
+      Result: True
+     Comment: File /etc/yum.repos.d/epel.repo is in the correct state
+     Started: 18:56:20.627897
+    Duration: 24.039 ms
+     Changes:   
+----------
+          ID: /etc/yum.repos.d/Centos-7.repo
+    Function: file.managed
+      Result: True
+     Comment: File /etc/yum.repos.d/Centos-7.repo is in the correct state
+     Started: 18:56:20.652205
+    Duration: 22.895 ms
+     Changes:   
+----------
+          ID: /etc/yum.repos.d/salt-py3-CentOS7.repo
+    Function: file.managed
+      Result: True
+     Comment: File /etc/yum.repos.d/salt-py3-CentOS7.repo is in the correct state
+     Started: 18:56:20.675355
+    Duration: 24.268 ms
+     Changes:   
+----------
+          ID: /etc/yum.repos.d/zabbix.repo
+    Function: file.managed
+      Result: True
+     Comment: File /etc/yum.repos.d/zabbix.repo is in the correct state
+     Started: 18:56:20.699879
+    Duration: 27.271 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: gcc
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:29.396399
+    Duration: 1161.552 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: glibc
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:30.558213
+    Duration: 24.264 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: gcc-c++
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:30.582642
+    Duration: 25.451 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: pcre-devel
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:30.608277
+    Duration: 24.559 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: openssl-devel
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:30.633014
+    Duration: 26.072 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: net-tools
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:30.659304
+    Duration: 27.575 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: tree
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:30.687068
+    Duration: 28.209 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: iproute
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:30.715473
+    Duration: 23.986 ms
+     Changes:   
+----------
+          ID: basePackageInstall
+    Function: pkg.installed
+        Name: nmap-ncat
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:30.739622
+    Duration: 24.265 ms
+     Changes:   
+----------
+          ID: zabbix-agent
+    Function: pkg.installed
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:30.764189
+    Duration: 25.938 ms
+     Changes:   
+----------
+          ID: zabbix-agent
+    Function: file.managed
+        Name: /etc/zabbix/zabbix_agentd.conf
+      Result: True
+     Comment: File /etc/zabbix/zabbix_agentd.conf is in the correct state
+     Started: 18:56:30.791150
+    Duration: 18.604 ms
+     Changes:   
+----------
+          ID: zabbix_agentd.d
+    Function: file.directory
+        Name: /etc/zabbix/zabbix_agentd.d
+      Result: True
+     Comment: The directory /etc/zabbix/zabbix_agentd.d is in the correct state
+     Started: 18:56:30.811975
+    Duration: 1.357 ms
+     Changes:   
+----------
+          ID: zabbix-agent
+    Function: service.running
+      Result: True
+     Comment: The service zabbix-agent is already running
+     Started: 18:56:30.814047
+    Duration: 29.516 ms
+     Changes:   
+----------
+          ID: /etc/yum.repos.d/docker-ce.repo
+    Function: file.managed
+      Result: True
+     Comment: File /etc/yum.repos.d/docker-ce.repo is in the correct state
+     Started: 18:56:30.843846
+    Duration: 15.753 ms
+     Changes:   
+----------
+          ID: docker-ce
+    Function: cmd.run
+        Name: yum install -y yum-utils device-mapper-persistent-data lvm2 container-selinux
+      Result: True
+     Comment: unless condition is true
+     Started: 18:56:30.861348
+    Duration: 721.863 ms
+     Changes:   
+----------
+          ID: docker-ce
+    Function: pkg.installed
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:31.584744
+    Duration: 33.819 ms
+     Changes:   
+----------
+          ID: /etc/docker
+    Function: file.directory
+      Result: True
+     Comment: The directory /etc/docker is in the correct state
+     Started: 18:56:31.620634
+    Duration: 1.264 ms
+     Changes:   
+----------
+          ID: /etc/docker/daemon.json
+    Function: file.managed
+      Result: True
+     Comment: File /etc/docker/daemon.json is in the correct state
+     Started: 18:56:31.622421
+    Duration: 15.305 ms
+     Changes:   
+----------
+          ID: docker-ce
+    Function: service.running
+        Name: docker
+      Result: True
+     Comment: The service docker is already running
+     Started: 18:56:31.638648
+    Duration: 29.322 ms
+     Changes:   
+----------
+          ID: /usr/local/bin/docker-compose
+    Function: file.managed
+      Result: True
+     Comment: File /usr/local/bin/docker-compose is in the correct state
+     Started: 18:56:31.668278
+    Duration: 191.481 ms
+     Changes:   
+----------
+          ID: /etc/security/limits.conf
+    Function: file.managed
+      Result: True
+     Comment: File /etc/security/limits.conf is in the correct state
+     Started: 18:56:31.859912
+    Duration: 11.737 ms
+     Changes:   
+----------
+          ID: reload_sysctl.conf
+    Function: cmd.run
+        Name: echo "vm.max_map_count=262144" >> /etc/sysctl.conf && sysctl -p
+      Result: True
+     Comment: unless condition is true
+     Started: 18:56:31.871791
+    Duration: 8.751 ms
+     Changes:   
+----------
+          ID: hosts
+    Function: file.managed
+        Name: /etc/hosts
+      Result: True
+     Comment: File /etc/hosts is in the correct state
+     Started: 18:56:31.880776
+    Duration: 12.896 ms
+     Changes:   
+----------
+          ID: rabbitmq-erlang.repo
+    Function: file.managed
+        Name: /etc/yum.repos.d/rabbitmq-erlang.repo
+      Result: True
+     Comment: File /etc/yum.repos.d/rabbitmq-erlang.repo is in the correct state
+     Started: 18:56:31.893864
+    Duration: 12.562 ms
+     Changes:   
+----------
+          ID: rabbitmq.repo
+    Function: file.managed
+        Name: /etc/yum.repos.d/rabbitmq.repo
+      Result: True
+     Comment: File /etc/yum.repos.d/rabbitmq.repo is in the correct state
+     Started: 18:56:31.906569
+    Duration: 13.394 ms
+     Changes:   
+----------
+          ID: erlang-install
+    Function: pkg.installed
+        Name: erlang
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:31.920768
+    Duration: 32.68 ms
+     Changes:   
+----------
+          ID: rabbitmq-install
+    Function: cmd.run
+        Name: rpm --import https://github.com/rabbitmq/signing-keys/releases/download/2.0/rabbitmq-release-signing-key.asc
+      Result: True
+     Comment: Command "rpm --import https://github.com/rabbitmq/signing-keys/releases/download/2.0/rabbitmq-release-signing-key.asc" run
+     Started: 18:56:31.953614
+    Duration: 2615.464 ms
+     Changes:   
+              ----------
+              pid:
+                  23103
+              retcode:
+                  0
+              stderr:
+              stdout:
+----------
+          ID: rabbitmq-install
+    Function: pkg.installed
+        Name: rabbitmq-server
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:34.570052
+    Duration: 29.877 ms
+     Changes:   
+----------
+          ID: /etc/rabbitmq/rabbitmq.conf
+    Function: file.managed
+      Result: True
+     Comment: File /etc/rabbitmq/rabbitmq.conf is in the correct state
+     Started: 18:56:34.600831
+    Duration: 16.583 ms
+     Changes:   
+----------
+          ID: /etc/rabbitmq/enabled_plugins
+    Function: file.managed
+      Result: True
+     Comment: File /etc/rabbitmq/enabled_plugins is in the correct state
+     Started: 18:56:34.617962
+    Duration: 13.63 ms
+     Changes:   
+----------
+          ID: rabbitmq-service
+    Function: service.running
+        Name: rabbitmq-server
+      Result: True
+     Comment: The service rabbitmq-server is already running
+     Started: 18:56:34.633037
+    Duration: 32.162 ms
+     Changes:   
+----------
+          ID: rabbitmq-useradd
+    Function: cmd.run
+        Name: rabbitmqctl add_user admin password && rabbitmqctl set_user_tags admin administrator &&  rabbitmqctl set_permissions -p '/' admin '.*' '.*' '.*'
+      Result: False
+     Comment: Command "rabbitmqctl add_user admin password && rabbitmqctl set_user_tags admin administrator &&  rabbitmqctl set_permissions -p '/' admin '.*' '.*' '.*'" run
+     Started: 18:56:34.666291
+    Duration: 1170.778 ms
+     Changes:   
+              ----------
+              pid:
+                  23252
+              retcode:
+                  64
+              stderr:
+                  warning: the VM is running with native name encoding of latin1 which may cause Elixir to malfunction as it expects utf8. Please ensure your locale is set to UTF-8 (which can be verified by running "locale" in your shell)
+                  Error: this command requires the 'rabbit' app to be running on the target node. Start it with 'rabbitmqctl start_app'.
+                  Arguments given:
+                  	add_user admin password
+                  
+                  ?[1mUsage?[0m
+                  
+                  rabbitmqctl [--node <node>] [--longnames] [--quiet] add_user <username> <password>
+              stdout:
+----------
+          ID: add-cluster
+    Function: file.managed
+        Name: /var/lib/rabbitmq/.erlang.cookie
+      Result: True
+     Comment: File /var/lib/rabbitmq/.erlang.cookie is in the correct state
+     Started: 18:56:35.837359
+    Duration: 14.27 ms
+     Changes:   
+----------
+          ID: add-cluster
+    Function: cmd.run
+        Name: systemctl restart rabbitmq-server.service && rabbitmqctl stop_app && rabbitmqctl join_cluster rabbit@node3 && rabbitmqctl start_app
+      Result: False
+     Comment: Command "systemctl restart rabbitmq-server.service && rabbitmqctl stop_app && rabbitmqctl join_cluster rabbit@node3 && rabbitmqctl start_app" run
+     Started: 18:56:35.851891
+    Duration: 15849.34 ms
+     Changes:   
+              ----------
+              pid:
+                  23390
+              retcode:
+                  69
+              stderr:
+                  warning: the VM is running with native name encoding of latin1 which may cause Elixir to malfunction as it expects utf8. Please ensure your locale is set to UTF-8 (which can be verified by running "locale" in your shell)
+                  warning: the VM is running with native name encoding of latin1 which may cause Elixir to malfunction as it expects utf8. Please ensure your locale is set to UTF-8 (which can be verified by running "locale" in your shell)
+                  Error: unable to perform an operation on node 'rabbit@node3'. Please see diagnostics information and suggestions below.
+                  
+                  Most common reasons for this are:
+                  
+                   * Target node is unreachable (e.g. due to hostname resolution, TCP connection or firewall issues)
+                   * CLI tool fails to authenticate with the server (e.g. due to CLI tool's Erlang cookie not matching that of the server)
+                   * Target node is not running
+                  
+                  In addition to the diagnostics info below:
+                  
+                   * See the CLI, clustering and networking guides on https://rabbitmq.com/documentation.html to learn more
+                   * Consult server logs on node rabbit@node3
+                   * If target node is configured to use long node names, don't forget to use --longnames with CLI tools
+                  
+                  DIAGNOSTICS
+                  ===========
+                  
+                  attempted to contact: [rabbit@node3]
+                  
+                  rabbit@node3:
+                    * connected to epmd (port 4369) on node3
+                    * epmd reports node 'rabbit' uses port 25672 for inter-node and CLI tool traffic 
+                    * TCP connection succeeded but Erlang distribution failed 
+                  
+                    * Authentication failed (rejected by the remote node), please check the Erlang cookie
+                  
+                  
+                  Current node details:
+                   * node name: 'rabbitmqcli-24119-rabbit@node2'
+                   * effective user's home directory: /var/lib/rabbitmq
+                   * Erlang cookie hash: O1xJPNapgHgX28OsCjUFeg==
+              stdout:
+                  Stopping rabbit application on node rabbit@node2 ...
+                  Clustering node rabbit@node2 with rabbit@node3
+----------
+          ID: redis-require-package
+    Function: pkg.installed
+        Name: tcl
+      Result: True
+     Comment: All specified packages are already installed
+     Started: 18:56:51.701508
+    Duration: 27.591 ms
+     Changes:   
+----------
+          ID: redis-require-package
+    Function: file.managed
+        Name: /usr/local/src/redis-5.0.5.tar.gz
+      Result: True
+     Comment: File /usr/local/src/redis-5.0.5.tar.gz is in the correct state
+     Started: 18:56:51.729304
+    Duration: 35.629 ms
+     Changes:   
+----------
+          ID: redis-install
+    Function: cmd.run
+        Name: cd /usr/local/src && tar xf redis-5.0.5.tar.gz && cd redis-5.0.5 && make && make PREFIX=/usr/local/redis install && echo 'export PATH=$PATH:/usr/local/redis/bin' >> /etc/profile.d/redis.sh && source /etc/profile
+      Result: True
+     Comment: unless condition is true
+     Started: 18:56:51.766798
+    Duration: 25.84 ms
+     Changes:   
+----------
+          ID: redis-install
+    Function: file.managed
+        Name: /usr/local/redis/redis.conf
+      Result: True
+     Comment: File /usr/local/redis/redis.conf is in the correct state
+     Started: 18:56:51.793332
+    Duration: 15.288 ms
+     Changes:   
+----------
+          ID: redis-service
+    Function: cmd.run
+        Name: /usr/local/redis/bin/redis-server /usr/local/redis/redis.conf
+      Result: True
+     Comment: unless condition is true
+     Started: 18:56:51.809169
+    Duration: 13.32 ms
+     Changes:   
+----------
+          ID: sentinel-service
+    Function: file.managed
+        Name: /usr/local/redis/sentinel.conf
+      Result: True
+     Comment: File /usr/local/redis/sentinel.conf updated
+     Started: 18:56:51.823255
+    Duration: 18.166 ms
+     Changes:   
+              ----------
+              diff:
+                  --- 
+                  +++ 
+                  @@ -1,14 +1,11 @@
+                   port 26379
+                   daemonize yes
+                  -pidfile "/var/run/redis-sentinel.pid"
+                  +pidfile /var/run/redis-sentinel.pid
+                   logfile "sentinel.log"
+                  -dir "/usr/local/redis"
+                  -sentinel myid a4897f18b4ed8d8bd9d8fa2a9e438f5de024a418
+                  +dir /usr/local/redis
+                  +sentinel monitor mymaster 192.168.43.201 6379 1
+                  +sentinel down-after-milliseconds mymaster 30000
+                  +sentinel parallel-syncs mymaster 1
+                  +sentinel failover-timeout mymaster 180000
+                   sentinel deny-scripts-reconfig yes
+                  -sentinel monitor mymaster 192.168.43.201 6379 1
+                  -sentinel config-epoch mymaster 0
+                  -sentinel leader-epoch mymaster 2
+                   
+                  -# Generated by CONFIG REWRITE
+                  -protected-mode no
+                  -sentinel current-epoch 2
+----------
+          ID: sentinel-service
+    Function: cmd.run
+        Name: /usr/local/redis/bin/redis-sentinel /usr/local/redis/sentinel.conf
+      Result: True
+     Comment: unless condition is true
+     Started: 18:56:51.842247
+    Duration: 14.293 ms
+     Changes:   
+
+Summary for node2
+-------------
+Succeeded: 50 (changed=4)
+Failed:     2
+-------------
+Total states run:     52
+Total run time:   22.699 s

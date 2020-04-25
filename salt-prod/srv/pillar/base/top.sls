@@ -4,4 +4,5 @@ base:
 prod:
   'node*':
     - docker.docker
+    - rabbitmq.rabbitmq 
     - redis-cluster.redis

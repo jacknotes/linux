@@ -1,0 +1,6 @@
+[rabbitmq-erlang]
+name=rabbitmq-erlang
+baseurl=https://mirrors.tuna.tsinghua.edu.cn/erlang-solutions/centos/7
+enabled=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+gpgcheck=0
