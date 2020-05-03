@@ -110,7 +110,6 @@ master: 127.0.0.1
 # same machine but with different ids, this can be useful for salt compute
 # clusters.
 #id:
-id: node1
 
 # Cache the minion id to a file when the minion's id is not statically defined
 # in the minion config. Defaults to "True". This setting prevents potential

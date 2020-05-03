@@ -43,3 +43,5 @@ docker-ce:
     - user: root
     - group: root
     - mode: 755
+    - require:
+      - service: docker-ce

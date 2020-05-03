@@ -1,0 +1,7 @@
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+13.250.177.223    github.com
+
+192.168.43.201 node1
+192.168.43.202 node2
+192.168.43.203 node3

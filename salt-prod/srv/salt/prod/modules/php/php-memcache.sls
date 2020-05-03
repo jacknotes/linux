@@ -1,6 +1,6 @@
-che-plugin:
+memcache-plugin:
   file.managed:
-    - name: /usr/local/src/memcache-2.2.7.tgz  #memecache插件，并不是memcache软件
+    - name: /usr/local/src/memcache-2.2.7.tgz 
     - source: salt://modules/php/files/memcache-2.2.7.tgz
     - user: root
     - group: root

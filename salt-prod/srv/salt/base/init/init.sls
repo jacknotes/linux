@@ -3,6 +3,14 @@ include:
   - init.history
   - init.audit
   - init.sysctl
+  - init.firewall
+  - init.ssh
+  - init.thin
+  - init.tty-timeout
+  - init.ntp-client
+  - init.selinux
+  - init.tty-style
+  - init.user-www
   - init.repo
   - init.basePkg
   - init.zabbix-agent

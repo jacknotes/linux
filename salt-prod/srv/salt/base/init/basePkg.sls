@@ -1,6 +1,6 @@
 basePackageInstall:
   pkg.installed:
-    - names:
+    - pkgs:
       - gcc 
       - glibc
       - gcc-c++
@@ -10,3 +10,21 @@ basePackageInstall:
       - tree
       - iproute
       - nmap-ncat
+      - screen
+      - lrzsz
+      - tree
+      - openssl
+      - telnet
+      - iftop
+      - iotop
+      - sysstat
+      - wget
+      - dos2unix
+      - lsof
+      - net-tools
+      - mtr
+      - unzip
+      - zip
+      - vim-enhanced
+      - bind-utils
+

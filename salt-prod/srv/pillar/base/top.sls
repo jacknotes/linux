@@ -6,3 +6,4 @@ prod:
     - docker.docker
     - rabbitmq.rabbitmq 
     - redis-cluster.redis
+    - docker.docker-elk
