@@ -2,6 +2,9 @@
 ::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
 13.250.177.223    github.com
 
-192.168.43.201 node1
-192.168.43.202 node2
-192.168.43.203 node3
+#192.168.43.201 node1
+#192.168.43.202 node2
+#192.168.43.203 node3
+192.168.15.199 node1
+192.168.15.201 node2
+192.168.15.202 node3

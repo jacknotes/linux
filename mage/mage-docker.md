@@ -303,4 +303,25 @@ lorel/docker-stress-ng这个镜像用来做资源测试
 
 
 注意：运行容器时使用普通用户，不要使用root用户运行。容器运行时尽量指定使用资源，以免代码导致的问题使系统资源被无尽占用。
+
+#安装harbor
+harbor软件网址：https://github.com/vmware/harbor/releases
+wget https://storage.googleapis.com/harbor-releases/release-1.8.0/harbor-offline-installer-v1.8.0.tgz
+tar xf harbor-offline-installer-v1.8.0.tgz -C /usr/local/
+cd /usr/local/harbor
+[root@node2 harbor]# vim harbor.yml 
+# 配置如下
+hostname: 192.168.15.201
+port: 8888
+harbor_admin_password: password
+data_volume: /usr/local/harbor/data
+location: /var/log/harbor
+[root@node2 harbor]# ./install.sh
+# 登录
+http://192.168.15.201:8888
+admin password
+启动 / 停止
+docker-compose start/stop
+
+
 </pre>

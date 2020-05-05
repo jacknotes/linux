@@ -5,9 +5,9 @@ prod:
   'type:docker_server':
     - match: pillar
     - docker.docker_install.install
-  'node3':
-    - modules.rabbitmq.rabbitmq
-    - modules.redis-cluster.deploy-master
   'node2':
-    - modules.rabbitmq.rabbitmq-slave
-    - modules.redis-cluster.deploy-slave
+    - redis_module.redis_cluster.deploy_master
+  'node3':
+    - redis_module.redis_cluster.deploy_slave
+  'node1':
+    - redis_module.redis_cluster.deploy_slave

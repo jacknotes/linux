@@ -1,5 +1,6 @@
 include:
   - init.dns
+  - init.hosts
   - init.history
   - init.audit
   - init.sysctl

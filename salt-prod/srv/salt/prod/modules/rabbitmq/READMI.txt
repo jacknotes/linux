@@ -1,2 +1,0 @@
-1. rabbitmq.sls is a rabbitmq cluster master node,equle install general rabbitmq node
-2. rabbitmq-slave.sls is slave node

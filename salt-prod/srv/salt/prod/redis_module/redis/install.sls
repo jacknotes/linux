@@ -4,7 +4,7 @@ redis-require-package:
       - tcl
   file.managed:
     - name: /usr/local/src/redis-5.0.5.tar.gz
-    - source: salt://modules/redis/files/redis-5.0.5.tar.gz
+    - source: salt://redis_module/redis/files/redis-5.0.5.tar.gz
     - user: root
     - group: root
     - mode: 755
@@ -12,7 +12,7 @@ redis-require-package:
 redis-install:
   file.managed:
     - name: /usr/local/redis/redis.conf
-    - source: salt://modules/redis/files/redis.conf
+    - source: salt://redis_module/redis/files/redis.conf
     - user: root
     - group: root
     - mode: 644
@@ -25,10 +25,23 @@ redis-install:
       - file: redis-require-package
       - pkg: redis-require-package
 
+redis-init:
+  file.managed:
+    - name: /etc/init.d/redis
+    - source: salt://redis_module/redis/files/redis-init
+    - user: root
+    - group: root
+    - mode: 755
+  cmd.run:
+    - name: chkconfig --add redis
+    - unless: chkconfig --list | grep redis
+    - require:
+      - file: redis-init  
+
 redis-service:
-  cmd.run: 
-    - name: /usr/local/redis/bin/redis-server /usr/local/redis/redis.conf 
-    - unless: netstat -tunlp | grep 6379
-    - require: 
-      - file: redis-install
+  service.running:
+    - name: redis
+    - enable: True
+    - require:
+      - cmd: redis-init
 
