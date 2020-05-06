@@ -128,7 +128,7 @@ mysql支持插件式存储引擎
 	散列文件组织：根据hash算法进行存放
 表结构定义文件，表数据文件
 表空间：table space
-数据字典：data dictionaty （oracle很常见）
+数据字典：data dictionary （oracle很常见）
 	关系的元数据：
 		关系的名字
 		字段名字
@@ -186,7 +186,7 @@ make && make install     make && make install
 make[2]: *** [sql/CMakeFiles/sql.dir/sql_yacc.cc.o] Error 1
 make[1]: *** [sql/CMakeFiles/sql.dir/all] Error 2
 make: *** [all] Error 2
-[root@lnmp mysql-5.5.37]# echo $? #编辑报错
+[root@lnmp mysql-5.5.37]# echo $? #编译报错
 2
 [root@lnmp ~]# rpm -qa | grep bison
 bison-3.0.4-2.el7.x86_64  #版本太高
