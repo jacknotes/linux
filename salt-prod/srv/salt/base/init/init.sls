@@ -6,7 +6,7 @@ include:
   - init.sysctl
   - init.firewall
   - init.ssh
-  - init.thin
+  - init.postfix
   - init.tty-timeout
   - init.ntp-client
   - init.selinux
