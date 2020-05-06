@@ -3,8 +3,8 @@ include:
 
 zabbix-docker-compose-file:
   file.managed:
-    - name: /usr/local/src
-    - source: salt///docker/docker_zabbix/docker-compose.yml
+    - name: /usr/local/src/docker-compose.yml
+    - source: salt://docker/docker_zabbix/docker-compose.yml
     - user: root
     - group: root
     - mode: 644

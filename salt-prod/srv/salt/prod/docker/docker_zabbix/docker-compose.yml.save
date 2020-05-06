@@ -1,7 +1,7 @@
 version: '3.4'
 services:
   zabbix-mysql-server:                    # 服务名称
-    image: harbor:8888/zabbix/mysql:5.7      # 使用的镜像
+    image: mysql:5.7      # 使用的镜像
     container_name: zabbix-mysql-server   # 容器名称
     hostname: zabbix-mysql-server
     restart: always                 # 失败自动重启策略
@@ -18,7 +18,7 @@ services:
       - --character-set-server=utf8
       - --collation-server=utf8_bin
   zabbix-server-mysql:                    # 服务名称
-    image: harbor:8888/zabbix/zabbix-server-mysql:centos-3.4.15      # 使用的镜像
+    image: zabbix/zabbix-server-mysql:centos-3.4.15      # 使用的镜像
     container_name: zabbix-server-mysql   # 容器名称
     hostname: zabbix-server-mysql
     links:
@@ -39,7 +39,7 @@ services:
     ports:
       - 10051:10051
   zabbix-web-nginx-mysql:                    # 服务名称
-    image: harbor:8888/zabbix/zabbix-web-nginx-mysql:centos-3.4.15     # 使用的镜像
+    image: zabbix/zabbix-web-nginx-mysql:centos-3.4.15     # 使用的镜像
     container_name: zabbix-web-nginx-mysql   # 容器名称
     hostname: zabbix-web-nginx-mysql
     links:

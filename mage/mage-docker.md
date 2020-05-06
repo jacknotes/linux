@@ -233,7 +233,7 @@ exec $@ /usr/sbin/httpd -g "daemon off" #将/usr/sbin/httpd -g "daemon off"以�
 registry默认是支持https的
 如果要让docker客户端支持http协议，可以告诉docker这个私有仓库为不安全的，设置daemon.json文件：
 vim /etc/docker/daemon.json
-"insecure-registries": ["node02.magedu.com:5000"]  #加入这行指定不安全的私有仓库
+"insecure-registries": ["http://node02.magedu.com:5000"]  #加入这行指定不安全的私有仓库
 
 docker-registrise #docker私有仓库
 docker-compose  #docker编排工具，读取compose的文件的
@@ -300,14 +300,12 @@ lorel/docker-stress-ng这个镜像用来做资源测试
 --cpu-shares 1024 的 --cpu-shares 512 共用物理cpu大小，为2:1
 --oom-kill-disable 为关闭oom的kill功能，代表这个容器再怎么吃资源都不会被kill掉
 --oom-score-adj -1000 #值为-1000到1000,数值越低代表越不容易被kill掉
-
-
 注意：运行容器时使用普通用户，不要使用root用户运行。容器运行时尽量指定使用资源，以免代码导致的问题使系统资源被无尽占用。
 
-#安装harbor
+#安装harbor1.8.5
 harbor软件网址：https://github.com/vmware/harbor/releases
-wget https://storage.googleapis.com/harbor-releases/release-1.8.0/harbor-offline-installer-v1.8.0.tgz
-tar xf harbor-offline-installer-v1.8.0.tgz -C /usr/local/
+wget https://storage.googleapis.com/harbor-releases/release-1.8.5/harbor-offline-installer-v1.8.5.tgz
+tar xf harbor-offline-installer-v1.8.5.tgz -C /usr/local/
 cd /usr/local/harbor
 [root@node2 harbor]# vim harbor.yml 
 # 配置如下
@@ -322,6 +320,15 @@ http://192.168.15.201:8888
 admin password
 启动 / 停止
 docker-compose start/stop
+/etc/docker/daemon.json  #编辑设置私用仓库
+{
+	"registry-mirrors": ["http://hub-mirror.c.163.com","https://docker.mirrors.ustc.edu.cn","https://registry.docker-cn.com"],
+	"insecure-registries": ["192.168.15.200:8888"] 
+}
+#注：harbor中定时任务同步镜像时，时间跟我们中国时区不对，慢了8个小时.在docker中push到私有仓库中时，会导致仓库服务器地址跟docker.io用户名名称相冲突，所以需要使用服务名称加端口，例如：http://harbor:80
 
+#harbor的升级和迁移
+refrence:https://github.com/goharbor/harbor/blob/release-1.8.0/docs/migration_guide.md
+从1.8.0开始，harbor的配置文件由harbor.cfs变成harbor.yml，所以从1.8.0升级，只需要把原先的数据(/data目录)和配置文件备份(harbor.yml)先备份，然后把新版本的harbor解压到目的路径，然后把我们的数据和配置文件放到新版本的根目录下予以替换即可。然后执行./install.sh。当你执行完后在WEG-GUI接口上登录时可以会遇到登录密码出错，如果出错请先到新版本的根目录下执行docker-compose down.然后执行docker-compose up -d.再次运行即可。
 
 </pre>
