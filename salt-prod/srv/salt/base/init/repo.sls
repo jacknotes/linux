@@ -24,3 +24,10 @@
     - group: root
     - mode: 644
 
+/etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7:
+  file.managed:
+    - source: salt://init/files/RPM-GPG-KEY-EPEL-7
+    - user: root
+    - group: root
+    - mode: 644
+

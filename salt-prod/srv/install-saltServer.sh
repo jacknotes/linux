@@ -2,7 +2,7 @@
 #
 sudo yum install -y https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest.el7.noarch.rpm
 sudo yum clean expire-cache
-sudo yum install -y salt-master salt-minion
+sudo yum install -y salt-master salt-minion salt-ssh
 \cp salt-config/master /etc/salt/master -ar && echo "copy master config successful"
 mkdir -p /srv/{pillar,salt}/{base,dev,prod} && echo 'create successful' || echo "create fail"
 sudo systemctl restart salt-master

@@ -1,0 +1,33 @@
+version: '3'
+services:
+  elasticsearch:                   
+    image: elasticsearch:6.4.0    
+    container_name: elasticsearch6.4.0  
+    restart: always                 
+    environment:                                    
+      - cluster.name=es-cluster     
+      - bootstrap.memory_lock=true  
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"   
+    ulimits:             
+      memlock:
+        soft: -1      
+        hard: -1
+    volumes:
+      - esdata2:/usr/share/elasticsearch/data 
+    ports:
+      - 9200:9200    
+      - 9300:9300    
+  kibana:
+    image: docker.elastic.co/kibana/kibana:6.4.0
+    container_name: kibana6.4.0
+    environment:
+      - elasticsearch.hosts=http://elasticsearch:9200  
+    hostname: kibana
+    depends_on:
+      - elasticsearch   
+    restart: always
+    ports:
+      - 5601:5601 
+volumes:
+  esdata2:
+    driver: local  

@@ -1,17 +1,26 @@
 include:
   - docker.docker_install.install
 
+/data/docker/zabbix:
+  file.directory:
+    - user: root
+    - group: root
+    - mode: 755
+    - makedirs: True
+
 zabbix-docker-compose-file:
   file.managed:
-    - name: /usr/local/src/docker-compose.yml
+    - name: /data/docker/zabbix/docker-compose.yml
     - source: salt://docker/docker_zabbix/docker-compose.yml
     - user: root
     - group: root
     - mode: 644
+    - require:
+      - file: /data/docker/zabbix
 
 zabbix-service:
   cmd.run:
-    - name: cd /usr/local/src && docker-compose up -d
+    - name: cd /data/docker/zabbix && docker-compose up -d
     - unless: docker ps | grep nginx
     - require: 
       - file: zabbix-docker-compose-file

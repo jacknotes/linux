@@ -1,3 +1,4 @@
+
 basePackageInstall:
   pkg.installed:
     - pkgs:
@@ -15,8 +16,8 @@ basePackageInstall:
       - tree
       - openssl
       - telnet
-      - iftop
       - iotop
+      - iftop
       - sysstat
       - wget
       - dos2unix

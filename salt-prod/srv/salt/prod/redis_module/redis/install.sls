@@ -2,6 +2,7 @@ redis-require-package:
   pkg.installed:
     - names:
       - tcl
+#      - jemalloc-devel
   file.managed:
     - name: /usr/local/src/redis-5.0.5.tar.gz
     - source: salt://redis_module/redis/files/redis-5.0.5.tar.gz
