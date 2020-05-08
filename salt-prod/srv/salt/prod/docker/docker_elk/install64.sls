@@ -20,7 +20,7 @@ include:
 
 elk_service:
   cmd.run:
-    - name: cd /data/docker/elk && docker-compose up -d 
+    - name: cd /data/docker/elk && docker-compose --compatibility up -d 
     - unless: docker ps | grep logstash
     - require:
       - service: docker-ce

@@ -17,6 +17,13 @@ services:
     ports:
       - 9200:9200    
       - 9300:9300    
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1500M
+        reservations:
+          memory: 800M
   kibana:
     image: docker.elastic.co/kibana/kibana:6.4.0
     container_name: kibana6.4.0
@@ -28,6 +35,13 @@ services:
     restart: always
     ports:
       - 5601:5601 
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 400M
+        reservations:
+          memory: 200M
 volumes:
   esdata2:
     driver: local  
