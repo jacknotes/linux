@@ -823,6 +823,18 @@ mysql的mysql模型：
 	3. STRICT_ALL_TABLES
 	4. STRICT_TRANS_TABLES
 	5. TRADITIONAL
+		ANSI
+            宽松模式，对插入数据进行校验，如果不符合定义类型或长度，对数据类型调整或截断保存，报warning警告。
+        TRADITIONAL
+            严格模式，当向mysql数据库插入数据时，进行数据的严格校验，保证错误数据不能插入，报error错误。用于事物时，会进行事物的回滚。
+        STRICT_TRANS_TABLES
+            严格模式，进行数据的严格校验，不允许向一个支持事物的表中插入非法数据，报error错误。
+        STRICT_ALL_TABLES
+            未设置的情况下，所有的非法数值都允许，返回警告信息。设置以后只要违反数据规则，都不允许填入，并返回错误。
+        ANSI QUOTES
+            双引号和反引号作用相同，只能用来引用字段名称/表名等，单引号只能引用在字符串。mysql中默认3者可以随意引用。
+        IGNORE_SPACE
+            在内建函数中忽略多余空格
 mysql> show global variables like 'sql_mode'; #查看服务器模型
 +---------------+-------+
 | Variable_name | Value |
@@ -3738,7 +3750,7 @@ delay_key_write:延迟内存中索引失效时的重新写入的，on或off，
 max_write_lock_count:
 preload_buffer_size:
 #INNODB配置选项：
-innodb_flush_log_size:定义innodb缓冲池大小，缓存池包括索引和数据，16G分10G也不过分
+innodb_buffer_pool_size:定义innodb缓冲池大小，缓存池包括索引和数据，16G分10G也不过分
 innodb_flush_log_at_trx_commit:1表示事务一提交就flush,2表示提交时才flush,前提是关闭了自动提交功能
 innodb_file_per_table:每表一个表空间文件
 #是否启用查询缓存：
