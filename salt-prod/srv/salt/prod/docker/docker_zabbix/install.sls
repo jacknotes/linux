@@ -18,6 +18,16 @@ zabbix-docker-compose-file:
     - require:
       - file: /data/docker/zabbix
 
+zabbix-nginx-file:
+  file.managed:
+    - name: /data/docker/zabbix/graphfont.ttf
+    - source: salt://docker/docker_zabbix/files/graphfont.ttf
+    - user: root
+    - group: root
+    - mode: 644
+    - require:
+      - file: /data/docker/zabbix
+
 zabbix-service:
   cmd.run:
     - name: cd /data/docker/zabbix && docker-compose --compatibility up -d

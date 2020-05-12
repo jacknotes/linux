@@ -67,6 +67,8 @@ services:
       - MYSQL_DATABASE=zabbix
       - ZBX_SERVER_HOST=zabbix-server
       - PHP_TZ=Asia/Shanghai
+    volumes:
+      - /data/docker/zabbix/graphfont.ttf:/usr/share/zabbix/fonts/graphfont.ttf
     depends_on:
       - zabbix-mysql-server
       - zabbix-server-mysql
