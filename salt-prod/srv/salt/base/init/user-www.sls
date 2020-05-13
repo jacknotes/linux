@@ -1,4 +1,4 @@
-www-user-group:
+base.www-user-group:
   group.present:
     - name: www
     - gid: 1000

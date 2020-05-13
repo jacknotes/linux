@@ -1,9 +1,7 @@
 base:
-  '*':
+  'node3':
     - init.init
 prod:
-  'salt':
-    - redis_module.redis.install
-  'LocalServer':
-    - docker.docker_elk.install64
+  'node3':
+    - lnmp.web.web
     - docker.docker_zabbix.install

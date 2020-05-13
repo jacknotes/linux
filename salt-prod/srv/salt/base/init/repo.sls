@@ -1,7 +1,3 @@
-del-default-repo:
-  cmd.run:
-    - name: rm -rf /etc/yum.repos.d/*
-
 /etc/yum.repos.d/epel.repo:
   file.managed:
     - source: salt://init/files/epel.repo

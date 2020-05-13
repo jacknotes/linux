@@ -1,4 +1,4 @@
 {
-	"registry-mirrors": ["http://harbor:80","http://hub-mirror.c.163.com","https://docker.mirrors.ustc.edu.cn","https://registry.docker-cn.com"],
-	"insecure-registries": ["http://harbor:80"] 
+	"registry-mirrors": ["http://harbor:8888","http://hub-mirror.c.163.com","https://docker.mirrors.ustc.edu.cn","https://registry.docker-cn.com"],
+	"insecure-registries": ["http://harbor:8888"] 
 }

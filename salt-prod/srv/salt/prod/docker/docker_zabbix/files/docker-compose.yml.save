@@ -1,7 +1,7 @@
 version: '3.4'
 services:
   zabbix-mysql-server:                    # 服务名称
-    image: mysql:5.7      # 使用的镜像
+    image: jackidocker/mysql:5.7      # 使用的镜像
     container_name: zabbix-mysql-server   # 容器名称
     hostname: zabbix-mysql-server
     restart: always                 # 失败自动重启策略
@@ -17,8 +17,15 @@ services:
     command: 
       - --character-set-server=utf8
       - --collation-server=utf8_bin
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          memory: 200M
   zabbix-server-mysql:                    # 服务名称
-    image: zabbix/zabbix-server-mysql:centos-3.4.15      # 使用的镜像
+    image: jackidocker/zabbix-server-mysql:centos-3.4.15      # 使用的镜像
     container_name: zabbix-server-mysql   # 容器名称
     hostname: zabbix-server-mysql
     links:
@@ -38,8 +45,15 @@ services:
       - /data/docker/zabbix/zabbix-server/externalscripts:/usr/lib/zabbix/externalscripts
     ports:
       - 10051:10051
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 200M
+        reservations:
+          memory: 50M
   zabbix-web-nginx-mysql:                    # 服务名称
-    image: zabbix/zabbix-web-nginx-mysql:centos-3.4.15     # 使用的镜像
+    image: jackidocker/zabbix-web-nginx-mysql:centos-3.4.15     # 使用的镜像
     container_name: zabbix-web-nginx-mysql   # 容器名称
     hostname: zabbix-web-nginx-mysql
     links:
@@ -53,11 +67,20 @@ services:
       - MYSQL_DATABASE=zabbix
       - ZBX_SERVER_HOST=zabbix-server
       - PHP_TZ=Asia/Shanghai
+    volumes:
+      - /data/docker/zabbix/graphfont.ttf:/usr/share/zabbix/fonts/graphfont.ttf
     depends_on:
       - zabbix-mysql-server
       - zabbix-server-mysql
     ports:
       - 80:80
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 500M
+        reservations:
+          memory: 100M
 networks:
   default:
     driver: bridge

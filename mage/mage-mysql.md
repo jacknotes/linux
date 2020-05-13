@@ -3838,4 +3838,60 @@ Using index：表示所需要的数据从索引就能够全部获取到，从而
 Using index for group-by：类似于Using index，它表示MySQL可仅通过索引中的数据完成GROUP BY或DISTINCT类的查询；
 Using filesort：表示MySQL会对结果使用一个外部索引排序，而不是从表里按索引次序来读取行；
 
+#锁
+事务锁(行锁、表锁)
+(MYISAM)表级锁不会产生死锁.所以解决死锁主要还是针对于最常用的InnoDB,因为innodb默认是行锁,行锁是发生在事务当中的。mysql默认autocommit=1则不会发生行锁，当设成0时则会可能发生死锁。
+#共享锁和排他锁
+S锁(ShareLock,共享锁)	X锁(RWLock,排他锁)
+SELECT * FROM table_name WHERE ... LOCK IN SHARE MODE  #共享锁
+SELECT * FROM table_name WHERE ... FOR UPDATE  #排他锁
+共享锁：允许一个事务去读一行，阻止其他事务获得相同数据集的排他锁；
+排他锁：允许获得排他锁的事务更新数据，阻止其他事务取得相同数据集的共享读锁和排他写锁。
+select * from table where ?; #快照读
+select * from table where ? lock in share mode; #共享锁
+select * from table where ? for update; #排他锁
+insert into table values (…); #默认是排他锁
+update table set ? where ?; #默认是排他锁
+delete from table where ?; #默认是排他锁
+#SQL语句1
+select * from table where id = 1; #不加锁的，属于快照读
+#SQL语句2
+update set age = age + 1 where id = 1; #如果id是主键或者是索引的话，那么锁定的行只有符合条件的那几行。如果id非索引，那么会锁表。
+#SQL语句3
+update set age = age + 1 where id = 1 and nickname = 'hello'; #id或者nickname只要有一个是索引或者是主键的话，那么锁住的行都是符合条件的行。否则锁住的也是全表
+#死锁原因：
+所谓死锁<DeadLock>：是指两个或两个以上的进程在执行过程中,因争夺资源而造成的一种互相等待的现象,若无外力作用，它们都将无法推进下去.此时称系统处于死锁状态或系统产生了死锁，这些永远在互相等待的进程称为死锁进程。表级锁不会产生死锁.所以解决死锁主要还是针对于最常用的InnoDB。
+死锁的关键在于：两个(或以上)的Session加锁的顺序不一致。
+那么对应的解决死锁问题的关键就是：让不同的session加锁有次序
+
+#kill掉等待死锁进程
+–查看进程id，然后用kill id杀掉进程
+show processlist;
+SELECT * FROM information_schema.PROCESSLIST；
+–查询正在执行的进程
+SELECT * FROM information_schema.PROCESSLIST where length(info) >0 ;
+//查询是打开了哪些表
+show OPEN TABLES where In_use > 0;
+//查看被锁住的表名、事务ID、锁ID等
+SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCKS;
+//查看等待锁定关系
+SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS;
+//杀掉锁表进程
+kill 12041  | kill connection 12041  #杀掉ID为12041的连接
+kill query 12041  #杀掉ID为12041的查询
+
+#查询mysql语句执行运行时间
+方法一： show profiles。
+查看profile是否开启，数据库默认是不开启的。变量profiling是用户变量，每次都得重新启用。在MySQL 5.6.8过期，在后期版本中会被移除。
+查看方法： show variables like "%pro%";
+设置开启方法： set profiling = 1;
+show profiles；即可查看所有sql的总的执行时间。
+show profiles；即可查看所有sql的总的执行时间。
+show profile cpu, block io, memory,swaps,context switches,source for query 6;可以查看出一条SQL语句执行的各种资源消耗情况，比如CPU，IO等
+show profile all for query 6 查看第6条语句的所有的执行信息。
+方法二： timestampdiff来查看执行时间。
+这种方法有一点要注意，就是三条sql语句要尽量连一起执行，不然误差太大，根本不准
+set @d=now();
+select * from comment;
+select timestampdiff(second,@d,now());
 </pre>

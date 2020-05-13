@@ -1,3 +1,4 @@
+
 basePackageInstall:
   pkg.installed:
     - pkgs:
@@ -27,4 +28,4 @@ basePackageInstall:
       - zip
       - vim-enhanced
       - bind-utils
-      - bash-completion  
+
