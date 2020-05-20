@@ -2017,6 +2017,8 @@ sync_binlog            | 0  #建议设置为1，每1次写操作将同步二进�
 参考链接：https://www.percona.com/downloads/
 参考链接：https://www.percona.com/downloads/XtraBackup/Percona-XtraBackup-2.4.9/binary/redhat/6/x86_64/Percona-XtraBackup-2.4.9-ra467167cdd4-el6-x86_64-bundle.tar
 #使用Xtrabackup进行mysql备份
+#xtrabackup只支持INNODB存储引擎完全+增量备份。只支持MYISAM完全备份、不支持MYISAM增量备份，当备份MYISAM存储引擎时使用增量备份则xtrabackup其实使用了完全备份
+#完全+增量+二进制恢复
 ##安装xtrabackup
 [root@lnmp download]# wget https://www.percona.com/downloads/XtraBackup/Percona-XtraBackup-2.4.9/binary/redhat/6/x86_64/Percona-XtraBackup-2.4.9-ra467167cdd4-el6-x86_64-bundle.tar
 [root@lnmp download]# tar xf Percona-XtraBackup-2.4.9-ra467167cdd4-el6-x86_64-bundle.tar
@@ -2036,12 +2038,12 @@ sync_binlog            | 0  #建议设置为1，每1次写操作将同步二进�
 /usr/share/man/man1/xbstream.1.gz
 /usr/share/man/man1/xtrabackup.1.gz
 #第一阶段：备份
-[root@lnmp download]# innobackupex --user=root --password=root123 /backup #备份
+[root@lnmp download]# innobackupex --user=root --password=root123 /backup #完全备份
+[root@lnmp 2019-06-23_21-25-52]# pwd
+/backup/2019-06-23_21-25-52
 [root@lnmp 2019-06-23_21-25-52]# ls
 backup-my.cnf  lost+found  mysql               test       xtrabackup_binlog_info  xtrabackup_info
 ibdata1        mydb        performance_schema  wordpress  xtrabackup_checkpoints  xtrabackup_logfile
-[root@lnmp 2019-06-23_21-25-52]# pwd
-/backup/2019-06-23_21-25-52
 [root@lnmp 2019-06-23_21-25-52]# cat xtrabackup_checkpoints #用记增量备份的检查点文件
 backup_type = full-backuped
 from_lsn = 0
@@ -2072,7 +2074,7 @@ encrypted = N
 [root@lnmp 2019-06-23_21-25-52]# cat xtrabackup_binlog_info  #xtrabckup备份的二进制文件状态
 mysql-bin.000001        801
 #第二阶段：准备工作，将事务日志进行重读和撤销到数据文件
-[root@lnmp 2019-06-23_21-25-52]# innobackupex --apply-log /backup/2019-06-23_21-25-52/ #进行事务日志写入数据文件，后面给一个路径，这个准备工作必须做，做完才可进行恢复
+[root@lnmp 2019-06-23_21-25-52]# innobackupex --apply-log /backup/2019-06-23_21-25-52/ #进行提交的事务日志写入数据文件，未提交的事务日志回滚，后面给一个路径，这个准备工作必须做，做完才可进行恢复，（不做的话mysql启动时会修复数据库，很危险）
 mysql> insert into stu (Name) value ('abcd'); #模拟在mysql做插入动作
 mysql> insert into stu (Name) value ('abcd12');
 mysql> flush logs; #滚动二进制日志
@@ -2080,7 +2082,7 @@ mysql> flush logs; #滚动二进制日志
 [root@lnmp mydata]# service mysql stop 
 [root@lnmp mydata]# rm -rf ./* #模拟删除全部数据
 [root@lnmp mydata]# ls /mydata/
-[root@lnmp backup]# innobackupex --copy-back /backup/2019-06-23_21-25-52/ #恢复全量备份
+[root@lnmp backup]# innobackupex --copy-back /backup/2019-06-23_21-25-52/ #恢复全量备份，恢复时mysqld服务可不启动。
 [root@lnmp mydata]# ll #恢复成功，但是属主属组不是mysql.mysql，必须改正
 total 41056
 -rw-r----- 1 root root 18874368 Jun 23 21:43 ibdata1
@@ -2096,7 +2098,7 @@ drwxr-x--- 2 root root     4096 Jun 23 21:43 wordpress
 -rw-r----- 1 root root       23 Jun 23 21:43 xtrabackup_binlog_pos_innodb
 -rw-r----- 1 root root      463 Jun 23 21:43 xtrabackup_info
 [root@lnmp mydata]# chown -R mysql.mysql /mydata/
-[root@lnmp mydata]# service mysql start #启动mysql
+[root@lnmp mydata]# service mysql start #启动mysql，必须保证/etc/init.d/mysqld和/etc/my.cnf文件都存在
 Starting MySQL.. SUCCESS! 
 [root@lnmp 2019-06-23_21-25-52]# cat xtrabackup_binlog_info 
 mysql-bin.000001        801
@@ -2115,7 +2117,7 @@ mysql> select * from stu;
 |  8 | ee    | NULL |
 +----+-------+------+
 mysql> set sql_log_bin=0;
-[root@lnmp ~]# mysql < a.sql  #恢复增量备份数据
+[root@lnmp ~]# mysql < a.sql  #恢复备份的日志增量数据，
 mysql> set sql_log_bin=1;
 mysql> select * from stu;
 +----+--------+------+
@@ -2169,15 +2171,16 @@ to_lsn = 2247436
 last_lsn = 2247436 #增量备份的最后lsn
 compact = 0
 recover_binlog_info = 0
-#让事务日志写入数据文件
+#让提交事务日志写入数据文件，未提交事务日志回滚
+#注：1.需要在每个备份（包括完全和增量备份）上，将已经提交的事务进行“重放”。“重放”之后，所有的增量备份数据将合并到完全备份上。2.基于所有的备份将未提交的事务进行“回滚”。
 [root@lnmp ~]# innobackupex --apply-log --redo-only /backup/2019-06-23_21-52-24/ #对完全备份操作，让事务日志写入数据文件，并且只做重读操作，不做撤销，因为如果撤销会影响后面的重读操作
-[root@lnmp ~]# innobackupex --apply-log --redo-only /backup/2019-06-23_21-52-24/ --incremental-dir=/backup/2019-06-23_21-55-32/ #对增量备份1进行事务日志操作，/backup/2019-06-23_21-52-24/为写入数据文件路径，--incremental-dir=/backup/2019-06-23_21-55-32/是第1次增量备份事务日志和二进制日志路径
-[root@lnmp ~]# innobackupex --apply-log --redo-only /backup/2019-06-23_21-52-24/ --incremental-dir=/backup/2019-06-23_22-00-13/ #对增量备份2进行事务日志操作，/backup/2019-06-23_21-52-24/为写入数据文件路径，--incremental-dir=/backup/2019-06-23_21-55-32/是第2次增量备份事务日志和二进制日志路径
+[root@lnmp ~]# innobackupex --apply-log --redo-only /backup/2019-06-23_21-52-24/ --incremental-dir=/backup/2019-06-23_21-55-32/ #对增量备份1进行事务日志重放操作，/backup/2019-06-23_21-52-24/为完全备份路径，--incremental-dir=/backup/2019-06-23_21-55-32/是第1次增量备份路径
+[root@lnmp ~]# innobackupex --apply-log --redo-only /backup/2019-06-23_21-52-24/ --incremental-dir=/backup/2019-06-23_22-00-13/ #对增量备份2进行事务日志重放操作，/backup/2019-06-23_21-52-24/为完全备份路径，--incremental-dir=/backup/2019-06-23_21-55-32/是第2次增量备份路径
 [root@lnmp ~]# service mysql stop #停止mysql
 Shutting down MySQL... SUCCESS!  
 [root@lnmp mydata]# rm -rf /mydata/* #模拟崩溃
 [root@lnmp mydata]# ls
-[root@lnmp backup]# innobackupex --copy-back /backup/2019-06-23_21-52-24/ #完全加增量恢复
+[root@lnmp backup]# innobackupex --copy-back /backup/2019-06-23_21-52-24/ #完全加增量恢复，所有的增量备份数据已经合并到完全备份上，未提交的事务进行回滚
 [root@lnmp mydata]# ll /mydata/
 total 18488
 -rw-r----- 1 root root 18874368 Jun 23 22:41 ibdata1
@@ -2218,8 +2221,51 @@ mysql> select * from stu;
 | 20 | cc2    | NULL |  #cc2为第二次增量备份前插入的，事实证明成功
 +----+--------+------+
 20 rows in set (0.00 sec)
-#注：innodb_file_per_table=1必须启用每表一个表空间，innodb_expand_import=1启用导入功能
 
+##xtrabackup的“流”及“备份压缩功能”
+Xtrabackup对备份的数据文件支持“流”功能，即可以将备份的数据通过STDOUT传输给tar程序进行归档，而不是默认的直接保存至某备份目录中，要使用此功能，仅需要使用--stream选项即可。如：
+#  innobackupex --stream=tar /backup | gzip > /backup/`date +%F_%H-%M-%S`.tar.gz
+甚至也可以使用类似如下命令将数据备份至其它服务器：
+#  innobackupex --stream=tar /backup | ssh user@www.magedu.com "cat - > /backup/`date +%F_%H-%M-%S`.tar.gz"
+此外，在执行本地备份时，还可以使用--parallel选项对多个文件进行并行复制，此选项用于指定在复制时启动的线程数目。当然，在实际进行备份时要利用此功能的便利性，也需要启用innodb_file_per_table=1选项或共享的表空间通过innodb_data_file_path选项存储在多个ibdata文件中。对某一数据库的多个文件的复制无法利用到此功能。其简单使用方法如下：
+#  innobackupex --parallel /path/to/backup
+同时，innobackupex备份的数据文件也可以存储在远程主机，这可以使用--remote-host选项来实现。
+#  innobackupex --remote-host=root@www.magedu.com /path/IN/REMOTE/HOST/to/backup
+
+##xtrabckup导入及导出单张表
+默认情况下，innodb表不能通过直接复制表文件的方式在mysql服务器之间进行移值，即便使用了innodb_file_per_table选项。而使用xtrabackup工具可以实现此种功能，不过此时需要“导出”表的mysql服务器启用了innodb_file_per_table=1选项(严格来说，是要“导出”的表在其创建之前，mysql服务器就启用了Innodb_file_per_table选项)。并且“导入”表的服务器同时启用了innodb_file_per_table=1和innodb_expand_import=1选项。
+1.导出表
+导出表是在备份的prepare(准备阶段，就是应用事务日志时)阶段进行的，因此，一旦完全备份完成，就可以在prepare过程中通过--export选项将某表导出了：
+#  innobackupex --apply-log --export /path/to/backup
+此命令会为每个innodb表的表空间创建一个以.exp结尾的文件，这些以.exp结尾的文件则可以用于导入至其它服务器。
+2.导入表
+要在mysql服务器上导入来自于其它服务器的某Innodb表，需要先在当前服务器上创建一个跟原来表表结构一致的表，而后才能实现将表导入：
+#  create table mytable (...) enging=innodb;
+然后将此表的表空间删除：
+#  alter table mydatabase.mytable DISCARD TABLESPACE;
+接下来，将来自“导出”表的服务器的mytable表的mytable.ibd和mytable.exp文件复制到当前服务器的数据目录，然后使用如下命令将其“导入”：
+#  alter table mydatabase.mytable IMPORT TABLESPACE;
+7、使用Xtrabackup对数据库进行部分备份
+Xtrabackup也可以实现部分备份，即只备份某个或某些指定的数据库或某数据库中的某个或某些表。但要使用此功能，必须启用innodb_file_per_table选项，即每张表保存为一个独立的文件。同时，其也不支持--stream选项，即不支持将数据通过管道传输给其它程序进行处理。
+此外，还原部分备份跟还原全部数据的备份也有所不同，即你不能通过简单地将prepared的部分备份使用--copy-back选项直接复制回数据目录，而是要通过导入表的方向来实现还原。当然，有些情况下，部分备份也可以直接通过--copy-back进行还原，但这种方式还原而来的数据多数会产生数据不一致的问题，因此，无论如何不推荐使用这种方式。
+(1)创建部分备份
+创建部分备份的方式有三种：正则表达式(--include), 枚举表文件(--tables-file)和列出要备份的数据库(--databases)。
+(a)使用--include
+使用--include时，要求为其指定要备份的表的完整名称，即形如databasename.tablename，如：
+# innobackupex --include='^mageedu[.]tb1'  /path/to/backup
+(b)使用--tables-file
+此选项的参数需要是一个文件名，此文件中每行包含一个要备份的表的完整名称；如：
+# echo -e 'mageedu.tb1\nmageedu.tb2' > /tmp/tables.txt
+# innobackupex --tables-file=/tmp/tables.txt  /path/to/backup
+(c)使用--databases
+此选项接受的参数为数据名，如果要指定多个数据库，彼此间需要以空格隔开；同时，在指定某数据库时，也可以只指定其中的某张表。此外，此选项也可以接受一个文件为参数，文件中每一行为一个要备份的对象。如：
+# innobackupex --databases="mageedu testdb"  /path/to/backup
+(2)整理(preparing)部分备份
+prepare部分备份的过程类似于导出表的过程，要使用--export选项进行：
+# innobackupex --apply-log --export  /pat/to/partial/backup
+此命令执行过程中，innobackupex会调用xtrabackup命令从数据字典中移除缺失的表，因此，会显示出许多关于“表不存在”类的警告信息。同时，也会显示出为备份文件中存在的表创建.exp文件的相关信息。
+(3)还原部分备份
+还原部分备份的过程跟导入表的过程相同。当然，也可以通过直接复制prepared状态的备份直接至数据目录中实现还原，不要此时要求数据目录处于一致状态。
 
 ###MySQL读写分离
 #第一节：MYSQL读写分离概念

@@ -1,0 +1,124 @@
+USE [topway]
+GO
+/****** Object:  StoredProcedure [dbo].[Bill_GetTrain_FormatData]    Script Date: 01/06/2020 11:31:29 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[Bill_GetTrain_FormatData]
+@BillNumber VARCHAR(100)
+AS
+BEGIN
+
+SELECT *,ROW_NUMBER() over(order by TT.id) as 序号 FROM(
+SELECT 
+t.id,
+CONVERT(varchar(100), t.CreateDate , 23)  AS '出票日期' ,
+CASE WHEN u.Type = 0 THEN t.OutBegdate ELSE t.RetBegdate END AS 出发日期,
+t.CoupNo AS 销售单号,
+T_CusUser.Name AS '预订人',
+u.Name AS 乘客姓名,
+u.Department AS 部门,
+u.CostCenter AS 成本中心,
+CASE WHEN u.Type = 0 THEN t.OutTrainNo ELSE t.RetTrainNo END AS 车次,
+CASE WHEN u.Type = 0 THEN t.OutGrade ELSE t.RetGrade END AS 座位等级,
+CASE WHEN u.Type = 0 THEN t.OutStroke ELSE t.RetStroke END AS 行程,
+u.RealPrice AS 车票单价,
+CAST((u.PrintPrice+u.Fuprice) AS VARCHAR(50)) AS 服务费,
+CASE WHEN r.ID IS NOT NULL THEN (  r.Fee + u.PrintPrice + u.Fuprice) ELSE  ( u.PrintPrice + u.Fuprice + u.realprice )  END AS 销售价,
+CASE WHEN r.ID IS NOT NULL THEN (  r.Fee + u.PrintPrice + u.Fuprice ) ELSE  ( u.PrintPrice + u.Fuprice + u.realprice )  END AS 账单金额,
+CASE WHEN r.ID IS NOT NULL THEN( CASE WHEN r.Write=1 THEN '已付'ELSE '未付' END) ELSE ( CASE WHEN t.payType=1 THEN '已付'ELSE '未付' END) END  AS  '支付状态',
+CASE WHEN r.ID IS NOT NULL THEN( CASE WHEN r.Write=1 THEN '已付已到账'ELSE '未付' END) ELSE ( CASE WHEN t.payType=1 THEN '已付'ELSE '未付' END) END  AS  '支付状态_页面计算',
+t.TrainWebNo AS 官网订单号,
+u.CustomItem AS 流程单号,
+t.Remark AS 备注,
+r.ID AS 退票单号,
+t.Sfrom AS 结算方式,
+P.BU,
+t.custid AS '预订人ID',
+ CASE WHEN O.BookingSource IN ( 1, 5, 10, 11 ,13)
+                                 THEN '线上'
+                                 ELSE '线下'
+                            END AS '线上(线下)' ,
+CASE WHEN r.ID IS NULL THEN NN1.审批信息 ELSE '' END AS 审批信息
+FROM dbo.tbTrainTicketInfo t 
+LEFT JOIN dbo.tbTrainUser u ON t.id=u.TrainTicketNo
+LEFT JOIN Train_ReturnTicket r ON u.ID=r.TickOrderDetailID AND r.ModifyBillNumber=t.ModifyBillNumber
+--LEFT JOIN Topway..tbCusholderM T_CusUser ON T_CusUser.custid = t.custid  AND ISNULL(EmployeeStatus,1)<>0--客户员工表
+LEFT JOIN homsomDB..Trv_UnitCompanies uc ON t.CmpId=uc.Cmpid
+LEFT JOIN homsomdb..Trv_UnitPersons T_CusPerson WITH(NOLOCK) ON t.custid = T_CusPerson.CustID AND uc.ID=T_CusPerson.CompanyID--员工表
+LEFT JOIN homsomDB..Trv_Human T_CusUser ON T_CusPerson.ID=T_CusUser.ID
+LEFT JOIN homsomdb..Trv_TrainPassenger P ON t.OrderID=P.OrderId AND P.Name = u.Name AND u.Idno=P.CredentialNo
+LEFT JOIN homsomdb..Trv_TrainOrder O ON t.OrderID=O.Id
+OUTER APPLY(
+				SELECT 
+					[审批信息]= STUFF(REPLACE(REPLACE(
+						(
+							SELECT  ISNULL((
+							'审批人：'+ TT5.Name +'；'
+							+'审批时间：'+ CONVERT(varchar(100), TT3.ProcessTime, 20) + '；'
+							+'审批方式：'+(CASE 
+											WHEN TT4.CommunicationType =1 THEN '短信'
+											WHEN TT4.CommunicationType =2 THEN '邮件'
+											WHEN TT4.CommunicationType =3 THEN '系统'
+											WHEN TT4.CommunicationType =4 THEN '人工'
+											WHEN TT4.CommunicationType =5 THEN 'APP'
+											WHEN TT4.CommunicationType =6 THEN '微信'
+											END 	) + '；'
+							),'') as value from workflow..Homsom_WF_Instance N 
+							LEFT JOIN workflow..Homsom_WF_Instance_Node TT3 ON N.InstanceID=TT3.InstanceID AND TT3.NodeType=110
+							LEFT JOIN workflow..homsom_VettingRelations TT4 ON N.InstanceID=TT4.VettingWorkID AND TT4.Status=2 
+							LEFT JOIN homsomdb..Trv_Human TT5 ON TT3.ProcessPerson=TT5.ID																									
+							WHERE 
+							 CAST(t.OrderID AS VARCHAR(100))=N.BusinessID
+							FOR XML AUTO
+						), '<N value="', '|'), '"/>', ''), 1, 1, '')
+)NN1
+WHERE t.ModifyBillNumber=@BillNumber 
+
+UNION ALL
+
+SELECT 
+r.id,
+CONVERT(varchar(100), t.CreateDate , 23)  AS '出票日期' ,  
+CASE WHEN u.Type = 0 THEN t.OutBegdate ELSE t.RetBegdate END AS 出发日期,
+t.CoupNo AS 销售单号,
+T_CusUser.Name AS '预订人',
+u.Name AS 乘客姓名,
+u.Department AS 部门,
+u.CostCenter AS 成本中心,
+CASE WHEN u.Type = 0 THEN t.OutTrainNo ELSE t.RetTrainNo END AS 车次,
+CASE WHEN u.Type = 0 THEN t.OutGrade ELSE t.RetGrade END AS 座位等级,
+CASE WHEN u.Type = 0 THEN t.OutStroke ELSE t.RetStroke END AS 行程,
+u.RealPrice AS 车票单价,
+'---'  AS 服务费,
+-( u.RealPrice - r.Fee) AS 销售价,
+-( u.RealPrice - r.Fee) AS 账单金额,
+( CASE WHEN r.Write=1 THEN '已付'ELSE '未付' END) AS  '支付状态',
+( CASE WHEN r.Write=1 THEN '已付'ELSE '未付' END)  AS  '支付状态_页面计算',
+t.TrainWebNo AS 官网订单号,
+u.CustomItem AS 流程单号,
+t.Remark AS 备注,
+r.ID AS 退票单号,
+t.Sfrom AS 结算方式,
+P.BU,
+t.CustId AS '预订人ID',
+'线下' AS '线上(线下)' ,
+'' AS 审批信息
+FROM Train_ReturnTicket r 
+LEFT JOIN dbo.tbTrainUser u ON u.id=r.TickOrderDetailID
+LEFT JOIN dbo.tbTrainTicketInfo t ON  t.id=u.TrainTicketNo
+--LEFT JOIN Topway..tbCusholderM T_CusUser ON T_CusUser.custid = t.custid  AND ISNULL(EmployeeStatus,1)<>0--客户员工表
+LEFT JOIN homsomDB..Trv_UnitCompanies uc ON t.CmpId=uc.Cmpid
+LEFT JOIN homsomdb..Trv_UnitPersons T_CusPerson WITH(NOLOCK) ON t.custid = T_CusPerson.CustID AND uc.ID=T_CusPerson.CompanyID--员工表
+LEFT JOIN homsomDB..Trv_Human T_CusUser ON T_CusPerson.ID=T_CusUser.ID
+LEFT JOIN homsomdb..Trv_TrainPassenger P ON t.OrderID=P.OrderId AND P.Name = u.Name AND u.Idno=P.CredentialNo
+LEFT JOIN homsomdb..Trv_TrainOrder O ON t.OrderID=O.Id
+WHERE r.ModifyBillNumber=@BillNumber
+AND t.ModifyBillNumber<>@BillNumber
+
+)TT
+END
+
+

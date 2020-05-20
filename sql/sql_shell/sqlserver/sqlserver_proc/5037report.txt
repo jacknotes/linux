@@ -1,0 +1,250 @@
+USE [Topway]
+GO
+/****** Object:  StoredProcedure [dbo].[sp_rpt_5037]    Script Date: 11/06/2019 13:55:07 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER proc [dbo].[sp_rpt_5037] 
+@SDate varchar(20),
+@EDate varchar(20) 
+
+as 
+IF OBJECT_ID('tempdb.dbo.#emp') IS NOT NULL DROP TABLE #emp
+SELECT ROW_NUMBER()OVER(ORDER BY t2.depOrder,t1.idnumber) idx,empname,team,DATEDIFF(m, edateandtime, GETDATE()) as 入职月数
+INTO #emp 
+from emppwd t1 WITH(NOLOCK) LEFT JOIN dbo.EmpSysSetting t2 WITH(NOLOCK) ON t1.team=t2.dep AND t2.ntype=2 where t1.dep = '运营部' and team like ('%差旅%') order by t2.depOrder,t1.idnumber 
+
+IF OBJECT_ID('tempdb.dbo.#t1') IS NOT NULL DROP TABLE #t1
+select opername1,sum(nights*pcs) as np,sum(price) as price,sum(totprofit) as totprofit
+into #t1
+from tbHtlcoupYf WITH(NOLOCK) 
+where prdate>=@SDate and prdate<CONVERT(varchar(20),DateAdd(day,1,@EDate),23)
+and status<>-2 and nights*pcs>=0
+and (opername1 in (select empname from #emp))
+and opername1=ApplyPrintPeople
+group by opername1
+
+
+--个人订单不打折
+IF OBJECT_ID('tempdb.dbo.#t2') IS NOT NULL DROP TABLE #t2
+select ApplyPrintPeople,sum(nights*pcs) as np,sum(price) as price,sum(totprofit) as totprofit
+into #t2
+from tbHtlcoupYf WITH(NOLOCK) 
+where prdate>=@SDate and prdate<CONVERT(varchar(20),DateAdd(day,1,@EDate),23)
+and status<>-2 and nights*pcs>=0
+and (ApplyPrintPeople in (select empname from #emp))
+and opername1<>ApplyPrintPeople and cmpid=''
+group by ApplyPrintPeople
+
+
+IF OBJECT_ID('tempdb.dbo.#t3') IS NOT NULL DROP TABLE #t3
+select ApplyPrintPeople,sum(nights*pcs)*0.5 as np,sum(price)*0.5 as price,sum(totprofit)*0.5 as totprofit
+into #t3
+from tbHtlcoupYf WITH(NOLOCK) 
+where prdate>=@SDate and prdate<CONVERT(varchar(20),DateAdd(day,1,@EDate),23)
+and status<>-2 and nights*pcs>=0
+and (ApplyPrintPeople in (select empname from #emp))
+and opername1<>ApplyPrintPeople and cmpid<>''
+group by ApplyPrintPeople
+
+IF OBJECT_ID('tempdb.dbo.#t17') IS NOT NULL DROP TABLE #t17
+select opername1,sum(nights*pcs)*0.5 as np,sum(price)*0.5 as price,sum(totprofit)*0.5 as totprofit
+into #t17
+from tbHtlcoupYf WITH(NOLOCK) 
+where prdate>=@SDate and prdate<CONVERT(varchar(20),DateAdd(day,1,@EDate),23)
+and status<>-2 and nights*pcs>=0
+and (opername1 in (select empname from #emp))
+and opername1<>ApplyPrintPeople and cmpid<>''
+group by opername1
+
+IF OBJECT_ID('tempdb.dbo.#t4') IS NOT NULL DROP TABLE #t4
+select opername1,sum(nights*pcs) as adjusetPcs,SUM(price) as adjusetprice,SUM(totprofit) as adjusetprofit
+into #t4 from tbHtlcoupYf WITH(NOLOCK) 
+where prdate>=@SDate and prdate<CONVERT(varchar(20),DateAdd(day,1,@EDate),23)
+and status<>-2 and nights*pcs<0
+and (opername1 in (select empname from #emp))
+and opername1=ApplyPrintPeople
+group by opername1
+
+IF OBJECT_ID('tempdb.dbo.#t5') IS NOT NULL DROP TABLE #t5
+select opername1,sum(nights*pcs)*0.5 as adjusetPcs,SUM(price) as adjusetprice,SUM(totprofit) as adjusetprofit
+into #t5 from tbHtlcoupYf WITH(NOLOCK) 
+where prdate>=@SDate and prdate<CONVERT(varchar(20),DateAdd(day,1,@EDate),23)
+and status<>-2 and nights*pcs<0
+and (opername1 in (select empname from #emp))
+and opername1<>ApplyPrintPeople
+group by opername1
+
+IF OBJECT_ID('tempdb.dbo.#t6') IS NOT NULL DROP TABLE #t6
+select ApplyPrintPeople,sum(nights*pcs)*0.5 as adjusetPcs,SUM(price) as adjusetprice,SUM(totprofit) as adjusetprofit
+into #t6
+from tbHtlcoupYf WITH(NOLOCK) 
+where prdate>=@SDate and prdate<CONVERT(varchar(20),DateAdd(day,1,@EDate),23)
+and status<>-2 and nights*pcs<0
+and (ApplyPrintPeople in (select empname from #emp))
+and opername1<>ApplyPrintPeople
+group by ApplyPrintPeople
+
+--自付
+
+IF OBJECT_ID('tempdb.dbo.#t11') IS NOT NULL DROP TABLE #t11
+select opername1,sum(nights*pcs) as np,sum(price) as price,sum(totprofit) as totprofit
+into #t11
+from tbHotelcoup WITH(NOLOCK) 
+where bldate>=@SDate and bldate<CONVERT(varchar(20),DateAdd(day,1,@EDate),23)
+and (opername1 in (select empname from #emp))
+and opername1=Sales
+and status in (2) and nights*pcs>=0
+group by opername1
+
+
+IF OBJECT_ID('tempdb.dbo.#t12') IS NOT NULL DROP TABLE #t12
+select opername1,sum(nights*pcs)*0.5 as np,sum(price)*0.5 as price,sum(totprofit)*0.5 as totprofit
+into #t12
+from tbHotelcoup WITH(NOLOCK) 
+where bldate>=@SDate and bldate<CONVERT(varchar(20),DateAdd(day,1,@EDate),23)
+and (opername1 in (select empname from #emp))
+and opername1<>Sales
+and status in (2) and nights*pcs>=0
+group by opername1
+
+
+IF OBJECT_ID('tempdb.dbo.#t13') IS NOT NULL DROP TABLE #t13
+select Sales,sum(nights*pcs)*0.5 as np,sum(price)*0.5 as price,sum(totprofit)*0.5 as totprofit
+into #t13
+from tbHotelcoup WITH(NOLOCK) 
+where bldate>=@SDate and bldate<CONVERT(varchar(20),DateAdd(day,1,@EDate),23)
+and (Sales in (select empname from #emp))
+and opername1<>Sales
+and status in (2) and nights*pcs>=0
+group by Sales
+
+IF OBJECT_ID('tempdb.dbo.#t14') IS NOT NULL DROP TABLE #t14
+select opername1,sum(nights*pcs) as np,SUM(price) as adjusetprice,SUM(totprofit) as adjusetprofit
+into #t14
+from tbHotelcoup WITH(NOLOCK) 
+where bldate>=@SDate and bldate<CONVERT(varchar(20),DateAdd(day,1,@EDate),23)
+and (opername1 in (select empname from #emp))
+and opername1=Sales
+and status in (2) and nights*pcs<0 
+group by opername1
+
+
+IF OBJECT_ID('tempdb.dbo.#t15') IS NOT NULL DROP TABLE #t15
+select opername1,sum(nights*pcs)*0.5 as np ,SUM(price) as adjusetprice,SUM(totprofit) as adjusetprofit
+into #t15
+from tbHotelcoup WITH(NOLOCK) 
+where bldate>=@SDate and bldate<CONVERT(varchar(20),DateAdd(day,1,@EDate),23)
+and (opername1 in (select empname from #emp))
+and opername1<>Sales
+and status in (2) and nights*pcs<0 
+group by opername1
+
+IF OBJECT_ID('tempdb.dbo.#t16') IS NOT NULL DROP TABLE #t16
+select Sales,sum(nights*pcs)*0.5 as np ,SUM(price) as adjusetprice,SUM(totprofit) as adjusetprofit
+into #t16
+from tbHotelcoup WITH(NOLOCK)
+where bldate>=@SDate and bldate<CONVERT(varchar(20),DateAdd(day,1,@EDate),23)
+and (Sales in (select empname from #emp))
+and opername1<>Sales
+and status in (2) and nights*pcs<0 
+group by Sales
+
+
+select team as 所属小组,emp.empname as 差旅顾问,CAST(入职月数 AS varchar(20)) as 入职月数
+,isnull(t1.np,0)+ISNULL(t2.np,0)+ISNULL(t3.np,0)+ISNULL(t17.np,0) as 预付间夜
+,ISNULL(t4.adjusetPcs,0)+ISNULL(t5.adjusetPcs,0)+ISNULL(t6.adjusetPcs,0) as 预付调整间夜数
+,isnull(t1.price,0)+ISNULL(t2.price,0)+ISNULL(t3.price,0)+ISNULL(t17.price,0)+
+ISNULL(t4.adjusetPrice,0) +ISNULL(t5.adjusetPrice,0)+ISNULL(t6.adjusetPrice,0) as 预付销量
+,isnull(t1.totprofit,0)+ISNULL(t2.totprofit,0)+ISNULL(t3.totprofit,0)+ISNULL(t17.totprofit,0)+
+ISNULL(t4.adjusetProfit,0) +ISNULL(t5.adjusetProfit,0)+ISNULL(t6.adjusetProfit,0) as 预付利润
+,CONVERT(decimal(18,1),isnull(t11.np,0)+ISNULL(t12.np,0)+ISNULL(t13.np,0)) as 自付间夜数
+,CONVERT(decimal(18,1),isnull(t14.np,0)+ISNULL(t15.np,0)+ISNULL(t16.np,0)) as 自付调整间夜数
+,isnull(t11.price,0)+ISNULL(t12.price,0)+ISNULL(t13.price,0)+
+ISNULL(t14.adjusetPrice,0) +ISNULL(t15.adjusetPrice,0)+ISNULL(t16.adjusetPrice,0) as 自付销量
+,isnull(t11.totprofit,0)+ISNULL(t12.totprofit,0)+ISNULL(t13.totprofit,0)+
+ISNULL(t14.adjusetProfit,0) +ISNULL(t15.adjusetProfit,0)+ISNULL(t16.adjusetProfit,0) as 自付利润
+,ISNULL(t4.adjusetPcs,0)+ISNULL(t5.adjusetPcs,0)+ISNULL(t6.adjusetPcs,0)+CONVERT(decimal(18,1),isnull(t14.np,0)+ISNULL(t15.np,0)+ISNULL(t16.np,0)) as 总调整间夜数
+,isnull(t1.np,0)+ISNULL(t2.np,0)+ISNULL(t3.np,0)+CONVERT(decimal(18,1),isnull(t11.np,0)+ISNULL(t12.np,0)+ISNULL(t13.np,0))+(ISNULL(t4.adjusetPcs,0)+ISNULL(t5.adjusetPcs,0)+ISNULL(t6.adjusetPcs,0)+CONVERT(decimal(18,1),isnull(t14.np,0)+ISNULL(t15.np,0)+ISNULL(t16.np,0)))+ISNULL(t17.np,0) as 总间夜数
+,isnull(t1.price,0)+ISNULL(t2.price,0)+ISNULL(t3.price,0)+isnull(t11.price,0)+ISNULL(t12.price,0)+ISNULL(t13.price,0) 
++ISNULL(t4.adjusetPrice,0) +ISNULL(t5.adjusetPrice,0)+ISNULL(t6.adjusetPrice,0)
++ISNULL(t14.adjusetPrice,0) +ISNULL(t15.adjusetPrice,0)+ISNULL(t16.adjusetPrice,0)+ISNULL(t17.price,0) as 总销量
+,isnull(t1.totprofit,0)+ISNULL(t2.totprofit,0)+ISNULL(t3.totprofit,0)+isnull(t11.totprofit,0)+ISNULL(t12.totprofit,0)+ISNULL(t13.totprofit,0)
++ISNULL(t4.adjusetProfit,0)+ISNULL(t5.adjusetProfit,0)+ISNULL(t6.adjusetProfit,0)+ISNULL(t17.totprofit,0)
++ISNULL(t14.adjusetProfit,0) +ISNULL(t15.adjusetProfit,0)+ISNULL(t16.adjusetProfit,0) as 总利润 into #HotelReport1
+from #emp emp
+left join #t1 t1 on t1.opername1=Emp.empname 
+left join #t2 t2 on t2.ApplyPrintPeople=Emp.empname 
+left join #t3 t3 on t3.ApplyPrintPeople=Emp.empname
+left join #t4 t4 on t4.opername1=Emp.empname 
+left join #t5 t5 on t5.opername1=Emp.empname 
+left join #t6 t6 on t6.ApplyPrintPeople=Emp.empname 
+left join #t11 t11 on t11.opername1=Emp.empname 
+left join #t12 t12 on t12.opername1=Emp.empname 
+left join #t13 t13 on t13.sales=Emp.empname 
+left join #t14 t14 on t14.opername1=Emp.empname 
+left join #t15 t15 on t15.opername1=Emp.empname 
+left join #t16 t16 on t16.sales=Emp.empname 
+left join #t17 t17 on t17.opername1=Emp.empname 
+order by idx
+
+select 所属小组,差旅顾问,入职月数,预付间夜,预付调整间夜数,预付销量,预付利润,自付间夜数,自付调整间夜数,
+自付销量,自付利润,总调整间夜数,总间夜数,总销量,总利润
+from #HotelReport1 where 所属小组='差旅运营一组'
+union all
+select '合计','','',sum(预付间夜),sum(预付调整间夜数),sum(预付销量),sum(预付利润),sum(自付间夜数),sum(自付调整间夜数),
+sum(自付销量),sum(自付利润),sum(总调整间夜数),sum(总间夜数),sum(总销量),sum(总利润)
+from #HotelReport1 where 所属小组='差旅运营一组' 
+group by 所属小组
+union all
+select 所属小组,差旅顾问,入职月数,预付间夜,预付调整间夜数,预付销量,预付利润,自付间夜数,自付调整间夜数,
+自付销量,自付利润,总调整间夜数,总间夜数,总销量,总利润
+from #HotelReport1 where 所属小组='差旅运营二组'
+union all
+select '合计','','',sum(预付间夜),sum(预付调整间夜数),sum(预付销量),sum(预付利润),sum(自付间夜数),sum(自付调整间夜数),
+sum(自付销量),sum(自付利润),sum(总调整间夜数),sum(总间夜数),sum(总销量),sum(总利润)
+from #HotelReport1 where 所属小组='差旅运营二组' 
+group by 所属小组
+union all
+select 所属小组,差旅顾问,入职月数,预付间夜,预付调整间夜数,预付销量,预付利润,自付间夜数,自付调整间夜数,
+自付销量,自付利润,总调整间夜数,总间夜数,总销量,总利润
+from #HotelReport1 where 所属小组='差旅运营三组'
+union all
+select '合计','','',sum(预付间夜),sum(预付调整间夜数),sum(预付销量),sum(预付利润),sum(自付间夜数),sum(自付调整间夜数),
+sum(自付销量),sum(自付利润),sum(总调整间夜数),sum(总间夜数),sum(总销量),sum(总利润)
+from #HotelReport1 where 所属小组='差旅运营三组' 
+group by 所属小组
+union all
+select 所属小组,差旅顾问,入职月数,预付间夜,预付调整间夜数,预付销量,预付利润,自付间夜数,自付调整间夜数,
+自付销量,自付利润,总调整间夜数,总间夜数,总销量,总利润
+from #HotelReport1 where 所属小组='差旅运营四组'
+union all
+select '合计','','',sum(预付间夜),sum(预付调整间夜数),sum(预付销量),sum(预付利润),sum(自付间夜数),sum(自付调整间夜数),
+sum(自付销量),sum(自付利润),sum(总调整间夜数),sum(总间夜数),sum(总销量),sum(总利润)
+from #HotelReport1 where 所属小组='差旅运营四组' 
+group by 所属小组
+union all
+select 所属小组,差旅顾问,入职月数,预付间夜,预付调整间夜数,预付销量,预付利润,自付间夜数,自付调整间夜数,
+自付销量,自付利润,总调整间夜数,总间夜数,总销量,总利润
+from #HotelReport1 where 所属小组='差旅运营十组'
+union all
+select '合计','','',sum(预付间夜),sum(预付调整间夜数),sum(预付销量),sum(预付利润),sum(自付间夜数),sum(自付调整间夜数),
+sum(自付销量),sum(自付利润),sum(总调整间夜数),sum(总间夜数),sum(总销量),sum(总利润)
+from #HotelReport1 where 所属小组='差旅运营十组' 
+group by 所属小组
+
+drop table #t1
+drop table #t2
+drop table #t3
+drop table #t4
+drop table #t5
+drop table #t6
+drop table #t11
+drop table #t12
+drop table #t13
+drop table #t14
+drop table #t15
+drop table #t16 
+drop table #t17
+drop table #HotelReport1

@@ -1,0 +1,110 @@
+USE [master]
+GO
+/****** Object:  StoredProcedure [dbo].[Bak_full]    Script Date: 09/11/2019 11:35:11 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+  
+ALTER proc [dbo].[Bak_full]  
+as  
+declare @now datetime    --现在时间
+declare @rootPath nvarchar(100)    --数据存储路径
+declare @fName nvarchar(20)    --文件名
+declare @strYear nvarchar(4)    --年份
+declare @strMonth nvarchar(2)   --月份
+declare @fname_tmp nvarchar(200)   --
+select @now=GETDATE()    --赋值当前时间给@now 
+select @fName= CONVERT(nvarchar(8),@now,112)+replace(CONVERT(nvarchar(8),@now,108),':','') --赋值文件名给fName 
+select @strYear=SUBSTRING(@fName,1,4)   --截取fName中年份给strYear
+select @strMonth=SUBSTRING(@fName,5,2)  --截取fName中月份给strMonth
+select @rootPath=N'F:\DBbak\'+@strYear+'\'+@strMonth+'\'  --赋值设置数据存储路径
+  
+--if DATEPART(Weekday,@now)=1 --周日  
+begin  
+select @fname_tmp=@rootPath+N'96969_'+@fName+'_full.bak'  --声明变量@fname_tmp并赋值为F:\DBbak\2020\01\96969_20200109161101_full.bak
+BACKUP DATABASE [96969] TO  DISK =@fname_tmp  WITH NOFORMAT  
+, NOINIT,  NAME = N'96969-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
+  
+select @fname_tmp=@rootPath+N'ehomsom_'+@fName+'_full.bak'  
+BACKUP DATABASE [ehomsom] TO  DISK =@fname_tmp  WITH NOFORMAT  
+--NOFORMAT 指定媒体头不应写入所有用于该备份操作的卷中，并且不要重写该备份设备除非指定了 INIT。
+, NOINIT,  NAME = N'ehomsom-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
+--NOINIT 表示备份集将追加到指定的磁盘或磁带设备上，以保留现有的备份集。NOINIT 是默认设置。
+--NAME 指定备份集的名称。名称最长可达 128 个字符。假如没有指定 NAME，它将为空。  
+--SKIP 禁用备份集过期和名称检查，这些检查一般由 BACKUP 语句执行以防重写备份集。
+
+--NOREWIND 指定 SQL Server 在备份操作完成后使磁带保持打开。NOREWIND 意即 NOUNLOAD。SQL Server 将保留磁带驱动器的所有权，直到 BACKUP或 RESTORE 命令使用 REWIND 为止。 
+--如果无意中使磁带处于打开状态，则释放磁带的最快方法是使用下面的 RESTORE 命令：RESTORE LABELONLY FROM TAPE = <name> WITH REWIND
+--通过查询 master 数据库中的 sysopentapes 表可以查找正在打开的磁带列表。
+--NOUNLOAD 指定不在备份后从磁带驱动器中自动卸载磁带。设置始终为 NOUNLOAD，直到指定 UNLOAD 为止。该选项只用于磁带设备。
+--STATS [= percentage] 每当另一个 percentage 结束时显示一条消息，它被用于测量进度。如果省略 percentage，SQL Server 将每完成 10 个百分点显示一条消息。
+
+select @fname_tmp=@rootPath+N'homsom_'+@fName+'_full.bak'  
+BACKUP DATABASE [homsom] TO  DISK =@fname_tmp  WITH NOFORMAT  
+, NOINIT,  NAME = N'homsom-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
+  
+select @fname_tmp=@rootPath+N'homsomDB_'+@fName+'_full.bak'  
+BACKUP DATABASE [homsomDB] TO  DISK =@fname_tmp  WITH NOFORMAT  
+, NOINIT,  NAME = N'homsomDB-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
+  
+select @fname_tmp=@rootPath+N'HotelDB_'+@fName+'_full.bak'  
+BACKUP DATABASE [HotelDB] TO  DISK =@fname_tmp  WITH NOFORMAT  
+, NOINIT,  NAME = N'HotelDB-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
+  
+select @fname_tmp=@rootPath+N'ReportDB_'+@fName+'_full.bak'  
+BACKUP DATABASE [ReportDB] TO  DISK =@fname_tmp  WITH NOFORMAT  
+, NOINIT,  NAME = N'ReportDB-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
+  
+select @fname_tmp=@rootPath+N'Selected_'+@fName+'_full.bak'  
+BACKUP DATABASE [Selected] TO  DISK =@fname_tmp  WITH NOFORMAT  
+, NOINIT,  NAME = N'Selected-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
+  
+select @fname_tmp=@rootPath+N'SMS_'+@fName+'_full.bak'  
+BACKUP DATABASE [SMS] TO  DISK =@fname_tmp  WITH NOFORMAT  
+, NOINIT,  NAME = N'SMS-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
+  
+select @fname_tmp=@rootPath+N'Topway_'+@fName+'_full.bak'  
+BACKUP DATABASE [Topway] TO  DISK =@fname_tmp  WITH NOFORMAT  
+, NOINIT,  NAME = N'Topway-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
+  
+select @fname_tmp=@rootPath+N'TripDB_'+@fName+'_full.bak'  
+BACKUP DATABASE [TripDB] TO  DISK =@fname_tmp  WITH NOFORMAT  
+, NOINIT,  NAME = N'TripDB-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
+  
+select @fname_tmp=@rootPath+N'workflow_'+@fName+'_full.bak'  
+BACKUP DATABASE [workflow] TO  DISK =@fname_tmp  WITH NOFORMAT  
+, NOINIT,  NAME = N'workflow-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
+ 
+select @fname_tmp=@rootPath+N'TMS_ReportDb_'+@fName+'_full.bak'  
+BACKUP DATABASE [TMS_ReportDb] TO  DISK =@fname_tmp  WITH NOFORMAT  
+, NOINIT,  NAME = N'TMS_ReportDb-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10 
+
+select @fname_tmp=@rootPath+N'HotelElongDB_'+@fName+'_full.bak'  
+BACKUP DATABASE [HotelElongDB] TO  DISK =@fname_tmp  WITH NOFORMAT  
+, NOINIT,  NAME = N'HotelElongDB-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10 
+  
+select @fname_tmp=@rootPath+N'HotelHmcDB_'+@fName+'_full.bak'  
+BACKUP DATABASE [HotelHmcDB] TO  DISK =@fname_tmp  WITH NOFORMAT  
+, NOINIT,  NAME = N'HotelHmcDB-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10   
+  
+select @fname_tmp=@rootPath+N'HotelOrderDB_'+@fName+'_full.bak'  
+BACKUP DATABASE [HotelOrderDB] TO  DISK =@fname_tmp  WITH NOFORMAT  
+, NOINIT,  NAME = N'HotelOrderDB-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10 
+  
+select @fname_tmp=@rootPath+N'ApproveBase_'+@fName+'_full.bak'  
+BACKUP DATABASE [ApproveBase] TO  DISK =@fname_tmp  WITH NOFORMAT  
+, NOINIT,  NAME = N'ApproveBase-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
+  
+select @fname_tmp=@rootPath+N'hsTasks_'+@fName+'_full.bak'  
+BACKUP DATABASE [hsTasks] TO  DISK =@fname_tmp  WITH NOFORMAT  
+, NOINIT,  NAME = N'hsTasks-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
+  
+select @fname_tmp=@rootPath+N'OpenApiDB_'+@fName+'_full.bak'  
+BACKUP DATABASE [OpenApiDB] TO  DISK =@fname_tmp  WITH NOFORMAT  
+, NOINIT,  NAME = N'OpenApiDB-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
+  
+select @fname_tmp=@rootPath+N'TravelReportDB_'+@fName+'_full.bak'  
+BACKUP DATABASE [TravelReportDB] TO  DISK =@fname_tmp  WITH NOFORMAT  
+, NOINIT,  NAME = N'TravelReportDB-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
+end   
