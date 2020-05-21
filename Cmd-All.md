@@ -1386,6 +1386,15 @@ echo '<?xml version="1.0" encoding="UTF-8"?><userinfoReq><subsNumber>13814528620
 方式二：在命令行直接发送xml结构数据
 curl -H 'content-type: application/xml' -d '<?xml version="1.0" encoding="utf-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://service.accessor.madapter.csp.huawei.com"><soapenv:Header /><soapenv:Body><ser:leaveMessageCount><ser:in0><![CDATA[20161011160516XdznbN]]></ser:in0><ser:in1><![CDATA[1600106496388382726]]></ser:in1><ser:in2><![CDATA[14]]></ser:in2><ser:in3><![CDATA[<extendParams><channelid>1600</channelid><servicetype></servicetype><appid></appid><usertype>10</usertype><userid>6496388382726</userid><msisdn>13814528620</msisdn><email></email><account></account><nickname></nickname><questionType></questionType></extendParams>]]></ser:in3></ser:leaveMessageCount></soapenv:Body></soapenv:Envelope>' http://172.18.173.xx:8085/csp-magent-client/madapterservices/madapter/lmCountAccessor
 
+#ssh隧道
+ssh -N -f -R 8888:127.0.0.1:1080 root@172.168.2.222
+注：-N连接后不进入终端，-f在后台运行，-R表示前面先写远程端口，后面写本地ip加端口，这样远端的服务器就可以用8888端口连接本地的1080http_proxy，https_proxy代理端口上网了。
+ssh -N -f -L 127.0.0.1:1080:172.168.2.222:8000 root@172.168.2.222
+注：-N连接后不进入终端，-f在后台运行，-L表示前面先写本地ip加端口，后面写远端ip加端口，这样本地的服务器就可以用1080端口连接远端的8000端口了。
+
+#linux设置http_proxy,https_proxy
+[root@salt /git/linux]# export http_proxy='127.0.0.1:8888'
+[root@salt /git/linux]# export https_proxy='127.0.0.1:8888'
 
 
 </pre>
