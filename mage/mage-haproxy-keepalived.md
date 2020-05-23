@@ -438,7 +438,7 @@ fi
 fi
 [root@lamp-zabbix keepalived]# chmod +x check_haproxy.sh 
 [root@lamp-zabbix keepalived]# vim clean_arp.sh 
-P=$1
+VIP=$1
 GATEWAY=192.168.1.254   
 /sbin/arping -I eth0 -c 5 -s $VIP $GATEWAY &>/dev/null
 [root@lamp-zabbix keepalived]# chmod +x clean_arp.sh 
@@ -490,7 +490,7 @@ systemctl stop haproxy
 fi
 fi
 [root@lnmp keepalived]# vim clean_arp.sh
-P=$1
+VIP=$1
 GATEWAY=192.168.1.254   
 /sbin/arping -I eth0 -c 5 -s $VIP $GATEWAY &>/dev/null
 [root@lnmp keepalived]# chmod +x clean_arp.sh check_haproxy.sh 
@@ -569,3 +569,358 @@ owners.
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
 mysql> 
+
+
+####基于nginx做主备或主主模式
+#keepalived配置详解：
+-------------
+! Configuration File for keepalived  
+  
+global_defs {  
+   notification_email {  
+         linuxedu@foxmail.com
+         mageedu@126.com  
+   }  
+   notification_email_from kanotify@magedu.com 
+   smtp_connect_timeout 3  
+   smtp_server 127.0.0.1  
+   router_id LVS_DEVEL  
+}  
+
+vrrp_script chk_haproxy {  
+    script "killall -0 haproxy"  
+    interval 1  
+    weight 2  
+}  
+
+vrrp_script chk_mantaince_down {
+   script "[[ -f /etc/keepalived/down ]] && exit 1 || exit 0"
+   interval 1
+   weight 2
+}
+
+vrrp_instance VI_1 {  
+    interface eth0  
+    state MASTER  # BACKUP for slave routers
+    priority 101  # 100 for BACKUP
+    virtual_router_id 51 
+    garp_master_delay 1 
+    advert_int 1   
+
+    authentication {  
+        auth_type PASS  
+        auth_pass password  
+    }  
+    track_interface {  
+       eth0    
+    }  
+    virtual_ipaddress {  
+        172.16.100.1/16 dev eth0 label eth0:0 
+    }  
+    track_script {  
+        chk_haproxy  
+        chk_mantaince_down
+    }  
+  
+ 
+    notify_master "/etc/keepalived/notify.sh master"  
+    notify_backup "/etc/keepalived/notify.sh backup"  
+    notify_fault "/etc/keepalived/notify.sh fault"  
+	smtp alter
+} 
+-------------
+全局配置解析
+global_defs全局配置标识，表面这个区域{}是全局配置
+notification_email {  
+         linuxedu@foxmail.com
+         mageedu@126.com  
+}
+表示keepalived在发生诸如切换操作时需要发送email通知，以及email发送给哪些邮件地址，邮件地址可以多个，每行一个
+notification_email_from kanotify@magedu.com 
+表示发送通知邮件时邮件源地址是谁
+smtp_server 127.0.0.1
+表示发送email时使用的smtp服务器地址，这里可以用本地的sendmail来实现
+smtp_connect_timeout 3
+连接smtp连接超时时间
+router_id node1
+机器标识
+vrrp_script chk_haproxy {  
+    script "killall -0 haproxy"  
+    interval 1  
+    weight 2  
+}  
+vrrp_script chk_mantaince_down {
+   script "[[ -f /etc/keepalived/down ]] && exit 1 || exit 0"
+   interval 1
+   weight 2
+}
+vrrp_script区域定义脚本名字和脚本执行的间隔和脚本执行的优先级变更
+state：state指定instance(Initial)的初始状态，就是说在配置好后，这台服务器的初始状态就是这里指定的，但这里指定的不算，还是得要通过竞选通过优先级来确定，里如果这里设置为master，但如若他的优先级不及另外一台，那么这台在发送通告时，会发送自己的优先级，另外一台发现优先级不如自己的高，那么他会就回抢占为master
+interface：实例绑定的网卡，因为在配置虚拟IP的时候必须是在已有的网卡上添加的
+priority 100：设置本节点的优先级，优先级高的为master
+virtual router id：这里设置VRID，这里非常重要，相同的VRID为一个组，他将决定多播的MAC地址
+garp master delay：在切换到master状态后，延迟进行免费的ARP(gratuitous ARP)请求
+advert_int 1: 检查间隔
+nopreempt：state必须配置为BACKUP时，nopreempt不抢占功能才能生效
+authentication {  
+        auth_type PASS  
+        auth_pass password  
+    }
+authentication：这里设置认证
+auth type：认证方式，可以是PASS或AH两种认证方式
+auth pass：认证密码
+ track_interface {  
+       eth0    
+    }
+track interface：跟踪接口，设置额外的监控，里面任意一块网卡出现问题，都会进入故障(FAULT)状态，例如，用nginx做均衡器的时候，内网必须正常工作，如果内网出问题了，这个均衡器也就无法运作了，所以必须对内外网同时做健康检查
+ virtual_ipaddress {  
+        172.16.100.1/16 dev eth0 label eth0:0 
+    } 
+virtual ipaddress：这里设置的就是VIP，也就是虚拟IP地址，他随着state的变化而增加删除，当state为master的时候就添加，当state为backup的时候删除，这里主要是有优先级来决定的，和state设置的值没有多大关系，这里可以设置多个IP地址
+track_script {  
+        chk_haproxy  
+        chk_mantaince_down
+    }  
+在实例(vrrp_instance)里面引用脚本
+注意：VRRP脚本(vrrp_script)和VRRP实例(vrrp_instance)属于同一个级别
+notify_master "/etc/keepalived/notify.sh master"  表示当切换到master状态时，要执行的脚本
+notify_backup "/etc/keepalived/notify.sh backup"  表示当切换到backup状态时，要执行的脚本
+notify_fault "/etc/keepalived/notify.sh fault" 表示当故障时，要执行的脚本
+smtp alter	表示切换时给global defs中定义的邮件地址发送右键通知
+-------------
+#源码keepalived安装---CentOS-7
+[root@node2 download]# wget https://www.keepalived.org/software/keepalived-2.0.19.tar.gz
+[root@node2 download]# tar xf keepalived-2.0.19.tar.gz 
+[root@node2 keepalived-2.0.19]# ./configure --prefix=/usr/local/keepalived
+[root@node2 keepalived-2.0.19]# make && make install
+[root@node2 keepalived]# mkdir /etc/keepalived
+[root@node2 keepalived]# cp /usr/local/keepalived/etc/keepalived/keepalived.conf /etc/keepalived/
+[root@node2 keepalived]# cp /download/keepalived-2.0.19/keepalived/keepalived.service /usr/lib/systemd/system/ #默认复制过去，没有则自己复制下
+[root@node2 download]# echo 'PATH=$PATH:/usr/local/keepalived/sbin' > /etc/profile.d/keepalived.sh
+[root@node2 download]# . /etc/profile.d/keepalived.sh
+#keepalived主备模式
+------MASTER-------
+[root@node2 html]# cat /etc/keepalived/keepalived.conf 
+! Configuration File for keepalived
+global_defs {
+	notification_email {
+     		saltstack@example.com
+   	}
+   	notification_email_from keepalived@example.com
+   	smtp_server 127.0.0.1
+   	smtp_connect_timeout 30
+   	router_id nginx_ha
+}
+
+vrrp_instance nginx_ha {
+	state MASTER
+	interface eth0
+	virtual_router_id 80
+	priority 150
+	advert_int 1
+
+	authentication {
+		auth_type PASS
+       		auth_pass 8486c8cdb3 
+	}
+
+	virtual_ipaddress {
+		192.168.15.50
+	}
+}
+-----BACKUP-------
+! Configuration File for keepalived
+global_defs {
+	notification_email {
+     		saltstack@example.com
+   	}
+   	notification_email_from keepalived@example.com
+   	smtp_server 127.0.0.1
+   	smtp_connect_timeout 30
+   	router_id nginx_ha
+}
+
+vrrp_instance nginx_ha {
+	state BACKUP
+	interface eth0
+	virtual_router_id 80
+	priority 100
+	advert_int 1
+
+	authentication {
+		auth_type PASS
+       		auth_pass 8486c8cdb3 
+	}
+
+	virtual_ipaddress {
+		192.168.15.50
+	}
+}
+------------------
+[root@node2 keepalived]# cat chk_nginx.sh 
+#!/bin/bash
+d=`date --date today +%Y%m%d_%H:%M:%S`
+#n1=`ps -C nginx --no-heading|wc -l`
+curl -Is http://127.0.0.1 | grep '200 OK'
+n1=$?
+if [ $n1 -ne "0" ]; then
+        #systemctl restart nginx
+        #n2=`ps -C nginx --no-heading|wc -l`
+	curl -Is http://127.0.0.1 | grep '200 OK'
+	n2=$?
+        if [ $n2 -ne "0"  ]; then
+                echo "$d nginx down,keepalived will stop" >> /var/log/chk_nginx.log
+                systemctl stop keepalived
+        fi
+fi
+------------------
+[root@node2 /usr/local/nginx/html]# systemctl start keepalived.service 
+[root@node3 /usr/local/nginx/html]# systemctl start keepalived.service 
+#keepalived主主模式
+说明：其基本实现思想为创建两个虚拟路由器，并以两个节点互为主从。
+-----------node2-----------
+! Configuration File for keepalived
+global_defs {
+	notification_email {
+     		saltstack@example.com
+   	}
+   	notification_email_from keepalived@example.com
+   	smtp_server 127.0.0.1
+   	smtp_connect_timeout 30
+   	router_id node2
+}
+
+vrrp_script chk_nginx {              
+    	script "/etc/keepalived/chk_nginx.sh"
+    	interval 1
+    	weight 10 
+}
+
+vrrp_instance nginx_ha1 {
+	state MASTER
+	interface eth0
+	virtual_router_id 80
+	priority 150
+	advert_int 1
+
+	authentication {
+		auth_type PASS
+       		auth_pass 8486c8cdb3 
+	}
+
+	virtual_ipaddress {
+		192.168.15.50
+	}
+
+	track_script {
+        	chk_nginx
+    	}
+}
+
+vrrp_instance nginx_ha2 {
+	state BACKUP
+	interface eth0
+	virtual_router_id 81
+	priority 100
+	advert_int 1
+
+	authentication {
+		auth_type PASS
+       		auth_pass ecc539f348
+	}
+
+	virtual_ipaddress {
+		192.168.15.51
+	}
+
+	track_script {
+        	chk_nginx
+    	}
+}
+
+-----------node3-----------
+! Configuration File for keepalived
+global_defs {
+	notification_email {
+     		saltstack@example.com
+   	}
+   	notification_email_from keepalived@example.com
+   	smtp_server 127.0.0.1
+   	smtp_connect_timeout 30
+   	router_id nginx_ha
+}
+
+vrrp_script chk_nginx {              
+    	script "/etc/keepalived/chk_nginx.sh"
+    	interval 3
+    	weight 10 
+}
+
+vrrp_instance nginx_ha1 {
+	state BACKUP
+	interface eth0
+	virtual_router_id 80
+	priority 100
+	advert_int 1
+
+	authentication {
+		auth_type PASS
+       		auth_pass 8486c8cdb3 
+	}
+
+	virtual_ipaddress {
+		192.168.15.50
+	}
+
+	track_script {
+        	chk_nginx
+    	}
+}
+
+vrrp_instance nginx_ha2 {
+	state MASTER
+	interface eth0
+	virtual_router_id 81
+	priority 150
+	advert_int 1
+
+	authentication {
+		auth_type PASS
+       		auth_pass ecc539f348
+	}
+
+	virtual_ipaddress {
+		192.168.15.51
+	}
+
+	track_script {
+        	chk_nginx
+    	}
+}
+-----------node2--------------
+[root@node2 keepalived]# cat /etc/keepalived/chk_nginx.sh 
+#!/bin/bash
+d=`date --date today +%Y%m%d_%H:%M:%S`
+[ `ps -C nginx --no-heading|wc -l` -gt 0 ] && curl -Is http://127.0.0.1 | grep '200 OK'
+if [ $? -ne '0' ];then
+        systemctl restart nginx
+	[ `ps -C nginx --no-heading|wc -l` -gt 0 ] && curl -Is http://127.0.0.1 | grep '200 OK'
+        if [ $? -ne "0"  ]; then
+                echo "$d nginx down,keepalived will stop" >> /var/log/chk_nginx.log
+                systemctl stop keepalived
+        fi
+fi
+-----------node3--------------
+[root@node3 /etc/keepalived]# cat chk_nginx.sh 
+#!/bin/bash
+d=`date --date today +%Y%m%d_%H:%M:%S`
+[ `ps -C nginx --no-heading|wc -l` -gt 0 ] && curl -Is http://127.0.0.1 | grep '200 OK'
+if [ $? -ne '0' ];then
+        systemctl restart nginx
+	[ `ps -C nginx --no-heading|wc -l` -gt 0 ] && curl -Is http://127.0.0.1 | grep '200 OK'
+        if [ $? -ne "0"  ]; then
+                echo "$d nginx down,keepalived will stop" >> /var/log/chk_nginx.log
+                systemctl stop keepalived
+        fi
+fi
+------------------------------
