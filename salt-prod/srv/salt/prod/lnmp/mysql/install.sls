@@ -53,6 +53,8 @@ init-mysql:
   cmd.run:
     - name: /usr/sbin/chkconfig --add mysqld
     - unless: chkconfig --list | grep mysqld
+    - require:
+      - file: init-mysql
 
 serveice-mysql:
   service.running:

@@ -10,3 +10,6 @@ make-pkg:
       - openssl-devel
       - pcre
       - pcre-devel
+      - expat-devel
+      - libxml2-devel
+      - lynx
