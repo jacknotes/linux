@@ -1,6 +1,23 @@
 include:
   - lnmp.nginx.install
 
+nginx-webroot:
+  file.directory:
+    - name: /webroot
+    - user: www
+    - group: www
+    - mode: 775
+
+nginx-index:
+  file.managed:
+    - name: /webroot/index.php
+    - source: salt://lnmp/nginx/files/index.php
+    - user: www
+    - group: www
+    - mode: 775
+    - require:
+      - file: nginx-webroot
+
 nginx-init:
   file.managed:
     - name: /etc/init.d/nginx
