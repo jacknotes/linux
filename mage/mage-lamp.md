@@ -122,7 +122,7 @@ java #通过servlet插件也可以制作动态网页，而且直接嵌入到html
 php #天生就是为动态网页而生的
 
 假如同时有500个用户访问，每个用户访问10个动态资源，总共有多少进程？
-500个web访问进程+500*10=5000个动态进程==5500个进程
+500个web访问进程+(500*10=5000个动态进程)==5500个进程
 
 一台web服务器有一个master process和多个work process进程，work进程是处理客户端web请求进程的，当有动态请求时，work进程把动态请求发送给应用程序服务器（解释器）运行[通过fastcgi协议通信，web服务器和应用程序服务器通过端口或套接字来联系的，这时应用程序服务器work process接收到后进程处理并返还html文件给web工作进程，web进程在发送响应给客户端。注：应用程序服务器的master process是管理自己的子进程work process的
 
@@ -231,7 +231,7 @@ elinks http://192.168.1.233 #-dump参数代表不使用交换式，登录后就�
 mpm_winnt（windows专用的）
 worker（一个请求用一个线程响应，服务器启动多个进程，每个进程生成多个线程）
 prefork(一个请求用一个进程响应)（httpd2.2默认）
-event（一个进程处理多个请求，httpd2.4默认）,最强大的机制模型，nginx就是这种机制模型
+event（一个线程处理多个请求，httpd2.4默认）,最强大的机制模型，nginx就是这种机制模型
 切换httpd MPM程序：可以切换工作模式
 注：如果在安装httpd时MPM模块编译了就有，没有就不支持
 [root@salt-server /git/job]# httpd -l #查看编译的模块
@@ -789,9 +789,9 @@ httpd:2.4.2、php5.4.13、mysql5.5（mysql通用二进制安装）
 yum groupinstall -y "Development tools"
 yum groupinstall -y "Development Libraries"
 2.下载源码包：
-apr:wget http://us.mirrors.quenda.co/apache//apr/apr-1.6.5.tar.gz
-apr-util:wget http://us.mirrors.quenda.co/apache//apr/apr-util-1.6.1.tar.gz
-httpd: wget http://apache.mirrors.lucidnetworks.net//httpd/httpd-2.4.38.tar.bz2
+apr:wget http://us.mirrors.quenda.co/apache/apr/apr-1.6.5.tar.gz
+apr-util:wget http://us.mirrors.quenda.co/apache/apr/apr-util-1.6.1.tar.gz
+httpd: wget http://apache.mirrors.lucidnetworks.net/httpd/httpd-2.4.38.tar.bz2
 [root@Linux-node5-master-mysql download]# ls
 apr-1.6.5.tar.gz  apr-util-1.6.1.tar.gz  httpd-2.4.38.tar.bz2
 源码包安装次序：apr-->apr-util-->httpd
@@ -804,7 +804,7 @@ make && make install #安装。
  ./configure --prefix=/usr/local/apr-util --with-apr=/usr/local/apr #指定apr路径及安装路径
 make && make install #安装
 注意：make的时候报错：xml/apr_xml.c:35:19: fatal error: expat.h: No such file or directory
-此时需要安装expat-devel,因为缺少expat.h文件。:yum install expat-devel
+此时需要安装expat-devel,因为缺少expat.h文件。:yum install -y expat-devel
 #5.源码安装httpd:
 --enable-ssl   #启用ssl加密功能，使支持https
 --enable-so   #是否支持动态共享模块（默认的），如果不启用则php无法以模块化方式跟httpd结合工作了
@@ -832,7 +832,7 @@ make && make install #安装
 yum install -y pcre-devel  #安装httpd-2.4.38.tar.bz2时需要解决依赖关系
 #collect2: error: ld returned 1 exit status #报这个错
 yum install -y libxml2-devel #安装httpd-2.4.10.tar.gz时出错需要这个依赖
-#注意：缺少了xml相关的库，需要安装libxml2-devel包。直接安装并不能解决问题，因为httpd调用的apr-util已经安装好了，但是apr-util并没有libxml2-devel包支持。
+#注意：缺少了xml相关的库，需要安装libxml2-devel包。直接安装并不能解决问题，因为httpd调用的apr-util已经安装好了，但是apr-util并没有libxml2-devel包支持。需要把apr-util删除重新安装
 
 [root@Linux-node5-master-mysql httpd-2.4.38]# ./configure --prefix=/usr/local/httpd-2.4.38 --sysconfdir=/etc/httpd --enable-so --enable-rewrite --enable-ssl --enable-cgi --enable-cgid --enable-modules=most --enable-mods-shared=most --enable-mpms-shared=all --with-mpm=event --with-apr=/usr/local/apr --with-apr-util=/usr/local/apr-util
 make && make install #安装
@@ -990,11 +990,257 @@ service httpd does not support chkconfig
 在vi /etc/rc.d/init.d/httpd 添加(#!/bin/sh下面)
 #chkconfig: 2345 10 90
 #description: Activates/Deactivates Apache Web Server
---------------
+---centos-7启动脚本--------
+#!/bin/bash
+#
+# httpd        Startup script for the Apache HTTP Server
+#
+# chkconfig: - 85 15
+# description: The Apache HTTP Server is an efficient and extensible  \
+#              server implementing the current HTTP standards.
+# processname: httpd
+# config: /etc/httpd/httpd.conf
+# config: /etc/sysconfig/httpd
+# pidfile: /var/run/httpd/httpd.pid
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+BASE_DIR="/usr/local"
+
+#if [ -f /etc/sysconfig/httpd ]; then
+#        . /etc/sysconfig/httpd
+#fi
+
+# Start httpd in the C locale by default.
+HTTPD_LANG=${HTTPD_LANG-"C"}
+
+# This will prevent initlog from swallowing up a pass-phrase prompt if
+# mod_ssl needs a pass-phrase from the user.
+INITLOG_ARGS=""
+
+# Set HTTPD=/usr/sbin/httpd.worker in /etc/sysconfig/httpd to use a server
+# with the thread-based "worker" MPM; BE WARNED that some modules may not
+# work correctly with a thread-based MPM; notably PHP will refuse to start.
+
+# Path to the apachectl script, server binary, and short-form for messages.
+apachectl=${BASE_DIR}/httpd/bin/apachectl
+httpd=${HTTPD-${BASE_DIR}/httpd/bin/httpd}
+prog=httpd
+pidfile="/var/run/httpd.pid"
+lockfile=${LOCKFILE-/var/lock/subsys/httpd}
+RETVAL=0
+STOP_TIMEOUT=${STOP_TIMEOUT-10}
+
+# The semantics of these two functions differ from the way apachectl does
+# things -- attempting to start while running is a failure, and shutdown
+# when not running is also a failure.  So we just do it the way init scripts
+# are expected to behave here.
+start() {
+        echo -n $"Starting $prog: "
+        LANG=$HTTPD_LANG daemon --pidfile=${pidfile} $httpd $OPTIONS
+        RETVAL=$?
+        echo
+        [ $RETVAL = 0 ] && touch ${lockfile}
+        return $RETVAL
+}
+
+# When stopping httpd, a delay (of default 10 second) is required
+# before SIGKILLing the httpd parent; this gives enough time for the
+# httpd parent to SIGKILL any errant children.
+stop() {
+        status -p ${pidfile} $httpd > /dev/null
+        if [[ $? = 0 ]]; then
+                echo -n $"Stopping $prog: "
+                killproc -p ${pidfile} -d ${STOP_TIMEOUT} $httpd
+        else
+                echo -n $"Stopping $prog: "
+                success
+        fi
+        RETVAL=$?
+        echo
+        [ $RETVAL = 0 ] && rm -f ${lockfile} ${pidfile}
+}
+
+reload() {
+    echo -n $"Reloading $prog: "
+    if ! LANG=$HTTPD_LANG $httpd $OPTIONS -t >&/dev/null; then
+        RETVAL=6
+        echo $"not reloading due to configuration syntax error"
+        failure $"not reloading $httpd due to configuration syntax error"
+    else
+        # Force LSB behaviour from killproc
+        LSB=1 killproc -p ${pidfile} $httpd -HUP
+        RETVAL=$?
+        if [ $RETVAL -eq 7 ]; then
+            failure $"httpd shutdown"
+        fi
+    fi
+    echo
+}
+
+# See how we were called.
+case "$1" in
+  start)
+        start
+        ;;
+  stop)
+        stop
+        ;;
+  status)
+        status -p ${pidfile} $httpd
+        RETVAL=$?
+        ;;
+  restart)
+        stop
+        start
+        ;;
+  condrestart|try-restart)
+        if status -p ${pidfile} $httpd >&/dev/null; then
+                stop
+                start
+        fi
+        ;;
+  force-reload|reload)
+        reload
+        ;;
+  graceful|help|configtest)
+        $apachectl $@
+        RETVAL=$?
+        ;;
+  *)
+        echo $"Usage: $prog {start|stop|restart|condrestart|try-restart|force-reload|reload|status|graceful|help|configtest}"
+        RETVAL=2
+esac
+
+exit $RETVAL
+--------------------------
 
 [root@Linux-node5-master-mysql bin]# vim /etc/httpd/httpd.conf #修改为prefork模式，重启服务生效
 #LoadModule mpm_event_module modules/mod_mpm_event.so
  LoadModule mpm_event_module modules/mod_mpm_prefork.so #修改当前行
+----------httpd.conf配置文件----------
+ServerRoot "/usr/local/httpd"
+PidFile "/var/run/httpd.pid"
+Listen 80
+LoadModule mpm_event_module modules/mod_mpm_event.so
+LoadModule authn_file_module modules/mod_authn_file.so
+LoadModule authn_core_module modules/mod_authn_core.so
+LoadModule authz_host_module modules/mod_authz_host.so
+LoadModule authz_groupfile_module modules/mod_authz_groupfile.so
+LoadModule authz_user_module modules/mod_authz_user.so
+LoadModule authz_core_module modules/mod_authz_core.so
+LoadModule access_compat_module modules/mod_access_compat.so
+LoadModule auth_basic_module modules/mod_auth_basic.so
+LoadModule reqtimeout_module modules/mod_reqtimeout.so
+LoadModule filter_module modules/mod_filter.so
+LoadModule mime_module modules/mod_mime.so
+LoadModule log_config_module modules/mod_log_config.so
+LoadModule env_module modules/mod_env.so
+LoadModule headers_module modules/mod_headers.so
+LoadModule setenvif_module modules/mod_setenvif.so
+LoadModule version_module modules/mod_version.so
+LoadModule unixd_module modules/mod_unixd.so
+LoadModule status_module modules/mod_status.so
+LoadModule autoindex_module modules/mod_autoindex.so
+<IfModule !mpm_prefork_module>
+</IfModule>
+<IfModule mpm_prefork_module>
+</IfModule>
+LoadModule dir_module modules/mod_dir.so
+LoadModule alias_module modules/mod_alias.so
+<IfModule unixd_module>
+User www
+Group www
+</IfModule>
+ServerAdmin root@localhost
+ServerName 0.0.0.0
+<Directory />
+    AllowOverride none
+    Require all denied
+</Directory>
+#DocumentRoot "/usr/local/httpd/htdocs"
+<Directory "/usr/local/httpd/htdocs">
+    Options Indexes FollowSymLinks
+    AllowOverride None
+    Require all granted
+</Directory>
+<IfModule dir_module>
+    DirectoryIndex index.html index.php index.htm
+</IfModule>
+<Files ".ht*">
+    Require all denied
+</Files>
+ErrorLog "logs/error_log"
+LogLevel warn
+<IfModule log_config_module>
+    LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\"" combined
+    LogFormat "%h %l %u %t \"%r\" %>s %b" common
+    <IfModule logio_module>
+      LogFormat "%h %l %u %t \"%r\" %>s %b \"%{Referer}i\" \"%{User-Agent}i\" %I %O" combinedio
+    </IfModule>
+    CustomLog "logs/access_log" common
+</IfModule>
+<IfModule alias_module>
+    ScriptAlias /cgi-bin/ "/usr/local/httpd/cgi-bin/"
+</IfModule>
+<IfModule cgid_module>
+</IfModule>
+<Directory "/usr/local/httpd/cgi-bin">
+    AllowOverride None
+    Options None
+    Require all granted
+</Directory>
+<IfModule headers_module>
+    RequestHeader unset Proxy early
+</IfModule>
+<IfModule mime_module>
+    TypesConfig /etc/httpd/mime.types
+    AddType application/x-compress .Z
+    AddType application/x-gzip .gz .tgz
+</IfModule>
+<IfModule proxy_html_module>
+Include /etc/httpd/extra/proxy-html.conf
+</IfModule>
+<IfModule ssl_module>
+SSLRandomSeed startup builtin
+SSLRandomSeed connect builtin
+</IfModule>
+<Location /server-status>
+    SetHandler server-status
+    Require ip 127.0.0.1
+</Location>
+
+Include /etc/httpd/web.conf
+----------web.conf配置文件------------
+#defaults web site
+<VirtualHost *:80>
+        ServerName "_default_"
+        DocumentRoot "/webroot"
+        Customlog "/webroot/logs/access_log" combined
+        ErrorLog "/webroot/logs/error_log"
+        <Directory "/webroot">
+                Options None
+                AllowOverride None
+                Require all granted
+        </Directory>
+</VirtualHost>
+
+Listen 8088
+<VirtualHost 192.168.15.201:8088>
+        ServerName "www1.server.com"
+        DocumentRoot "/webroot/www1.server.com"
+        Customlog "/webroot/logs/access_log" combined
+        ErrorLog "/webroot/logs/error_log"
+        <Directory "/webroot/www1.server.com">
+                Options None
+                AllowOverride None
+                Require all granted
+        </Directory>
+</VirtualHost>
+-------------------------------------
+注：php文件必做有执行权限，否则会not found file，如果没有执行权限，httpd的server-status也不会生效
+-------------------------------------
 
 #httpd2.4新特性
 1. MPM可于运行时加载：--enable-mpms-shared=all --with-mpm=event。前者是开启多模块，后者指定运行的模块
@@ -1007,7 +1253,6 @@ service httpd does not support chkconfig
 8. 基于域名的虚拟主机不再需要NameVirtualHost指令
 9. 降低了内存占用
 10. 支持在配置文件中使用自定义变量
-11. 
 对于基于IP的访问控制：
 以前2.2版本httpd:
 Order allow,deny

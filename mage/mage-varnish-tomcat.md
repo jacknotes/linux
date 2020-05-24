@@ -297,7 +297,7 @@ tomcatd         0:off   1:off   2:on    3:on    4:on    5:on    6:off
 [root@mysql-slave tomcat]# service tomcatd stop
 [root@mysql-slave tomcat]# service tomcatd start
 
-#tomcat配置文件解析：
+#tomcat配置文件server.xml解析：
 1. <Server port=”8005” shutdown=”SHUTDOWN”>
 #tomcat启动一个server实例（即一个JVM），它监听在8005端口以接收shutdown命令。各Server的定义不能使用同一个端口，这意味着如果在同一个物理机上启动了多个Server实例，必须配置它们使用不同的端口。
 部分参数意义：
@@ -348,7 +348,7 @@ unpackWars：在启用此webapps时是否对WAR格式的归档文件先进行展
 <Engine name="Catalina" defaultHost="localhost">
 <Host name="localhost" appBase="webapps">
 <Context path="" docBase="ROOT"/>
-<Context path="/bbs" docBase="/web/bss"
+<Context path="/bbs" docBase="/web/bbs"
 reloadable="true" crossContext="true"/>
 </Host>
 
@@ -480,8 +480,8 @@ conf/tomcat-users.xml
 
 ########tomcat的负载均衡实现方式，
   1、 nginx做反向代理   nginx+tomcat
-  2、 apache做方向代理  apache+tomcat
-#apache实现反向代3种方式需要的模块
+  2、 apache做反向代理  apache+tomcat
+#apache实现反向代理3种方式需要的模块
     1、apache: 
                 mod_proxy
                 mod_proxy_http
@@ -531,7 +531,7 @@ mkdir: created directory ‘./META-INF
 
 #nginx+tomcat部署：
 实验部署：
-1、三个节点，第一个几点的ip地址为172.16.0.131，后两个几点分别为172.16.0.134和172.16.0.135
+1、三个节点，第一个节点的ip地址为172.16.0.131，后两个几点分别为172.16.0.134和172.16.0.135
 2、后两个节点分别准备jdk和tomcat的安装包
 3、第一个节点安装nginx
 #tomcat-node1:
