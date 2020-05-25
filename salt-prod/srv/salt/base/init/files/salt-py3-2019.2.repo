@@ -1,0 +1,7 @@
+[salt-py3-2019.2]
+name=SaltStack 2019.2 Release Channel for Python 3 RHEL/Centos $releasever
+baseurl=https://repo.saltstack.com/py3/redhat/7/$basearch/2019.2
+failovermethod=priority
+enabled=1
+gpgcheck=0
+gpgkey=file:///etc/pki/rpm-gpg/saltstack-signing-key, file:///etc/pki/rpm-gpg/centos7-signing-key
