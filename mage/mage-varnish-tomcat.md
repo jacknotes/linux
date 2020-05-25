@@ -468,7 +468,24 @@ conf/tomcat-users.xml
   <user username="cz" password="manager$!!110" roles="manager-gui" /> 
   <!--  定义一个用户的用户名以及密码，并赋予manager-gui的角色    --> 
 </tomcat-users>
--------------------
+---------在相应站点目录下WEB-INF/web.xml添加下面的匹配认证信息才能生效，如果在/usr/local/tomcat/conf/web.xml则地全局设置-----------
+<security-constraint>
+ <web-resource-collection>
+ <web-resource-name>localhost</web-resource-name>
+ <url-pattern>/*</url-pattern>
+ </web-resource-collection>
+ <auth-constraint>
+ <role-name>magedu</role-name>
+ </auth-constraint>
+ </security-constraint>
+ <login-config>
+ <auth-method>BASIC</auth-method>
+ <realm-name>magedu technology</realm-name>
+ </login-config>
+ <security-role>
+ <role-name>magedu</role-name>
+ </security-role>
+-----------------------------------------------------------------------------------------------------------------------------
 
 
 #会话保持的几种方式：
