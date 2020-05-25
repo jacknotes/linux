@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Server port="8005" shutdown="SHUTDOWN">
+  <Listener className="org.apache.catalina.startup.VersionLoggerListener" />
+  <Listener className="org.apache.catalina.core.AprLifecycleListener" SSLEngine="on" />
+  <Listener className="org.apache.catalina.core.JreMemoryLeakPreventionListener" />
+  <Listener className="org.apache.catalina.mbeans.GlobalResourcesLifecycleListener" />
+  <Listener className="org.apache.catalina.core.ThreadLocalLeakPreventionListener" />
+  <GlobalNamingResources>
+    <Resource name="UserDatabase" auth="Container"
+              type="org.apache.catalina.UserDatabase"
+              description="User database that can be updated and saved"
+              factory="org.apache.catalina.users.MemoryUserDatabaseFactory"
+              pathname="conf/tomcat-users.xml" />
+  </GlobalNamingResources>
+	<!--全局命名资源，来定义一些外部访问资源，其作用是为所有引擎应用程序所引用的外部资源的定义
+定义的一个名叫“UserDatabase”的认证资源，将conf/tomcat-users.xml加载至内存中，在需要认证的时候到内存中进行认证
+在Realm组件中引用-->
+  <Service name="Catalina">
+    <Connector port="8080" protocol="HTTP/1.1"
+               connectionTimeout="20000"
+               redirectPort="8443" />
+	<!--连接器，打开什么端口，并当ssl会话连接时重定向到8443-->
+    <Engine name="Catalina" defaultHost="localhost" jvmRoute="jvm1">
+	<!--容器，指向一个默认的主机，当用户访问没有匹配到时则会指向这个默认主机-->
+        <Realm className="org.apache.catalina.realm.LockOutRealm">
+        <Realm className="org.apache.catalina.realm.UserDatabaseRealm"
+               resourceName="UserDatabase" />
+        </Realm>
+      <Host name="localhost"  appBase="/webroot"
+            unpackWARs="true" autoDeploy="true">
+	<!--设置自动部署，自动解压-->
+	<Context path="" docBase="ROOT" />
+	<!--Valve className="org.apache.catalina.valves.RemoteAddrValve"
+		allow="192.168.15.202"/-->
+	<Valve className="org.apache.catalina.valves.AccessLogValve" 
+		directory="/webroot/logs" prefix="localhost_access" suffix=".log"
+		pattern="%h %l %u %t &quot;%r&quot; %s %b"/>
+<!--   定义一个Valve组件，用来记录tomcat的访问日志，日志存放目录为：/web/www/logs如果定义为相对路径则是相当于$CATALINA_HOME，并非相对于appBase，这个要注意。定义日志文件前缀为www1.server.com_access并以.log结尾，pattern定义日志内容格式，具体字段表示可以查看tomcat官方文档   -->
+<!--可以有多个Connector,Host,Context,Realm,Valve-->
+      </Host>
+    </Engine>
+  </Service>
+</Server>
