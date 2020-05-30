@@ -11,7 +11,7 @@ php-ini:
     - group: root
     - mode: 644
     - require:
-      - cmd: php-source-install
+      - cmd: pdo-plugin
 
 php-fpm:
   file.managed:
@@ -21,7 +21,7 @@ php-fpm:
     - group: root
     - mode: 644
     - require:
-      - cmd: php-source-install
+      - cmd: pdo-plugin
 
 web-php:
   service.running:

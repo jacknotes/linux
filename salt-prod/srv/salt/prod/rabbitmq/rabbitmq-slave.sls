@@ -1,7 +1,7 @@
 hosts:
   file.managed:
     - name: /etc/hosts
-    - source: salt://modules/rabbitmq/files/hosts
+    - source: salt://rabbitmq/files/hosts
     - user: root
     - group: root
     - mode: 644
@@ -9,7 +9,7 @@ hosts:
 rabbitmq-erlang.repo:
   file.managed:
     - name: /etc/yum.repos.d/rabbitmq-erlang.repo
-    - source: salt://modules/rabbitmq/files/rabbitmq-erlang.repo
+    - source: salt://rabbitmq/files/rabbitmq-erlang.repo
     - user: root
     - group: root
     - mode: 644
@@ -17,7 +17,7 @@ rabbitmq-erlang.repo:
 rabbitmq.repo:
   file.managed:
     - name: /etc/yum.repos.d/rabbitmq.repo
-    - source: salt://modules/rabbitmq/files/rabbitmq.repo
+    - source: salt://rabbitmq/files/rabbitmq.repo
     - user: root
     - group: root
     - mode: 644
@@ -33,7 +33,7 @@ erlang-install:
       
 /tmp/rabbitmq-release-signing-key.asc:
   file.managed:
-    - source: salt://modules/rabbitmq/files/rabbitmq-release-signing-key.asc
+    - source: salt://rabbitmq/files/rabbitmq-release-signing-key.asc
     - user: root
     - group: root
     - mode: 644
@@ -50,7 +50,7 @@ rabbitmq-install:
 
 /etc/rabbitmq/rabbitmq.conf:
   file.managed:
-    - source: salt://modules/rabbitmq/files/rabbitmq.conf
+    - source: salt://rabbitmq/files/rabbitmq.conf
     - user: root
     - group: root
     - mode: 644
@@ -61,7 +61,7 @@ rabbitmq-install:
 
 /etc/rabbitmq/enabled_plugins:
  file.managed:
-    - source: salt://modules/rabbitmq/files/enabled_plugins
+    - source: salt://rabbitmq/files/enabled_plugins
     - user: root
     - group: root
     - mode: 644
@@ -73,7 +73,7 @@ rabbitmq-install:
 erlang-cookie:
   file.managed:
     - name: /var/lib/rabbitmq/.erlang.cookie
-    - source: salt://modules/rabbitmq/files/.erlang.cookie 
+    - source: salt://rabbitmq/files/.erlang.cookie 
     - user: rabbitmq
     - root: rabbitmq
     - mode: 400
@@ -90,7 +90,7 @@ rabbitmq-service:
 add-useradd.sh:
   file.managed:
     - name: /etc/rabbitmq/useradd.sh
-    - source: salt://modules/rabbitmq/files/useradd.sh
+    - source: salt://rabbitmq/files/useradd.sh
     - user: root
     - group: root
     - mode: 755
@@ -106,7 +106,7 @@ add-useradd:
 add-cluster.sh:
   file.managed:
     - name: /etc/rabbitmq/cluster.sh
-    - source: salt://modules/rabbitmq/files/cluster.sh
+    - source: salt://rabbitmq/files/cluster.sh
     - template: jinja
     - defaults:
       rabbitmqMaster: {{ pillar['rabbitmq-master'] }}

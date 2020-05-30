@@ -1,1 +1,1 @@
-rabbitmq-master: node3
+rabbitmq-master: node2

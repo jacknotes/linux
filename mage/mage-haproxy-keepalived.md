@@ -374,7 +374,7 @@ backend mysqlservers
         balance leastconn
         server dbsrv1 192.168.1.31:3306 check port 3306 maxconn 300
         server dbsrv2 192.168.1.37:3306 check port 3306 maxconn 300
-#注：可添加额外参数，注意参数解释：inter 2000 心跳检测时间；rise 2 三次连接成功，表示服务器正常；fall 5 三次连接失败，表示服务器异常； weight 1 权重设置
+#注：可添加额外参数，注意参数解释：inter 2000 心跳检测时间；rise 2 两次连接成功，表示服务器正常；fall 3 三次连接失败，表示服务器异常； weight 1 权重设置
 [root@lnmp ~]# vim /etc/sysconfig/rsyslog 
 SYSLOGD_OPTIONS="-r -c 2 -m 0"
 [root@lnmp ~]# vim /etc/rsyslog.conf 
@@ -383,6 +383,63 @@ $ModLoad imudp
 $UDPServerRun 514  #取消注释这两行，否则不会生效
 [root@lnmp ~]# systemctl restart rsyslog
 [root@lnmp ~]# systemctl start haproxy #注意haproxy配置必须一样，端口也一样。
+
+---------haproxy config--------------
+global
+	maxconn 50000
+	chroot /usr/local/haproxy  #haproxy install root directory
+	uid 99   #99 is nobody
+	gid 99
+	daemon
+	nbproc 1  #start boot process number
+	pidfile /usr/local/haproxy/logs/haproxy.pid
+	log 127.0.0.1 local3 info
+
+#默认参数设置
+defaults
+	option http-keep-alive
+	mode http  #set run mode,have tcp,http,health choose
+	maxconn 50000
+	retires 3
+	timeout connect 5000ms
+	timeout client  20000ms
+	timeout server 25000ms
+	timeout check 5000ms
+
+#开启Haproxy Status状态监控，增加验证
+listen status
+	mode http  #
+	bind 0.0.0.0:8888
+	stats enable
+	stats refresh 30s #设置HAProxy监控统计页面自动刷新的时间
+	stats realm Welcome login #设置登录监控页面时，密码框上的提示信息
+	stats uri     /haproxy-status
+	stats auth    haproxy:password
+	stats hide-version #设置在监控页面上隐藏HAProxy的版本号
+	status admin if TRUE #设置此选项，可在监控页面上启用、禁用后端服务器，仅在1.4.9版本以后生效
+
+#前端设置
+frontend rabbitmq_webui
+	bind *:15672
+	mode http
+	option httplog  #record http request logs
+	option forwardfor #record real IP
+	#option httpclose  #此选项表示客户端和服务端完成一次连接请求后，HAProxy将主动关闭此TCP连接。这是对性能非常有帮助的一个参数
+	log global
+	default_backend rabbitmq_webui
+
+#后端设置
+backend rabbitmq_webui
+	mode http
+	option redispatch #而如果后端服务器出现故障，客户端的cookie是不会刷新的，这就会造成无法访问。此时，如果设置了此参数，就会将客户的请求强制定向到另外一台健康的后端服务器上，以保证服务正常
+	option abortonclose #此参数可以在服务器负载很高的情况下，自动结束当前队列中处理时间比较长的连接
+	option forwardfor header X-REAL-IP  #option forwardfor [ except <network> ] [ header <name> ] [ if-none ],<network>：可选参数，当指定时，源地址为匹配至此网络中的请求都禁用此功能。<name>：可选参数，可使用一个自定义的首部，如“X-Client”来替代“X-Forwarded-For”。有些独特的web服务器的确需要用于一个独特的首部.if-none：仅在此首部不存在时才将其添加至请求报文问道中。HAProxy可以向每个发往服务器的请求上添加此首部，并以客户端IP为其value。
+	option httpchk HEAD / HTTP/1.1 
+	balance source #指定负载均衡算法,roundrobin基于权重进行轮叫调度的算法,static-rr基于权重进行轮叫调度的算法，不过此算法为静态算法，在运行时调整其服务器权重不会生效,source基于请求源IP的算法,leastconn此算法会将新的连接请求转发到具有最少连接数目的后端服务器。uri此算法会对部分或整个URI进行HASH运算，再经过与服务器的总权重相除，最后转发到某台匹配的后端服务器上,uri_param此算法会根据URL路径中的参数进行转发，这样可保证在后端真实服务器数据不变时，同一个用户的请求始终分发到同一台机器上,hdr此算法根据HTTP头进行转发，如果指定的HTTP头名称不存在，则使用roundrobin算法 进行策略转发,cookie SERVERID表示允许向cookie插入SERVERID，每台服务器的SERVERID可在下面的server关键字中使用cookie关键字定义
+	server rabbitmq-node1 192.168.15.201:15672 check port 15672 inter 2000 rise 2 fall 3
+	server rabbitmq-node2 192.168.15.202:15672 check port 15672 inter 2000 rise 2 fall 3
+	#server <name> <address>:[port] [param*],param*参数:check 表示启用对此后端服务器执行健康状态检查,inter 设置健康状态检查的时间间隔，单位是毫秒,rise 检查多少次认为服务器可用,fall 检查多少次认为服务器不可用,weight 设置服务器的权重，默认为1，最大为256。设置为0表示不参与负载均衡,backup 设置备份服务器，用于所有后端服务器全部不可用时,kie 为指定的后端服务器设置cookie值，此处指定的值将在请求入站时被检查，第一次为此值挑选的后端服务器将在后续的请求中一直被选中，其目的在于实现持久连接的功能
+-------------------------------------
 
 #192.168.1.233和192.168.1.239这两台haproxy上都要安装keepalived
 [root@lamp-zabbix haproxy]# yum install -y keepalived 

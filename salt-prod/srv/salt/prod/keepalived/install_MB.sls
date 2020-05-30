@@ -20,7 +20,7 @@ keepalived-install:
     - user: root
     - group: root
 
-keepalived-conf:
+keepalived-shell:
   file.managed:
     - name: /etc/keepalived/chk_nginx.sh
     - source: {{ keepalived_source }}chk_nginx.sh
@@ -47,6 +47,10 @@ keepalived-conf:
     - ROUTEID: nginx_ha
     - STATEID: BACKUP
     - PRIORITYID: 100
+    {% elif grains['fqdn'] == 'harbor' %}
+    - ROUTEID: nginx_ha
+    - STATEID: BACKUP
+    - PRIORITYID: 80
     {% endif %}
     - require:
       - file: /etc/keepalived

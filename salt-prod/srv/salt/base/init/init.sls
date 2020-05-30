@@ -16,5 +16,4 @@ include:
   - init.basePkg
   - init.python-pip
   - init.axel
-  - init.salt-minion
   - init.zabbix-agent

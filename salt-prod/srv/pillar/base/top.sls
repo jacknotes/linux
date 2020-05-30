@@ -1,9 +1,8 @@
 base:
   '*':
-    - zabbix.agent
+    - zabbix-agent
+    - salt-minion
 prod:
-  'node*':
-    - docker.docker
-    - rabbitmq.rabbitmq 
+  '*':
     - redis-cluster.redis
-    - docker.docker-elk
+    - rabbitmq.rabbitmq

@@ -4,8 +4,18 @@ nfsd:
       - nfs-utils
       - rpcbind
   cmd.run:
-    - name: echo '/backup	*(rw,async)' >> /etc/exports && mkdir -p /backup && chown -R 1000:1000 /backup 
+    - name: mkdir -p /backup && chmod -R 777 /backup && chown -R 1000:1000 /backup 
     - unless: test -d /backup
+
+nfsd-config:
+  file.managed:
+    - name: /etc/exports
+    - source: salt://nfsd/files/exports
+    - user: root
+    - group: root
+    - mode: 644
+    - require:
+      - pkg: nfsd
 
 rpcbind-service:
   service.running:
@@ -27,3 +37,5 @@ nfsd-end:
     - require:
       - service: rpcbind-service
       - service: nfs-service
+    - watch:
+      - file: nfsd-config

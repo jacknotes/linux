@@ -1,0 +1,63 @@
+global
+	maxconn 50000
+	chroot /usr/local/haproxy  
+	uid 99   
+	gid 99
+	daemon
+	nbproc 1 
+	pidfile /usr/local/haproxy/logs/haproxy.pid
+	log 127.0.0.1 local3 info
+
+defaults
+	option http-keep-alive
+	mode http 
+	maxconn 50000
+	timeout connect 5000ms
+	timeout client  20000ms
+	timeout server 25000ms
+	timeout check 5000ms
+
+listen status
+	mode http 
+	bind 0.0.0.0:8888
+	stats enable
+	stats refresh 30s
+	stats realm Welcome login
+	stats uri     /haproxy-status
+	stats auth    haproxy:password
+	stats hide-version 
+	stats admin if TRUE
+
+frontend rabbitmq_webui
+	bind *:15673
+	mode http
+	option httplog 
+	option forwardfor 
+	log global
+	default_backend rabbitmq_webui
+
+backend rabbitmq_webui
+	mode http
+	option redispatch
+	option abortonclose
+	option forwardfor header X-REAL-IP
+	balance roundrobin
+	server rabbitmq-node1 192.168.15.201:15672 check port 15672 inter 2000 rise 2 fall 3
+	server rabbitmq-node2 192.168.15.202:15672 check port 15672 inter 2000 rise 2 fall 3
+
+frontend rabbitmq_api
+	bind *:5673
+	mode tcp 
+	option httplog 
+	option forwardfor 
+	log global
+	default_backend rabbitmq_api
+
+backend rabbitmq_api
+	mode tcp 
+	option redispatch
+	option abortonclose
+	option forwardfor header X-REAL-IP
+	balance roundrobin
+	server rabbitmq-node1 192.168.15.201:5672 check port 5672 inter 2000 rise 2 fall 3
+	server rabbitmq-node2 192.168.15.202:5672 check port 5672 inter 2000 rise 2 fall 3
