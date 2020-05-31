@@ -423,18 +423,15 @@ frontend rabbitmq_webui
 	bind *:15672
 	mode http
 	option httplog  #record http request logs
-	option forwardfor #record real IP
+	option redispatch #而如果后端服务器出现故障，客户端的cookie是不会刷新的，这就会造成无法访问。此时，如果设置了此参数，就会将客户的请求强制定向到另外一台健康的后端服务器上，以保证服务正常
+	option abortonclose #此参数可以在服务器负载很高的情况下，自动结束当前队列中处理时间比较长的连接
+	option forwardfor header X-REAL-IP  #option forwardfor [ except <network> ] [ header <name> ] [ if-none ],<network>：可选参数，当指定时，源地址为匹配至此网络中的请求都禁用此功能。<name>：可选参数，可使用一个自定义的首部，如“X-Client”来替代“X-Forwarded-For”。有些独特的web服务器的确需要用于一个独特的首部.if-none：仅在此首部不存在时才将其添加至请求报文问道中。HAProxy可以向每个发往服务器的请求上添加此首部，并以客户端IP为其value。
 	#option httpclose  #此选项表示客户端和服务端完成一次连接请求后，HAProxy将主动关闭此TCP连接。这是对性能非常有帮助的一个参数
 	log global
 	default_backend rabbitmq_webui
 
 #后端设置
 backend rabbitmq_webui
-	mode http
-	option redispatch #而如果后端服务器出现故障，客户端的cookie是不会刷新的，这就会造成无法访问。此时，如果设置了此参数，就会将客户的请求强制定向到另外一台健康的后端服务器上，以保证服务正常
-	option abortonclose #此参数可以在服务器负载很高的情况下，自动结束当前队列中处理时间比较长的连接
-	option forwardfor header X-REAL-IP  #option forwardfor [ except <network> ] [ header <name> ] [ if-none ],<network>：可选参数，当指定时，源地址为匹配至此网络中的请求都禁用此功能。<name>：可选参数，可使用一个自定义的首部，如“X-Client”来替代“X-Forwarded-For”。有些独特的web服务器的确需要用于一个独特的首部.if-none：仅在此首部不存在时才将其添加至请求报文问道中。HAProxy可以向每个发往服务器的请求上添加此首部，并以客户端IP为其value。
-	option httpchk HEAD / HTTP/1.1 
 	balance source #指定负载均衡算法,roundrobin基于权重进行轮叫调度的算法,static-rr基于权重进行轮叫调度的算法，不过此算法为静态算法，在运行时调整其服务器权重不会生效,source基于请求源IP的算法,leastconn此算法会将新的连接请求转发到具有最少连接数目的后端服务器。uri此算法会对部分或整个URI进行HASH运算，再经过与服务器的总权重相除，最后转发到某台匹配的后端服务器上,uri_param此算法会根据URL路径中的参数进行转发，这样可保证在后端真实服务器数据不变时，同一个用户的请求始终分发到同一台机器上,hdr此算法根据HTTP头进行转发，如果指定的HTTP头名称不存在，则使用roundrobin算法 进行策略转发,cookie SERVERID表示允许向cookie插入SERVERID，每台服务器的SERVERID可在下面的server关键字中使用cookie关键字定义
 	server rabbitmq-node1 192.168.15.201:15672 check port 15672 inter 2000 rise 2 fall 3
 	server rabbitmq-node2 192.168.15.202:15672 check port 15672 inter 2000 rise 2 fall 3
