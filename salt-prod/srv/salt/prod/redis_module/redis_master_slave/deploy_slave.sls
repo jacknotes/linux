@@ -4,7 +4,7 @@ redis-require-package:
       - tcl
   file.managed:
     - name: /usr/local/src/redis-5.0.5.tar.gz
-    - source: salt://redis_module/redis_cluster/files/redis-5.0.5.tar.gz
+    - source: salt://redis_module/redis_master_slave/files/redis-5.0.5.tar.gz
     - user: root
     - group: root
     - mode: 755
@@ -27,7 +27,7 @@ redis-install:
 redis-init:
   file.managed:
     - name: /etc/init.d/redis-slave
-    - source: salt://redis_module/redis_cluster/files/redis-slave-init
+    - source: salt://redis_module/redis_master_slave/files/redis-slave-init
     - user: root
     - group: root
     - mode: 755
@@ -40,7 +40,7 @@ redis-init:
 redis-service:
   file.managed:
     - name: /usr/local/redis/redis-slave.conf
-    - source: salt://redis_module/redis_cluster/files/redis-slave.conf
+    - source: salt://redis_module/redis_master_slave/files/redis-slave.conf
     - template: jinja
     - defaults: 
       masterIP: {{ pillar['redis-masterIP'] }}
@@ -59,7 +59,7 @@ redis-service:
 redis-sentinel-init:
   file.managed:
     - name: /etc/init.d/redis-sentinel
-    - source: salt://redis_module/redis_cluster/files/redis-sentinel
+    - source: salt://redis_module/redis_master_slave/files/redis-sentinel
     - user: root
     - group: root
     - mode: 755
@@ -70,7 +70,7 @@ redis-sentinel-init:
 sentinel-service:
   file.managed:
     - name: /usr/local/redis/sentinel.conf
-    - source: salt://redis_module/redis_cluster/files/sentinel.conf
+    - source: salt://redis_module/redis_master_slave/files/sentinel.conf
     - template: jinja
     - defaults: 
       masterIP: {{ pillar['redis-masterIP'] }}
