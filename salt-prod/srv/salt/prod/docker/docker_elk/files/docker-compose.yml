@@ -1,7 +1,8 @@
 version: '3'
 services:
   elasticsearch:                    # 服务名称
-    image: elasticsearch:7.1.1      # 使用的镜像
+    #image: elasticsearch:7.1.1      # 使用的镜像
+    image: 192.168.15.200:8888/elk/elasticsearch:7.1.1      # 使用的镜像
     container_name: elasticsearch7.1.1   # 容器名称
     restart: always                 # 失败自动重启策略
     environment:                                    
@@ -25,7 +26,8 @@ services:
       - 9200:9200    # http端口
       - 9300:9300    # es节点直接交互的端口，非http
   kibana:
-    image: docker.elastic.co/kibana/kibana:7.1.1
+    #image: docker.elastic.co/kibana/kibana:7.1.1
+    image: 192.168.15.200:8888/elk/kibana:7.1.1
     container_name: kibana7.1.1
     environment:
       - elasticsearch.hosts=http://elasticsearch:9200  #设置连接的es节点
@@ -38,7 +40,8 @@ services:
     ports:
       - 5601:5601 #对外访问端口
   logstash:
-    image: docker.elastic.co/logstash/logstash:7.1.1
+    #image: docker.elastic.co/logstash/logstash:7.1.1
+    image: 192.168.15.200:8888/elk/logstash:7.1.1
     container_name: logstash7.1.1
     hostname: logstash
     restart: always
