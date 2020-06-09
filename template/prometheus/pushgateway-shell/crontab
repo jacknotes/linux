@@ -1,0 +1,14 @@
+# Lines below here are managed by Salt, do not edit
+# SALT_CRON_IDENTIFIER:ntpdate time1.aliyun.com
+*/5 * * * * ntpdate time1.aliyun.com
+
+*/1 * * * * /root/netstat-status.sh
+*/1 * * * * sleep 15; /root/netstat-status.sh
+*/1 * * * * sleep 30; /root/netstat-status.sh
+*/1 * * * * sleep 45; /root/netstat-status.sh
+
+*/1 * * * * /root/ping.sh
+*/1 * * * * sleep 15; /root/ping.sh 
+*/1 * * * * sleep 30; /root/ping.sh
+*/1 * * * * sleep 45; /root/ping.sh
+
