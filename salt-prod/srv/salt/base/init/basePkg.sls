@@ -28,4 +28,5 @@ basePackageInstall:
       - zip
       - vim-enhanced
       - bind-utils
+      - bc
 

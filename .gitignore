@@ -2,3 +2,7 @@ salt-prod/srv/salt/prod/lnmp/mysql/files/mysql-5.6.48-linux-glibc2.12-x86_64.tar
 salt-prod/srv/salt/salt/prod/lamp/httpd/files/httpd-2.4.43.tar.bz2
 salt-prod/srv/salt/prod/tomcat/files/jdk-8u201-linux-x64.tar.gz
 salt-prod/srv/salt/prod/tomcat/files/apache-tomcat-8.5.55.tar.gz
+salt-prod/srv/salt/prod/prometheus/files/grafana-7.0.3-1.x86_64.rpm
+salt-prod/srv/salt/prod/prometheus/files/prometheus-2.17.2.linux-amd64.tar.gz
+salt-prod/srv/salt/prod/prometheus/files/node_exporter-0.18.1.linux-amd64.tar.gz
+salt-prod/srv/salt/prod/prometheus/files/pushgateway-1.0.1.linux-amd64.tar.gz

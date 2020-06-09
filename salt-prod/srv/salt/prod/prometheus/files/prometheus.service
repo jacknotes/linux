@@ -1,0 +1,15 @@
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/prometheus/prometheus \
+--config.file /usr/local/prometheus/prometheus.yml \
+--storage.tsdb.path /var/lib/prometheus/ 
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

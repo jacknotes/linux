@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-sudo yum install -y https://repo.saltstack.com/py3/redhat/salt-py3-repo-latest.el7.noarch.rpm
+sudo yum install -y https://repo.saltstack.com/py3/redhat/salt-py3-repo-2019.2.el7.noarch.rpm
 sudo yum clean expire-cache
 sudo yum install -y salt-master salt-minion
 \cp salt-config/master /etc/salt/master -ar && echo "copy master config successful"

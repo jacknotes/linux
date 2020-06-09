@@ -4,5 +4,4 @@ base:
     - salt-minion
 prod:
   '*':
-    - redis-cluster.redis
-    - rabbitmq.rabbitmq
+    - prometheus.prometheus

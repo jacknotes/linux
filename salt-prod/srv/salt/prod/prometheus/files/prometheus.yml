@@ -1,0 +1,13 @@
+global:
+  scrape_interval:     15s # 抓取采样数据的时间间隔，默认是15秒去被监控机上采样一次，值应当是=>5s
+  evaluation_interval: 15s # 监控的数据规则的评估频率，例如我们设置当内存使用量>70%时发出报警这么一条规则，那么prometheus会默认15秒来执行这个规则检查。
+scrape_configs:  #抓取数据的配置
+  - job_name: 'prometheus'  #任务名称
+    static_configs:               #静态配置
+    - targets: ['{{ PROMETHEUS_SERVER }}']  #要监控的客户端
+  - job_name: 'pushgateway'  #任务名称
+    static_configs:               #静态配置
+    - targets: ['{{ PROMETHEUS_PUSHGATEWAY }}']  #要监控的客户端
+  - job_name: 'nodes'
+    static_configs:
+    - targets: ['{{ PROMETHEUS_NODE1 }}','{{ PROMETHEUS_NODE2 }}']

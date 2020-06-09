@@ -1,5 +1,11 @@
+base:
+  'node*':
+    - init.init
 prod:
+  'node1':
+    - prometheus.prometheus
+    - prometheus.node_exporter
+    - prometheus.grafana
+    - prometheus.pushgateway
   'node2':
-    - haproxy.service
-  'node3':
-    - haproxy.service
+    - prometheus.node_exporter
