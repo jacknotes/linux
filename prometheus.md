@@ -87,12 +87,33 @@ Group=prometheus
 Type=simple
 ExecStart=/usr/local/prometheus/prometheus \
 --config.file /usr/local/prometheus/prometheus.yml \
---storage.tsdb.path /var/lib/prometheus/ 
+--storage.tsdb.path /var/lib/prometheus/ \
+-storage.local.retention 168h0m0s \
+-storage.local.max-chunks-to-persist 3024288 \
+-storage.local.memory-chunks=50502740 \
+-storage.local.num-fingerprint-mutexes=300960
 Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
 --------------
+注：prometheus其它参数：
+--storage.local.retention
+用来配置采用数据存储的时间，168h0m0s即为24*7小时，即1周
+--storage.local.memory-chunks
+设定prometheus内存中保留的chunks的最大个数，默认为1048576，即为1G大小
+--storage.local.series-file-shrink-ratio
+用来控制序列文件rewrite的时机，默认是在10%的chunks被移除的时候进行rewrite，如果磁盘空间够大，不想频繁rewrite，可以提升该值，比如0.3，即30%的chunks被移除的时候才触发rewrite
+--storage.local.max-chunks-to-persist
+该参数控制等待写入磁盘的chunks的最大个数，如果超过这个数，Prometheus会限制采样的速率，直到这个数降到指定阈值的95%。建议这个值设定为storage.local.memory-chunks的50%。Prometheus会尽力加速存储速度，以避免限流这种情况的发送。
+--storage.local.num-fingerprint-mutexes
+当prometheus server端在进行checkpoint操作或者处理开销较大的查询的时候，采集指标的操作会有短暂的停顿，这是因为prometheus给时间序列分配的mutexes可能不够用，可以通过这个指标来增大预分配的mutexes，有时候可以设置到上万个
+--storage.local.series-sync-strategy
+控制写入数据之后，何时同步到磁盘，有'never', 'always', 'adaptive'. 同步操作可以降低因为操作系统崩溃带来数据丢失，但是会降低写入数据的性能。 默认为adaptive的策略，即不会写完数据就立刻同步磁盘，会利用操作系统的page cache来批量同步。
+--storage.local.checkpoint-interval
+进行checkpoint的时间间隔，即对尚未写入到磁盘的内存chunks执行checkpoint操作。
+
+
 [root@node3 /usr/local/prometheus]# systemctl daemon-reload
 [root@node3 /usr/local/prometheus]# systemctl start prometheus
 [root@node3 /usr/local/prometheus]# systemctl status prometheus
