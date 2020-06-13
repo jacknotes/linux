@@ -12,6 +12,7 @@ include:
   - init.selinux
   - init.tty-style
   - init.user-www
+  - init.repo-clear
   - init.repo
   - init.basePkg
   - init.python-pip
