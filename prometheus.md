@@ -29,7 +29,7 @@
 #软件下载
 refresh: https://prometheus.io/download/
 prometheus: https://github.com/prometheus/prometheus/releases/download/v2.17.2/prometheus-2.17.2.linux-amd64.tar.gz
-grafana: https://github.com/grafana/grafana/archive/v7.0.3.tar.gz
+grafana: https://dl.grafana.com/oss/release/grafana-7.0.3-1.x86_64.rpm
 node_exporter: https://github.com/prometheus/node_exporter/releases/download/v0.18.1/node_exporter-0.18.1.linux-amd64.tar.gz #用于监控节点，如果监控mysql则需要mysql_exporter
 #node3安装prometuehs
 [root@node3 /download]# ls
@@ -55,15 +55,26 @@ drwxr-xr-x 2 prometheus prometheus      173 Apr 20 18:28 consoles
 [root@node3 /usr/local/prometheus]# chown -R prometheus:prometheus /var/lib/prometheus
 [root@node3 /usr/local/prometheus]# grep -v '#\|^$' prometheus.yml 
 global:
-alerting:
+  scrape_interval:     15s # 抓取采样数据的时间间隔，默认是15秒去被监控机上采样一次，值应当是=>5s
+  evaluation_interval: 15s # 监控的数据规则的评估频率，例如我们设置当内存使用量>70%时发出报警这么一条规则，那么prometheus会默认15秒来执行这个规则检查。
+alerting:  #alertmanager配置段，在结合grafana4.0以上时不用这个了，使用grafana的报警了
   alertmanagers:
   - static_configs:
     - targets:
+      # - alertmanager:9093
 rule_files:
-scrape_configs:
-  - job_name: 'prometheus'
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+scrape_configs:  #抓取数据的配置
+  - job_name: 'prometheus'  #任务名称
+    static_configs:  		#静态配置
+    - targets: ['localhost:9090']  #要监控的客户端
+  - job_name: 'node'
     static_configs:
-    - targets: ['localhost:9090']
+    - targets: ['192.168.15.201:9100','192.168.15.202:9100']
+  - job_name: 'mariadb'
+    static_configs:
+    - targets: ['192.168.15.201:9104']
 [root@node3 /usr/local/prometheus]# vim /usr/lib/systemd/system/prometheus.service
 --------------
 [Unit]
@@ -76,12 +87,33 @@ Group=prometheus
 Type=simple
 ExecStart=/usr/local/prometheus/prometheus \
 --config.file /usr/local/prometheus/prometheus.yml \
---storage.tsdb.path /var/lib/prometheus/ 
+--storage.tsdb.path /var/lib/prometheus/ \
+-storage.local.retention 168h0m0s \
+-storage.local.max-chunks-to-persist 3024288 \
+-storage.local.memory-chunks=50502740 \
+-storage.local.num-fingerprint-mutexes=300960
 Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
 --------------
+注：prometheus其它参数：
+--storage.local.retention
+用来配置采用数据存储的时间，168h0m0s即为24*7小时，即1周
+--storage.local.memory-chunks
+设定prometheus内存中保留的chunks的最大个数，默认为1048576，即为1G大小
+--storage.local.series-file-shrink-ratio
+用来控制序列文件rewrite的时机，默认是在10%的chunks被移除的时候进行rewrite，如果磁盘空间够大，不想频繁rewrite，可以提升该值，比如0.3，即30%的chunks被移除的时候才触发rewrite
+--storage.local.max-chunks-to-persist
+该参数控制等待写入磁盘的chunks的最大个数，如果超过这个数，Prometheus会限制采样的速率，直到这个数降到指定阈值的95%。建议这个值设定为storage.local.memory-chunks的50%。Prometheus会尽力加速存储速度，以避免限流这种情况的发送。
+--storage.local.num-fingerprint-mutexes
+当prometheus server端在进行checkpoint操作或者处理开销较大的查询的时候，采集指标的操作会有短暂的停顿，这是因为prometheus给时间序列分配的mutexes可能不够用，可以通过这个指标来增大预分配的mutexes，有时候可以设置到上万个
+--storage.local.series-sync-strategy
+控制写入数据之后，何时同步到磁盘，有'never', 'always', 'adaptive'. 同步操作可以降低因为操作系统崩溃带来数据丢失，但是会降低写入数据的性能。 默认为adaptive的策略，即不会写完数据就立刻同步磁盘，会利用操作系统的page cache来批量同步。
+--storage.local.checkpoint-interval
+进行checkpoint的时间间隔，即对尚未写入到磁盘的内存chunks执行checkpoint操作。
+
+
 [root@node3 /usr/local/prometheus]# systemctl daemon-reload
 [root@node3 /usr/local/prometheus]# systemctl start prometheus
 [root@node3 /usr/local/prometheus]# systemctl status prometheus
@@ -445,6 +477,7 @@ if [ ${instance_name} == "localhost" ];then
 	echo "hostanem Must FQDN"
 	exit 1
 fi
+PushgatewayServer="192.168.15.201:9091"
 
 netstat_listen_label="netstat_listen_count" 
 netstat_listen_value=`netstat -natu | grep -ic listen`
@@ -456,8 +489,8 @@ netstat_wait_label="netstat_wait_connections"
 netstat_wait_value=`netstat -na | grep -ic wait`
 echo "${netstat_wait_label} ${netstat_wait_value}"
 
-#"--data-binary" default is POST method,"@-" is from file and stdin input,"http://192.168.15.202:9091/metrics/job/pushgateway" is pushgateway address and job_name,"instance/${instance_name}" is set K/V,K=instance,V=${instance_name}
-cat << EOF | curl --data-binary @- http://192.168.15.202:9091/metrics/job/pushgateway/instance/${instance_name}
+#"--data-binary" default is POST method,"@-" is from file and stdin input,"http://${PushgatewayServer}/metrics/job/pushgateway" is pushgateway address and job_name,"instance/${instance_name}" is set K/V,K=instance,V=${instance_name}
+cat << EOF | curl --data-binary @- http://${PushgatewayServer}/metrics/job/pushgateway/instance/${instance_name}
 # TYPE ${netstat_listen_label} gauge
 ${netstat_listen_label} ${netstat_listen_value}
 # TYPE ${netstat_established_label} gauge
@@ -467,14 +500,21 @@ ${netstat_wait_label} ${netstat_wait_value}
 EOF
 --------------
 注："--data-binary"默认是POST方法，"@-"表示是从文件和标准输入输入，"http://192.168.15.202:9091/metrics/job/pushgateway"表示pushgateway的地址及job K/V，"instance/${instance_name}"是为当前推送的数据设定一个实例和值。
-[root@node3 ~]# cat /var/spool/cron/root 
+[root@node1 ~]# crontab -l
 # Lines below here are managed by Salt, do not edit
 # SALT_CRON_IDENTIFIER:ntpdate time1.aliyun.com
 */5 * * * * ntpdate time1.aliyun.com
-* * * * * /root/pushgateway-listen.sh
-* * * * * sleep 15 /root/pushgateway-listen.sh
-* * * * * sleep 30 /root/pushgateway-listen.sh
-* * * * * sleep 45 /root/pushgateway-listen.sh
+
+*/1 * * * * /root/netstat-status.sh
+*/1 * * * * sleep 15; /root/netstat-status.sh
+*/1 * * * * sleep 30; /root/netstat-status.sh
+*/1 * * * * sleep 45; /root/netstat-status.sh
+
+*/1 * * * * /root/ping.sh
+*/1 * * * * sleep 15; /root/ping.sh 
+*/1 * * * * sleep 30; /root/ping.sh
+*/1 * * * * sleep 45; /root/ping.sh
+
 #pushgateway的优缺点
 优点：灵活，自定义编写脚本，中小型企业中一般只使用node_exporter和mysqld_exporter
 缺点：
@@ -498,7 +538,8 @@ if [ ${instance_name} == "localhost" ];then
 	exit 1
 fi
 
-PingServer="114.114.114.114"
+PingServer="192.168.15.201"
+PushgatewayServer="192.168.15.201:9091"
 ping_result=`ping -q -A -s 500 -W 1000 -c 100 ${PingServer}` 
 if [ $? != 0 ];then 
 	echo "hostname not result,ping failure"
@@ -530,8 +571,8 @@ ping_shake_fu_value=`echo "scale=3; $ping_delay_min-$ping_delay_avg" | bc`
 echo "${ping_shake_zheng_lable} ${ping_shake_zheng_value}"
 echo "${ping_shake_fu_lable} ${ping_shake_fu_value}"
 
-#"--data-binary" default is POST mode,"@-" is from file and stdin input,"http://192.168.15.202:9091/metrics/job/pushgateway" is pushgateway address and job_name,"instance/${instance_name}" is set K/V,K=instance,V=${instance_name}
-cat << EOF | curl --data-binary @- http://192.168.15.202:9091/metrics/job/pushgateway/instance/${instance_name}
+#"--data-binary" default is POST mode,"@-" is from file and stdin input,"http://${PushgatewayServer}/metrics/job/pushgateway" is pushgateway address and job_name,"instance/${instance_name}" is set K/V,K=instance,V=${instance_name}
+cat << EOF | curl --data-binary @- http://${PushgatewayServer}/metrics/job/pushgateway/instance/${instance_name}
 # TYPE ${ping_loss_lable} gauge
 # HELP ${ping_loss_lable} loss package rate
 ${ping_loss_lable} ${ping_loss_value}
@@ -552,9 +593,21 @@ EOF
 2. 添加prometheus数据源
 3. 添加dashboard，添加图形
 4. 在图形中设置metrics的值，legend可以优化图例中显示的值：{{exported_instance}}表示只显示exported_instance，不显示其他参数
-5. grafana dashboard可以另存为一个新的dashboard,可以把dashboard json数据复制出来保存，以备不时之需
-6. grafana报警：进入alerting--Notification channels--new channel添加一个报警通道
-7. 进入需要报警的dashboard中的图形中，进入Alert，设置规则名称、报警条件{WHEN avr()|max()|min().. OF query(A|B,1m,now) IS ABOVE 2000}，然后设置Notifications的报警通道，报警消息。
+5. grafana dashboard可以另存为一个新的dashboard,可以把dashboard json数据复制出来保存，以备不时之需，windows下记事本保存必须是UTF-8保存，否则恢复是会有乱码
+6. grafana报警：进入alerting--Notification channels--new channel添加一个报警通道--Email类型--include image--填写收件地址并保存，include image：需要安装插件：[root@node1 /etc/grafana]# grafana-cli plugins install grafana-image-renderer。
+7. 进入需要报警的dashboard中的图形中，进入Alert，设置规则名称、报警条件{WHEN avr()|max()|min().. OF query(A|B,1m,now) IS ABOVE 2000}，并设置每1m钟评估一次，持续3m钟后才发送报警，期间状态是pending。然后选择Notifications的报警通道，报警消息。
+#邮箱发件端需要在/etc/grafana/grafana.ini中设置，如下：
+#################################### SMTP / Emailing ##########################
+[smtp]
+enabled = true
+host = smtp.126.com:25
+user = jack@126.com
+password = TEZV12
+skip_verify = true
+from_address = jack@126.com
+from_name = Grafana
+ehlo_identity =            #这里不能写，否则会被网易识别为垃圾邮件发送不成功。为空使用默认消息
+###############
 
 #企业中CPU监控
 #cpu
@@ -565,7 +618,7 @@ CPU的使用率：
 #内存
 CentOS5.x和CentOS6.x真实可用内存=free memory+buffer+cached
 CentOS7.x真实可用内存=available(也可使用free memory+buffer+cached)
-内存使用率：
+内存使用率：单位Ms
 (1 - ((node_memory_Buffers_bytes + node_memory_Cached_bytes + node_memory_MemFree_bytes) /node_memory_MemTotal_bytes)) * 100
 #硬盘
 硬盘空闲比例：
@@ -573,7 +626,7 @@ CentOS7.x真实可用内存=available(也可使用free memory+buffer+cached)
 硬盘IO使用率：是(read+written) /1024 /1024  
 ((rate(node_disk_read_bytes_total[1m]) + rate(node_disk_written_bytes_total[1m])) /1024 /1024) > 0
 #网络
-网络流量情况：
+网络流量情况：，单位Ms
 rate(node_network_transmit_bytes_total[1m]) /1024 /1024
 #针对close wait 和time wait的监控key
 netstat_wait_connections

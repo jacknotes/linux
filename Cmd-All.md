@@ -1396,5 +1396,58 @@ ssh -N -f -L 127.0.0.1:1080:172.168.2.222:8000 root@172.168.2.222
 [root@salt /git/linux]# export http_proxy='127.0.0.1:8888'
 [root@salt /git/linux]# export https_proxy='127.0.0.1:8888'
 
+#通过linux shell发送邮件：
+1.安装mailx:
+centos7自带有mailx软件包，有/usr/bin/mail命令，配置文件为/etc/mail.rc。如果没有软件包，可以安装：yum install -y mailx 
+2.修改配置文件/etc/mail.rc,在后面添加：
+----------
+set from=jacknotes@126.com
+set smtp=smtp.126.com
+set smtp-auth=login
+set smtp-auth-user=jack@126.com
+set smtp-auth-password=TEZVGXVC
+#下面是忽略认证
+set ssl-verify=ignore
+set nss-config-dir=/etc/maildbs/
+----------
+3.发送邮件：
+mail -s 'test for linux' jack@163.com
+hello jack
+EOT  #按ctrl+D进行结束输入并发送
+或者 
+echo 'hello world!' | mail -s 'test' jack@163.com
+#通过python3进行邮件报警
+[root@node1 ~]# cat sendmail.py
+#!/usr/bin/python3
+import smtplib
+from email.mime.text import MIMEText
+#from email.mime.multipart import MIMEMultipart
+from email.header import Header
+
+mail_host='smtp.126.com'
+mail_port=25
+mail_user='jack@126.com'
+mail_pass='TEZVGROG'
+sender = 'jacknotes@126.com'
+receivers = ['jack@163.com', 'jack@126.com'] 
+ 
+# 三个参数：第一个为文本内容，第二个 plain 设置文本格式，第三个 utf-8 设置编码
+#message = MIMEMultipart()
+#message.attach(MIMEText('Python邮件', 'plain', 'utf-8'))
+message = MIMEText('Python', 'plain', 'utf-8')
+message['From'] = sender    
+subject = 'alert'
+message['Subject'] = Header(subject, 'utf-8')
+for i in range(0,len(receivers)):
+    message['To'] =  receivers[i]        
+    try:
+        smtpObj = smtplib.SMTP()
+        smtpObj.connect(mail_host, mail_port)
+        smtpObj.login(mail_user, mail_pass)
+        smtpObj.sendmail(sender, receivers[i], message.as_string())
+        print ("发送邮件" + receivers[i] +"成功")
+    except smtplib.SMTPException:
+        print ("Error: 发送邮件"+ receivers[i] +"失败")
+
 
 </pre>
