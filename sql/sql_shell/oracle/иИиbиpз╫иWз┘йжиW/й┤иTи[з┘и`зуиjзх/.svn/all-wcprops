@@ -1,0 +1,113 @@
+K 25
+svn:wc:ra_dav:version-url
+V 156
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E8%B4%A2%E5%8A%A1%E6%94%AF%E6%8C%81/%E5%AE%A2%E6%88%B7%E7%BB%93%E7%AE%97
+END
+日期段客户单据汇总查询(收款登记).sql
+K 25
+svn:wc:ra_dav:version-url
+V 298
+/svn/rptgrp/!svn/ver/375/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E8%B4%A2%E5%8A%A1%E6%94%AF%E6%8C%81/%E5%AE%A2%E6%88%B7%E7%BB%93%E7%AE%97/%E6%97%A5%E6%9C%9F%E6%AE%B5%E5%AE%A2%E6%88%B7%E5%8D%95%E6%8D%AE%E6%B1%87%E6%80%BB%E6%9F%A5%E8%AF%A2(%E6%94%B6%E6%AC%BE%E7%99%BB%E8%AE%B0).sql
+END
+日期段客户单据汇总查询(预收款类).sql
+K 25
+svn:wc:ra_dav:version-url
+V 298
+/svn/rptgrp/!svn/ver/375/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E8%B4%A2%E5%8A%A1%E6%94%AF%E6%8C%81/%E5%AE%A2%E6%88%B7%E7%BB%93%E7%AE%97/%E6%97%A5%E6%9C%9F%E6%AE%B5%E5%AE%A2%E6%88%B7%E5%8D%95%E6%8D%AE%E6%B1%87%E6%80%BB%E6%9F%A5%E8%AF%A2(%E9%A2%84%E6%94%B6%E6%AC%BE%E7%B1%BB).sql
+END
+日期段客户单据汇总查询(货款类).sql
+K 25
+svn:wc:ra_dav:version-url
+V 289
+/svn/rptgrp/!svn/ver/375/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E8%B4%A2%E5%8A%A1%E6%94%AF%E6%8C%81/%E5%AE%A2%E6%88%B7%E7%BB%93%E7%AE%97/%E6%97%A5%E6%9C%9F%E6%AE%B5%E5%AE%A2%E6%88%B7%E5%8D%95%E6%8D%AE%E6%B1%87%E6%80%BB%E6%9F%A5%E8%AF%A2(%E8%B4%A7%E6%AC%BE%E7%B1%BB).sql
+END
+日期段客户账款进销存报表.sql
+K 25
+svn:wc:ra_dav:version-url
+V 269
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E8%B4%A2%E5%8A%A1%E6%94%AF%E6%8C%81/%E5%AE%A2%E6%88%B7%E7%BB%93%E7%AE%97/%E6%97%A5%E6%9C%9F%E6%AE%B5%E5%AE%A2%E6%88%B7%E8%B4%A6%E6%AC%BE%E8%BF%9B%E9%94%80%E5%AD%98%E6%8A%A5%E8%A1%A8.sql
+END
+商品批发汇总查询.sql
+K 25
+svn:wc:ra_dav:version-url
+V 233
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E8%B4%A2%E5%8A%A1%E6%94%AF%E6%8C%81/%E5%AE%A2%E6%88%B7%E7%BB%93%E7%AE%97/%E5%95%86%E5%93%81%E6%89%B9%E5%8F%91%E6%B1%87%E6%80%BB%E6%9F%A5%E8%AF%A2.sql
+END
+客户批发汇总查询.sql
+K 25
+svn:wc:ra_dav:version-url
+V 233
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E8%B4%A2%E5%8A%A1%E6%94%AF%E6%8C%81/%E5%AE%A2%E6%88%B7%E7%BB%93%E7%AE%97/%E5%AE%A2%E6%88%B7%E6%89%B9%E5%8F%91%E6%B1%87%E6%80%BB%E6%9F%A5%E8%AF%A2.sql
+END
+销售汇总分析.sql
+K 25
+svn:wc:ra_dav:version-url
+V 215
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E8%B4%A2%E5%8A%A1%E6%94%AF%E6%8C%81/%E5%AE%A2%E6%88%B7%E7%BB%93%E7%AE%97/%E9%94%80%E5%94%AE%E6%B1%87%E6%80%BB%E5%88%86%E6%9E%90.sql
+END
+日期段客户单据汇总查询(非货款类).sql
+K 25
+svn:wc:ra_dav:version-url
+V 298
+/svn/rptgrp/!svn/ver/375/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E8%B4%A2%E5%8A%A1%E6%94%AF%E6%8C%81/%E5%AE%A2%E6%88%B7%E7%BB%93%E7%AE%97/%E6%97%A5%E6%9C%9F%E6%AE%B5%E5%AE%A2%E6%88%B7%E5%8D%95%E6%8D%AE%E6%B1%87%E6%80%BB%E6%9F%A5%E8%AF%A2(%E9%9D%9E%E8%B4%A7%E6%AC%BE%E7%B1%BB).sql
+END
+日期段客户单据汇总查询(费用类).sql
+K 25
+svn:wc:ra_dav:version-url
+V 289
+/svn/rptgrp/!svn/ver/375/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E8%B4%A2%E5%8A%A1%E6%94%AF%E6%8C%81/%E5%AE%A2%E6%88%B7%E7%BB%93%E7%AE%97/%E6%97%A5%E6%9C%9F%E6%AE%B5%E5%AE%A2%E6%88%B7%E5%8D%95%E6%8D%AE%E6%B1%87%E6%80%BB%E6%9F%A5%E8%AF%A2(%E8%B4%B9%E7%94%A8%E7%B1%BB).sql
+END
+客户批发按单据查询.sql
+K 25
+svn:wc:ra_dav:version-url
+V 242
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E8%B4%A2%E5%8A%A1%E6%94%AF%E6%8C%81/%E5%AE%A2%E6%88%B7%E7%BB%93%E7%AE%97/%E5%AE%A2%E6%88%B7%E6%89%B9%E5%8F%91%E6%8C%89%E5%8D%95%E6%8D%AE%E6%9F%A5%E8%AF%A2.sql
+END
+客户批发资金流水.sql
+K 25
+svn:wc:ra_dav:version-url
+V 233
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E8%B4%A2%E5%8A%A1%E6%94%AF%E6%8C%81/%E5%AE%A2%E6%88%B7%E7%BB%93%E7%AE%97/%E5%AE%A2%E6%88%B7%E6%89%B9%E5%8F%91%E8%B5%84%E9%87%91%E6%B5%81%E6%B0%B4.sql
+END
+批发回款对账报表.sql
+K 25
+svn:wc:ra_dav:version-url
+V 233
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E8%B4%A2%E5%8A%A1%E6%94%AF%E6%8C%81/%E5%AE%A2%E6%88%B7%E7%BB%93%E7%AE%97/%E6%89%B9%E5%8F%91%E5%9B%9E%E6%AC%BE%E5%AF%B9%E8%B4%A6%E6%8A%A5%E8%A1%A8.sql
+END
+批发单汇总.sql
+K 25
+svn:wc:ra_dav:version-url
+V 206
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E8%B4%A2%E5%8A%A1%E6%94%AF%E6%8C%81/%E5%AE%A2%E6%88%B7%E7%BB%93%E7%AE%97/%E6%89%B9%E5%8F%91%E5%8D%95%E6%B1%87%E6%80%BB.sql
+END
+Grid.Ini
+K 25
+svn:wc:ra_dav:version-url
+V 165
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E8%B4%A2%E5%8A%A1%E6%94%AF%E6%8C%81/%E5%AE%A2%E6%88%B7%E7%BB%93%E7%AE%97/Grid.Ini
+END
+客户商品批发明细查询.sql
+K 25
+svn:wc:ra_dav:version-url
+V 251
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E8%B4%A2%E5%8A%A1%E6%94%AF%E6%8C%81/%E5%AE%A2%E6%88%B7%E7%BB%93%E7%AE%97/%E5%AE%A2%E6%88%B7%E5%95%86%E5%93%81%E6%89%B9%E5%8F%91%E6%98%8E%E7%BB%86%E6%9F%A5%E8%AF%A2.sql
+END
+入库单明细查询（批发业务）.sql
+K 25
+svn:wc:ra_dav:version-url
+V 278
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E8%B4%A2%E5%8A%A1%E6%94%AF%E6%8C%81/%E5%AE%A2%E6%88%B7%E7%BB%93%E7%AE%97/%E5%85%A5%E5%BA%93%E5%8D%95%E6%98%8E%E7%BB%86%E6%9F%A5%E8%AF%A2%EF%BC%88%E6%89%B9%E5%8F%91%E4%B8%9A%E5%8A%A1%EF%BC%89.sql
+END
+日期段客户单据汇总查询(所有).sql
+K 25
+svn:wc:ra_dav:version-url
+V 280
+/svn/rptgrp/!svn/ver/375/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E8%B4%A2%E5%8A%A1%E6%94%AF%E6%8C%81/%E5%AE%A2%E6%88%B7%E7%BB%93%E7%AE%97/%E6%97%A5%E6%9C%9F%E6%AE%B5%E5%AE%A2%E6%88%B7%E5%8D%95%E6%8D%AE%E6%B1%87%E6%80%BB%E6%9F%A5%E8%AF%A2(%E6%89%80%E6%9C%89).sql
+END
+销售明细分析.sql
+K 25
+svn:wc:ra_dav:version-url
+V 215
+/svn/rptgrp/!svn/ver/178/setup/%E6%8A%A5%E8%A1%A8%E5%88%B6%E5%93%81/QUERY/STANDARD/%E8%B4%A2%E5%8A%A1%E6%94%AF%E6%8C%81/%E5%AE%A2%E6%88%B7%E7%BB%93%E7%AE%97/%E9%94%80%E5%94%AE%E6%98%8E%E7%BB%86%E5%88%86%E6%9E%90.sql
+END
