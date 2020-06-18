@@ -12,6 +12,10 @@ include:
   - init.selinux
   - init.tty-style
   - init.user-www
+<<<<<<< HEAD
+=======
+  - init.repo-clear
+>>>>>>> 5a4e19e7df3e4ff475c828a4cbe76c3effd92aae
   - init.repo
   - init.basePkg
   - init.python-pip
