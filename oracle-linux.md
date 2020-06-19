@@ -333,4 +333,21 @@ The command completed successfully
 [oracle@node1 ~]$ netstat -tnlp | grep 1521 #已经关闭
 (No info could be read for "-p": geteuid()=9091 but you should be root.)
 
+#plsql客户端连接及配置(基于windows)
+plsql客户端连接oracle有两种方式，一种是Basic,一种是TNS
+1.Basic方式
+1)先安装oracleclient(安装时自己会添加变量到系统中)
+2)再安装plsql客户端、激活、绿化为中文版
+3)在plsql客户端中设置：工具--首选项--连接  中，填入oracle主目录名路径和oci库路径，例如：D:\app\jack\product\11.2.0\client_1 和 D:\app\jack\product\11.2.0\client_1\oci.dll
+4)重启plsql生效
+5)打开plsql进行连接，输入用户名、密码、IP:PORT/INSTANCE、MODE
+2.TNS方式
+1)先安装oracleclient(安装时自己会添加变量到系统中),主要作用是在plsql中出现‘数据库’和‘连接为’这两个小窗口，否则无法连接oracle Server.
+2)再安装plsql客户端、激活、绿化为中文版
+3)在plsql客户端中设置：工具--首选项--连接  中，填入oracle主目录名路径和oci库路径，例>如：D:\OperationTools\oracle\instantclient_11_2 和 D:\OperationTools\oracle\instantclient_11_2\oci.dll
+4)重启plsql生效
+5)解压下好的instantclient_11_2.tgz，并在instantclient_11_2中建立目录NETWORK\ADMIN两个目录.然后把instantclient_11_2目录中的tnsnames.ora复制到NETWORK\ADMIN目录下，并编辑更改tnsnames.ora文件设立别名、连接协议、主机名或IP、PORT、连接的数据库名称
+6)在系统中建立变量，使plsql能找到这个tnsnames.ora文件信息，例如：D:\OperationTools\oracle\instantclient_11_2\NETWORK\ADMIN
+7)打开plsql进行连接，输入用户名、密码、别名(tnsnames.ora文件定义的)、MODE
+
 </pre>
