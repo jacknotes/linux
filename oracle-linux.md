@@ -3,6 +3,9 @@
 Environment:
 [root@node1 ~]# cat /etc/redhat-release 
 CentOS Linux release 7.6.1810 (Core) 
+[root@node1 /git/linux]# uname -a
+Linux node1 3.10.0-957.el7.x86_64 #1 SMP Thu Nov 8 23:39:32 UTC 2018 x86_64 x86_64 x86_64 GNU/Linux
+
 #install
 step1:虚拟内存建议，oracle后面需要使用
 [root@node1 ~]# dd if=/dev/zero of=/swap bs=1M count=1024
@@ -262,5 +265,72 @@ oracle    23579      1  0 18:14 ?        00:00:00 ora_cjq0_orcl
 oracle    23581      1  0 18:14 ?        00:00:00 ora_q000_orcl
 oracle    23583      1  0 18:14 ?        00:00:00 ora_q001_orcl
 #最后即可连接oracle数据库
+
+#oracle的启动和关闭
+Linux下启动Oracle分为两步：
+　　1）启动监听；
+　　2）启动数据库实例；
+1.登录服务器，切换到oracle用户，或者以oracle用户登录
+[oracle@node1 ~]$ lsnrctl start #启动监听
+[oracle@node1 ~]$ lsnrctl status #查看启动状态
+[oracle@node1 ~]$ netstat -tnlp | grep 1521
+(Not all processes could be identified, non-owned process info
+ will not be shown, you would have to be root to see it all.)
+tcp6       0      0 :::1521                 :::*                    LISTEN      14878/tnslsnr    
+2.以sys用户登录oracle,并启动数据库实例
+[oracle@node1 ~]$ sqlplus / as sysdba
+SQL> startup
+ORACLE instance started.
+
+Total System Global Area  801701888 bytes
+Fixed Size		    2217632 bytes
+Variable Size		  222300512 bytes
+Database Buffers	  570425344 bytes
+Redo Buffers		    6758400 bytes
+Database mounted.
+Database opened.
+[oracle@node1 ~]$ ps aux | grep ora_ | grep -v grep #查看实例状态
+oracle    15092  0.0  0.8 1004044 15920 ?       Ss   09:18   0:00 ora_pmon_orcl
+oracle    15094  0.3  0.6 1001664 12372 ?       Ss   09:18   0:01 ora_vktm_orcl
+oracle    15098  0.0  0.6 1001664 12368 ?       Ss   09:18   0:00 ora_gen0_orcl
+oracle    15100  0.0  0.6 1001664 12384 ?       Ss   09:18   0:00 ora_diag_orcl
+oracle    15102  0.0  1.0 1001664 20348 ?       Ss   09:18   0:00 ora_dbrm_orcl
+oracle    15104  0.0  0.6 1001664 12644 ?       Ss   09:18   0:00 ora_psp0_orcl
+oracle    15106  0.0  0.8 1002176 15908 ?       Ss   09:18   0:00 ora_dia0_orcl
+oracle    15108  0.0  1.8 1001664 35332 ?       Ss   09:18   0:00 ora_mman_orcl
+oracle    15110  0.0  1.1 1007932 21612 ?       Ss   09:18   0:00 ora_dbw0_orcl
+oracle    15112  0.0  1.1 1017216 20884 ?       Ss   09:18   0:00 ora_lgwr_orcl
+oracle    15114  0.1  0.8 1002176 15552 ?       Ss   09:18   0:00 ora_ckpt_orcl
+oracle    15116  0.1  4.2 1008456 78864 ?       Ss   09:18   0:00 ora_smon_orcl
+oracle    15118  0.0  1.1 1002176 21460 ?       Ss   09:18   0:00 ora_reco_orcl
+oracle    15120  0.0  3.1 1007584 59404 ?       Ss   09:18   0:00 ora_mmon_orcl
+oracle    15122  0.0  1.0 1001664 19152 ?       Ss   09:18   0:00 ora_mmnl_orcl
+oracle    15124  0.0  0.6 1027292 12968 ?       Ss   09:18   0:00 ora_d000_orcl
+oracle    15126  0.0  0.6 1002860 11580 ?       Ss   09:18   0:00 ora_s000_orcl
+oracle    15168  0.0  0.7 1001664 14320 ?       Ss   09:18   0:00 ora_qmnc_orcl
+oracle    15182  0.0  2.5 1006404 47428 ?       Ss   09:18   0:00 ora_cjq0_orcl
+oracle    15260  0.0  1.3 1003332 24896 ?       Ss   09:18   0:00 ora_q000_orcl
+oracle    15262  0.0  1.0 1002304 19320 ?       Ss   09:18   0:00 ora_q001_orcl
+oracle    15813  0.0  0.6 1001664 12604 ?       Ss   09:23   0:00 ora_smco_orcl
+oracle    15818  0.0  0.9 1002304 17156 ?       Ss   09:23   0:00 ora_w000_orcl
+#关闭oracle
+1. 关闭实例
+2. 关闭监听器
+[oracle@node1 ~]$ sqlplus / as sysdba
+SQL> shutdown     
+Database closed.
+Database dismounted.
+ORACLE instance shut down.
+[oracle@node1 ~]$ ps aux | grep ora_ | grep -v grep
+[oracle@node1 ~]$ lsnrctl stop
+
+LSNRCTL for Linux: Version 11.2.0.1.0 - Production on 19-JUN-2020 09:31:04
+
+Copyright (c) 1991, 2009, Oracle.  All rights reserved.
+
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=IPC)(KEY=EXTPROC1521)))
+The command completed successfully
+[oracle@node1 ~]$ netstat -tnlp | grep 1521 #已经关闭
+(No info could be read for "-p": geteuid()=9091 but you should be root.)
 
 </pre>
