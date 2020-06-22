@@ -1,0 +1,75 @@
+version: '3.4'
+services:
+  apollo-mysql:                    # 服务名称
+    image: 192.168.15.200:8888/apollo/apollo-mysql:v3      # 使用的镜像
+    container_name: apollo-mysql   # 容器名称
+    hostname: apollo-mysql
+    restart: always                 # 失败自动重启策略
+    environment:                                    
+      - MYSQL_USER=apollo
+      - MYSQL_PASSWD=apollo
+    volumes:
+      - mysqldata:/var/lib/mysql
+    ports:
+      - 3307:3306
+  apollo-configservice:                    # 服务名称
+    image: 192.168.15.200:8888/apollo/apollo-configservice-1.7.0:v3 
+    container_name: apollo-configservice   # 容器名称
+    hostname: apollo-configservice
+    links:
+      - apollo-mysql:mysql
+    restart: always                 # 失败自动重启策略
+    environment:                                    
+      - MYSQL_SERVER=mysql
+      - MYSQL_USER=apollo
+      - MYSQL_PASSWD=apollo
+    depends_on:
+      - apollo-mysql
+    volumes:
+      - /data/docker/apollo-configservice/logs:/opt/logs
+    ports:
+      - 8080:8080 
+  apollo-adminservice:                    # 服务名称
+    image: 192.168.15.200:8888/apollo/apollo-adminservice-1.7.0:v3
+    container_name: apollo-adminservice   # 容器名称
+    hostname: apollo-adminservice
+    links:
+      - apollo-mysql:mysql
+    restart: always                 # 失败自动重启策略
+    environment:                                    
+      - MYSQL_SERVER=mysql
+      - MYSQL_USER=apollo
+      - MYSQL_PASSWD=apollo
+    depends_on:
+      - apollo-mysql
+    volumes:
+      - /data/docker/apollo-adminservice/logs:/opt/logs
+    ports:
+      - 8090:8090 
+  apollo-portal:                    # 服务名称
+    image: 192.168.15.200:8888/apollo/apollo-portal-1.7.0:v3
+    container_name: apollo-portal   # 容器名称
+    hostname: apollo-portal
+    links:
+      - apollo-mysql:mysql
+    restart: always                 # 失败自动重启策略
+    environment:                                    
+      - MYSQL_SERVER=mysql
+      - MYSQL_USER=apollo
+      - MYSQL_PASSWD=apollo
+      - pro_meta=http://192.168.15.202:8080  #pro meta server address
+    depends_on:
+      - apollo-mysql
+    volumes:
+      - /data/docker/apollo-portal/logs:/opt/logs
+    ports:
+      - 8070:8070 
+
+volumes:
+  mysqldata:
+    driver: local  
+
+networks:
+  default:
+    driver: bridge
+
