@@ -1,0 +1,80 @@
+USE [topway]
+GO
+/****** Object:  StoredProcedure [dbo].[Bill_GetHotel_FormatData]    Script Date: 01/06/2020 11:30:53 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER PROCEDURE [dbo].[Bill_GetHotel_FormatData]
+@BillNumber VARCHAR(100)
+AS
+BEGIN
+SELECT 
+row_number() over(order by h.id) as 序号,
+CONVERT(varchar(100), o.CreateDate , 23)  AS '预订日期' ,  
+CONVERT(varchar(100), h.prdate , 23)  AS '打印日期' ,  
+h.CoupNo AS 销售单号,
+h.pasname AS 客人姓名,
+T_CusUser.Name AS '预订人',
+h.hotel AS 酒店名称,
+CONVERT(varchar(100), h.beg_date, 23)  AS '入住时间' ,
+CONVERT(varchar(100), h.end_date, 23)  AS '离店日期' ,
+h.roomtype AS 房间类型,
+h.BreadFast AS 早餐,
+h.nights AS 天数,
+h.pcs AS 间数,
+h.price AS 房费,
+h.price+h.fwprice-h.yhprice AS 账单金额,
+h.nights*h.pcs AS 间夜,
+h.CostCenter AS 成本中心,
+h.fwprice as 服务费,
+h.price+h.fwprice-h.yhprice AS 销售价,
+h.DepartmentName AS 部门,
+h.ProjectName AS 项目编号,
+h.comment AS 备注,
+CASE WHEN  h.dzhxDate <>'1900-01-01 00:00:00.000' THEN '已付' ELSE '未付' END AS '支付状态',
+CASE WHEN  h.dzhxDate <>'1900-01-01 00:00:00.000' THEN '已付已到账' ELSE '未付' END AS '支付状态_页面计算',
+o.Purpose AS 差旅目的,
+h.sform AS 结算方式,
+ISNULL(h.BusinessUnit,'') AS BU,
+h.custid AS '预订人ID',
+ISNULL(o.ReasonDescription,'') AS 违反差旅职级原因,
+CASE WHEN ISNULL(h.price,0)>0 AND ISNULL(h.nights,0)>0 AND ISNULL(h.pcs,0)>0 THEN CAST( CAST((ISNULL(h.price,0)/ISNULL(h.nights,0)/ISNULL(h.pcs,0)) AS DECIMAL(18,2)) AS VARCHAR(100)) ELSE '---' END AS 间夜均价,-- =总价（不含服务费）/夜数/间数
+CASE WHEN h.CoupNo LIKE '-%' THEN '线下' WHEN o.Resource IN(1,3,5,6) THEN '线上' ELSE '线下' END AS '线上(线下)',
+NN1.审批信息,
+h.city AS 入住城市
+FROM dbo.tbHtlcoupYf h
+LEFT JOIN hotelorderdb..HTL_Orders o ON h.CoupNo=o.CoupNo
+LEFT JOIN homsomDB..Trv_UnitCompanies uc ON h.cmpid=uc.Cmpid
+LEFT JOIN homsomdb..Trv_UnitPersons T_CusPerson WITH(NOLOCK) ON h.custid = T_CusPerson.CustID AND uc.ID=T_CusPerson.CompanyID--员工表
+LEFT JOIN homsomDB..Trv_Human T_CusUser ON T_CusPerson.ID=T_CusUser.ID
+OUTER APPLY(
+				SELECT 
+					[审批信息]= STUFF(REPLACE(REPLACE(
+						(
+						SELECT value FROM(
+								SELECT  ISNULL((
+								'审批人：'+ TT5.Name +'；'
+								+'审批时间：'+ CONVERT(varchar(100), TT3.ProcessTime, 20) + '；'
+								+'审批方式：'+(CASE 
+												WHEN TT4.CommunicationType =1 THEN '短信'
+												WHEN TT4.CommunicationType =2 THEN '邮件'
+												WHEN TT4.CommunicationType =3 THEN '系统'
+												WHEN TT4.CommunicationType =4 THEN '人工'
+												WHEN TT4.CommunicationType =5 THEN 'APP'
+												WHEN TT4.CommunicationType =6 THEN '微信'
+												END 	) + '；'
+								),'') as value,BusinessID from workflow..Homsom_WF_Instance NN1 
+								LEFT JOIN workflow..Homsom_WF_Instance_Node TT3 ON NN1.InstanceID=TT3.InstanceID AND TT3.NodeType=110
+								LEFT JOIN workflow..homsom_VettingRelations TT4 ON NN1.InstanceID=TT4.VettingWorkID AND TT4.Status=2 
+								LEFT JOIN homsomdb..Trv_Human TT5 ON TT3.ProcessPerson NOT IN('ProcessPerson1','ProcessPerson2')  and TT3.ProcessPerson=TT5.ID																									
+								WHERE  NN1.BusinessSource IN(4,5) 
+							)N
+							WHERE CAST(o.OrderID AS VARCHAR(100)) =N.BusinessID
+							FOR XML AUTO
+						), '<N value="', '|'), '"/>', ''), 1, 1, '')
+)NN1
+WHERE h.NewModifyBillNumber=@BillNumber
+AND h.price <>0
+END

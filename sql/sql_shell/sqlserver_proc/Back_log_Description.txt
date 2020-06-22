@@ -1,0 +1,49 @@
+USE [master]
+GO
+/****** Object:  StoredProcedure [dbo].[Bak_LOG]    Script Date: 09/11/2019 11:35:50 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ 
+ /*
+ 一个事务日志备份只备份事务日志中的信息。事务日志备份必须与至少一次全数据库备份联用，这是因为如果恢复数据，
+ 必须要有一个开始点。事务日志备份比全数据库备份少花费许多资源，经常执行也容易多了。这实际上有两个目的。
+ 首先是缩短了最后一次备份与服务器失败之间的时间间隔，因而减少了数据损失。事务日志备份还允许你实施一种特殊类型的恢复，
+ 即时间点恢复。这种类型的恢复允许你恢复数据到一个特定的时间点，比如到一次实际失败发生前5分钟时。
+ */
+--事务日志备份
+--BACKUP LOG [wxh] TO  DISK = N'C:\Program Files\Microsoft SQL Server\MSSQL10_50.MSSQLSERVER\MSSQL\Backup\wxh.bak'
+-- WITH NOFORMAT, NOINIT,  NAME = N'wxh-Transaction Log  Backup', SKIP, NOREWIND, NOUNLOAD,  STATS = 10
+  
+ALTER proc [dbo].[Bak_LOG]  
+as  
+declare @now datetime  
+declare @rootPath nvarchar(100)  
+declare @fName nvarchar(20)  
+declare @strYear nvarchar(4)  
+declare @strMonth nvarchar(2)  
+declare @fname_tmp nvarchar(200)  
+select @now=GETDATE()  
+select @fName= CONVERT(nvarchar(8),@now,112)+replace(CONVERT(nvarchar(8),@now,108),':','')  
+select @strYear=SUBSTRING(@fName,1,4)  
+select @strMonth=SUBSTRING(@fName,5,2)  
+select @rootPath=N'F:\DBbak\'+@strYear+'\'+@strMonth+'\'  
+
+select @fname_tmp=@rootPath+N'ehomsom'+@fName+'_log.trn'  
+BACKUP LOG ehomsom TO  DISK =@fname_tmp WITH NAME=N'ehomsom 日志'
+
+select @fname_tmp=@rootPath+N'homsomDB'+@fName+'_log.trn'  
+BACKUP LOG homsomDB TO  DISK =@fname_tmp WITH NAME=N'homsomDB 日志'
+
+select @fname_tmp=@rootPath+N'HotelOrderDB'+@fName+'_log.trn'  
+BACKUP LOG HotelOrderDB TO  DISK =@fname_tmp WITH NAME=N'HotelOrderDB 日志'
+
+select @fname_tmp=@rootPath+N'SMS'+@fName+'_log.trn'  
+BACKUP LOG SMS TO  DISK =@fname_tmp WITH NAME=N'SMS 日志'
+
+select @fname_tmp=@rootPath+N'Topway'+@fName+'_log.trn'  
+BACKUP LOG Topway TO  DISK =@fname_tmp WITH NAME=N'Topway 日志'
+
+select @fname_tmp=@rootPath+N'workflow'+@fName+'_log.trn'  
+BACKUP LOG workflow TO  DISK =@fname_tmp WITH NAME=N'workflow 日志'
