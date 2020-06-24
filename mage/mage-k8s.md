@@ -1,63 +1,84 @@
 ﻿#K8S----容器编排
 <pre>
 #第一节：Devops核心要点及kubernetes架构
+Devops核心要点：
+CI(持续集成),CD(持续交付),CD(持续部署)，使开发，运维，测试更加紧密的合作，也是一种文化。
 #k8s是什么？
-中文意思是舵手，docker中文意思是码头工人，k8s是google由自己企业工具Brog演变而来。
-openshift是k8s的发行版，因为k8s比较底层。
+中文意思是舵手或者飞行员，docker中文意思是码头工人，k8s是google由自己企业工具Brog演变而来。
+openshift(redhat公司封装的产品)是k8s的发行版，因为k8s比较底层。
 k8s的特性：
 1. 自动装箱、自我修复、水平扩展、服务发现和负载均衡、自动发布和回滚
 2. 密钥和配置管理、存储编排、批量处理执行
-k8s是有中心节点的集群系统
-1.API Server（接收并处理请求的）、2.Scheduler（调度容器创建的请求），3. 控制器（loop，监控容器的健康状态），控制器管理器（管理监控控制器的，可以做冗余，确保已建立的控制器为健康的状态）
+k8s是有中心节点的集群系统(集群系统分：无中心节点(redis-cluster)，中心节点(mysql主从))
+master上的组件：
+1.API Server（负责接收并处理请求的）、2.Scheduler（根据容器最低资源需求(cpu,内存，存储等资源是否满足容器需求)调度到某个node创建容器），3. 控制器管理器（管理监控控制器的，可以做冗余(一般三个master上各有一个控制器管理器)，确保已建立的控制器为健康的状态）{控制器loop监控容器的健康状态，当容器挂了，控制器则会请求APIServer重新启动一个容器}
 在k8s中容器不叫容器了，叫pod,pod可以运行多个容器，共享网络和存储卷，一般pod只运行一个容器，pod是k8s中最小的原子单元
-k8s由多个master和多个node组成集群，一般master为3个，可做冗余高可用。node是工作节点（worker）
-无论是什么硬件，只要有cpu，内存，存储空间，网络等，而且可以装上k8s的集群代理程序，都可以成为node节点。
-pod有标签，laber selector(标签选择器，用来选择pod标签的，其他很多资源都能用)
+k8s由多个master和多个node组成集群，一般master为3个，可做冗余高可用。node是工作节点（worker）。无论是什么硬件，只要有cpu，内存，存储空间，网络等，而且可以装上k8s的集群代理程序，都可以成为node节点。
+pod是有标签的，laber selector(标签选择器）用来选择pod标签的，其他很多资源对象都能用标签
 #总结：
 master/node
 master:API Server、scheduler,Controller-Manager
-node:kubelet(k8s代理程序),docker(容器引擎)，kube-proxy
+node:kubelet(k8s代理程序),docker(容器引擎,其实不只有docker，其他也可以)，kube-proxy(管理service的iptables或ipvs规则，作为守护进程运行在每个node上)
+pod:label,label selector
 
 #第二节：kubernetes基础概念
 #Pod：Laber,Laber Selector
-1. Laber:key=value,标识pod
+1. Laber:key=value,标识pod，元数据
 2. Laber Selector，通过laber来选择pod
-#pod有两类：1.自主式pod，2.控制管理器pod（一般用这个）
-控制器pod:
-	ReplicationController
-	ReplicaSet
-	Deployment
-	StatefulSet
-	DaemonSet
-	Job,Cronjob
+#pod有两类(不是官方定义的，是自己强行分类的)：1.自主式pod(当node挂了，pod也就消失了)，2.pod控制器（当node挂了，pod会在另外一个node上运行，这个用得最多，通过标签和标签选择器去区分后端Pod）
+pod控制器:
+	ReplicationController（副本控制器，当pod不够用了，可以再启用一个副本pod,pod多退少补，必需满足人的定义需求数量，支持滚动更新）
+	ReplicaSet(副本集控制器，不直接使用，用声明式更新控制器Deployment)
+	Deployment(声明式更新控制器，只能管理无状态应用)
+		HPA:水平pod自动伸缩控制器
+	StatefulSet(有状态副本集，可以管理有状态应用)
+	DaemonSet（在每一个node上运行一个副本）
+	Job（作业）
+	Cronjob（周期性作业）
+服务发现：
+	应用服务一运行会自己注册到某个总线上，当服务发现时，只需要去找总线就可以找到这个应用服务。
+service:客户端去访问服务时，会去访问service,这个service只要不删除就不会变的，service会自动关联后端的pod，service通过标签和标签选择器去区分后端Pod
+k8s集群监控：prometheus+grafana
+#AddOns:附件
 #k8s的基础设施部份：DNS（用于内部pod之间的解析）
+#k8s网络：
+节点网络：节点与节点之间是一种网络。
+service网络(集群网络)：service与service在一种网络中，是一种虚拟的ip地址，只存在与iptables或ipvs中。
+pod网络：pod与pod之间在一种网络中。
+
 #pod之间的通信：
 1. 同一个pod内的多个容器间通信：通过lo接口通信
 2. 各pod间的通信：Overlay Network(叠加网络)
-3. pod与Service之间的通信：通过node的kube-proxy来生成node的iptables规则，这个规则将会指引pod与Service通信。kube-proxy是跟API-Server之间进行联系的，当创建跟移除Service时，API-Server会产生事件，这时kube-proxy就会配置iptables的相应规则。
-#API-Server的事件及laber等信息存储在哪？
-存储在etcd（k8s的数据库），跟API-Server一样，需要高可用冗余，一般为3个
+3. pod与Service之间的通信：当pod新增或删除时，node的kube-proxy会从APIserver接收信息从而来生成变更node的iptables或ipvs规则，这个规则将会指引pod与Service通信。kube-proxy是跟API-Server之间进行联系的，当创建跟移除Service时，API-Server会产生事件，这时kube-proxy就会配置iptables的相应规则。
+#API-Server的各个资源信息，事件及laber等信息存储在哪？
+存储在etcd（k8s的数据库，键值数据库，跟redis相像，但其有其他的功能，如lead选举），一旦etcd故障，则整个集群故障。跟API-Server一样，需要高可用冗余，一般为3个，跟elasticsearch一样，有两个端口，一个端口集群内部通信，一个端口提供外部访问。
 #证书：
 1. etcd之间需要一套CA证书
 2. etcd与API-Server之间需要一套CA证书
-3. API-Server与etcd之间需要一套CA证书
-4. API-Server与node之间需要一套CA证书
-5. API-Server与外部(局域网)访问之间需要一套CA证书
+3. API-Server与API-client之间需要一套CA证书
+4. API-Server与kubelet之间需要一套CA证书
+5. API-Server与kubeproxy访问之间需要一套CA证书
 #k8s不提供网络组件，所以需要借助第三方插件提供网络,只要是支持CNI标准的网络组件都支持k8s的网络
-1. flannel:提供网络配置，配置简单
+网络提供的两个维度：1. 网络配置。2.网络策略
+namespace:名称空间，提供了管理边界，名称空间之间默认可以互访，可以通过网络策略禁止名称空间的pod与名称空间的pod通信，甚至也可以禁止同一个名称空间的pod与pod之间的通信。
+1. flannel:提供网络配置，配置简单(redhat提供)
 2. calico：提供网络配置和网络策略，但配置很难
-3. canel:前面第1和第2的结合，支持网络配置和网络策略（用flannel的网络配置和calico的网络策略）,这种配置简单功能强大 
-4. .......
+3. canal:前面第1和第2的结合，支持网络配置和网络策略（用flannel的网络配置和calico的网络策略）,这种配置简单功能强大 
+.......
 
 master:API Server、Scheduler、Controller-manager
 node:kuberlet、docker、kube-proxy
 
 #第三节：kubeadm初始化Kubernetes集群
-#kubeadm：可以把k8s都运行为pod
+集群部署方式：
+1. minikube（单节点部署整个k8s集群，只用于开发，而针对运维则不适合）
+2. ansible部署,第三方项目
+3. kubeadm,k8s官方提供(我们使用这种方式部署)
+#kubeadm：可以把k8s组件都运行为pod，在宿主机中部署kubelet,docker，这两个需要开机自启动。其他k8s组件则运行在pod中。(APIServer,scheduler,controller manager,etcd,kube-proxy默认是静态pod，可以配置为动态pod)
 #k8s架构：
-master:API-Server、Controller-Manager、scheduler、etcd、flanner
-nodes:kubelet、docker、kube-proxy、flanner
-#架构流程：
+master:API-Server、Controller-Manager、scheduler、etcd、flanner(动态pod)
+nodes:kubelet、docker、kube-proxy、flanner(动态pod)
+#部署集群流程：
 1. master,nodes:先安装kubelet,kubeadmin,docker,kubectl（kubectl客户端管理工具仅master安装即可）
 2. master:运行kubeadm init初始化为master，预检、解决先决条件、证书、私钥、生成配置文件、生成每一个静态pod的清单文件并完成部署，接下来部署addon(插件)
 3. nodes:kubeadm join加入集群，预检、解决先决条件、基于bodstip、基于预共享的令牌认证方式、来完成认证到master节点并完成本地的pod自有安装和以addon部署kube-proxy、部署dns
