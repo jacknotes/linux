@@ -38,17 +38,17 @@ keepalived-conf:
     - user: root
     - group: root
     - template: jinja
-    - VIP: 192.168.15.50
-    {% if grains['fqdn'] == 'node2' %}
-    - ROUTEID: nginx_ha
+    - VIP: 192.168.15.198
+    {% if grains['fqdn'] == 'salt' %}
+    - ROUTEID: k8s_ha
     - STATEID: MASTER
     - PRIORITYID: 150
-    {% elif grains['fqdn'] == 'node3' %}
-    - ROUTEID: nginx_ha
+    {% elif grains['fqdn'] == 'node1' %}
+    - ROUTEID: k8s_ha
     - STATEID: BACKUP
     - PRIORITYID: 100
-    {% elif grains['fqdn'] == 'harbor' %}
-    - ROUTEID: nginx_ha
+    {% elif grains['fqdn'] == 'node2' %}
+    - ROUTEID: k8s_ha
     - STATEID: BACKUP
     - PRIORITYID: 80
     {% endif %}

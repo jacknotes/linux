@@ -9,3 +9,7 @@ salt-prod/srv/salt/prod/prometheus/files/pushgateway-1.0.1.linux-amd64.tar.gz
 docker/apollo/apollo-adminservice/apollo-adminservice-1.7.0-github.zip
 docker/apollo/apollo-configservice/apollo-configservice-1.7.0-github.zip
 docker/apollo/apollo-portal/apollo-portal-1.7.0-github.zip
+*.gz
+*.bz2
+*.rpm
+*.zip

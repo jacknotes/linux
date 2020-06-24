@@ -1,7 +1,7 @@
 pcre-source-install:
   file.managed:
     - name: /usr/local/src/pcre-8.37.tar.gz
-    - source: salt://modules/pcre/files/pcre-8.37.tar.gz
+    - source: salt://lnmp/pcre/files/pcre-8.37.tar.gz
     - user: root
     - group: root
     - mode: 755

@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/bin/sh
+#
 sudo yum install -y https://repo.saltstack.com/py3/redhat/salt-py3-repo-2019.2.el7.noarch.rpm
 sudo yum clean expire-cache
 sudo yum install -y salt-master salt-minion
