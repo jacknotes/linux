@@ -61,7 +61,7 @@ pod网络：pod与pod之间在一种网络中。
 #k8s不提供网络组件，所以需要借助第三方插件提供网络,只要是支持CNI标准的网络组件都支持k8s的网络
 网络提供的两个维度：1. 网络配置。2.网络策略
 namespace:名称空间，提供了管理边界，名称空间之间默认可以互访，可以通过网络策略禁止名称空间的pod与名称空间的pod通信，甚至也可以禁止同一个名称空间的pod与pod之间的通信。
-1. flannel:提供网络配置，配置简单(redhat提供)
+1. flannal:提供网络配置，配置简单(redhat提供)
 2. calico：提供网络配置和网络策略，但配置很难
 3. canal:前面第1和第2的结合，支持网络配置和网络策略（用flannel的网络配置和calico的网络策略）,这种配置简单功能强大 
 .......
@@ -260,7 +260,8 @@ k8s.node2    Ready    <none>   54s   v1.14.0
 
 #第四节：kubernetes应用快速入门
 kubectl是k8s集群中唯一一个管理工具，集合了增删改查等功能，是API-Server的客户端 
-管理对象：pod,service,controller(replicaset,deployment,statefulet,daemonset,job,cronjob),node等
+注：master上是有污点，所以每上pod运行时都不会容忍master上的污点，从而让master只运行apivsrever,scheduler,controller manager,etcd.
+管理对象：pod,service,controller(replicaset,deployment,statefulset,daemonset,job,cronjob),node等
 [root@k8s-master ~]# kubectl describe node k8s-master #查看节点的详细信息
 [root@k8s-master ~]# kubectl version #查看k8s客户端和服务端的版本信息
 Client Version: version.Info{Major:"1", Minor:"14", GitVersion:"v1.14.0", GitCommit:"641856db18352033a0d96dbc99153fa3b27298e5", GitTreeState:"clean", BuildDate:"2019-03-25T15:53:57Z", GoVersion:"go1.12.1", Compiler:"gc", Platform:"linux/amd64"}
@@ -270,9 +271,12 @@ Kubernetes master is running at https://192.168.1.238:6443
 KubeDNS is running at https://192.168.1.238:6443/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy
 
 To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
+#附件：
+1. coreDNS, 2. flannal 3. kube-proxy  #这是集群建好后就好的。另外还有两个重要的：1. ingress controller 2. prometheus（监控组件）
+
 #怎样使用k8s的增删改查
-#新建pod
-[root@k8s-master ~]# kubectl run nginx-deploy --image=nginx:1.14-alpine --port=80 --replicas=1 --dry-run=true #增加一个deployment类型控制器叫nginx-deploy，镜像为docker hub上的nginx:1.14-alpine，暴露端口为80，副本为1，--dry-run=true为处于干跑模式
+#新建pod，不使用--scheduler则是deployment控制器，加则是job控制器
+[root@k8s-master ~]# kubectl run nginx-deploy --image=nginx:1.14-alpine --port=80 --replicas=1 --dry-run=true #增加一个deployment类型控制器叫nginx-deploy，镜像为docker hub上的nginx:1.14-alpine，暴露端口为80，副本为1，--dry-run=true为处于干跑模式，并非真正的运行
 kubectl run --generator=deployment/apps.v1 is DEPRECATED and will be removed in a future version. Use kubectl run --generator=run-pod/v1 or kubectl create instead.
 deployment.apps/nginx-deploy created (dry run)
 #[root@k8s-master ~]# kubectl run nginx-deploy --image=nginx:1.14-alpine --port=80 --replicas=1 #非干跑模式

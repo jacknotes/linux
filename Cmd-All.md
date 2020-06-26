@@ -1395,6 +1395,12 @@ ssh -N -f -L 127.0.0.1:1080:172.168.2.222:8000 root@172.168.2.222
 #linux设置http_proxy,https_proxy
 [root@salt /git/linux]# export http_proxy='127.0.0.1:8888'
 [root@salt /git/linux]# export https_proxy='127.0.0.1:8888'
+#git设置代理
+[root@master /download]# git config --global https.proxy https://127.0.0.1:10080
+[root@master /download]# git config --global http.proxy http://127.0.0.1:10080
+[root@master /download]# git config --global -l
+https.proxy=https://127.0.0.1:10080
+http.proxy=http://127.0.0.1:10080
 
 #通过linux shell发送邮件：
 1.安装mailx:

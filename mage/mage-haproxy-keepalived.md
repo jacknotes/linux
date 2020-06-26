@@ -17,6 +17,87 @@ HAproxy优点：
 	2. 会话并发能力
 	3. 数据率
 
+#haproxy支持ACL规则
+用于定义四层到七层的规则来匹配一些特殊的请求，实现基于请求报文首部、相应报文内容或者是一些其他状态信息，从而根据需求进行不同的策略转发响应。
+可以通过ACL规则完成以下两种主要功能：
+1、通过设置ACL规则来检查客户端请求是否符合规则，将不符合规则要求的请求直接中断；
+2、符合ACL规则的请求由backend指定的后端服务器池执行基于ACL规则的负载均衡，不符合的可以直接中断响应，也可以交由其它服务器池执行。
+#Haproxy中的ACL规则总设置在frontend部分：
+语法：
+acl 名称 方法 -i [匹配的路径或文件]
+说明：
+acl：区分字符大小写，且其只能包含大小写字母、数字、-(连接线)、_(下划线)、.(点号)和:(冒号)；haproxy中，acl可以重名，这可以把多个测试条件定义为一个共同的acl。名称：设定ACL名称规则，后面可引用ACL规则。方法：用来设定实现ACL的方法。-i：忽略大小写  -f：从指定的文件中加载模式；
+常用的方法：
+1、hdr_beg(host)：用于测试请求报文的指定首部的开头部分是否符合指定的模式,host就是指定的首部{head request begin}
+例子：
+acl host_static hdr_beg(host) -i img. video. download. ftp.
+注：测试请求头host首部是否是img. video. download. ftp.开头，开头则ACL规则通过
+2、hdr_end(host)：用于测试请求报文的指定首部的结尾部分是否符合指定的模式
+例子：
+acl host_static hdr_end(host) -i .aa.com .bb.com
+3、hdr_reg(host)：正则匹配
+例子：
+acl bbs hdr_reg(host) -i ^(bbs.test.com|shequ.test.com|forum)
+4、url_sub：表示请求url中包含什么字符串
+5、url_dir：表示请求url中存在哪些字符串作为部分地址路径
+6、path_beg： 用于测试请求的URL是否以指定的模式开头
+例子：
+acl url_static path_beg -i /static /iilannis /javascript /stylesheets
+7、path_end：用于测试请求的URL是否以指定的模式结尾
+例子：
+acl url_static path_end -i .jpg .gif .png .css .js
+也可以根据访问的地址和端口进行规制设置：
+dst：目标地址
+dst_port：目标端口
+src：源地址
+src_port：源端口
+实现的结果：
+当客户端访问haproxy时，请求的是静态文件内容时，请求转交给static server，请求的是php内容时，请求转交给php server，请求的是jsp内容时，请求转交给tomcat server，以实现动静分离。
+部署三台web服务器：
+一台httpd支持php
+一台部署nginx支持静态资源
+一台tomcat支持jsp
+例如：
+frontend web
+	listen www
+	bind *:80
+	maxconn 5000
+	mode http
+	log global
+	option httplog
+	option httpclose
+	option forwardfor
+	log global
+	default_backend default   #设置默认访问页面，当没有匹配到ACL规则时则访问这个默认后端服务
+    #定义当请求的内容是静态内容时，将请求转交给static server的acl规则       
+    acl url_static path_beg  -i /static /images /img /javascript /stylesheets
+    acl url_static path_end  -i .jpg .gif .png .css .js .html 
+    acl host_static hdr_beg(host)  -i img. video. download. ftp. imags. videos.
+    #定义当请求的内容是php内容时，将请求转交给php server的acl规则    
+    acl url_php path_end     -i .php
+    #定义当请求的内容是.jsp或.do内容时，将请求转交给tomcat server的acl规则    
+    acl url_jsp path_end     -i .jsp .do
+    #引用acl匹配规则
+    use_backend static_pool if  url_static or host_static
+    use_backend php_pool    if  url_php
+    use_backend tomcat_pool if  url_jsp
+#定义后端backend server
+backend static_pool
+	option httpchk GET /index.html
+	server static1 192.168.80.101:80 cookie id1 check inter 2000 rise 2 fall 3
+backend php_pool
+	option httpchk GET /info.php
+	server php1 192.168.80.102:80 cookie id1 check inter 2000 rise 2 fall 3
+backend tomcat_pool
+	option httpchk GET /index.jsp
+	server tomcat1 192.168.80.103:8086 cookie id2 check inter 2000 rise 2 fall 3
+backend default
+	mode http
+	option httpchk GET /index.html
+	server default 192.168.80.104:80 cookie id1 check inter 2000 rise 2 fall 3 maxconn 5000
+
+
+
 #配置HAproxy
 1. 配置文件格式：
 	HAproxy的配置处理3类主要参数来源：
@@ -978,3 +1059,47 @@ if [ $? -ne '0' ];then
         fi
 fi
 ------------------------------
+
+-----------此k8skeepalived配置可实现自动故障和恢复----------------
+[root@node3 /download/ha]# docker exec keepalived-k8s cat /etc/keepalived/keepalived.conf
+    global_defs {
+        router_id 60
+        vrrp_version 2
+        vrrp_garp_master_delay 1
+    }   
+
+    vrrp_script chk_haproxy {
+        script       "/bin/busybox nc -v -w 2 -z 127.0.0.1 6444 2>&1 | grep open | grep 6444"
+        timeout 1
+        interval 1   # check every 1 second
+        fall 2       # require 2 failures for KO
+        rise 2       # require 2 successes for OK
+    }   
+
+    vrrp_instance lb-vips {
+        state BACKUP
+        interface eth0
+        virtual_router_id 120
+        priority 100
+        advert_int 1
+        nopreempt
+        track_script {
+            chk_haproxy
+        }
+        authentication {
+            auth_type PASS
+            auth_pass blahblah
+        }
+        virtual_ipaddress {
+            192.168.15.50/24 dev eth0
+        }
+    }
+-----------------------------------------------------------
+注：
+版本：Keepalived v1.3.9 (11/11,2017)
+使用了vrrp_version 2版本，制定了脚本，当fall 2（失败两次停掉相关联的实例）
+当 rise 2（成功两次则再次启动相关联的实例），interval 1（每一秒执行一次检查）
+timeout 1（当达到1秒时为失败一次），此配置开启了多播，多播在多个Keepalived节点上，
+有时随机有两个虚拟IP在线
+-----------------------------------------------------------
+
