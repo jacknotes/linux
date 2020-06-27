@@ -378,19 +378,21 @@ RESTful:
 	web:GET,PUT,DELETE,POST,.....
 	k8s:kubectl run,get,edit... #k8s以增删改查来使用GET,PUT等方法
 资源：实例化后为对象
-	workload:Pod,ReplicaSet,Deployment,StatefulSet,DaemonSet,Job,Cronjob,....
-	服务发现及均衡：Service,Ingress,....
-	配置与存储:Volume,CSI(容器存储接口，CNI：容器网络接口)
-		configMap,Secret
-		DownwardAPI
-	集群级资源
+	名称空间级别资源：
+		workload:Pod,ReplicaSet,Deployment,StatefulSet,DaemonSet,Job,Cronjob,....
+		服务发现及均衡：Service,Ingress,....
+		配置与存储:Volume,CSI(容器存储接口，CNI：容器网络接口)
+			configMap,Secret
+			DownwardAPI
+			本地分布式网络存储：ceph,glusterFS,NFS
+	集群级资源：
 		Namespace,Node,Role,ClusterRole,RoleBinding,ClusterRoleBinding
 	元数据资源
 		HPA,PodTemplate,LimitRange
 	
 
 创建资源的方法：
-	apiserver仅接收JSON格式的资源定义
+	apiserver仅接收JSON格式的资源定义，run命令默认把其转换为JSON格式
 	yaml格式提供配置清单，apiserver可自动将yaml格式转化为JSON格式，然后提交;
 大部分资源的配置清单：
 	apiVersion: group/version | core  #api版本，可使用kubectl api-versions查看api版本
@@ -401,10 +403,19 @@ RESTful:
 		labels     #标签
 		annotations  #资源注解
 		selfLink    #每个资源的引用PATH:/api/"GROUP/VERSION"/namespace/NAMESPACE/TYPE/NAME
-	spec:		#期望的状态，disired state。最重要字段
-	status: 当前状态，current state,本字段由kubenetes集群维护，用户不能更改
+	spec:		#期望的状态（目标状态），disired state。最重要字段，不同资源类型有不同的必选值，
+	status: #当前状态，current state,本字段由kubenetes集群维护，用户不能更改
+注：pod是最核心资源，所以属于core/v1,deployment是应用程序，属于apps/v1。可以使用kubectl proxy开启6443端口代理，开启http明文访问
 [root@k8s-master ~]# kubectl explain pods #查看pod对象可以使用哪些字段及配置方法
-[root@k8s-master ~]# kubectl explain pods.spec #查看pod对象二级字段用法
+apiVersion	<string> #<string>类型是字符串，是一级字段
+kind	<string>
+metadata	<Object>#<Object>类型是对象,是一级字段，表示有二级字段
+spec	<Object>
+status	<Object>
+[root@k8s-master ~]# kubectl explain pods.metadata #查看pod对象二级字段用法
+labels	<map[string]string> #<map[string]string>类型是map类型的字符串，map就是json格式，表示是K/V格式的字符串
+finalizers	<[]string> #<[]string>类型是字符串数组
+managedFields	<[]Object> #<[]Object>类型是对象数组，可以有多个二级字段
 kubectl管理有3种用法：
 1. 命令式清单
 [root@k8s-master ~]# kubectl run test2 --image=nginx:1.14-alpine --port=80 --replicas=2
@@ -416,7 +427,7 @@ kind: Pod
 metadata:
   name: pod-demo
   namespace: default
-  labels:
+  labels:   
     app: myapp
     tier: frontend
 spec:
@@ -429,6 +440,7 @@ spec:
     - "/bin/sh"
     - "-c"
     - "sleep 3600"
+#lables是map类型，也可以使用：labels: {"app": "myapp", "tier": "frontend"}。如果是list类型，可以使用：labels: ["app": "myapp", "tier": "frontend"]。map类型在当前配置清单下不要在前面加'-',而如果是列表格式需要加'-'
 3. 也叫配置清单式，但不是用kubectl命令，后面会学习
 ----------------- 
 [root@k8s-master manifests]# kubectl create -f pod-demo.yaml   #从声明清单新建pod
@@ -450,23 +462,42 @@ tt-896b9fc4c-sd47m             1/1     Running            0          13h
 [root@k8s-master manifests]# kubectl exec -it pod-demo -c myapp -- /bin/sh #可进入容器，指定pod及容器名
 [root@k8s-master manifests]# kubectl delete -f pod-demo.yaml  #可能过声明清单来删除，这样可以复用，方便操作
 pod "pod-demo" deleted
-[root@k8s-master manifests]# kubectl logs test2-fbf68778f-z4fkx -c container-name #查看容器的log
+[root@k8s-master manifests]# kubectl logs pod-demo busybox
+/bin/sh: can't create /usr/share/nginx/html/index.html: nonexistent directory  #查看容器的log，
+#k8s运行资源
+1. 命令运行
+2. 命令式配置清单
+3. 声明式配置清单
+
 
 #第六节：Pod控制器应用进阶1
+#自主式pod资源(不受控制器管理，pod一删就没了)
 一般发布版本：alpha,beta,stable
+#k8s的容器端口暴露只是给用户好看，不暴露的话pod与pod之间仍然可以互访，因为k8s使用的是叠加网络。
 ###注：docker的entrypoint,cmd相对于k8s的command,args
 1. 当k8s没有传入command和args时，则使用docker的entrypoint和cmd。
-2. 如果k8s只传入了command，则使用command和cmd组合使用
+2. 如果k8s只传入了command，则使用command
 3. 如果k8s只传入了args,则使用entrypoint和args组合使用
 4. 如果k8s都传入了command和args，则使用k8s的command和args组合使用。
-标签：
-	key=value #key和value最大63个字符（字母、数字、_、-）,key不能为空，value可以为空，都只能以字母数字开头及结尾
+Pod资源：
+	spec.containers <[]Objects>
+	- name <string>
+	  image <string>
+	  imagePullPolicy <string>
+	    Always,Never,IfNotPresent
+		注：Always：如果是latest版本，则永远去registry下载，如果不是latest，则本地有则使用本地，本地没有则去registry下载。
+			Never:无论有没有，都不去registry下载
+			IfNotPresent：本地有则使用本地，本地没有则去registry下载。
+	修改镜像中的默认应用：
+	  command,args
+	标签：
+		key=value #key和value分别最大63个字符（字母、数字、_、-）,key不能为空，value可以为空，都只能以字母数字开头及结尾。key前缀可以是域名(最长253个字符)
 [root@k8s-master ~]# kubectl create -f manifests/pod-demo.yaml 
 pod/pod-demo created
 [root@k8s-master ~]# kubectl get pods -l app --show-labels #查看标签中键为app的pod并显示label信息
 NAME       READY   STATUS    RESTARTS   AGE   LABELS
 pod-demo   2/2     Running   0          5s    app=myapp,tier=frontend
-[root@k8s-master ~]# kubectl get pods -L app,run --show-labels #显示app,run这两个字段的所有pod
+[root@k8s-master ~]# kubectl get pods -L app,run --show-labels #显示所有pod中app,run这两个字段信息
 NAME                           READY   STATUS             RESTARTS   AGE   APP     RUN            LABELS
 client                         1/1     Running            0          19h           client         run=client
 myapp-5bc569c47d-g27qd         1/1     Running            0          18h           myapp          pod-template-hash=5bc569c47d,run=myapp
@@ -531,7 +562,7 @@ k8s-master   Ready    master   24h   v1.14.0   beta.kubernetes.io/arch=amd64,bet
 k8s.node1    Ready    <none>   23h   v1.14.0   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,disktype=ssd,kubernetes.io/arch=amd64,kubernetes.io/hostname=k8s.node1,kubernetes.io/os=linux
 k8s.node2    Ready    <none>   22h   v1.14.0   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=k8s.node2,kubernetes.io/os=linux
 [root@k8s-master ~]# kubectl explain pods.spec 
-nodeSelector <map[string]string> #节点标签选择器
+nodeSelector <map[string]string> #节点标签选择器，从而pod选择运行在哪个node
 nodeName <string>  #直接选择在哪个节点运行
 annotations: 与label不同的地方在于，它不能用于挑选资源对象，仅用于为对象提供“元数据”。注解长度不像label那样长度受限，可以任意抒写。
 ------------------
@@ -582,15 +613,16 @@ pod生命周期状态：Pending(挂起),Running,Failed,Succeeded,Unknown,Ready
 #pod创建的过程：
 	1. 先初始化容器
 	2. 主容器的启动后可做勾子(hook)操作
-	3. 主容器在运行时可做容器探测(存活性探测)操作（liveness probe,readiness probe）[有3种方式：1.执行命令2.向tcp端口发送请求3.向http发送get请求】
+	3. 主容器在运行时可做容器探测(存活性探测)操作（liveness probe(探测容器是否存活),readiness probe（探测容器是否能提供服务））[有3种方式：1.执行命令2.向tcp端口发送请求3.向http发送get请求】
 	4. 主容器在停止前可做勾子(hook)操作
-pod生命周期中的重要行为：1.初始化容器 2.容器探测：liveness,readiness
+pod生命周期中的重要行为：1.初始化容器 2.容器探测：liveness,readiness 3.勾子
+#pod中容器重启策略：
 restartPolicy        <string>  #容器重启策略
-Always（永远重启）,OnFailure(失败时重启),Never（从不重启）, Default to Always
-平滑终止信号：pod宽容期时间为30s，用户可以自定义，如果宽容期过了还未关机，就会发送kill 15信号
+Always（永远重启,第一次5秒，第二次10秒，第三次40秒）,OnFailure(失败错误时重启),Never（从不重启）, Default to Always
+平滑终止信号：pod宽容期时间为30s，用户可以自定义，如果宽容期过了还未关机，k8s就会发送kill 15信号
 
 #第七节：Pod控制器应用进阶2
-#探针：liveness（存活性检测）,readiness（就绪性检测）
+#探针：liveness（存活性检测）,readiness（就绪性检测）,lifecycle探测
 #启动后勾子
 探针有三种类型：1. ExecAction(执行动作) 2. TCPSocketAction(测试指定端口) 3. HTTPGetAction(测试http服务)
 [root@k8s-master manifests]# kubectl explain  pods.spec.containers #查看容器的探针说明 
@@ -653,29 +685,30 @@ spec:
         path: /index.html  #检测web主页
       initialDelaySeconds: 1 #容器启动延迟1秒后开始检测
       periodSeconds: 3  #隔3秒钟检测一次，3次为一个周期，如果不能访问则表示不存活
-      
+注：
+1. 存活性探测：只要不存活，pod就会按照restartPolicy重启策略进行重启。
+2. 就绪性探测：只要不就绪，service就不会把pod接入后端服务，不会使用重启策略。    
 #启动后勾子，启动后做动作或结束前做动作，启动后为postStart,结束前为preStop
+#lifecycle探测
 [root@k8s-master manifests]# kubectl explain pods.spec.containers.lifecycle.postStart  #在pod开始后执行事件帮助文档
 [root@k8s-master manifests]# kubectl explain pods.spec.containers.lifecycle.preStop  #在pod结束前执行事件帮助文档
 [root@k8s-master manifests]# cat poststart-pod.yaml  #
 apiVersion: v1
 kind: Pod
 metadata:
-  name: poststart-pod
-  namespace: default
+    name: poststart-pod
+    namespace: default
 spec:
-  containers:
-  - name: poststart-container
-    image: busybox:latest
-    imagePullPolicy: IfNotPresent
-    lifecycle:
-      postStart:
-        exec:
-          command: ["/bin/sh","-c","echo hello >> /usr/index.html"] #这个命令为容器启动后执行的命令，比第一时间执行的命令慢
-    command: ["/bin/sh","-c","/usr/sbin/nginx"]  #这个命令为容器启动第一时间执行的命令
-    args: ["-f","-h","/usr"] #这个为第一时间执行的命令参数
-注：这个声明清单没有执行成功，但逻辑命令都正确
-
+    containers:
+    - name: poststart-pod
+      image: busybox:latest
+      imagePullPolicy: IfNotPresent
+      lifecycle:
+        postStart:
+          exec:
+            command: ["/bin/sh","-c","/bin/echo Home_Page >> /tmp/index.html"]   
+      command: ["/bin/sh","-c","/bin/httpd -f -h /tmp"]
+#容器中command为第一时间执行的命令，lifecycle中的command是第二时间执行的命令，常用在容器启动后去git pull代码下来。
 
 #第八节：Pod控制器
 #回顾：
