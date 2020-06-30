@@ -178,6 +178,7 @@ rsync -avzP -e "ssh -p 22" 192.168.1.37:/etc/hostname /tmp/hostname1
  secrets file = /etc/rsync.password  #认证的密码配置文件路径
 -------------------
 [root@BK-S ~]#dos2unix /etc/rsync.conf   #格式化配置文件（系统自带不用格式化，自己新建格式化下）
+#或者：vim filename;set ff=unix 或者 sed -i 's/\r//g' filename
 [root@master-nginx tmp]# useradd -M -s /sbin/nologin rsync  #添加用户
 [root@master-nginx tmp]# mkdir /backup -p
 [root@master-nginx tmp]# chown -R rsync:rsync /backup

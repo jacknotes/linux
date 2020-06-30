@@ -567,6 +567,7 @@ controlPlaneEndpoint: "192.168.15.50:6444" #增加此行，设定keepalived+hapr
 imageRepository: k8s.gcr.io #之前我们下载镜像、重打标签并装载进docker了，所以这里千万不要更改，使用默认google的gcr地址。
 kubernetesVersion: v1.15.11 #版本号一定要更改为跟自己匹配的镜像版本号
 注：如果上面是开启ipvs的配置，如果不需要删除即可，则是默认iptables
+注：也可以编辑kube-system名称空间下的kube-proxy configmap，将mode设为ipvs，然后让kube-system名称空间下的kube-proxy pod都重载下配置，重载就是将pod都删除，daemonSet控制器都会重启pod
 注：下面是查看是否使用了ipvs而不是iptables
 [root@node1 /download/k8s]# kubectl logs kube-proxy-g65tj -n kube-system | grep ipvs
 I0625 13:25:52.361403       1 server_others.go:170] Using ipvs Proxier.

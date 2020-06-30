@@ -272,7 +272,7 @@ KubeDNS is running at https://192.168.1.238:6443/api/v1/namespaces/kube-system/s
 
 To further debug and diagnose cluster problems, use 'kubectl cluster-info dump'.
 #附件：
-1. coreDNS, 2. flannal 3. kube-proxy  #这是集群建好后就好的。另外还有两个重要的：1. ingress controller 2. prometheus（监控组件）
+1. coreDNS, 2. flannal 3. kube-proxy  #这是集群建好后就好的。另外还有两个重要的：1. ingress controller 2. prometheus（监控组件），3. heapstar,4. dashboard
 
 #怎样使用k8s的增删改查
 #新建pod，不使用--scheduler则是deployment控制器，加则是job控制器
@@ -283,7 +283,7 @@ deployment.apps/nginx-deploy created (dry run)
 [root@k8s-master ~]# kubectl get pods #查看所有pod
 NAME                           READY   STATUS              RESTARTS   AGE
 nginx-deploy-55d8d67cf-8ww68   0/1     ContainerCreating   0          12s
-[root@k8s-master ~]# kubectl get deployment #查看deployment控制器下的pod
+[root@k8s-master ~]# kubectl get deployment #查看deployment类型的控制器
 NAME           READY   UP-TO-DATE   AVAILABLE   AGE
 nginx-deploy   0/1     1            0           17s #可用为0，因为新建后要做就绪性检查，就绪后才可用
 [root@k8s-master ~]# kubectl get pods -o wide
@@ -303,7 +303,7 @@ service/nginx exposed
 NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
 kubernetes   ClusterIP   10.96.0.1       <none>        443/TCP   3h56m
 nginx        ClusterIP   10.98.100.175   <none>        80/TCP    74m
-[root@k8s-master ~]# kubectl get svc -n kube-system #查看kube-system 中的dns service，
+[root@k8s-master ~]# kubectl get svc -n kube-system #查看kube-system 中的dns service
 NAME       TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)                  AGE
 kube-dns   ClusterIP   10.96.0.10   <none>        53/UDP,53/TCP,9153/TCP   4h3m  #dns地址为10.96.0.10
 #新建一个pod客户端查看coreDNS
@@ -734,9 +734,7 @@ livenessProbe和readinessProbe三种内嵌相关应用：
 ExecAction: exec
 TCPSocketAction: tcpSocket
 HTTPGetAction: httpGet
-lifecycle两种内嵌相关应用：
-postStart
-preStop
+lifecycle两种内嵌相关应用：postStart，preStop
 
 ###pod控制器
 自主式pod：不是由控制器管理的pod,不可能rebuild
@@ -783,11 +781,18 @@ spec:
 	2.也可能使用scale来实现,kubectl scale --replicas=1 ReplicaSet myapp2
 如何自动升级容器软件版本：
 	使用kubectl edit replicaset myapp2来修改容器镜像版本，然后手动删除pod，才会重新建立新pod的版本为新版本。
-	建议：蓝绿发布，重新建立一个ReplicSet的yaml为myapp3,此时有myapp2和myapp3了，我们使myapp3符合service接口的laber,这样可以对外开放，但myapp3的laber不能满足myapp2的匹配规则。所以myapp2和myapp3的label不能完全一样，但对于service来说有共同一样的label。再删除老的myapp2，完全用新的myapp3版本
+	建议：蓝绿发布，重新建立一个ReplicSet的yaml为myapp3,此时有myapp2和myapp3两个replicaset了，我们使myapp3符合service接口的laber,这样可以对外开放，但myapp3的laber不能满足myapp2的匹配规则。所以myapp2和myapp3的label不能完全一样，但对于service来说有共同一样的label。再删除老的myapp2，完全用新的myapp3版本
 	or 直接改service的label，使service匹配myapp3，不匹配myapp2。来升级新版本。
-灰度、蓝绿，金丝雀(canary)
+#发布方式：金丝雀(canary)，灰度、蓝绿
+策略：期望5个pod，发布时可以多一个也可以少一个pod。
+金丝雀：例如现有5个pod是v1,现在加一个v2的pod，此时五6个里面就有5个v1,1个v2，其中一个v2就是金丝雀。
+灰度：例如现有5个pod是v1,现在加1个v2的pod，删除2个v1的pod,然后增加2个v2的pod,再删除2个v1的pod,再增加2个v2的pod，最后删除2个v1的pod，最终结果是5个v2的pod，这个过程叫滚动更新，也叫灰度发布(其中用户经历了老旧版本的快速迭代，经历的过程就叫灰色地带吧)
+策略：期望5个pod，发布时可以多5个pod
+蓝绿：增加5个v2的pod，删除5个v1的pod,最后结果是5个v2的pod。这个过程叫就蓝绿发布，超快速迭代。
+注：在生产环境中，每个pod中的容器都应该做存活性和就绪性探测，尤其是就绪性探测，因为如果不做，表面上看到pod是就绪了，实际上很有可能pod没有就绪就已经被推上线运行了。将会造成用户的连接丢失。
 
 #第九节：Pod控制器2
+#k8s帮助文档落后当前k8s版本的
 strategy：更新策略
 	type:Recreate、RollingUpdate
     如果type为RollingUpdate则可以指定滚动更新策略rollingUpdate{maxSurge(最多超出你指定的副本数有几个，可以指定数量或百分比),maxUnavailable(最大几个不可用)}
@@ -916,7 +921,6 @@ spec:
         ports:
         - name: http
           containerPort: 80
-~
 
 [root@k8s-master manifests]# kubectl apply -f deploy-demo.yaml  #更新配置清单
 deployment.apps/myapp-deploy configured
@@ -939,7 +943,7 @@ REVISION  CHANGE-CAUSE
 ###[root@k8s-master manifests]# kubectl patch deployment myapp-deploy -p '{"spec":{"replicas":5}}' #以打补丁的方式更新pod控制器
 deployment.extensions/myapp-deploy patched
 更改maxSurge和maxUnavailable
-[root@k8s-master manifests]# kubectl patch deployment myapp-deploy -p '{"spec":{"strategy":{"rollingUpdate":{"maxSurge":1,"maxUnavailable":0}}}}' #打补丁设置myapp-deploy的pod最多可以有1个多的，最少不能少1个
+[root@k8s-master manifests]# kubectl patch deployment myapp-deploy -p '{"spec":{"strategy":{"rollingUpdate":{"maxSurge":1,"maxUnavailable":0}}}}' #打补丁设置myapp-deploy的pod更新时可以有1个多的，不能少1个
 deployment.extensions/myapp-deploy patched 
 [root@k8s-master manifests]# kubectl describe deployment myapp-deploy
 StrategyType:           RollingUpdate
@@ -1118,9 +1122,9 @@ filebeat-ds-mcxkz   0/1     Pending             0          0s    <none>        <
 filebeat-ds-mcxkz   0/1     Pending             0          1s    <none>        k8s.node2   <none>           <none>
 filebeat-ds-mcxkz   0/1     ContainerCreating   0          1s    <none>        k8s.node2   <none>           <none>
 filebeat-ds-mcxkz   1/1     Running             0          15s   10.244.2.40   k8s.node2   <none>           <none>
-注：因为DaemonSet的滚动更新策略maxUnavailable默认值是1，没
+注：因为DaemonSet的滚动更新策略maxUnavailable默认值是10%，没
 有maxSurge，因为每个节点只允许运行1个pod
-## Job,Cronjob这两个控制器自己去操作。Statefulset现在的知识无法应用到，后面会有范例
+## Job,Cronjob这两个控制器自己去操作。Statefulset现在的知识无法应用到，后面会有范例，daemonSet控制器可以使用hostNetwork共享宿主机的网络，不用暴露svc接口就可以访问pod服务
 
 
 #第十节:Services资源
@@ -1182,14 +1186,14 @@ spec:
   ports:
   - port: 80
     targetPort: 80 
-    nodePort: 30080 #端口也可以自动获取得到，但是建议手动固定设置
+    nodePort: 30080 #端口也可以自动获取得到，不设置自动获取
 [root@k8s-master manifests]# kubectl get svc
 NAME         TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)        AGE
 kubernetes   ClusterIP   10.96.0.1     <none>        443/TCP        20d
 myapp        NodePort    10.99.99.99   <none>        80:30080/TCP   3s  #NodePort
 redis        ClusterIP   10.97.97.97   <none>        6379/TCP       9m37s #ClusterIP
 ###LoadBalancer接口类型：
-k8s支持lbaas的云计算环境，可以使用LoadBalancer service类型。类似在阿里云中有4个节点，使用LoadBalancer接口类型暴露了3个端口后，会调用lbaas的云计算API生成一个软件的负载均衡器。
+k8s支持iaas的云计算环境，可以使用LoadBalancer service类型。类似在阿里云中有4个节点，使用LoadBalancer接口类型暴露了3个端口后，会调用iaas的云计算API生成一个软件的lbaas负载均衡器。然后云计算外的用户访问生成软件的lbaas负载均衡器访问
 ###ExternalName接口类型：
 当k8s集群中的pod想访问k8s集群外的服务时，去的流程是这样的：pod-->ClusterIP:servicePort-->nodeIP:nodePort-->out_target_IP:port,回来的流程是这样的：out_target-->nodeIP:nodePort-->ClusterIP:servicePort-->podIP:containerPort
 ##例如访问外部的域名时，这个外部的域名首先在集群中的kubeDNS或者CoreDNS上有CNAME记录指向自己，而集群内访问时使用的是内部DNS设定的新的CNAME名称，从而达到访问外部的服务。
@@ -1287,6 +1291,22 @@ redis.default.svc.cluster.local. 5 IN   A       10.97.97.97 #这个是有头的s
 ;; SERVER: 10.96.0.10#53(10.96.0.10)
 ;; WHEN: Sat Apr 27 13:17:29 CST 2019
 ;; MSG SIZE  rcvd: 107
+
+[root@k8s-master manifests]# kubectl describe svc myapp-headless
+Name:              myapp-headless
+Namespace:         default
+Labels:            <none>
+Annotations:       kubectl.kubernetes.io/last-applied-configuration:
+                     {"apiVersion":"v1","kind":"Service","metadata":{"annotations":{},"name":"myapp-headless","namespace":"default"},"spec":{"clusterIP":"None"...
+Selector:          app=myapp,release=canary
+Type:              ClusterIP
+IP:                None
+Port:              <unset>  80/TCP
+TargetPort:        80/TCP
+Endpoints:         10.244.1.58:80,10.244.1.59:80,10.244.2.35:80 + 1 more...
+Session Affinity:  None
+Events:            <none>
+
 [root@k8s-master manifests]# kubectl get svc -n kube-system  #可以查看k8s集群的dns
 NAME       TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)                  AGE
 kube-dns   ClusterIP   10.96.0.10   <none>        53/UDP,53/TCP,9153/TCP   20d
@@ -1297,22 +1317,26 @@ kube-dns   ClusterIP   10.96.0.10   <none>        53/UDP,53/TCP,9153/TCP   20d
 2. 写脚本使node主机启动时自动装载ipvs模块。ip_vs,ip_vs_rr,ip_vs_wrr,ip_vs_sh,nf_conntrack_ipv4几个模块
 3. 初始化安装kublet就可以安装ipvs了。只能在刚开始装的时候开启。
 ###kubeadm安装时只需要设置kube-proxy的mode为ipvs即可，最后让kube-proxy重载配置文件即可
+LoadBalancer: IaaS,lbaas,利用k8s的cloud-proxy
 
 ##k8s组成：
 master组件:APIServer,Scheduler,Controll Manager 【ReplicaSet,Deployment,DaemonSet】
 node组件:kubelet,docker,kube-proxy
 四个核心附件：DNS,Dashboard(K8S集群的全部功能都要基于Web的UI，来管理集群中的应用和集群自身。),Heapster(容器和节点的性能监控与分析系统，它收集并解析多种指标数据，如资源利用率、生命周期时间，在最新的版本当中，其主要功能逐渐由Prometheus结合其他的组件进行代替。),Ingress Controller
-##Ingress Controll自己独立运行的一个或一组pod资源，拥有七层代理能力和调度能力的应用程序，在做微服务的有三种：Nginx,Traefik,Envoy
+#Ingress Controll自己独立运行的一个或一组pod资源，拥有七层代理能力和调度能力的应用程序，在做微服务的有三种：Nginx,Traefik,Envoy
 
-##流程：用户访问最外层的四层负载均衡LVS的VIP,然后LVS代理到集群部分节点的DaemonSet类型的pod，被代理的pod实现污点，使DaemonSet能容忍污点从而部署DaemonSet类型的pod,且每个pod共享节点的网络空间，这个共享节点网络空间的pod是Ingress Controller，是七层负载均衡器(有Nginx,Traefik,Envoy,Haproxy[最不受待见])，Ingress Controller指向后端的http pod，他们之间是明文传输的，而对集群外提供的Ingress Controller七层负载均衡器是https协议的，可以卸载用户ssl会话和重载pod的ssl会话，从而实现大量http网站的https部署。因为后端的pod随时会变化，所以要建一个service，这个service会从APIServer上实时收集变动的信息来重新分类pod,而ingress会watch收集service的pod信息，并且会注入到ingress-nginx的配置文件当中,从而实现配置文件的动态扩展。
+##流程：用户访问最外层的四层负载均衡LVS的VIP,然后LVS代理到集群部分节点(特定节点打上污点，使DaemonSet能容忍污点)，类型是DaemonSet的pod，,且每个pod共享节点的网络空间，这个共享节点网络空间的pod是Ingress Controller，是七层负载均衡器(有Nginx,Traefik,Envoy,Haproxy[最不受待见])，Ingress Controller通过ingress(其实就是规则)指向后端的http pod，他们之间是明文传输的，而对集群外提供的Ingress Controller七层负载均衡器是https协议的，可以卸载用户ssl会话和重载pod的ssl会话，从而实现大量http网站的https部署。因为后端的pod随时会变化，所以要建一个service，这个service会从APIServer上实时收集变动的信息来重新分类pod,而ingress会watch收集service的pod信息，并且会注入到ingress-nginx的配置文件当中,从而实现配置文件的动态扩展。
 
-注：怎么定义Ingress,有两种方法：1.基于虚拟主机名访问。2.基于url路径访问。
-##操作：
+注：怎么定义Ingress规则,有两种方法：1.基于虚拟主机名访问。2.基于url路径访问。
+##操作ingress controller总体步骤：
+1. 先运行后端http pod
+2. 安装intress controller,测试ingress controller是否正常运行(通过ingress controller前端的service的NodePort端口进行访问，返回404说明ingresscontroller成功安装并运行)
+3. 配置运行ingress，让ingress关联到后端http pod。
 #参考链接：https://github.com/kubernetes/ingress-nginx
 #参考链接https://kubernetes.github.io/ingress-nginx/deploy/
 命令创建名称空间：kubectl create namespace dev  #kubectl delete ns/dev
 #部署ingress Controller
-1. [root@k8s-master ingress-nginx]# for i in configmap.yaml namespace.yaml rbac.yaml with-rbac.yaml  ;do wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/$i;done
+1. [root@k8s-master ingress-nginx]# for i in configmap.yaml namespace.yaml rbac.yaml with-rbac.yaml tcp-services-configmap.yaml udp-services-configmap.yaml;do wget https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/$i;done
 ----------------
 [root@k8s-master ingress-nginx]# cat namespace.yaml #先创建名称空间
 apiVersion: v1
@@ -1353,7 +1377,7 @@ metadata:
     app.kubernetes.io/name: ingress-nginx
     app.kubernetes.io/part-of: ingress-nginx
 ----------------
-[root@k8s-master ingress-nginx]# cat rbac.yaml #定义clster role，让Ingress Controll拥有它本来到达不了的名称空间权限，角色绑定，kubeadm默认rbac是启用的
+[root@k8s-master ingress-nginx]# cat rbac.yaml #定义cluster role，让Ingress Controll拥有它本来到达不了的名称空间权限，角色绑定，kubeadm默认rbac是启用的
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -1618,7 +1642,7 @@ clusterrolebinding.rbac.authorization.k8s.io/nginx-ingress-clusterrole-nisa-bind
 configmap/tcp-services configured
 configmap/udp-services configured
 deployment.apps/nginx-ingress-controller created
-##注：通用部署：如果想简单部署，可以下载部署这个yaml文件即可【https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/mandatory.yaml】，这个yaml文件包括了上面几个文件
+##注：通用部署：如果想简单部署，可以下载部署这个yaml文件即可【https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/mandatory.yaml】，这个yaml文件包括了上面几个文件,实操这个有效且快速
 
 #创建ingress:
 #为了ingress能显现真正的效果来，我们先做前提准备，部署后端应用：
@@ -1845,8 +1869,11 @@ ingress-tomcat-tls   tomcat.magedu.com             80, 443   5m52s
 23. 浏览器访问https://tomcat.magedu.com:30443/即可实现https访问。而后端跟Ingress Controller是明文传输的。
 
 ##Ingress Controller总结：Ingress Controller通常是实现https的，通常Ingress Controller有nginx,envoy,traefik三种，上面演示的是ingress-nginx，而ingress则是生成规则，匹配对应的service，使service下的pod为目标主机，pod的改变会被service知道，而ingress一直在监视service，从而pod的变化ingress也是第一时间知道，所以ingress是用来固定pod的目标主机ip的，而且会把信息生成配置注入到Ingress Controller当中，实现Ingress-nginx的动态反向代理。pod也是用户真正访问到的站点，而Ingress Controller和pod之间是明文传输的，用户与Ingress Controller是密文传输的，当用户请求到达Ingress Controller时把tls卸载，使Ingress Controller和pod之间是明文交互，当pod到达Ingress Controller后，Ingress Controller则加载tls，最后实现密文传输给用户。最终实现用户与站点的https交互。
+注：ingress controller和ingress是通过ingress配置清单中的annotations:注释进行联系的，如：kubernetes.io/ingress.class: "nginx"
 
 #第十二节：存储卷
+共享pause镜像的存储、网络
+
 SAN:iSCSI,FC
 NAS:nfs,cifs,http
 分布式存储：glusterfs,ceph:rdb和cephfs
@@ -1863,32 +1890,33 @@ kubectl explain pods.spec.volume #查看pod支持哪些存储卷
 -------------------------------
 apiVersion: v1
 kind: Pod
-metadata:
+metadata: 
   name: pod-demo
   namespace: default
-  labels:
+  labels: 
     app: myapp
     tier: frontend
-  annotations:
-    magedu.com/created-by: "cluster admin"
 spec:
   containers:
   - name: myapp
-    image: ikubernetes/myapp:v1
-    imagePullPolicy: IfNotPresent
+    image: busybox:latest
     ports:
     - name: http
       containerPort: 80
+    command: ["/bin/sh","-c","/bin/httpd -f -h /data/web/html"]
     volumeMounts:
     - name: html
-      mountPath: /usr/share/nginx/html/
+      mountPath: /data/web/html
   - name: busybox
     image: busybox:latest
     imagePullPolicy: IfNotPresent
     volumeMounts:
     - name: html
-      mountPath: /data/
-    command: ['/bin/sh','-c','while true;do echo $(date) >> /data/index.html;sleep 2;done']
+      mountPath: /data
+    command:
+    - "/bin/sh"
+    - "-c"
+    - "while true;do echo $(date) >> /data/index.html;sleep 2;done"
   volumes:
   - name: html
     emptyDir: {}   #表示使用默认值
@@ -1951,7 +1979,7 @@ spec:
 存储工程师：管理存储设备，建立存储单元
 集群管理员：建立PV，与存储单元建立关系，一般一个PV对应一个存储单元
 集群用户：建立PVC，并设置PVC规则使之与PV建立关系，一个PVC只能对应一个PV,一个PVC可以被多个Pod引用（是否被多个pod访问主要看PVC的访问模式设置）
-PV是集群级别的，namespace也是集群级别的，pod，service等是namespace级别的
+PV是集群级别的，namespace也是集群级别的，pvc,pod，service等是namespace级别的
 #注意：当PVC与PV没有绑定，此时PVC状态为Pending（挂起），直至PV符合PVC的规则时PVC才能被绑定。
 1. 设置存储单元：
 [root@kvm volumes]# mkdir v{1,2,3,4,5}
@@ -2116,7 +2144,7 @@ mypvc   Bound    pv004    10Gi       RWO,RWX                       7m11s #这个
 #第十三节：configMap和secret
 #动态供给：给pv创建类，pvc选择类。
 #configMap和secret
-configMap:是配置中心，1.容器可以把configMap挂载在容器中使用 2.把configMap注入到容器的变量当中，容器引入变量来使用配置文件。但configMap是明文的。
+configMap:是k8s配置中心，1.容器可以把configMap挂载在容器中使用 2.把configMap注入到容器的变量当中，容器引入变量来使用配置文件。但configMap是明文的。
 secret:跟configMap一样是配置中心，但是是base64编码的配置中心。
 
 #配置容器化应用的试：
@@ -2290,6 +2318,7 @@ tcp        0      0 0.0.0.0:8080            0.0.0.0:*               LISTEN      
 [root@k8s-master configmap]# curl myapp.magedu.com:8080
 configMap
 
+#configmap和secret比较：一个是明文一个是密文，都可以被容器当作变量值传入或者当共享卷挂载
 ###configMap可以只对文件中的部分配置来引用
 把私钥和证书定义成secret,把配置文件定义成configMap,如果涉及帐号密码应该也把帐号密码定义成secret.
 ##secret
@@ -2392,6 +2421,7 @@ CoreOS: Operator
 StatefulSet:有状态副本集
 	群体：cattle   个体：ped
 	PetSet(1.5-)-->StatefulSet
+有状态应用需要的三个组件：headless service, statefulSet, volumeClaimTemplate
 1. 稳定且惟一的网络标识符;  #pod名称是固定唯一的
 2. 稳定且持久的存储;   #采用pvc来绑定pod名称，pvc策略为数据不会删除
 3. 有序、平滑地部署和扩展;  
@@ -2583,7 +2613,7 @@ myappdata-myapp-0   Bound    pv002    5Gi        RWO                           1
 myappdata-myapp-1   Bound    pv001    5Gi        RWO,RWX                       15m
 myappdata-myapp-2   Bound    pv003    5Gi        RWO,RWX                       15m
 
-[root@k8s-master volume]# kubectl exec -it myapp-0 -- /bin/sh  #在sts控制器下的pod他们之前的pod名称是可以直接解析的
+[root@k8s-master volume]# kubectl exec -it myapp-0 -- /bin/sh  #在sts控制器下的pod他们之间的pod名称是可以直接解析的
 / # nslookup myapp-0
 nslookup: can't resolve '(null)': Name does not resolve
 
@@ -3374,11 +3404,10 @@ dashboard-cert   Opaque   2      2m51s  #opaque类型就是generic类型的
 	1. 命令式：create,run,delete,expose,edit....
 	2. 命令式配置文件:create -f filename,delete -f ,replace -f
 	3. 声明式配置文件:apply -f ,patch
-注：一般建议不要混合使用，至少1和2可以混合使用，3不能一起使用
 
 
 #第十八节：配置网络插件flanner
-##注：生产环境flannel用来ip分配，calico用来做策略
+##注：生产环境flannel可用来ip分配，calico可用来做策略
 docker网络：
 	1. bridge（自由网络名称空间）
 	2. joined（共享使用另外空间的名称空间）
