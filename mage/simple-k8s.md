@@ -792,3 +792,88 @@ net-conf.json: |
       }
     }
 注：如果需要可以调小子网掩码，例如"Network": "10.244.0.0/14",
+
+#canel网络策略
+作用：控制名称空间与名称空间的网络访问，pod与pod之间的访问等
+calico:BGP协议,基于IPIP的遂道
+calico只支持iptables,flannel支持iptables和ipvs的。
+reference: https://docs.projectcalico.org/getting-started/kubernetes/flannel/flannel
+calico数据储存方式：
+	Kubernetes API数据存储（推荐）
+	etcd数据存储
+calico不支持ipvs,只支持iptables。如果开启calico网络策略，请一定将kube-proxy设成ipvs
+
+1. 将kube-proxy设为iptables模式：[root@node2 ~]# kubectl edit configmap kube-proxy -n kube-syste #将mode设为空
+2. 逐一启动Kube-proxy的pod:[root@node2 ~]# kubectl delete pods kube-proxy-ctdwx  -n kube-system
+3. 检验是否关闭ipvs：[root@node2 ~]# kubectl logs kube-proxy-74rsg -n kube-system | grep ipvs #没有ipvs表明开启了iptables
+#设置canal
+确保Kubernetes控制器管理器设置了以下标志：
+--cluster-cidr=<your-pod-cidr>和--allocate-node-cidrs=true。 #--allocate-node-cidrs=true在kubeadm安装是默认是开启了
+1. 下载canal:[root@node1 ~/manifests/addons]# curl https://docs.projectcalico.org/v3.7/manifests/canal.yaml -O
+2. [root@node1 ~/manifests/addons]# kubectl apply -f canal.yaml
+----如何控制pod间的通信
+动作：
+	posSelector:pod选择
+	Egress:出站方向
+	Ingress:进站方向
+	policyTypes:设定Egress和Ingress是一起生效还是各自单独生效，当都定义时，而且定义了Ingress规则，但Egress没有定义,则生效的规则是Ingress自定义规则和Egress默认规则。如果不定义任何，则只生效自定义的进出站规则。
+[root@k8s-master flannel]# kubectl explain networkpolicy
+--定义拒绝某个名称空间下所有pod的入站请求
+[root@node1 ~/manifests]# cat ingress-def.yaml 
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all-ingress
+spec:
+  podSelector: {}  
+  #Ingress:
+  #- {}
+  policyTypes:
+  - Ingress
+----podSelector为{}表示选择应用在哪个名称空间下的所有pod
+注：Ingress和Egress默认规则：
+	1. 在policyTypes中调用了Ingress，但没有自定义Igress规则，则表明拒绝所有。如果在policyTypes中调用了Ingress，且自定义了Igress规则，并且规则为空，则表示允许所有
+	2. 在policyTypes中没有调用Ingress，则表明允许所有。
+[root@node1 ~/manifests]# kubectl create ns dev
+[root@node1 ~/manifests]# kubectl create ns prod
+[root@node1 ~/manifests]# kubectl apply -f ingress-def.yaml -n dev
+[root@node1 ~/manifests]# kubectl get netpol -n dev
+NAME               POD-SELECTOR   AGE
+deny-all-ingress   <none>         6s
+[root@node1 ~/manifests]# kubectl get pods -n dev -o wide
+NAME       READY   STATUS    RESTARTS   AGE   IP           NODE    NOMINATED NODE   READINESS GATES
+pod-demo   1/1     Running   0          8s    10.244.2.2   node3   <none>           <none>
+[root@node1 ~/manifests]# kubectl get pods -n prod -o wide
+NAME       READY   STATUS    RESTARTS   AGE   IP           NODE    NOMINATED NODE   READINESS GATES
+pod-demo   1/1     Running   0          14s   10.244.2.3   node3   <none>           <none>
+[root@node1 ~/manifests]# curl 10.244.2.3
+Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
+[root@node1 ~/manifests]# curl 10.244.2.2 #访问dev下的pod访问不了，因为定义了dev名称空间下只要进程都拒绝
+^C
+#设置某个名称空间下某个pod的某个端口进站请求放行
+[root@node1 ~/manifests]# kubectl label pods pod-demo app=myapp -n dev
+[root@node1 ~/manifests]# cat allow-netpol-pod.yaml 
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-myapp-ingress
+spec:
+  podSelector:
+    matchLabels:
+      app: myapp
+  ingress:
+  - from:
+    - ipBlock:
+        cidr: 10.244.0.0/16
+	except:
+	- 10.244.1.2/24
+    ports:
+    - protocol: TCP
+      port: 80
+[root@node1 ~/manifests]# kubectl apply -f allow-netpol-pod.yaml -n dev
+[root@node1 ~/manifests]# curl 10.244.2.2
+Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a> #又可以访问了
+[root@node1 ~/manifests]# curl 10.244.2.2:443 #443访问不了，因为被网络策略挡了，我们并没有旅行443端口
+^C
+
+

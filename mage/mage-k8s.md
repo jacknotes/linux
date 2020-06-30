@@ -3592,7 +3592,9 @@ calico只支持iptables,flannel支持iptables和ipvs的。
 使用整合方式安装calico，使calico在flannel的基础上支持网络策略
 #部署canel:
 参考链接：https://docs.projectcalico.org/v3.7/getting-started/kubernetes/installation/flannel#before-you-begin
-使用Kubernetes API数据存储区安装（推荐）
+calico数据储存方式：
+	Kubernetes API数据存储（推荐）
+	etcd数据存储
 1. 确保Kubernetes控制器管理器设置了以下标志：
 --cluster-cidr=<your-pod-cidr>和--allocate-node-cidrs=true。 #--allocate-node-cidrs=true默认是开启的
 2. 下载Kubernetes API数据存储区的flannel网络清单。#获取flannel网络清单
@@ -3652,7 +3654,7 @@ kubernetes-dashboard-5f7b999d65-64lpz   1/1     Running    0          5d18h
 	posSelector:pod选择
 	Egress:出站方向
 	Ingress:进站方向
-	policyTypes:设定Egress和Ingress是一起生效还是各自单独生效，当都生效时，而Ingress规则定义时，则Egress没有定义,则生效的规则是Ingress自定义规则和Egress默认规则
+	policyTypes:设定Egress和Ingress是一起生效还是各自单独生效，当都定义时，而且定义了Ingress规则，但Egress没有定义,则生效的规则是Ingress自定义规则和Egress默认规则
 [root@k8s-master flannel]# kubectl explain networkpolicy
 KIND:     NetworkPolicy
 VERSION:  extensions/v1beta1
