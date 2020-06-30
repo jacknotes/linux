@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Pod
+metadata: 
+  name: pod-configmap-env
+  namespace: default
+  labels: 
+    app: myapp
+    tier: frontend
+  annotations:
+    magedu.com/created-by: "cluster admin"
+spec:
+  containers:
+  - name: myapp
+    image: ikubernetes/myapp:v1
+    ports:
+    - name: http
+      containerPort: 80
+    env: 
+    - name: NGINX_SERVER_PORT
+      valueFrom:
+        configMapKeyRef:
+          name: nginx-config
+          key: nginx_port
+          optional: true
+    - name: NGINX_SERVER_NAME
+      valueFrom:
+        configMapKeyRef:
+          name: nginx-config
+          key: server_name
+          optional: true

@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mypvc
+  namespace: default
+spec:
+  accessModes: ["ReadWriteMany"]
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Pod
+metadata: 
+  name: pod-pvc
+  namespace: default
+spec:
+  containers:
+  - name: myapp
+    image: busybox:latest
+    imagePullPolicy: IfNotPresent
+    ports:
+    - name: http
+      containerPort: 80
+    command: ["/bin/sh","-c","/bin/httpd -f -h /data/web/html"]
+    volumeMounts:
+    - name: html
+      mountPath: /data/web/html
+  volumes:
+  - name: html
+    persistentVolumeClaim:
+      claimName: mypvc
+      readOnly: false

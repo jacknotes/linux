@@ -1,15 +1,7 @@
 127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
 ::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
-140.82.113.3    github.com
-199.232.69.194	github.global.ssl.fastly.net
-#140.82.113.10	codeload.github.com
-
-#192.168.43.201 node1
-#192.168.43.202 node2
-#192.168.43.203 node3
-192.168.15.199 salt
+192.168.15.199 master
 192.168.15.200 harbor
 192.168.15.201 node1
 192.168.15.202 node2
 192.168.15.203 node3
-#

@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+    name: poststart-pod
+    namespace: default
+    labels:
+      app: myapp
+      release: canary
+spec:
+    containers:
+    - name: poststart-pod
+      image: busybox:latest
+      imagePullPolicy: IfNotPresent
+      lifecycle:
+        postStart:
+          exec:
+            command: ["/bin/sh","-c","/bin/echo Home_Page >> /tmp/index.html"]   
+      command: ["/bin/sh","-c","/bin/httpd -f -h /tmp"]

@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: myapp
+  namespace: default
+spec:
+  replicas: 2
+  selector: 
+    matchLabels:
+      app: myapp
+      release: canary
+  template:
+    metadata:
+      labels: {app: myapp, release: canary, environment: FAT}
+    spec:
+      containers:
+      - name: myapp-container
+        image: ikubernetes/myapp:v1
+        ports:
+        - name: http
+          containerPort: 80
+
