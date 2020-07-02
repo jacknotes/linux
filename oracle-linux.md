@@ -1,4 +1,4 @@
-﻿#Oracle
+#Oracle
 <pre>
 Environment:
 [root@node1 ~]# cat /etc/redhat-release 
@@ -60,7 +60,7 @@ session required pam_limits.so
 step8:修改oracle用户在不同shell下相关限制参数
 [root@node1 /download]# cat /etc/profile.d/oracle.sh
 if [ $USER = "oracle" ]; then
-if [$SHELL = "/bin/ksh" ]; then
+if [ $SHELL = "/bin/ksh" ]; then
 ulimit -p 16384
 ulimit -n 65536
 else

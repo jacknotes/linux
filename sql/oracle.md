@@ -1,4 +1,4 @@
-﻿#Oracle
+#Oracle
 <pre>
 使用图形化安装好oracle 11g.
 打开cmd:sqlplus / as sysdba  #sys为超级管理员，dba为系统角色
@@ -402,11 +402,11 @@ where ids>=2;
 
 #创建表
 SQL> create table users(
-  2    id number(5) primary key,
-  3    name varchar2(8) not null unique,
-  4    sal number(6,2) not null,
-  5    birthday date default sysdate
-  6  );
+    id number(5) primary key,
+    name varchar2(8) not null unique,
+    sal number(6,2) not null,
+    birthday date default sysdate
+  );
 表已创建。
 已用时间:  00: 00: 00.07
 SQL> drop table users; #删除表，oracle删除表并没有永久删除，在其回收站recyclebin中
@@ -1220,6 +1220,8 @@ end;
 /
 调用存储过程方式三，Java程序
 
+#in和out存储过程参数用法
+----in后面的类型表示用户调用存储过程时需要输入的类型数据，out后面的类型表示用户调用存储过程时需要输出的类型且这个类型变量需要你事先定义好
 创建有参存储过程raiseSalary(编号)，为7369号员工涨10%的工资，演示in的用法，默认in，大小写不敏感
 create or replace procedure raiseSalary(pempno in number)
 as
@@ -1351,7 +1353,7 @@ end;
 ##过程函数和SQL适合什么场景
 声明：适合不是强行要你使用，只是优先考虑
 什么情况下【适合使用】存储过程？什么情况下【适合使用】存储函数？
-【适合使用】存储过程：无返回值或有多个返回值时，适合用函数 
+【适合使用】存储过程：无返回值或有多个返回值时，适合用过程 
 【适合使用】存储函数：有且只有一个返回值时，适合用函数
 
 什么情况【适合使用】过程函数，什么情况【适合使用】SQL？
@@ -1517,7 +1519,7 @@ SQL> show recyclebin;
 （15）避免在索引列上使用NOT
       因为Oracle服务器遇到NOT后，他就会停止目前的工作，转而执行全表扫描
 （16）避免在索引列上使用计算
-      WHERE子句中，如果索引列是函数的一部分，优化器将不使用索引而使用全表扫描，这样会变得变慢 
+      WHERE子句中，如果索引列是函数的一部分，优化器将不使用索引而使用全表扫描，这样会变得慢 
       例如，SAL列上有索引，
       低效：
       SELECT EMPNO,ENAME
@@ -1549,5 +1551,200 @@ SQL> show recyclebin;
 （20）避免改变索引列的类型，显示比隐式更安全 
       当字符和数值比较时，ORACLE会优先转换数值类型到字符类型 
       select 123 || '123' from dual;
+
+#oracl数据库逻辑备份和还原
+REFERENCE: https://www.cnblogs.com/wangtengfei/p/4343960.html
+
+#exp/imp三种模式——完全、用户、表 
+ORACLE数据库有两类备份方法。第一类为物理备份，该方法实现数据库的完整恢复，但数据库必须运行在归挡模式下（业务数据库在非归挡模式下运行），且需要极大的外部存储设备，例如磁带库；第二类备份方式为逻辑备份，业务数据库采用此种方式，此方法不需要数据库运行在归挡模式下，不但备份简单，而且可以不需要外部存储设备。
+　　
+数据库逻辑备份方法
+ORACLE数据库的逻辑备份分为三种模式：表备份、用户备份和完全备份。
+ 
+基本语法和实例：
+1、EXP:
+有三种主要的方式（完全、用户、表）
+ 
+1、完全：
+EXP SYSTEM/MANAGER BUFFER=64000 FILE=C:\FULL.DMP FULL=Y
+备份完整的数据库。业务数据库不采用这种备份方式。备份命令为：
+exp icdmain/icd rows=y indexes=n compress=n buffer=65536 feedback=100000 full=y  file=exp_.dmp log=exp.log
+如果要执行完全导出，必须具有特殊的权限!
+否则会报错：EXP-00023: must be a DBA to do Full Database or Tablespace export
+ 
+2、用户模式：
+EXPSONIC/SONIC    BUFFER=64000 FILE=C:\SONIC.DMP OWNER=SONIC
+这样用户SONIC的所有对象被输出到文件中。
+exp wlj/wlj@orc file=d:exportoracle.dmp owner=(system,sys)--将数据库中system用户与sys用户的表导出
+备份某个用户模式下的所有对象。业务数据库通常采用这种备份方式。 若备份到本地文件，使用如下命令：
+ exp icdmain/icd owner=icdmain rows=y indexes=n compress=n buffer=65536 feedback=100000 file=exp.dmp log=exp.log
+若直接备份到磁带设备，使用如下命令：
+ exp icdmain/icd owner=icdmain rows=y indexes=n compress=n buffer=65536 feedback=100000 volsize=0 file=/dev/rmt0 log=exp.log
+注：如果磁盘有空间，建议备份到磁盘，然后再拷贝到磁带。如果数据库数据量较小，可采用这种办法备份。
+ 
+3、表模式：
+EXP SONIC/SONIC   BUFFER=64000 FILE=C:\SONIC.DMP OWNER=SONIC TABLES=(SONIC)
+这样用户SONIC的表SONIC就被导出
+exp  wlj/wlj@orcl  file=d:exportoracle.dmp tables=(table1) query=" where filed1 like '00%'" --将数据库中的表table1中的字段filed1以"00"打头的数据导出，上面是常用的导出，对于压缩，既用winzip把dmp文件可以很好的压缩。也可以在上面命令后面 加上 compress=y 来实现。
+备份某个用户模式下指定的对象（表）。业务数据库通常采用这种备份方式。若备份到本地文件，使用如下命令：
+exp icdmain/icd rows=y indexes=n compress=n buffer=65536 feedback=100000 volsize=0 file=exp.dmp log=exp.log tables=tab1,tab2,tab3
+ 若直接备份到磁带设备，使用如下命令：
+exp icdmain/icd rows=y indexes=n compress=n buffer=65536 feedback=100000 volsize=0 file=/dev/rmt0 log=exp.log tables=tab1,tab2,tab3
+ 注：在磁盘空间允许的情况下，应先备份到本地服务器，然后再拷贝到磁带。出于速度方面的考虑，尽量不要直接备份到磁带设备。
+ 
+2、IMP:
+具有三种模式（完全、用户、表）
+1、完全：
+IMP SYSTEM/MANAGER BUFFER=64000 FILE=C:\FULL.DMP FULL=Y
+如果备份方式为完全模式，采用下列恢复方法：
+imp system/manager rows=y indexes=n commit=y buffer=65536 feedback=100000 ignore=y volsize=0 full=y file=exp.dmp log=imp.log
+ 
+ 
+2、用户模式：
+IMP SONIC/SONIC BUFFER=64000 FILE=C:\SONIC.DMP FROMUSER=SONIC TOUSER=SONIC
+这样用户SONIC的所有对象被导入到文件中。必须指定FROMUSER、TOUSER参数，这样才能导入数据。
+此方式将根据按照用户模式备份的数据进行恢复。
+ 2.1. 恢复备份数据的全部内容
+若从本地文件恢复，使用如下命令：
+imp icdmain/icd fromuser=icdmain touser=icdmain rows=y indexes=n commit=y buffer=65536 feedback=100000 ignore=n file=exp.dmp log=imp.log
+ 若从磁带设备恢复，使用如下命令：
+imp icdmain/icd fromuser=icdmain touser=icdmain rows=y indexes=n commit=y buffer=65536 feedback=100000 ignore=n volsize=0 file=/dev/rmt0 log=imp.log
+ 2.2. 恢复备份数据中的指定表
+若从本地文件恢复，使用如下命令：
+imp icdmain/icd fromuser=icdmain touser=icdmain rows=y indexes=n commit=y buffer=65536 feedback=100000 ignore=n volsize=0 file=exp.dmp log=imp.log tables=t1,t2,t3;
+ 
+3、表模式：
+IMP SONIC/SONIC    BUFFER=64000 FILE=C:\SONIC.DMP OWNER=SONIC TABLES=(SONIC) 
+这样用户SONIC的表SONIC就被导入。
+此方式将根据按照表模式备份的数据进行恢复。  
+ 3.1 恢复备份数据的全部内容
+       imp icdmain/icd fromuser=icdmain touser=icdmain rows=y indexes=n commit=y buffer=65536 feedback=100000 ignore=n file=exp.dmp log=imp.log
+若从磁带设备恢复，使用如下命令：
+imp icdmain/icd fromuser=icdmain touser=icdmain rows=y indexes=n commit=y buffer=65536 feedback=100000 ignore=n volsize=0 file=/dev/rmt0 log=imp.log
+ 3.2 恢复备份数据中的指定表：
+若从本地文件恢复，使用如下命令：
+imp icdmain/icd fromuser=icdmain touser=icdmain rows=y indexes=n commit=y buffer=65536 feedback=100000 ignore=n file=exp.dmp log=imp.log tables=t1,t2,t3
+ 若从磁带设备恢复，使用如下命令：
+imp icdmain/icd fromuser=icdmain touser=icdmain rows=y indexes=n commit=y buffer=65536 feedback=100000 ignore=n volsize=0 file=/dev/rmt0  
+log=imp.log tables=t1,t2,t3
+ 
+3、字符集说明：
+导出端：
+客户端的字符集应设置成和数据库的字符集一样
+ 
+查看数据库的字符集：
+SQL> select userenv('language') from dual;
+ 
+USERENV('LANGUAGE')
+--------------------------------------------------------------------------------
+AMERICAN_AMERICA.AL32UTF8
+ 
+查看客户端（操作系统）的字符集：
+echo $NLS_LANG
+修改客户端字符集：
+export NLS_LANG=AMERICAN_AMERICA.AL32UTF8
+导出的转换过程
+    在Export过程中，如果源数据库字符集与Export用户会话字符集不一致，会发生字符集转换，并在导出文件的头部几个字节中存储Export用户会话字符集的ID号。在这个转换过程中可能发生数据的丢失。
+例:如果源数据库使用ZHS16GBK，而Export用户会话字符集使用US7ASCII，由于ZHS16GBK是16位字符集,而US7ASCII是7位字符集，这个转换过程中，中文字符在US7ASCII中不能够找到对等的字符，所以所有中文字符都会丢失而变成“?? ”形式，这样转换后生成的Dmp文件已经发生了数据丢失。
+因此如果想正确导出源数据库数据，则Export过程中用户会话字符集应等于源数据库字符集或是源数据库字符集的超集 
+ 
+导入端：
+1. oracel server端的字符集;
+2. oracle client端的字符集;
+3. dmp文件的字符集。
+在做数据导入的时候，需要这三个字符集都一致才能正确导入。
+导入的转换过程
+    （1）确定导出数据库字符集环境
+             通过读取导出文件头，可以获得导出文件的字符集设置
+    （2）确定导入session的字符集，即导入Session使用的NLS_LANG环境变量
+    （3）IMP读取导出文件
+             读取导出文件字符集ID，和导入进程的NLS_LANG进行比较
+    （4）如果导出文件字符集和导入Session字符集相同，那么在这一步骤内就不需要转换，             如果不同，就需要把数据转换为导入Session使用的字符集。可以看出，导入数据到数据库过程中发生两次字符集转换
+ 
+    第一次:导入文件字符集与导入Session使用的字符集之间的转换，如果这个转换过程不能正确完成，Import向目标数据库的导入过程也就不能完成。
+    第二次:导入Session字符集与数据库字符集之间的转换。
+
+#Example:
+--处理导入oracle数据有约束问题警告
+1、先关掉所有外键约束，表应该不在使用情况下使用：
+SELECT 'alter table  '|| t.table_name || ' disable constraint ' || t.CONSTRAINT_NAME || ';'
+FROM USER_CONSTRAINTS t WHERE t.CONSTRAINT_TYPE = 'R';
+2、导入dmp文件
+3、开启所有外键约束：
+SELECT 'alter table  '|| t.table_name || ' enable constraint ' || t.CONSTRAINT_NAME || ';'
+FROM USER_CONSTRAINTS t WHERE t.CONSTRAINT_TYPE = 'R';
+
+--export
+客户端设置字符集跟服务器字符集一样
+C:\Users\Jackli>set NLS_LANG=AMERICAN_AMERICA.AL32UTF8 
+exp PAYADM/PAYADM/47.100.34.183/XE rows=y indexes=n compress=n buffer=65536 feedback=10000 owner=PAYADM file="d:\payadm.dmp" log="d:\payadm.log" 
+
+--import
+IMP test/test@orcl BUFFER=64000 file="d:\payadm.dmp" FROMUSER=PAYADM TOUSER=test
+
+--select table who owner
+ select owner from dba_tables where table_name=upper('BIN$n9e8fSgPxKXgUBGsBAB0FA==$0'); #BIN$n9e8fSgPxKXgUBGsBAB0FA==$0此表是删除了在回收站导致
+
+
+#--冷备份--未验证-- 这种备份是允许关闭计算机服务。
+1. ----使用 sys登陆
+2. ----记录好这些文件的路径
+PL/SQL> select * from v$controlfile;
+1		D:\APP\ORACLE\ORADATA\ORCL\CONTROL01.CTL	NO	16384	594
+2		D:\APP\ORACLE\FAST_RECOVERY_AREA\ORCL\CONTROL02.CTL	NO	16384	594
+PL/SQL> select * from v$logfile;
+1	3		ONLINE	D:\APP\ORACLE\ORADATA\ORCL\REDO03.LOG	NO
+2	2		ONLINE	D:\APP\ORACLE\ORADATA\ORCL\REDO02.LOG	NO
+3	1		ONLINE	D:\APP\ORACLE\ORADATA\ORCL\REDO01.LOG	NO
+PL/SQL> create global temporary table jack_temp on commit preserve rows as SELECT * from v$datafile where 1=2
+----inser into table表示插入到现有存在的表，select * into table 表示插入未存在的表。
+PL/SQL> insert into jack_temp  SELECT * from v$datafile;
+PL/SQL> select CREATION_TIME,BYTES,BLOCKS,NAME from jack_temp;
+1	2013/10/9 18:23:41	1174405120	143360	D:\APP\ORACLE\ORADATA\ORCL\SYSTEM01.DBF
+2	2013/10/9 18:23:44	576716800	70400	D:\APP\ORACLE\ORADATA\ORCL\SYSAUX01.DBF
+3	2013/10/9 19:09:38	104857600	12800	D:\APP\ORACLE\ORADATA\ORCL\UNDOTBS01.DBF
+4	2013/10/9 18:23:53	51118080	6240	D:\APP\ORACLE\ORADATA\ORCL\USERS01.DBF
+5	2020/7/1 15:38:33	328335360	40080	D:\APP\ORACLE\ORADATA\ORCL\EXAMPLE01.DBF
+3. ----关闭 Oracle 服务
+SQL> shutdown immediate
+4. ----拷贝所有路径下的备份文件
+5. ----重新启动服务 
+SQL> startup
+
+
+
+#oracle 临时表的使用
+在oracle中，临时表分为会话级别(session)和事务级别(transaction)两种。
+
+会话级的临时表在整个会话期间都存在，直到会话结束；事务级别的临时表数据在transaction结束后消失，即commit/rollback或结束会话时，会清除临时表数据。
+  1、事务级临时表  on commit delete rows;      当COMMIT的时候删除数据（默认情况）
+  2、会话级临时表  on commit preserve rows;  当COMMIT的时候保留数据，当会话结束删除数据
+
+1.会话级别临时表
+会话级临时表是指临时表中的数据只在会话生命周期之中存在，当用户退出会话结束的时候，Oracle自动清除临时表中数据。
+创建方式1：
+create global temporary table temp1(id number) on commit PRESERVE rows;
+insert into temp1values(100);
+select * from temp1;
+创建方式2：
+create global temporary table temp1 ON COMMIT PRESERVE ROWS    as  select id from 另一个表；
+select * from temp1；
+这个时候，在当前会话查询数据就可以查询到了，但是再新开一个会话窗口查询，就会发现temp1是空表。
+
+2.事务级别的临时表
+创建方式1：
+create global temporary table temp2(id number) on commit delete rows;
+insert into temp2 values(200);
+select * from temp2;
+创建方式2：
+create global temporary table temp2 as select  id  from 另一个表;（默认创建的就是事务级别的）
+select * from temp2;
+这时当你执行了commit和rollback操作的话，再次查询表内的数据就查不到了。
+
+3.oracle的临时表创建完就是真实存在的，无需每次都创建。
+若要删除临时表可以：
+truncate table 临时表名;
+drop table 临时表名;
+
 
 </pre>
