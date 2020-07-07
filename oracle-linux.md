@@ -10,6 +10,7 @@ Linux node1 3.10.0-957.el7.x86_64 #1 SMP Thu Nov 8 23:39:32 UTC 2018 x86_64 x86_
 step1:虚拟内存建议，oracle后面需要使用
 [root@node1 ~]# dd if=/dev/zero of=/swap bs=1M count=1024
 [root@node1 ~]# mkswap /swap 
+[root@node1 ~]# chmod 0644 /swap 
 [root@node1 ~]# echo /swap /swap swap defaults 0 0 >> /etc/fstab 
 [root@node1 ~]# mount -a
 [root@node1 ~]# swapon /swap
@@ -94,7 +95,7 @@ export PATH=$PATH:$ORACLE_HOME/bin:$HOME/bin
 
 step12:配置oracle静默安装响应文件
 [root@node1 ~]# vim /download/database/response/db_install.rsp
-oracle.install.option=INSTALL_DB_SWONL #29行，#安装类型,只装数据库软件
+oracle.install.option=INSTALL_DB_SWONLY #29行，#安装类型,只装数据库软件
 ORACLE_HOSTNAME=node1 #37行,主机名称
 UNIX_GROUP_NAME=oinstall #42行,安装组
 INVENTORY_LOCATION=/usr/local/oracle/oraInventory #47行,NVENTORY目录（不填就是默认值,本例此处需修改,因个人创建安装目录而定）
@@ -102,19 +103,20 @@ SELECTED_LANGUAGES=en,zh_CN #78行，选择语言
 ORACLE_HOME=/usr/local/oracle/oracle/product/11.2.0/db_1 #83行,安装路径
 ORACLE_BASE=/usr/local/oracle/oracle #88行，oracle安装根路径
 racle.install.db.InstallEdition=EE #99行，oracle安装版本
-oracle.install.db.isCustomInstall=false #108行，是否自定义安装，默认使用默认组件
+oracle.install.db.isCustomInstall=false #108行，是否手动指定企业安装组件
 oracle.install.db.DBA_GROUP=dba #142行，设定用户组
 oracle.install.db.OPER_GROUP=dba #147行，设定用户组
-oracle.install.db.config.starterdb.type=GENERAL_PURPOSE #160行，数据库类型
+oracle.install.db.config.starterdb.type=GENERAL_PURPOSE #160行，数据库类型，选择数据库的用途，一般用途/事物处理，数据仓库
 oracle.install.db.config.starterdb.globalDBName=orcl #165行，全局数据库名称
 oracle.install.db.config.starterdb.SID=orcl #170行，SID（**此处注意与环境变量内配置SID一致）
-oracle.install.db.config.starterdb.memoryLimit=1024 #200行，指定总内存分配，最少256M
-oracle.install.db.config.starterdb.password.ALL=oracle #233行，设定所有数据库用户使
-用同一个密码
-oracle.install.db.config.starterdb.password.SYS=password #238行
-oracle.install.db.config.starterdb.password.SYSTEM=passwor #243行
-SECURITY_UPDATES_VIA_MYORACLESUPPORT=false #376行
-DECLINE_SECURITY_UPDATES=true #385行，注意此参数 设定一定要为true
+oracle.install.db.config.starterdb.characterSet=AL32UTF8 #184，指定字符集
+oracle.install.db.config.starterdb.memoryOption=true #192行，11g的新特性自动内存管理，也就是SGA_TARGET和PAG_AGGREGATE_TARGET，
+oracle.install.db.config.starterdb.memoryLimit=1024 #200行，指定Oracle自动管理内存的大小，最少256M
+oracle.install.db.config.starterdb.password.ALL=oracle #233行，设定所有数据库用户的密码
+oracle.install.db.config.starterdb.password.SYS=password #238行,设定sys用户密码
+oracle.install.db.config.starterdb.password.SYSTEM=password #243行，设定system用户密码
+SECURITY_UPDATES_VIA_MYORACLESUPPORT=false #376行，用户是否可以设置metalink密码
+DECLINE_SECURITY_UPDATES=true #385行，注意此参数 设定一定要为true，是否设置安全更新
 
 step13:根据响应文件安装oracle
 [root@node1 ~]# su - oracle 
@@ -332,6 +334,23 @@ Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=IPC)(KEY=EXTPROC1521)))
 The command completed successfully
 [oracle@node1 ~]$ netstat -tnlp | grep 1521 #已经关闭
 (No info could be read for "-p": geteuid()=9091 but you should be root.)
+
+#Oracle for Linux开机自启动
+1. [root@node2 ~]# vi /usr/local/oracle/oracle/product/11.2.0/db_1/bin/dbstart 
+	 79 # First argument is used to bring up Oracle Net Listener
+     80 ORACLE_HOME_LISTNER=$ORACLE_HOME   #将$1改成oracle安装的目录
+     81 if [ ! $ORACLE_HOME_LISTNER ] ; then
+     82   echo "ORACLE_HOME_LISTNER is not SET, unable to auto-start Oracle Net Liste        ner"
+     83   echo "Usage: $0 ORACLE_HOME"
+     84 else
+2. [root@node2 ~]# vi /etc/oratab
+orcl:/usr/local/oracle/oracle/product/11.2.0/db_1:Y  #将N设成Y，这个参数dbstart会来调取
+3. [root@node2 ~]# vi /etc/rc.d/rc.local
+#oracle auto start
+su - oracle -lc "/usr/local/oracle/oracle/product/11.2.0/db_1/bin/lsnrctl start"
+su - oracle -lc "/usr/local/oracle/oracle/product/11.2.0/db_1/bin/dbstart"
+4. [root@node2 ~]# chmod +x /etc/rc.d/rc.local
+
 
 #plsql客户端连接及配置(基于windows)
 plsql客户端连接oracle有两种方式，一种是Basic,一种是TNS

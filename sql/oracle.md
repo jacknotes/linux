@@ -1669,7 +1669,7 @@ export NLS_LANG=AMERICAN_AMERICA.AL32UTF8
 1、先关掉所有外键约束，表应该不在使用情况下使用：
 SELECT 'alter table  '|| t.table_name || ' disable constraint ' || t.CONSTRAINT_NAME || ';'
 FROM USER_CONSTRAINTS t WHERE t.CONSTRAINT_TYPE = 'R';
-2、导入dmp文件
+2、导出dmp文件
 3、开启所有外键约束：
 SELECT 'alter table  '|| t.table_name || ' enable constraint ' || t.CONSTRAINT_NAME || ';'
 FROM USER_CONSTRAINTS t WHERE t.CONSTRAINT_TYPE = 'R';
@@ -1709,8 +1709,64 @@ PL/SQL> select CREATION_TIME,BYTES,BLOCKS,NAME from jack_temp;
 SQL> shutdown immediate
 4. ----拷贝所有路径下的备份文件
 5. ----重新启动服务 
-SQL> startup
+SQL> startup  #默认是 startup open
 
+#oracle数据库后台进程启动与停止
+REFERENCE: https://www.cnblogs.com/huangyuyu/p/7094289.html
+---启动和停止database control
+启动 emctl start dbconsole
+停止 emctl stop dbconsole
+查看状态 emctl status dbconsole
+---打开和停止监听  
+启动 lsnrctl start
+停止 lsnrctl stop
+查看状态 lsnrctl status
+---数据库启动和关闭
+启动 sql>startup  [option]
+	nomount
+		过程：
+		按以下顺序搜索 <oracle_home>/dbs 中具有特定名称的文件：
+		spfile<SID>.ora
+		如果未找到，则搜索 spfile.ora
+		如果未找到，则搜索 init<SID>.ora
+		分配SGA
+		启动后台进程
+		打开alert<SID>.log 文件和跟踪文件
+	mount
+		过程：
+		将数据库与以前启动的实例关联
+		定位并打开参数文件中指定的控制文件
+		通过读取控制文件来获取数据文件和联机重做日志文件的名称和状态。但是，此时不必执行任何检查便可验证数据文件和联机重做日志文件是否存在
+	open （会验证是都可以打开所有数据文件和联机重做文件）（默认）
+		过程：
+		打开联机数据文件
+		打开联机重做日志文件
+关闭  sql>shutdown [option]
+	normal（默认）
+		不可以建立新连接。
+		Oracle 服务器等待所有用户断开连接才完成关闭。
+		数据库和重做缓冲区会写入到磁盘中。
+		后台进程被终止，从内存中删除 SGA
+		Oracle 服务器在关闭实例之前关闭并断开数据库。
+		下一次启动不需要进行实例恢复。
+	TRANSACTIONAL
+		任何客户机都不能利用这个特定实例启动新事务处理
+		客户机在结束正在进行的事务处理后断开连接。
+		完成所有事务处理后立即执行关闭。
+		下一次启动不需要进行实例恢复。
+	IMMEDIATE （常用于维护）
+		Oracle 数据库正在处理的当前 SQL 语句尚未完成。
+		Oracle 服务器不等待当前连接到数据库的用户断开连接。
+		Oracle 服务器会回退活动的事务处理，而且会断开所有已连接的用户。
+		Oracle 服务器在关闭实例之前关闭并断开数据库。
+		下一次启动不需要进行实例恢复。
+	ABORT （高度危险）
+		立即终止 Oracle 数据库正在处理的当前 SQL 语句。
+		Oracle 服务器不等待当前连接到数据库的用户断开连接。
+		数据库和重做缓冲区不写入到磁盘。
+		不回退未提交的事务处理。
+		实例已终止，但未关闭文件。
+		数据库未关闭，也未卸载。
 
 
 #oracle 临时表的使用
