@@ -1,4 +1,4 @@
-﻿#kubeadm方式(官网推荐) 搭建K8s高可用集群
+#kubeadm方式(官网推荐) 搭建K8s高可用集群
 <pre>
 #规划：
 master1: node1 192.168.15.201 install:keepalived,haproxy k8s:kube-apiserver,kube-controller-manager,kube-scheduler,etcd,kubelet,kube-proxy,flannel,docker
@@ -428,7 +428,7 @@ gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors
 [root@salt /srv/salt/prod/keepalived]# salt-cp  -L node1,node2 /etc/yum.repos.d/k8s.repo /etc/yum.repos.d/
 #手动下载并安装kube组件，这里不使用在线安装，因为有版本需求(去清华软件镜像源或阿里源下载下来，这里版本为1.15.11)
 [root@node1 k8s]# ls
-cri-tools-1.13.0-0.x86_64.rpm  kubectl-1.15.11-0.x86_64.rpm  kubernetes-cni-0.8.6-0.x86_64.rpm
+cri-tools-1.13.0-0.x86_64.rpm  kubectl-1.15.11-0.x86_64.rpm  	-0.8.6-0.x86_64.rpm
 kubeadm-1.15.11-0.x86_64.rpm   kubelet-1.15.11-0.x86_64.rpm
 [root@node1 k8s]# yum localinstall -y *.rpm
 #设定docker和kubelet开启启动，所有节点都一样
@@ -566,6 +566,7 @@ bindPort: 6443 #本节点apiserver的端口
 controlPlaneEndpoint: "192.168.15.50:6444" #增加此行，设定keepalived+haproxy的vip及负载均衡端口地址，用于调度后端的APIserver。第一台k8s MASTER开始安装时，haproxy调度只能调度本机一台机器，因为调度多台可能会导致调度到不存在的端口，从而失败。
 imageRepository: k8s.gcr.io #之前我们下载镜像、重打标签并装载进docker了，所以这里千万不要更改，使用默认google的gcr地址。
 kubernetesVersion: v1.15.11 #版本号一定要更改为跟自己匹配的镜像版本号
+podSubnet: "10.244.0.0/16" #增加此行设置flannel网络子网
 注：如果上面是开启ipvs的配置，如果不需要删除即可，则是默认iptables
 注：也可以编辑kube-system名称空间下的kube-proxy configmap，将mode设为ipvs，然后让kube-system名称空间下的kube-proxy pod都重载下配置，重载就是将pod都删除，daemonSet控制器都会重启pod
 注：下面是查看是否使用了ipvs而不是iptables
@@ -990,6 +991,12 @@ k8s.gcr.io/etcd                                                   3.3.10        
 registry.aliyuncs.com/google_containers/etcd                      3.3.10              2c4adeb21b4f        19 months ago       258MB
 k8s.gcr.io/pause                                                  3.1                 da86e6ba6ca1        2 years ago         742kB
 registry.aliyuncs.com/google_containers/pause                     3.1                 da86e6ba6ca1        2 years ago         742kB
+#注：1. 如果本机开启了swap,则需要设置kubelet忽略swap，不然kubelet不能启动，则kubeadm无法调用kubelet则无法正常进行。忽略swap:
+	[root@node1 /download/kubernetes]# cat /etc/sysconfig/kubelet 
+	KUBELET_EXTRA_ARGS="--fail-swap-on=false"
+	2. 在kubeadm安装时需要添加忽略swap选项：
+	[root@node1 /download/kubernetes]# kubeadm init --config=kubeadm-config.yaml --upload-certs --ignore-preflight-errors=swap | tee kubeadm-init.log
+
 [root@node1 /download/k8s]# kubeadm init --config=kubeadm-config.yaml --upload-certs | tee kubeadm-init.log
 Your Kubernetes control-plane has initialized successfully!
 

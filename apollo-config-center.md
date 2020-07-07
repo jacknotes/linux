@@ -1,4 +1,4 @@
-﻿#Apollo Config Center
+#Apollo Config Center
 <pre>
 refrence: https://github.com/ctripcorp/apollo/wiki/%E5%88%86%E5%B8%83%E5%BC%8F%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97
 #注：一个环境一个节点，例如FAT：192.168.1.1，UAT:192.168.1.10,PRO:192.168.1.20, portal:192.168.1.100.为实现双活，可以一个环境多个节点，例如：FAT:192.168.1.1，192.168.1.2 UAT:192.168.1.10,192.168.1.11  PRO:192.168.1.20,192.168.1.21,portal:192.168.1.100(无论如何，portal只有一个节点)
@@ -326,7 +326,7 @@ tcp6       0      0 :::8080                 :::*                    LISTEN      
 tcp6       0      0 :::8090                 :::*                    LISTEN      71644/java  
 #注：因为编译时已经填好数据库连接信息了，这里面解压过后如果需要更改数据库连接信息，则可以修改/opt/admin/config/application-github.properties(adminservice),/opt/config/config/application-github.properties(configservice)
 
-#访问http://192.168.15.202:8080web图形化界面
+#访问http://192.168.15.202:8070web图形化界面
 1. 建立项目，指定部门，AppId,应用名称，应用负责人等信息。
 2. 一旦项目建立后就有两个配置好的FAT和PRO环境。可以建立配置信息等。
 3. 建立一个key为'a',值为test123,并点发布。
