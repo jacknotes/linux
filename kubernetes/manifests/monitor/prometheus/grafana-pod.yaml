@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: pod-grafana
+  namespace: prom
+  labels: 
+    app: grafana
+    component: front
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+      component: front
+  template:
+    metadata:
+      labels: 
+        app: grafana
+        component: front
+    spec:
+      containers:
+      - name: grafana
+        image: grafana/grafana:7.0.5
+        ports:
+        - name: grafana
+          containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: prom
+spec:
+  ports:
+  - targetPort: 3000
+    port: 3000
+  selector:
+    app: grafana
+    component: front
+  type: NodePort

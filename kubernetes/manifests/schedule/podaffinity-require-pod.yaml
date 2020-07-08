@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Pod
+metadata: 
+  name: podaffinity-require-firstpod
+  labels: 
+    app: myapp
+    tier: frontend
+spec:
+  containers:
+  - name: myapp
+    image: ikubernetes/myapp:v1
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: podaffinity-require-secondpod
+  labels:
+    app: db
+    tier: db
+spec:
+  containers:
+  - name: busybox
+    image: busybox:latest
+    imagePullPolicy: IfNotPresent
+    command:
+    - "/bin/sh"
+    - "-c"
+    - "sleep 3600"
+  affinity:
+    podAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - topologyKey: kubernetes.io/hostname
+        labelSelector: 
+          matchExpressions: 
+          - key: app
+            operator: In
+            values: 
+            - myapp 
