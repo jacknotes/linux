@@ -5,3 +5,7 @@
 192.168.15.201 node1
 192.168.15.202 node2
 192.168.15.203 node3
+
+199.16.156.40 github.global.ssl.fastly.net
+185.199.108.153 assets-cdn.github.com
+

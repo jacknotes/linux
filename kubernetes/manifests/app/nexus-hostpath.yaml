@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nexus
+  namespace: default
+  labels: 
+    app: nexus
+spec:
+  nodeSelector:
+    custom.app.name: nexus
+  containers: 
+  - name: nexus
+    image: sonatype/nexus3
+    ports:
+    - name: http
+      containerPort: 8081
+    volumeMounts:
+    - name: nexusdata
+      mountPath: /nexus-data
+    resources:
+      requests:
+        cpu: "200m"
+        memory: "128Mi"
+      limits:
+        cpu: "400m"
+        memory: "1000Mi" 
+  volumes:
+  - name: nexusdata
+    hostPath: 
+      path: /kube/data/nexus
+  tolerations:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/master
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nexus
+  namespace: default
+spec:
+  type: NodePort
+  ports:
+  - name: nexus
+    nodePort: 30010
+    port: 8081
+    targetPort: 8081
+    protocol: TCP
+  selector:
+    app: nexus    
+
