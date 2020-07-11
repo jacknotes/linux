@@ -29,4 +29,4 @@ basePackageInstall:
       - vim-enhanced
       - bind-utils
       - bc
-
+      - bash-completion
