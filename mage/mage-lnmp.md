@@ -176,7 +176,7 @@ location / {
 	deny all; 
 }
 location / {        ##yum install -y httpd-tools  #需要借助httpd的工具对nginx进行做认证
-	auth_basic	"htpasswd" ; #开户用户认证，借助httpd的htpasswd来创建用户密码，nginx无，htpasswd -c -m /etc/nginx/.users tom，第二次不能使用-c选项再创建文件
+	auth_basic	"htpasswd" ; #开启用户认证，借助httpd的htpasswd来创建用户密码，nginx无，htpasswd -c -m /etc/nginx/.users tom，第二次不能使用-c选项再创建文件
 	auth_basic_user_file /etc/nginx/.users ;
 }
 

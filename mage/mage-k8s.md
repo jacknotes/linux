@@ -3791,39 +3791,40 @@ Predicate(预选)-->Priority(优先)-->Select(随机选择需求个数)
 对节点进行标签分类：ssd,gpu,
 #调度器：
 参考链接：https://github.com/kubernetes/kubernetes/blob/master/pkg/scheduler/algorithm/predicates/predicates.go
-	预先策略(一票否决)：
-		1. CheckNodeCondition(检查节点是否准备就绪)，默认启用
-		2. GeneralPredicates，默认启用
-			1. HostName:检查Pod对象是否定义了pods.spec.hostname,
-			2. PodFitsHostPorts:pods.spec.containers.ports.hostPort，检查pod开放的端口是否能被节点所满足
-			3. MatchNodeSelector:pods.spec.nodeSelector，匹配标签的节点进行pod部署
-			4. PodFitsResources:检查pod的资源需求是否能被节点所满足
-		3. NoDiskConflict(检查硬盘是否冲突，不冲突则被节点使用)，默认不启用
-		4. PodToleratesNodeTaints:检查pod上的spec.tolerations可容忍的污点是否完全包含节点上的污点;默认启用
-		5. PodToleratesNodeNoExecuteTaints:节点部署在污点的节点上，节点后期又加了污点而这个污点不能被pod接收时，使用此预先策略则会让已运行的pod驱离此node。默认不启用
-		6. CheckNodeLabelPresence:检查指定节点标签是否存在，默认不启用
-		7. CheckServiceAffinity:检查service的亲和性，如果新增pod是属于这个service时,是否调并在已经运行在这个service下的pod所在的节点，默认不启用
-		8. MaxGCEPDVolumeCountPred：公有云上支持存储卷的，默认启用
-		9. MaxEBSVolumeCountPred:公有云上支持存储卷的，默认启用
-		10. MaxAzureDiskVolumeCountPred:公有云上支持存储卷的，默认启用
-		11. CheckVolumeBinding:检查pvc是否被绑定，默认不启用
-		12. NoVolumeZoneConflict:检查区域节点上的存储卷是否与pod有冲突，默认不启用
-		13. CheckNodeMemoryPressure:检查节点内存资源是否处在压力过大的状态，默认不启用
-		14. CheckNodePIDPressure:检查节点的PID是否处在压力过大的状态。默认不启用
-		15. CheckNodeDiskPressure:检查节点的磁盘io是否过大
-		16. MatchInterPodAffinity:匹配pod间的亲和性
-	优先函数(每个得分相加得分越高)：
-		1. LeastRequisted(最小的需求):(cpu((capacity_sum(requested))*10/capacity)+memory((capacity_sum(requested))*10/capacity))/2  占用率越低的得分越高，默认启用
-		2. BalanceResourceAllocation(评估cpu和memeory被占用率越接近越被匹配)
-		3. NodePreferAvoidPods：优先级很高，根据节点注解信，默认启用息"scheduler.alpha.kubernetes.io/preferAvoidPods"判定,节点上是否有这个注解存在，如果没有则得分为10，权重为10000，如果存在注解时，得分是0，默认启用
-		4. TaintToleration:将pod对象的spec.tolerations列表项与节点的taint列表项进行匹配度检查，匹配条目越多，得分越低;，默认启用
-		5. SelectorSpreading:对节点进行同一类pod控制器标签选择，节点越没被pod控制器使用则这个节点得分最高，默认启用
-		6. InterPodAffinity:遍历pod对象的亲和性条目，匹配条目越多的pod所在node得分越高，默认启用
-		7. NodeAffinity:节点亲和性，node亲和性越高则得分越高，默认启用
-		8. MostRequested:跟LeastRequisted相反，不能同时使用，占用率越高的得分越高，默认不启用
-		9. NodeLabel:根据node标签来评判，有标签则得分越高，无标签则得分越低，默认不启用
-		10. ImageLocality:根据node本地中有镜像且镜像容量越大的得分越高，默认不启用
-	选择：当得分一样时则会随机选择一个node	
+注：选择用什么策略看什么需求调用
+----预先策略(不符合一票否决，符合所有才能调度)：
+	1. CheckNodeCondition(检查节点是否准备就绪)，默认启用
+	2. GeneralPredicates，默认启用
+		1. HostName:检查Pod对象是否定义了pods.spec.hostname,并且在调度的节点上检查pod名称是否有同名的pod，无则在此节点运行
+		2. PodFitsHostPorts:pods.spec.containers.ports.hostPort，检查pod开放的端口是否能被节点所满足
+		3. MatchNodeSelector:pods.spec.nodeSelector，匹配标签的节点进行pod部署
+		4. PodFitsResources:检查pod的资源需求是否能被节点所满足
+	3. NoDiskConflict：检查pod依赖的存储卷在节点上是否能满足需求;默认启用
+	4. PodToleratesNodeTaints:检查pod上的spec.tolerations可容忍的污点是否完全包含节点上的污点，节点后期又加了污点而这个污点不能被pod接收时，也不会驱离pod;默认启用
+	5. PodToleratesNodeNoExecuteTaints:节点部署在污点的节点上，节点后期又加了污点而这个污点不能被pod接收时，使用此预先策略则会让已运行的pod驱离此node。默认不启用
+	6. CheckNodeLabelPresence:检查指定节点标签是否存在，默认不启用
+	7. CheckServiceAffinity:检查service的亲和性，如果新增pod是属于这个service时,是否调并在已经运行在这个service下的pod所在的节点，默认不启用
+	8. MaxGCEPDVolumeCountPred：google公有云上支持存储卷的，默认启用
+	9. MaxEBSVolumeCountPred:AWS公有云上支持存储卷的，默认启用
+	10. MaxAzureDiskVolumeCountPred：微软公有云上支持存储卷的，默认启用
+	11. CheckVolumeBinding:检查pvc是否被绑定，默认不启用
+	12. NoVolumeZoneConflict:检查给定区域节点上的存储卷是否与pod有冲突，默认不启用
+	13. CheckNodeMemoryPressure:检查节点内存资源是否处在压力过大的状态，默认不启用
+	14. CheckNodePIDPressure:检查节点的PID是否处在压力过大的状态。默认不启用
+	15. CheckNodeDiskPressure:检查节点的磁盘io是否过大
+	16. MatchInterPodAffinity:匹配节点是否匹配pod间的亲和性或反亲和性条件。												
+----优先函数(每个策略得分相加得分越高的节点则被选取)：
+	1. LeastRequisted(最小的需求):(cpu((capacity_sum(requested))*10/capacity)+memory((capacity_sum(requested))*10/capacity))/2  占用率越低的得分越高，默认启用
+	2. BalanceResourceAllocation：评估cpu和memeory被占用率越接近越被匹配，使cpu和内存使用率平衡，需跟LeastRequisted策略一起使用，默认启用
+	3. NodePreferAvoidPods：优先级很高，根据节点注解信息，默认启用"scheduler.alpha.kubernetes.io/preferAvoidPods"判定,节点上是否有这个注解存在，如果没有则得分为10，权重为10000，如果存在注解时，得分是0，默认启用
+	4. TaintToleration:将pod对象的spec.tolerations列表项与节点的taints列表项进行匹配度检查，匹配条目越多，得分越低;，默认启用
+	5. SelectorSpreading:对节点进行同一类pod控制器标签选择，节点越没被pod控制器使用则这个节点得分最高，默认启用
+	6. InterPodAffinity:在所有node上遍历pod对象的亲和性条目，匹配条目越多的node得分越高，默认启用
+	7. MostRequested:跟LeastRequisted相反，不能同时使用，占用率越高的得分越高，默认不启用
+	8. NodeLabel:根据node标签来评判，有标签则得分越高，无标签则得分越低，并且跟据标签数量来评判分数。默认不启用
+	9. ImageLocality:根据node节点本地中是否有镜像，而且根据已有镜像容量大小来评判得分，镜像容量越大的得分越高，默认不启用
+	10. NodeAffinity:节点亲和性，pod中的nodeSelector中匹配到node的标签越多，则得分越高，默认启用。
+----选择：选择得分最高的node，当得分一样时则会随机选择一个node	
 
 #第二十一节：kubernetes高级调度方式
 高级调度设置机制：
@@ -4401,7 +4402,7 @@ spec:
         memory: "64Mi"
         cpu: "250m"
       limits:
-        memory: "128Mi" #
+        memory: "128Mi" 
         cpu: "500m"
 ##实例：
 [root@k8s-master metrics]# kubectl taint node k8s.node1 node-type-
@@ -4832,8 +4833,8 @@ k8s:API server
 
 #部署metrics-server最新版，此1.14版本部署上来了
 ##安全参考链接：https://aeric.io/post/k8s-metrics-server-installation/
-老版本参考链接：https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/metrics-server 
-新版本参考链接：https://github.com/kubernetes-incubator/metrics-server/tree/master/deploy/1.8%2B
+稳定版参考链接：https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/metrics-server 
+开发版参考链接：https://github.com/kubernetes-incubator/metrics-server/tree/master/deploy/1.8%2B
 [root@k8s-master metrics]# git clone https://github.com/kubernetes-incubator/metrics-server.git
 [root@k8s-master 1.8+]# ls
 aggregated-metrics-reader.yaml  metrics-server-deployment.yaml
@@ -5337,7 +5338,7 @@ FIELDS:
    status       <Object>
      current information about the autoscaler.
 
-[root@k8s manifests]# kubectl api-versions  #hpa两个版本
+[root@k8s manifests]# kubectl api-versions  #hpa三个版本
 autoscaling/v1
 autoscaling/v2beta1
 autoscaling/v2beta2
@@ -5515,14 +5516,15 @@ helm是Tiller的客户端，helm运行在用户的pc上，Tiller是守护进程�
 helm在用户pc上从chart repository获取chart后一般存储在用户的家目录下，当用户传入自定义参数给chart部署后就会在k8s集群运行，运行的对象叫release,不叫pod
 Helm:
 	核心术语：
-		1. Chart:一个helm程序包
+		1. Chart:一个helm程序包，是配置清单并且解决了依赖关系
 		2. Repository:Charts仓库，https/http服务器
 		3. Release:特定的Chart部署于目标集群上的一个实例
 		Chart -> Config -> Release
 	程序架构：
-		helm: 客户端，运行在用户pc,管理本地的chart仓库，管理远端的chart Repository,与Tiller服务器交互，发送chart,实例安装、查询、卸载等操作
+		helm: 客户端，运行在用户pc,管理本地的chart仓库和远端的chart Repository,与Tiller服务器交互，发送chart,实例安装、查询、卸载等操作
 		Tiller：服务端，可运行在集群内或集群外，但部署在集群外非常麻烦，多数部署在集群内。接收helm发来的charts与config,合并生成release
-安装helm:
+安装helm客户端:
+注：helm初始化时需要使用~/.kube/config文件去跟APIserver进行认证
 有linux，windows、OSX的客户端，linux下载即可用。
 [root@k8s ~]# wget https://storage.googleapis.com/kubernetes-helm/helm-v2.14.0-linux-amd64.tar.gz #可运行在任意pc上
 [root@k8s ~]# tar xf helm-v2.14.0-linux-amd64.tar.gz 

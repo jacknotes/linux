@@ -34,7 +34,8 @@
 27. [root@node1 ~]# kubectl api-versions #查看k8s支持的api版本
 
 #附件：
-1. coreDNS, 2. flannal 3. kube-proxy  #这是集群建好后就好的。另外还有两个重要的：1. ingress controller 2. prometheus（监控组件），3. heapstar,4. dashboard
+1. coreDNS,  2. kube-proxy  #这是集群建好后就好的。
+2. 另外还有5个重要的：1. ingress controller 2. prometheus（监控组件），3. heapstar(收集k8s集群信息) ,4. dashboard ，5. flannal
 
 #service支持4种类型：
 1. clusterIP
@@ -875,5 +876,707 @@ spec:
 Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a> #又可以访问了
 [root@node1 ~/manifests]# curl 10.244.2.2:443 #443访问不了，因为被网络策略挡了，我们并没有旅行443端口
 ^C
+
+#调试器、预先策略及优先函数
+Predicate(预选)-->Priority(优先)-->Select(选择，随机选择需求个数)
+对节点进行标签分类：ssd,gpu等
+REFERENCE：https://github.com/kubernetes/kubernetes/blob/master/pkg/scheduler/algorithm/predicates/predicates.go
+注：选择用什么策略看什么需求调用
+----预先策略(不符合一票否决，符合所有才能调度)：
+	1. CheckNodeCondition(检查节点是否准备就绪)，默认启用
+	2. GeneralPredicates，默认启用
+		1. HostName:检查Pod对象是否定义了pods.spec.hostname,并且在调度的节点上检查pod名称是否有同名的pod，无则在此节点运行
+		2. PodFitsHostPorts:pods.spec.containers.ports.hostPort，检查pod开放的端口是否能被节点所满足
+		3. MatchNodeSelector:pods.spec.nodeSelector，匹配标签的节点进行pod部署
+		4. PodFitsResources:检查pod的资源需求是否能被节点所满足
+	3. NoDiskConflict：检查pod依赖的存储卷在节点上是否能满足需求;默认启用
+	4. PodToleratesNodeTaints:检查pod上的spec.tolerations可容忍的污点是否完全包含节点上的污点，节点后期又加了污点而这个污点不能被pod接收时，也不会驱离pod;默认启用
+	5. PodToleratesNodeNoExecuteTaints:节点部署在污点的节点上，节点后期又加了污点而这个污点不能被pod接收时，使用此预先策略则会让已运行的pod驱离此node。默认不启用
+	6. CheckNodeLabelPresence:检查指定节点标签是否存在，默认不启用
+	7. CheckServiceAffinity:检查service的亲和性，如果新增pod是属于这个service时,是否调并在已经运行在这个service下的pod所在的节点，默认不启用
+	8. MaxGCEPDVolumeCountPred：google公有云上支持存储卷的，默认启用
+	9. MaxEBSVolumeCountPred:AWS公有云上支持存储卷的，默认启用
+	10. MaxAzureDiskVolumeCountPred：微软公有云上支持存储卷的，默认启用
+	11. CheckVolumeBinding:检查pvc是否被绑定，默认不启用
+	12. NoVolumeZoneConflict:检查给定区域节点上的存储卷是否与pod有冲突，默认不启用
+	13. CheckNodeMemoryPressure:检查节点内存资源是否处在压力过大的状态，默认不启用
+	14. CheckNodePIDPressure:检查节点的PID是否处在压力过大的状态。默认不启用
+	15. CheckNodeDiskPressure:检查节点的磁盘io是否过大
+	16. MatchInterPodAffinity:匹配节点是否匹配pod间的亲和性或反亲和性条件。												
+----优先函数(每个策略得分相加得分越高的节点则被选取)：
+	1. LeastRequisted(最小的需求):(cpu((capacity_sum(requested))*10/capacity)+memory((capacity_sum(requested))*10/capacity))/2  占用率越低的得分越高，默认启用
+	2. BalanceResourceAllocation：评估cpu和memeory被占用率越接近越被匹配，使cpu和内存使用率平衡，需跟LeastRequisted策略一起使用，默认启用
+	3. NodePreferAvoidPods：优先级很高，根据节点注解信息，默认启用"scheduler.alpha.kubernetes.io/preferAvoidPods"判定,节点上是否有这个注解存在，如果没有则得分为10，权重为10000，如果存在注解时，得分是0，默认启用
+	4. TaintToleration:将pod对象的spec.tolerations列表项与节点的taints列表项进行匹配度检查，匹配条目越多，得分越低;，默认启用
+	5. SelectorSpreading:对节点进行同一类pod控制器标签选择，节点越没被pod控制器使用则这个节点得分最高，默认启用
+	6. InterPodAffinity:在所有node上遍历pod对象的亲和性条目，匹配条目越多的node得分越高，默认启用
+	7. MostRequested:跟LeastRequisted相反，不能同时使用，占用率越高的得分越高，默认不启用
+	8. NodeLabel:根据node标签来评判，有标签则得分越高，无标签则得分越低，并且跟据标签数量来评判分数。默认不启用
+	9. ImageLocality:根据node节点本地中是否有镜像，而且根据已有镜像容量大小来评判得分，镜像容量越大的得分越高，默认不启用
+	10. NodeAffinity:节点亲和性，pod中的nodeSelector中匹配到node的标签越多，则得分越高，默认启用。
+----选择：选择得分最高的node，当得分一样时则会随机选择一个node		
+
+#kubernetes高级调度方式
+高级调度设置机制：
+	一、 节点选择器：nodeSelector,nodeName
+	二、 节点亲和性调度：Affinity
+		1. nodeAffinity：requiredDuringSchedulingIgnoredDuringExecution(node硬亲和性),preferredDuringSchedulingIgnoredDuringExecution(node软亲和性)
+		2. podAffinity(pod亲和性)：topologyKey--通过拓扑key来分类哪些节点在一个zone(域)上,其它pod在标签选择器上匹配第一个pod的标签来使所有pod在一个共同的zone(域)上.--也分硬亲和和软亲和
+		3. podAntiAffinity(pod反亲和性)：与podAffinity相反，只要其它pod在标签选择器上匹配第一个pod的标签，则第一个pod与其它的pod不会在同一个zone(域)上。--也分硬亲和和软亲和
+	三、污点调度
+#一、节点选择器
+1. nodeName使用：在配置清单中spec字段下使用，nodeName: node1,指定特定节点即可,如果节点名称不存在将会被Pendding
+2. nodeSelector使用：
+[root@k8s-master scheduler]# cat pod-demo.yaml 
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-demo
+  namespace: default
+  labels:
+    app: myapp
+    tier: frontend
+spec:
+  containers:
+  - name: myapp
+    image: nginx:1.14-alpine
+    imagePullPolicy: IfNotPresent
+  nodeSelector:
+    disktype: harddisk 
+注：如果配置清单中nodeSelector选定的节点标签现在还没有，这个pod任务将会被Pendding,将不会运行，直至被匹配到节点标签为止
+#二、节点亲和性调度
+1.1 nodeAffinity硬亲和性
+[root@node1 ~/manifests/scheduler]# cat nodeaffinity-require-pod.yaml 
+apiVersion: v1
+kind: Pod
+metadata: 
+  name: nodeaffinity-require-pod
+  labels: 
+    app: myapp
+    tier: frontend
+spec:
+  containers:
+  - name: myapp
+    image: ikubernetes/myapp:v1
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+        - matchExpressions:
+          - key: zone
+            operator: In
+            values:
+            - foo
+            - ba
+[root@node1 ~/manifests/scheduler]# kubectl apply -f nodeaffinity-pod.yaml 
+[root@node1 ~/manifests/scheduler]# kubectl get pods
+NAME           READY   STATUS    RESTARTS   AGE
+nodeaffinity-pod   0/1     Pending   0          6s  #因为是requiredDuringSchedulingIgnoredDuringExecution，硬亲和性，所以没有符合节点将会被pendding
+1.2 nodeAffinity软亲和性：
+[root@node1 ~/manifests/scheduler]# cat nodeaffinity-preferred-pod.yaml 
+apiVersion: v1
+kind: Pod
+metadata: 
+  name: nodeaffinity-preferred-pod
+  labels: 
+    app: myapp
+    tier: frontend
+spec:
+  containers:
+  - name: myapp
+    image: ikubernetes/myapp:v1
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - preference:
+          matchExpressions:
+          - key: zone
+            operator: In
+            values:
+            - foo
+            - ba
+        weight: 60
+[root@node1 ~/manifests/scheduler]# kubectl apply -f affinity-preferred-pod.yaml 
+[root@node1 ~/manifests/scheduler]# kubectl get pods
+NAME                     READY   STATUS    RESTARTS   AGE
+nodeaffinity-preferred-pod   1/1     Running   0          6s
+2. podAffinity
+----pod硬亲和性，软亲和性也一样配置
+[root@node1 ~/manifests/scheduler]# cat podaffinity-require-pod.yaml 
+apiVersion: v1
+kind: Pod
+metadata: 
+  name: podaffinity-require-firstpod
+  labels: 
+    app: myapp
+    tier: frontend
+spec:
+  containers:
+  - name: myapp
+    image: ikubernetes/myapp:v1
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: podaffinity-require-secondpod
+  labels:
+    app: db
+    tier: db
+spec:
+  containers:
+  - name: busybox
+    image: busybox:latest
+    imagePullPolicy: IfNotPresent
+    command:
+    - "/bin/sh"
+    - "-c"
+    - "sleep 3600"
+  affinity:
+    podAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:  
+      - topologyKey: kubernetes.io/hostname
+        labelSelector: 
+          matchExpressions: 
+          - key: app
+            operator: In
+            values: 
+            - myapp 
+[root@node1 ~/manifests/scheduler]# kubectl apply -f podaffinity-require-pod.yaml
+[root@node1 ~/manifests/scheduler]# kubectl get pods -o wide
+[root@node1 ~/manifests/scheduler]# kubectl get pods -o wide
+NAME                            READY   STATUS    RESTARTS   AGE     IP            NODE    NOMINATED NODE   READINESS GATES
+podaffinity-require-firstpod    1/1     Running   0          2m23s   10.244.2.10   node3   <none>           <none>
+podaffinity-require-secondpod   1/1     Running   0          66s     10.244.2.11   node3   <none>           <none>
+3. podAntiAffinity
+[root@node1 ~/manifests/scheduler]# kubectl label nodes node2 rack=rack1
+[root@node1 ~/manifests/scheduler]# kubectl label nodes node3 rack=rack1
+[root@node1 ~/manifests/scheduler]# cat podAntiaffinity-require-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata: 
+  name: podaffinity-require-firstpod
+  labels: 
+    app: myapp
+    tier: frontend
+spec:
+  containers:
+  - name: myapp
+    image: ikubernetes/myapp:v1
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: podaffinity-require-secondpod
+  labels:
+    app: db
+    tier: db
+spec:
+  containers:
+  - name: busybox
+    image: busybox:latest
+    imagePullPolicy: IfNotPresent
+    command:
+    - "/bin/sh"
+    - "-c"
+    - "sleep 3600"
+  affinity:
+    podAntiAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+      - topologyKey: rack
+        labelSelector: 
+          matchExpressions: 
+          - key: app
+            operator: In
+            values: 
+            - myapp 
+[root@node1 ~/manifests/scheduler]# kubectl apply -f podAntiaffinity-require-pod.yaml 
+[root@node1 ~/manifests/scheduler]# kubectl get pods -o wide #因为是反亲和性，所以第二个pod永远是pendding状态
+NAME                            READY   STATUS    RESTARTS   AGE   IP            NODE     NOMINATED NODE   READINESS GATES
+podaffinity-require-firstpod    1/1     Running   0          12s   10.244.2.12   node3    <none>           <none>
+podaffinity-require-secondpod   0/1     Pending   0          12s   <none>        <none>   <none>           <none>
+#三、污点调度
+1.节点调度  2. pod调度 3. 污点调度
+label(标签)和annotations(注解)所有对象可以使用，污点是只定义在节点上的键值型数据。
+	taints是键值形数据，用在节点上，定义污点。
+	tolerations是键值形数据,用在pod上，定义容忍度，容忍哪些污点。
+taints的effect定义对pod的排斥等级：
+	1. NoSchedule:仅影响调度过程，对现存的pod对象不产生影响
+	2. NoExecute：既影响调度过程也影响现存的pod对象，不容忍的pod对象将被驱逐
+	3. PreferNoSchedule：不能调度到不能容忍的节点上，但是没有节点可用时也可以运行在不能容忍的节点上
+注：为什么master节点不能被我们的pod任务所调度上去，因为master节点上有我们不能容忍的污点，而像系统组件flannel、kube-proxy等是因为它们容忍了master节点上的污点node-role.kubernetes.io/master:NoSchedule
+例：
+1. 给两个节点打上污点
+[root@node1 ~]# kubectl taint node node2 node-type=prod:NoSchedule
+[root@node1 ~]# kubectl taint node node3 node-type=dev:NoExecute
+#----删除污点
+#[root@k8s-master metrics]# kubectl taint node node2 node-type-
+#[root@k8s-master metrics]# kubectl taint node node3 node-type-
+----容忍node2上的污点
+2. [root@node1 ~/manifests/schedule]# cat tains-deployment-pod.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp-deployment
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: myapp
+      release: canary
+  template:
+    metadata:
+      labels:
+        app: myapp
+        release: canary
+    spec:
+      containers:
+      - name: myapp-container
+        image: ikubernetes/myapp:v2
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 80
+      tolerations:
+      - operator: Equal
+        key: node-type
+        value: prod
+        effect: NoSchedule
+3. [root@node1 ~/manifests/schedule]# kubectl apply -f tains-deployment-pod.yaml
+[root@node1 ~/manifests/schedule]# kubectl get pods -o wide
+NAME                                READY   STATUS    RESTARTS   AGE   IP           NODE    NOMINATED NODE   READINESS GATES
+myapp-deployment-7975794857-6jfvx   1/1     Running   0          7s    10.244.1.6   node2   <none>           <none>
+myapp-deployment-7975794857-c48d6   1/1     Running   0          7s    10.244.1.5   node2   <none>           <none>
+----容忍只要有key是node-type并且effect是NoSchedule的污点，显然只有node2满足，因为node3的effect是NoExecute
+[root@node1 ~/manifests/schedule]# cat tains-deployment-pod.yaml 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp-deployment
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: myapp
+      release: canary
+  template:
+    metadata:
+      labels:
+        app: myapp
+        release: canary
+    spec:
+      containers:
+      - name: myapp-container
+        image: ikubernetes/myapp:v2
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 80
+      tolerations:
+      - operator: Exists
+        key: node-type
+        value: ""
+        effect: NoSchedule
+[root@node1 ~/manifests/schedule]# kubectl get pods -o wide
+NAME                                READY   STATUS    RESTARTS   AGE     IP           NODE    NOMINATED NODE   READINESS GATES
+myapp-deployment-7fdf7c7b48-7x4zp   1/1     Running   0          2m28s   10.244.1.8   node2   <none>           <none>
+myapp-deployment-7fdf7c7b48-lkbwf   1/1     Running   0          2m29s   10.244.1.7   node2   <none>           <none>
+----容忍只要有key是node-type的污点
+[root@node1 ~/manifests/schedule]# cat tains-deployment-pod.yaml 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp-deployment
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: myapp
+      release: canary
+  template:
+    metadata:
+      labels:
+        app: myapp
+        release: canary
+    spec:
+      containers:
+      - name: myapp-container
+        image: ikubernetes/myapp:v2
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 80
+      tolerations:
+      - operator: Exists
+        key: node-type
+        value: ""
+        effect:
+[root@node1 ~/manifests/schedule]# kubectl get pods -o wide
+NAME                                READY   STATUS    RESTARTS   AGE   IP            NODE    NOMINATED NODE   READINESS GATES
+myapp-deployment-765c9b575d-26dj5   1/1     Running   0          9s    10.244.2.13   node3   <none>           <none>
+myapp-deployment-765c9b575d-ddrfm   1/1     Running   0          8s    10.244.1.9    node2   <none>           <none>
+
+#容器资源需求、资源限制及HeapSter
+requests:需求、最低保障;
+limits:限制，硬限制的;
+CPU:
+	1颗逻辑CPU为一核心
+	1=1000millicores(毫核)
+		500m=0.5CPU
+内存:
+	E、P、T、G、M、K
+	Ei、Pi、Ti……
+----资源限制
+[root@node1 ~/manifests/metrics]# cat resources-limit-pod.yaml 
+apiVersion: v1
+kind: Pod
+metadata: 
+  name: pod-demo
+  labels: 
+    app: myapp
+    tier: frontend
+spec:
+  containers:
+  - name: myapp
+    image: ikubernetes/myapp:v1
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "200m"
+      limits:
+        memory: "256Mi"
+        cpu: "400m"
+----QoS:k8s自动配置QoS的
+QoS的资源类别：
+	1. Guranteed:每个容器同时设置了cpu和内存的requests和limits。而且cpu.limits=cpu.requests,memory.limits=memory.request，优先级最高，优先运行，自动归类为Guranteed
+	2. Bustable:至少有一个容器设置了CPU或内存资源的requests属性，就会自动成为Bustable,具有中等优先级，
+	3. BestEffort:没有任何一个容器设置了requests或limits属性;最低优先级别
+注：QoS类别是自动被归类的，当node上的资源不够用时，先后终止BestEffort-->Bustable-->Guranteed，以占用量与需求量的比例来计算，比例越大的越先被干掉
+
+#heapstar组件：kubectl top命令依赖这个，dashboard有些资源用量显示也依赖heapstar，1.11以前有，1.11及以后正式废弃了
+kubelet代理内嵌插件cAdvisor监听在4194端口，负责收集本节点,pod,container的cpu,内存，存储信息，最后发送给HeapSter,HeapSter将收到的数据存储在InfluxDB,达到持久存储目的，Grafana配置InfluxDB为数据源，于是可以愉快展示每一个节点、pod、容器的统计结果了。
+指标：k8s系统指标，容器指标，应用指标
+注：HeapSter依赖InfluxDB,所以先安装InfluxDB,Grafana做为查看数据的展示平台。部署InfluxDB(持续数据库系统)----InfluxDB配置清单在生产环境中要配置存储卷，例如NFS,GlusterFS等。InfluxDB也要提供Service固定名称访问。
+
+#资源指标API及自定义指标API
+#Metrics-server和prometheus替代HeapSter
+资源指标：metrics-server(提供kubectl top命令获取信息以及dashboard获取某些资源信息) 
+自定义指标：prometheus,k8s-prometheus-adpter(把监控数据转换为指标格式)
+#新一代架构：
+	1. 核心指标流水线：由kubelet、metrics-server以及由API server提供的api组成;CPU累积使用率、内存实时使用率、Pod的资源占用率及容器的磁盘占用率;
+	2. 监控流水线：用于从系统收集各种指标数据并提供终端用户、存储系统以及HPA,它们包含核心指标及许多非核心指标。非核心指标本身不能被k8s所解析，所以有了k8s-prometheus-adpter来负责解析给k8s所认知。
+metrics-server:API server（/apis/metrics.k8s.io/v1beta1）
+k8s:API server
+为了用户无缝调用api server,所以有了聚合器(kube-aggregator)，聚合器下放了所有有关的api server,例如：k8s的api server,metrics-server的api server等。用户只访问聚合器的api即可实现无缝调用所有api server。
+REFERENCE:
+安全参考链接：https://aeric.io/post/k8s-metrics-server-installation/
+稳定版参考链接：https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/metrics-server 
+新版本参考链接：https://github.com/kubernetes-incubator/metrics-server/tree/master/deploy/1.8%2B
+#安装metris-server
+[root@node1 ~/manifests/monitor]# for i in auth-delegator.yaml auth-reader.yaml metrics-apiservice.yaml metrics-server-deployment.yaml metrics-server-service.yaml resource-reader.yaml;do curl -OL https://raw.githubusercontent.com/kubernetes/kubernetes/release-1.15/cluster/addons/metrics-server/$i;done
+[root@node1 ~/manifests/monitor]# ls
+auth-delegator.yaml  metrics-apiservice.yaml         resource-reader.yaml
+auth-reader.yaml     metrics-server-deployment.yaml
+metrics              metrics-server-service.yaml
+----#需要更改两个文件才可运行
+[root@node1 ~/manifests/monitor]# cat resource-reader.yaml 
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: system:metrics-server
+  labels:
+    kubernetes.io/cluster-service: "true"
+    addonmanager.kubernetes.io/mode: Reconcile
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - nodes
+  - nodes/stats  #增加这一行
+[root@node1 ~/manifests/monitor]# cat metrics-server-deployment.yaml 
+注：命令部分注释掉如下：
+- name: metrics-server
+        image: k8s.gcr.io/metrics-server-amd64:v0.3.3
+        command:
+        - /metrics-server
+        - --metric-resolution=30s
+        - --kubelet-insecure-tls
+        - --kubelet-preferred-address-types=InternalIP
+        # These are needed for GKE, which doesn't support secure communication yet.
+        # Remove these lines for non-GKE clusters, and when GKE supports token-based auth.
+        #- --kubelet-port=10255
+        #- --deprecated-kubelet-completely-insecure=true
+        #- --kubelet-preferred-address-types=InternalIP,Hostname,InternalDNS,ExternalDNS,ExternalIP
+注：命令部分注释掉如下：
+- name: metrics-server-nanny
+        image: k8s.gcr.io/addon-resizer:1.8.5
+        command:
+          - /pod_nanny
+          - --config-dir=/etc/config
+          #- --cpu={{ base_metrics_server_cpu }}
+          - --extra-cpu=0.5m
+          #- --memory={{ base_metrics_server_memory }}
+          #- --extra-memory={{ metrics_server_memory_per_node }}Mi
+          - --threshold=5
+          - --deployment=metrics-server-v0.3.3
+          - --container=metrics-server
+          - --poll-period=300000
+          - --estimator=exponential
+          # Specifies the smallest cluster (defined in number of nodes)
+          # resources will be scaled to.
+          #- --minClusterSize={{ metrics_server_min_cluster_size }}
+#在node上下载镜像
+[root@node2 ~]# curl -s https://zhangguanzhang.github.io/bash/pull.sh | bash -s -- k8s.gcr.io/metrics-server-amd64:v0.3.3
+[root@node2 ~]# curl -s https://zhangguanzhang.github.io/bash/pull.sh | bash -s -- k8s.gcr.io/addon-resizer:1.8.5
+[root@node1 ~/manifests/monitor]# kubectl apply -f .
+[root@node2 ~]# kubectl api-versions
+[root@node2 ~]# curl http://127.0.0.1:8090/apis/metrics.k8s.io/v1beta1/nodes #测试api是否有数据
+[root@node2 ~]# kubectl top pods
+NAME                                CPU(cores)   MEMORY(bytes)   
+myapp-deployment-765c9b575d-26dj5   0m           1Mi             
+myapp-deployment-765c9b575d-ddrfm   0m           1Mi             
+pod-demo                            0m           1Mi             
+[root@node2 ~]# kubectl top nodes
+NAME    CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%   
+node1   234m         5%     1162Mi          42%       
+node2   95m          2%     983Mi           36%       
+node3   281m         7%     629Mi           17%  
+#prometheus服务发现
+FERERENCE:https://github.com/yunlzheng/prometheus-book/blob/master/sd/why-need-service-discovery.md
+而对于Prometheus这一类基于Pull模式的监控系统，显然也无法继续使用的static_configs的方式静态的定义监控目标。而对于Prometheus而言其解决方案就是引入一个中间的代理人（服务注册中心），这个代理人掌握着当前所有监控目标的访问信息，Prometheus只需要向这个代理人询问有哪些监控目标即可， 这种模式被称为服务发现。
+
+#prometheus监控--有些指标没有获取到，需要再次验证
+[root@node1 ~/download]# git clone https://github.com/iKubernetes/k8s-prom.git
+[root@node1 ~/manifests/monitor/prometheus]# ls
+k8s-prometheus-adapter  kube-state-metrics  namespace.yaml  node_exporter  podinfo  prometheus  README.md
+[root@node1 ~/manifests/monitor/prometheus]# kubectl apply -f namespace.yaml
+[root@node1 ~/manifests/monitor/prometheus/node_exporter]# ls
+node-exporter-ds.yaml  node-exporter-svc.yaml
+----部署node_exporter
+[root@node1 ~/manifests/monitor/prometheus/node_exporter]# kubectl apply -f .
+[root@node1 ~/manifests/monitor/prometheus/prometheus]# ls
+prometheus-cfg.yaml  prometheus-deploy.yaml  prometheus-rbac.yaml  prometheus-svc.yaml
+----部署prometheus-server
+[root@node1 ~/manifests/monitor/prometheus/prometheus]# kubectl apply -f . 
+注：生产上用的时候一定要用持久化存储，NFS,GlusterFS,PV/PVC等，有状态应使用statefulSet控制器。
+-----部署kube-state-metrics
+[root@node2 ~]#  curl -s https://zhangguanzhang.github.io/bash/pull.sh | bash -s -- gcr.io/google_containers/kube-state-metrics-amd64:v1.3.1 #先下载需要的镜像
+[root@node1 ~/manifests/monitor/prometheus/kube-state-metrics]# kubectl apply -f .
+-----部署pod-info
+[root@node1 ~/manifests/monitor/prometheus/podinfo]# kubectl apply -f . -n prom
+-----部署k8s-prometheus-adapter
+--1. 生成serving.key并用k8sCA签署证书
+[root@node1 /etc/kubernetes/pki]# (umask 077; openssl genrsa -out serving.key 2048)
+[root@node1 /etc/kubernetes/pki]# openssl req -new -key ./serving.key -out serving.csr -subj '/CN=serving'
+[root@node1 /etc/kubernetes/pki]# openssl x509 -req -in ./serving.csr -CA ./ca.crt -CAkey ./ca.key -CAcreateserial -out serving.crt -days 365
+--2.生成secret
+[root@node1 /etc/kubernetes/pki]# kubectl create secret generic cm-adapter-serving-certs --from-file=serving.key=./serving.key --from-file=serving.crt=./serving.crt -n prom
+--3.替换custom-metrics-apiserver-deployment.yaml并下载新的文件需要的configmap，并将新的文件名称空间改成prom
+[root@node1 ~/manifests/monitor/prometheus/k8s-prometheus-adapter]# mv custom-metrics-apiserver-deployment.yaml{,bak}
+[root@node1 ~/manifests/monitor/prometheus/k8s-prometheus-adapter]# curl -OL https://raw.githubusercontent.com/DirectXMan12/k8s-prometheus-adapter/master/deploy/manifests/custom-metrics-apiserver-deployment.yaml
+[root@node1 ~/manifests/monitor/prometheus/k8s-prometheus-adapter]# axel  https://raw.githubusercontent.com/DirectXMan12/k8s-prometheus-adapter/master/deploy/manifests/custom-metrics-config-map.yaml
+[root@node1 ~/manifests/monitor/prometheus/k8s-prometheus-adapter]# kubectl apply -f .
+[root@node1 ~/manifests/monitor/prometheus/k8s-prometheus-adapter]# kubectl api-versions
+custom.metrics.k8s.io/v1beta1 #有这个表示k8s-prometheus-adapter部署成功
+----安装grafana
+[root@node1 ~/manifests/monitor/prometheus]# cat grafana-pod.yaml 
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: pod-grafana
+  namespace: prom
+  labels: 
+    app: grafana
+    component: front
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+      component: front
+  template:
+    metadata:
+      labels: 
+        app: grafana
+        component: front
+    spec:
+      containers:
+      - name: grafana
+        image: grafana/grafana:7.0.5
+        ports:
+        - name: grafana
+          containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: prom
+spec:
+  ports:
+  - targetPort: 3000
+    port: 3000
+  selector:
+    app: grafana
+    component: front
+  type: NodePort
+[root@node1 ~/manifests/monitor/prometheus]# kubectl apply -f grafana-pod.yaml
+注：就可以去grafana添加prometheus数据源了
+
+#HPA：水平pod自动伸缩
+3个node负载率为90%，每个pod负载率为60%，最多可运行多少个pod:90%X3/60%
+只支核心指标进行弹性缩放，HPA有三个版本：
+[root@node1 ~/manifests/monitor/prometheus/k8s-prometheus-adapter]# kubectl api-versions
+autoscaling/v1
+autoscaling/v2beta1
+autoscaling/v2beta2
+[root@node1 ~/manifests/monitor/prometheus/k8s-prometheus-adapter] kubectl run myapp --image=ikubernetes/myapp:v1 --replicas=1 --requests='cpu=50m,memory=256Mi' --limits='cpu=50m,memory=256Mi' --labels='app=myapp' --expose --port=80
+#当pod的cpu到达60%时开始自动伸缩，最小为1个，最多为8个(也要看系统资源空余率)，命令默认是v1版本控制器,只支持cpu
+[root@node1 ~/manifests/monitor/prometheus/k8s-prometheus-adapter]#  kubectl autoscale deployment myapp --min=1 --max=8 --cpu-percent=60 
+[root@node1 ~/manifests/monitor/prometheus/k8s-prometheus-adapter]# kubectl get hpa
+NAME    REFERENCE          TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+myapp   Deployment/myapp   <unknown>/60%   1         8         0          2s
+#hpa V2支持cpu和内存
+[root@node1 ~/manifests/monitor/hpa]# cat hpa-v2-demo.yaml 
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: myapp-hpa-v2
+spec:
+  scaleTargetRef: 
+    apiVersion: apps/v1
+    kind: Deployment
+    name: myapp   
+  minReplicas: 1
+  maxReplicas: 10 
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      targetAverageUtilization: 55
+  - type: Resource
+    resource:
+      name: memory
+      targetAverageValue: 50Mi 
+[root@node1 ~/manifests/monitor/hpa]# kubectl apply -f hpa-v2-demo.yaml 
+[root@node1 ~/manifests/monitor/hpa]# kubectl patch svc myapp -p '{"spec":{"type":"NodePort"}}'
+[root@node1 ~]# yum install -y httpd-tools
+[root@node1 ~]# ab -c 1000 -n 50000 http://192.168.15.202:31328/index.html
+[root@node1 ~/manifests/monitor/hpa]# kubectl get hpa
+NAME           REFERENCE          TARGETS                  MINPODS   MAXPODS   REPLICAS   AGE
+myapp-hpa-v2   Deployment/myapp   1515520/50Mi, 100%/55%   1         10        1          8m59s
+[root@node1 ~/manifests/monitor/hpa]# kubectl get pods
+NAME                     READY   STATUS    RESTARTS   AGE
+myapp-5556cc5bf6-9gcrt   1/1     Running   0          26m
+myapp-5556cc5bf6-zj7tr   1/1     Running   0          31s #自动伸缩了一个
+#针对pod的metrics请求数来做自动伸缩
+[root@node1 ~/manifests/monitor/hpa]# cat hpa-v2-custom.yaml 
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: hpa-custom-deployment
+  labels: 
+    app: hpa-custom-deployment
+  namespace: default
+spec:
+  replicas: 1
+  selector: 
+    matchLabels:
+      app: myapp
+  template:
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: myapp
+        image: ikubernetes/metrics-app
+        ports:
+        - name: http
+          containerPort: 80
+---
+apiVersion: autoscaling/v2beta1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: myapp-hpa-v2-custom
+  namespace: default
+spec:
+  scaleTargetRef: 
+    apiVersion: apps/v1
+    kind: Deployment
+    name: myapp   
+  minReplicas: 1
+  maxReplicas: 10 
+  metrics:
+  - type: Pods
+    pods:
+      metricName: http_requests
+      targetAverageValue: 800m
+[root@node1 ~]# ab -c 1000 -n 50000 http://192.168.15.202:31328/
+
+#helm工具
+无状态：nginx
+有状态：tomcat,redis,mysql,etcd..
+helm是kubernetes的另外一个项目
+helm提供专门的应用程序（chart）:deployment,service,hpa，模块，值文件等打包成一个程序清单，模块和值文件是自定义应用的修改点，开发者需要更改模块，应用值只需要更改值文件。
+Chart repository:chart仓库
+helm是Tiller的客户端，helm运行在用户的pc上，Tiller是守护进程最好部署在k8s集群内。helm请求部署时先发给tiller,然后由tiler请求给API Server,实现部署pod。
+helm在用户pc上从chart repository获取chart后一般存储在用户的家目录下，当用户传入自定义参数给chart部署后就会在k8s集群运行，运行的对象叫release,不叫pod
+Helm:
+	核心术语：
+		1. Chart:一个helm程序包，是配置清单并且解决了依赖关系
+		2. Repository:Charts仓库，https/http服务器
+		3. Release:特定的Chart部署于目标集群上的一个实例
+		Chart -> Config -> Release
+	程序架构：
+		helm: 客户端，运行在用户pc,管理本地的chart仓库和远端的chart Repository,与Tiller服务器交互，发送chart,实例安装、查询、卸载等操作
+		Tiller：服务端，可运行在集群内或集群外，但部署在集群外非常麻烦，多数部署在集群内。接收helm发来的charts与config,合并生成release
+1. 安装helm客户端:
+注：有linux，windows、OSX的客户端，linux下载即可用。helm初始化时需要使用~/.kube/config文件去跟APIserver进行认证
+[root@node1 ~]# axel -n 30 https://get.helm.sh/helm-v3.2.4-linux-amd64.tar.gz
+[root@node1 ~]# tar xf helm-v3.2.4-linux-amd64.tar.gz 
+[root@node1 ~]# mv linux-amd64/helm /usr/local/bin/
+helm常用命令：
+	release管理：
+		1. install
+		2. delete
+		3. upgrade/rollback
+		4. list
+		5. history：查看release的部署历史
+		6. status:获取release的状态信息
+	chart管理：
+		1. create #新建一个chart
+		2. fetch  #下载一个chart而且展开
+		3. get  #获取一个chart但并展开
+		4. inspect #查看底层信息
+		5. package ：把本地的chart打包
+		6. verify：校验
+2. 部署chart(在如果3.2.4新版本上不用特意去安装tillar的rbac，猜测应该将tiller整合在apiserver上了直接运行即可)
+官网helm仓库：https://hub.kubeapps.com/
+--添加helm仓库
+[root@node1 ~/manifests/helm]# helm repo add stable https://kubernetes-charts.storage.googleapis.com/ 
+"stable" has been added to your repositories
+[root@node1 ~/manifests/helm]#  helm repo add aliyun https://apphub.aliyuncs.com 
+"aliyun" has been added to your repositories
+[root@node1 ~/manifests/helm]# helm repo list
+NAME  	URL                                              
+stable	https://kubernetes-charts.storage.googleapis.com/
+aliyun	https://apphub.aliyuncs.com  
+[root@node1 ~/manifests/helm]# helm search repo aliyun
+--安装nginx
+[root@node1 ~/manifests/helm]# helm install nginx-server aliyun/nginx
+--查看状态 
+[root@node1 ~/manifests/helm]# helm status nginx-server
+--查看当前helm中有哪些应用
+[root@node1 ~/manifests/helm]# helm list
+NAME        	NAMESPACE	REVISION	UPDATED                                	STATUS  	CHART      	APP VERSION
+nginx-server	default  	1       	2020-07-05 16:18:13.062026367 +0800 CST	deployed	nginx-5.1.5	1.16.1     
+#EFK日志收集系统
+[root@node1 ~/manifests]# kubectl create ns efk
+[root@node1 ~]# helm fetch aliyun/elasticsearch
+[root@node1 ~/elasticsearch]# helm install elasticsearch --namespace=efk -f values.yaml  aliyun/elasticsearch
 
 
