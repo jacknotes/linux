@@ -55,32 +55,33 @@ services:
         reservations:
            cpus: '0.5'
            memory: 100M
-  logstash:
-    #image: docker.elastic.co/logstash/logstash:7.1.1
-    image: 192.168.15.200:8888/elk/logstash:7.1.1
-    container_name: logstash
-    hostname: logstash
-    restart: always
-    volumes:
-      - /data/elk/production.conf:/usr/share/logstash/pipeline/logstash.conf
-      - /etc/localtime:/etc/localtime
-    depends_on:
-      - elasticsearch
-    ports:
-      - 34567:34567    #tcp
-      - 9600:9600      #API Interface
-      - 5044:5044      #filebeat
-      - 5140:5140      #syslog
-    deploy:
-     resources:
-        limits:
-           cpus: '2'
-           memory: 1G
-        reservations:
-           cpus: '0.5'
-           memory: 200M
+#  logstash:
+#    #image: docker.elastic.co/logstash/logstash:7.1.1
+#    image: 192.168.15.200:8888/elk/logstash:7.1.1
+#    container_name: logstash
+#    hostname: logstash
+#    restart: always
+#    volumes:
+#      - /data/elk/production.conf:/usr/share/logstash/pipeline/logstash.conf
+#      - /etc/localtime:/etc/localtime
+#    depends_on:
+#      - elasticsearch
+#    ports:
+#      - 34567:34567    #tcp
+#      - 9600:9600      #API Interface
+#      - 5044:5044      #filebeat
+#      - 5140:5140      #syslog
+#    deploy:
+#     resources:
+#        limits:
+#           cpus: '2'
+#           memory: 1G
+#        reservations:
+#           cpus: '0.5'
+#           memory: 200M
   nginx:
     image: 192.168.15.200:8888/mydocker/nginx:1.19.1
+    #image: nginx:1.19.1
     container_name: nginx
     hostname: nginx
     restart: always
