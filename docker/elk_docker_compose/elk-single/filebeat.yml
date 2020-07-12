@@ -18,12 +18,12 @@ filebeat.inputs:
 # you can use different inputs for various configurations.
 # Below are the input specific configurations.
 - type: log
-  enabled: false
-  paths:
-    - /var/log/httpd/*
-  tags: ["httpd"]
-- type: log
   enabled: true
+  paths:
+    - /var/log/messages
+  tags: ["systemlog"]
+- type: log
+  enabled: false
   paths:
     - /var/lib/docker/containers/*/*.log
   tags: ["docker"]
@@ -33,7 +33,7 @@ filebeat.inputs:
 
 document_type: log
 fields: 
-  Sip: "192.168.15.199"
+  Sip: "172.19.229.224"
 fields_under_root: true
   # Exclude lines. A list of regular expressions to match. It drops the lines that are
   # matching any regular expression from the list.
@@ -153,18 +153,21 @@ fields_under_root: true
 # ---------------------------- Elasticsearch Output ----------------------------
 output.elasticsearch:
   # Array of hosts to connect to.
-  hosts: ["192.168.15.199:8011"]
+  hosts: ["127.0.0.1:9200"]
   indices:
     - index: "docker_%{+yyyy.MM.dd}"
       when.contains:
         tags: "docker"
+    - index: "systemlog_%{+yyyy.MM.dd}"
+      when.contains:
+        tags: "systemlog"
 
   # Protocol - either `http` (default) or `https`.
   #protocol: "https"
   # Authentication credentials - either API key or username/password.
   #api_key: "id:api_key"
-  username: "jack"
-  password: "123456"
+  #username: "jack"
+  #password: "123456"
 
 
 #setup.template.name: "docker"

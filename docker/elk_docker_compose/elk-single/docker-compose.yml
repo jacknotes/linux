@@ -1,15 +1,15 @@
 version: '3'
 services:
   elasticsearch:        
-   # image: elasticsearch:7.1.1    
+    #image: elasticsearch:7.1.1    
     image: 192.168.15.200:8888/elk/elasticsearch:7.1.1
     container_name: elasticsearch  
     hostname: elasticsearch
     restart: always                 
     environment:                                    
       - discovery.type=single-node 
-      - node.name=node1                  
-      - network.publish_host=192.168.15.199 
+      - node.name=els-master             
+      - network.publish_host=172.19.229.224
       - network.host=0.0.0.0               
       - bootstrap.memory_lock=true  
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"   
@@ -26,7 +26,7 @@ services:
            cpus: '0.5'
            memory: 200M
     volumes:
-      - /data/elk/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml 
+      - /data/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml 
       - esdata:/usr/share/elasticsearch/data  
       - /etc/localtime:/etc/localtime
     ports:
@@ -43,7 +43,7 @@ services:
       - elasticsearch  
     restart: always
     volumes:
-      - /data/elk/kibana.yml:/usr/share/kibana/config/kibana.yml
+      - /data/elasticsearch/kibana.yml:/usr/share/kibana/config/kibana.yml
       - /etc/localtime:/etc/localtime
     ports:
       - 5601:5601
@@ -86,8 +86,8 @@ services:
     hostname: nginx
     restart: always
     volumes:
-      - /data/elk/.users:/etc/nginx/.users
-      - /data/elk/default.conf:/etc/nginx/conf.d/default.conf
+      - /data/elasticsearch/.users:/etc/nginx/.users
+      - /data/elasticsearch/default.conf:/etc/nginx/conf.d/default.conf
     depends_on:
       - elasticsearch
       - kibana
