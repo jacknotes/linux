@@ -1,4 +1,4 @@
-﻿#prometheus
+#prometheus
 #学习1
 #时间序列数据：
 按照时间顺序记录系统、设备状态变化的数据被称为时序数据。
@@ -247,6 +247,9 @@ tcp监控某个端口
 dns监控dns
 推荐ID
 9965
+实操模板：
+mysqld-exporter: 7362
+cadvisor: 11277
 
 #grafana+onealert报警
 在睿象云（onealert）上注册帐号，可以使用webhook勾子.
@@ -641,3 +644,38 @@ pagedury默认只有14天试用期，购买一个月几百元。
 2. 创建新的service
 3. 用户接收帐户设置以及报警信息的设置
 
+
+
+#exporter
+exporter download links: https://github.com/prometheus
+---------------------------
+范围	常用Exporter
+数据库	MySQL Exporter, Redis Exporter, MongoDB Exporter, MSSQL Exporter等
+硬件	Apcupsd Exporter，IoT Edison Exporter， IPMI Exporter, Node Exporter等
+消息队列	Beanstalkd Exporter, Kafka Exporter, NSQ Exporter, RabbitMQ Exporter等
+存储	Ceph Exporter, Gluster Exporter, HDFS Exporter, ScaleIO Exporter等
+HTTP服务	Apache Exporter, HAProxy Exporter, Nginx Exporter等
+API服务	AWS ECS Exporter， Docker Cloud Exporter, Docker Hub Exporter, GitHub Exporter等
+日志	Fluentd Exporter, Grok Exporter等
+监控系统	Collectd Exporter, Graphite Exporter, InfluxDB Exporter, Nagios Exporter, SNMP Exporter等
+其它	Blockbox Exporter, JIRA Exporter, Jenkins Exporter， Confluence Exporter等
+---------------------------
+
+1. mysqld-exporter
+[root@node1 /usr/local/blackbox_exporter]# cat /usr/lib/systemd/system/mysqld_exporter.service 
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Environment=DATA_SOURCE_NAME=exporter:exporter@(localhost:3306)/
+Type=simple
+ExecStart=/usr/local/mysqld_exporter/mysqld_exporter --config.my-cnf=/usr/local/mysqld_exporter/.my.cnf --web.listen-address=0.0.0.0:9104
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
+2. blackbox_exporter
