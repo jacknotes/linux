@@ -3,7 +3,7 @@
 =======
 #安装shadowsocks:
 #CentOS:
-yum install python-setuptools && easy_install pip
+yum install -y python-setuptools && easy_install pip
 pip install shadowsocks
 #Debian / Ubuntu:
 apt-get install python-pip
@@ -210,7 +210,7 @@ fast_open	开启或关闭 TCP_FASTOPEN, 填true / false，需要服务端支持
 [root@lnmp ~]# ps aux | grep ssserver  #查看是否启动
 root      7656  0.0  0.2 207204 10344 ?        Ss   13:38   0:00 /usr/bin/python /usr/bin/ssserver -c /etc/shadowsocks.json -d start
 root      7666  0.0  0.0 112716  2236 pts/0    S+   13:38   0:00 grep --color=auto ssserve
-[root@lnmp ~]# /usr/bin/ssserver -c /etc/shadowsocks/shadowsocks.json -d start #进行开机启动
+[root@lnmp ~]# /usr/bin/ssserver -c /etc/shadowsocks.json -d start #进行开机启动
 =======
 #配置BBR加速：
 TCP BBR是谷歌出品的TCP拥塞控制算法。BBR目的是要尽量跑满带宽，并且尽量不要有排队的情况。BBR可以起到单边加速TCP连接的效果。
