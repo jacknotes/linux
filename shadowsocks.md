@@ -1,4 +1,4 @@
-﻿#shadowsocks
+#shadowsocks
 <pre>
 =======
 #安装shadowsocks:
@@ -21,11 +21,10 @@ sudo less /var/log/shadowsocks.log
 [root@lnmp ~]# cat /etc/shadowsocks.json
 {
     "server": "0.0.0.0",
-    "server_port": 1024,
-    "local_address": "127.0.0.1",
-    "local_port": 1080,
-    "password": "pass123",
+    "server_port": 10606,
+    "password": "password!@#",
     "timeout": 300,
+    "fast_open": true,
     "method": "aes-256-cfb"
 }
 ###2. 分密码端口不在乎流量
@@ -262,16 +261,14 @@ yum install python-pip
 pip install shadowsocks
 [root@salt-server /etc/shadowsocks]# cat /etc/shadowsocks/shadowsocks.json #连接服务器信息
 {
-  "server":"ip",
-  "server_port":1080,
-  "local_address":"127.0.0.1",
-  "local_post":1080,
-  "password":"password",
-  "timeout":600,
-  "method":"rc4-md5",
-  "fast_open":false,
-  "workers":1
+  "server": "199.247.8.72",
+  "server_port": 10606,
+  "local_address": "127.0.0.1",
+  "local_post": 1080,
+  "password": "password!@#",
+  "method": "rc4-md5"
 }
+
 
 [root@salt-server /etc/shadowsocks]# cat /etc/systemd/system/shadowsocks.service #设置服务启动
 [Unit]
@@ -291,6 +288,7 @@ systemctl stop shadowsocks.service
 }
 
 ####安装配置Privoxy
+注：privoxy是将shadowsocks的sslocal的本地代理端口进行转换成http/https协议的，privoxy依赖sslocal,并且运行在sslocal机器上
 Shadowsocks是一个 socket5 服务，我们需要使用 Privoxy 把流量转到 http／https 上。
 下载privoxy:wget http://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/p/privoxy-3.0.26-1.el7.x86_64.rpm
 安装privoxy：rpm -ivh privoxy-3.0.26-1.el7.x86_64.rpm
