@@ -1,4 +1,4 @@
-﻿#nginx 
+#nginx 
 <pre>
 #nginx:
 io复用
@@ -18,9 +18,9 @@ Event-driven edge trigger
 sendfile,sendfile64:支持将文件通过内核封装直接响应客户端。
 #部署nginx:
 groupadd -r -g 1000 nginx
-useradd -r -g 1000 -u 1000 nginx 
+useradd -r -g 1000 -u 1000 -M nginx 
 [root@lamp nginx-1.16.0]# yum groupinstall -y "Development Tools" "Development and Creative Workstation "
-[root@lamp nginx-1.16.0]# ./configure  --prefix=/usr/local/nginx  --sbin-path=/usr/local/nginx/sbin/nginx --conf-path=/usr/local/nginx/conf/nginx.conf --error-log-path=/var/log/nginx/error.log  --http-log-path=/var/log/nginx/access.log  --pid-path=/var/run/nginx/nginx.pid --lock-path=/var/lock/nginx.lock  --user=nginx --group=nginx --with-http_ssl_module --with-http_stub_status_module --with-http_gzip_static_module --http-client-body-temp-path=/var/tmp/nginx/client/ --http-proxy-temp-path=/var/tmp/nginx/proxy/ --http-fastcgi-temp-path=/var/tmp/nginx/fcgi/ --http-uwsgi-temp-path=/var/tmp/nginx/uwsgi --http-scgi-temp-path=/var/tmp/nginx/scgi --with-pcre
+[root@lamp nginx-1.16.0]# ./configure  --prefix=/usr/local/nginx  --sbin-path=/usr/local/nginx/sbin/nginx --conf-path=/usr/local/nginx/conf/nginx.conf --error-log-path=/var/log/nginx/error.log  --http-log-path=/var/log/nginx/access.log  --pid-path=/var/run/nginx/nginx.pid --lock-path=/var/lock/nginx.lock  --user=nginx --group=nginx --with-pcre=/usr/local/pcre --with-http_ssl_module --with-http_stub_status_module --with-http_gzip_static_module --http-client-body-temp-path=/var/tmp/nginx/client/ --http-proxy-temp-path=/var/tmp/nginx/proxy/ --http-fastcgi-temp-path=/var/tmp/nginx/fcgi/ --http-uwsgi-temp-path=/var/tmp/nginx/uwsgi --http-scgi-temp-path=/var/tmp/nginx/scgi 
 [root@lamp nginx-1.16.0]# make && make install
 --------------nginx启动脚本----------------
 [root@lamp init.d]# cat nginxd 
