@@ -1,4 +1,4 @@
-#kubeadm方式(官网推荐) 搭建K8s高可用集群
+﻿#kubeadm方式(官网推荐) 搭建K8s高可用集群
 <pre>
 #规划：
 master1: node1 192.168.15.201 install:keepalived,haproxy k8s:kube-apiserver,kube-controller-manager,kube-scheduler,etcd,kubelet,kube-proxy,flannel,docker
@@ -855,6 +855,9 @@ kubeadm alpha certs check-expiration
 
 ##kubeadm alpha phase kubeconfig all --config kubeadm-config.yaml 这个是重新生成配置文件，可不执行。
 
+#--------使用脚本将kubeadm的证书延长至10年
+REFERENCE:https://github.com/luckylucky421/kubernetes1.17.3
+将这个项目clone下来或者将update-kubeadm-cert.sh脚本下下来，在所有master上执行./update-kubeadm-cert.sh all即可。
 </pre>
 
 
