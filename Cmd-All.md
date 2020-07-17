@@ -1472,4 +1472,8 @@ https注意事项:
 1.ssl会话只能针对ip地址进行加密，也就是多个主机名使用同一个ip地址时，只能使用一个主机名建立建立会话
 2.证书签署时fqdn名称必须和虚拟主机名称一样
 
+#/etc/sudoers
+test    ALL=(ALL)       NOPASSWD: ALL,/usr/bin/passwd [A-Za-z0-9]*,!/usr/bin/passwd root,!/usr/bin/passwd,!/bin/su - root,!/bin/su root,!/bin/su -,!/bin/su
+注：指令遵从'从广到细',后面会覆盖前面的指令。
+
 </pre>

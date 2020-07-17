@@ -91,7 +91,8 @@ ExecStart=/usr/local/prometheus/prometheus \
 -storage.local.retention 168h0m0s \
 -storage.local.max-chunks-to-persist 3024288 \
 -storage.local.memory-chunks=50502740 \
--storage.local.num-fingerprint-mutexes=300960
+-storage.local.num-fingerprint-mutexes=300960 \
+--web.enable-lifecycle
 Restart=on-failure
 
 [Install]
@@ -112,7 +113,8 @@ WantedBy=multi-user.target
 控制写入数据之后，何时同步到磁盘，有'never', 'always', 'adaptive'. 同步操作可以降低因为操作系统崩溃带来数据丢失，但是会降低写入数据的性能。 默认为adaptive的策略，即不会写完数据就立刻同步磁盘，会利用操作系统的page cache来批量同步。
 --storage.local.checkpoint-interval
 进行checkpoint的时间间隔，即对尚未写入到磁盘的内存chunks执行checkpoint操作。
-
+--web.enable-lifecycle
+开启此参数可对prometheus进行配置热加载和状态检查等。
 
 [root@node3 /usr/local/prometheus]# systemctl daemon-reload
 [root@node3 /usr/local/prometheus]# systemctl start prometheus
@@ -200,6 +202,36 @@ scrape_configs:
     - targets: ['192.168.15.201:9104']
 [root@node3 /usr/local/prometheus]# systemctl restart prometheus.service #重新启动服务
 #注：在http://192.168.15.201:9090/targets可以查看添加mariadb的状态了。
+
+#----docker运行mysqld_exporter
+[root@hohong-node2 /tmp]# cat mysqld-exporter.yaml 
+version: '3'
+services:
+  mysql:
+    image: mysql:5.7
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_DATABASE=database
+  mysqlexporter:
+    image: prom/mysqld-exporter
+    ports:
+      - "9104:9104"
+    environment:
+      - DATA_SOURCE_NAME=root:password@(mysql:3306)/database
+[root@hohong-node2 /tmp]# docker-compose -f mysqld-exporter.yaml up -d
+
+#-----安装cAdvisor监控容器
+docker run \
+  --volume=/:/rootfs:ro \
+  --volume=/var/run:/var/run:rw \
+  --volume=/sys:/sys:ro \
+  --volume=/var/lib/docker/:/var/lib/docker:ro \
+  --publish=8080:8080 \
+  --detach=true \
+  --name=cadvisor \
+  google/cadvisor:latest
 
 #node3安装grafana
 [root@node3 /download]# wget https://dl.grafana.com/oss/release/grafana-7.0.3-1.x86_64.rpm
@@ -381,6 +413,45 @@ topk(): Gauge类型数据和Counter类型数据使用
 count(): 把数值符合条件的，输出数目进行加合。一般使用它进行模糊的监控判断，例如，当cpu(或连接数)高于80%的机器大于30台就报警
 例如：count(count_netstat_wait_connections > 200) #找出当前（或历史）当TCP等待数大于200的机器数量
 predict_linear(): 可以起到对曲线变化速率的计算，以及在一段时间加速度的预测。用得不是很多
+
+#-----查询操作
+#查询时间序列
+http_requests_total
+等同于：
+http_requests_total{}
+#范围查询：
+http_request_total{}[1d]
+除了使用m表示分钟以外，PromQL的时间范围选择器支持其它时间单位：
+s - 秒
+m - 分钟
+h - 小时
+d - 天
+w - 周
+y - 年
+#时间位移操作：
+如果我们想查询，5分钟前的瞬时样本数据，或昨天一天的区间内的样本数据呢? 这个时候我们就可以使用位移操作，位移操作的关键字为offset：
+http_request_total{} offset 5m
+http_request_total{}[1d] offset 1d
+#使用聚合操作
+-查询系统所有http请求的总量
+sum(http_request_total)
+-按照mode计算主机CPU的平均使用时间
+avg(node_cpu) by (mode)
+-按照主机查询各个主机的CPU使用率
+sum(sum(irate(node_cpu{mode!='idle'}[5m]))  / sum(irate(node_cpu[5m]))) by (instance)
+#标量和字符串
+--除了使用瞬时向量表达式和区间向量表达式以外，PromQL还直接支持用户使用标量(Scalar)和字符串(String)。
+-标量（Scalar）：一个浮点型的数字值
+标量只有一个数字，没有时序。
+#字符串（String）：一个简单的字符串值
+直接使用字符串，作为PromQL表达式，则会直接返回字符串。
+#合法的PromQL表达式
+http_request_total # 合法
+http_request_total{} # 合法
+{method="get"} # 合法
+{__name__=~"node_cpu_seconds_total"}
+#预测内存4小时后的剩余情况
+predict_linear(node_filesystem_free_bytes{job="nodes"}[1h], 4 * 3600) / 1024 /1024
 
 ##企业级监控数据采集方法
 prometheus后台运行方式：
@@ -616,6 +687,8 @@ ehlo_identity =            #这里不能写，否则会被网易识别为垃圾�
 #cpu
 CPU的使用率：
 (1 - ((sum(increase(node_cpu_seconds_total{mode="idle"}[1m])) by(instance)) / (sum(increase(node_cpu_seconds_total[1m])) by (instance)))) * 100
+或
+(1- (sum(rate(node_cpu_seconds_total{mode="idle"}[1m])) by(instance)) / ((sum (rate(node_cpu_seconds_total[1m])) by(instance))) ) * 100
 针对IOWAIT类型的CPU等待时间：
 (sum(increase(node_cpu_seconds_total{mode="iowait"}[1m])) by(instance) / sum(increase(node_cpu_seconds_total[1m])) by (instance)) * 100
 #内存
