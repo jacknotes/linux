@@ -1111,6 +1111,22 @@ taints的effect定义对pod的排斥等级：
 #----删除污点
 #[root@k8s-master metrics]# kubectl taint node node2 node-type-
 #[root@k8s-master metrics]# kubectl taint node node3 node-type-
+--列出污点
+[root@node1 ~/kibana]# cat nodes-taints.tmpl 
+{{printf "%-50s %-12s\n" "Node" "Taint"}}
+{{- range .items}}
+    {{- if $taint := (index .spec "taints") }}
+        {{- .metadata.name }}{{ "\t" }}
+        {{- range $taint }}
+            {{- .key }}={{ .value }}:{{ .effect }}{{ "\t" }}
+        {{- end }}
+        {{- "\n" }}
+    {{- end}}
+{{- end}}
+[root@node1 ~/kibana]# kubectl get nodes -o go-template-file="./nodes-taints.tmpl"
+Node                                               Taint       
+node1	node-role.kubernetes.io/master=<no value>:NoSchedule	
+node2	node.kubernetes.io/unreachable=<no value>:NoSchedule	node.kubernetes.io/unreachable=<no value>:NoExecute
 ----容忍node2上的污点
 2. [root@node1 ~/manifests/schedule]# cat tains-deployment-pod.yaml
 apiVersion: apps/v1
@@ -1274,157 +1290,10 @@ REFERENCE:
 安全参考链接：https://aeric.io/post/k8s-metrics-server-installation/
 稳定版参考链接：https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/metrics-server 
 新版本参考链接：https://github.com/kubernetes-incubator/metrics-server/tree/master/deploy/1.8%2B
-#安装metris-server
-[root@node1 ~/manifests/monitor]# for i in auth-delegator.yaml auth-reader.yaml metrics-apiservice.yaml metrics-server-deployment.yaml metrics-server-service.yaml resource-reader.yaml;do curl -OL https://raw.githubusercontent.com/kubernetes/kubernetes/release-1.15/cluster/addons/metrics-server/$i;done
-[root@node1 ~/manifests/monitor]# ls
-auth-delegator.yaml  metrics-apiservice.yaml         resource-reader.yaml
-auth-reader.yaml     metrics-server-deployment.yaml
-metrics              metrics-server-service.yaml
-----#需要更改两个文件才可运行
-[root@node1 ~/manifests/monitor]# cat resource-reader.yaml 
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: system:metrics-server
-  labels:
-    kubernetes.io/cluster-service: "true"
-    addonmanager.kubernetes.io/mode: Reconcile
-rules:
-- apiGroups:
-  - ""
-  resources:
-  - pods
-  - nodes
-  - nodes/stats  #增加这一行
-[root@node1 ~/manifests/monitor]# cat metrics-server-deployment.yaml 
-注：命令部分注释掉如下：
-- name: metrics-server
-        image: k8s.gcr.io/metrics-server-amd64:v0.3.3
-        command:
-        - /metrics-server
-        - --metric-resolution=30s
-        - --kubelet-insecure-tls
-        - --kubelet-preferred-address-types=InternalIP
-        # These are needed for GKE, which doesn't support secure communication yet.
-        # Remove these lines for non-GKE clusters, and when GKE supports token-based auth.
-        #- --kubelet-port=10255
-        #- --deprecated-kubelet-completely-insecure=true
-        #- --kubelet-preferred-address-types=InternalIP,Hostname,InternalDNS,ExternalDNS,ExternalIP
-注：命令部分注释掉如下：
-- name: metrics-server-nanny
-        image: k8s.gcr.io/addon-resizer:1.8.5
-        command:
-          - /pod_nanny
-          - --config-dir=/etc/config
-          #- --cpu={{ base_metrics_server_cpu }}
-          - --extra-cpu=0.5m
-          #- --memory={{ base_metrics_server_memory }}
-          #- --extra-memory={{ metrics_server_memory_per_node }}Mi
-          - --threshold=5
-          - --deployment=metrics-server-v0.3.3
-          - --container=metrics-server
-          - --poll-period=300000
-          - --estimator=exponential
-          # Specifies the smallest cluster (defined in number of nodes)
-          # resources will be scaled to.
-          #- --minClusterSize={{ metrics_server_min_cluster_size }}
-#在node上下载镜像
-[root@node2 ~]# curl -s https://zhangguanzhang.github.io/bash/pull.sh | bash -s -- k8s.gcr.io/metrics-server-amd64:v0.3.3
-[root@node2 ~]# curl -s https://zhangguanzhang.github.io/bash/pull.sh | bash -s -- k8s.gcr.io/addon-resizer:1.8.5
-[root@node1 ~/manifests/monitor]# kubectl apply -f .
-[root@node2 ~]# kubectl api-versions
-[root@node2 ~]# curl http://127.0.0.1:8090/apis/metrics.k8s.io/v1beta1/nodes #测试api是否有数据
-[root@node2 ~]# kubectl top pods
-NAME                                CPU(cores)   MEMORY(bytes)   
-myapp-deployment-765c9b575d-26dj5   0m           1Mi             
-myapp-deployment-765c9b575d-ddrfm   0m           1Mi             
-pod-demo                            0m           1Mi             
-[root@node2 ~]# kubectl top nodes
-NAME    CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%   
-node1   234m         5%     1162Mi          42%       
-node2   95m          2%     983Mi           36%       
-node3   281m         7%     629Mi           17%  
-#prometheus服务发现
-FERERENCE:https://github.com/yunlzheng/prometheus-book/blob/master/sd/why-need-service-discovery.md
-而对于Prometheus这一类基于Pull模式的监控系统，显然也无法继续使用的static_configs的方式静态的定义监控目标。而对于Prometheus而言其解决方案就是引入一个中间的代理人（服务注册中心），这个代理人掌握着当前所有监控目标的访问信息，Prometheus只需要向这个代理人询问有哪些监控目标即可， 这种模式被称为服务发现。
+#部署Metrics-server和prometheus监控
+REFERENCE: https://github.com/coreos/kube-prometheus/tree/master/manifests
+#将清单下载下来，先apply里面的setup文件夹下所有yaml文件，再应用所有manifests下yaml文件即可
 
-#prometheus监控--有些指标没有获取到，需要再次验证
-[root@node1 ~/download]# git clone https://github.com/iKubernetes/k8s-prom.git
-[root@node1 ~/manifests/monitor/prometheus]# ls
-k8s-prometheus-adapter  kube-state-metrics  namespace.yaml  node_exporter  podinfo  prometheus  README.md
-[root@node1 ~/manifests/monitor/prometheus]# kubectl apply -f namespace.yaml
-[root@node1 ~/manifests/monitor/prometheus/node_exporter]# ls
-node-exporter-ds.yaml  node-exporter-svc.yaml
-----部署node_exporter
-[root@node1 ~/manifests/monitor/prometheus/node_exporter]# kubectl apply -f .
-[root@node1 ~/manifests/monitor/prometheus/prometheus]# ls
-prometheus-cfg.yaml  prometheus-deploy.yaml  prometheus-rbac.yaml  prometheus-svc.yaml
-----部署prometheus-server
-[root@node1 ~/manifests/monitor/prometheus/prometheus]# kubectl apply -f . 
-注：生产上用的时候一定要用持久化存储，NFS,GlusterFS,PV/PVC等，有状态应使用statefulSet控制器。
------部署kube-state-metrics
-[root@node2 ~]#  curl -s https://zhangguanzhang.github.io/bash/pull.sh | bash -s -- gcr.io/google_containers/kube-state-metrics-amd64:v1.3.1 #先下载需要的镜像
-[root@node1 ~/manifests/monitor/prometheus/kube-state-metrics]# kubectl apply -f .
------部署pod-info
-[root@node1 ~/manifests/monitor/prometheus/podinfo]# kubectl apply -f . -n prom
------部署k8s-prometheus-adapter
---1. 生成serving.key并用k8sCA签署证书
-[root@node1 /etc/kubernetes/pki]# (umask 077; openssl genrsa -out serving.key 2048)
-[root@node1 /etc/kubernetes/pki]# openssl req -new -key ./serving.key -out serving.csr -subj '/CN=serving'
-[root@node1 /etc/kubernetes/pki]# openssl x509 -req -in ./serving.csr -CA ./ca.crt -CAkey ./ca.key -CAcreateserial -out serving.crt -days 365
---2.生成secret
-[root@node1 /etc/kubernetes/pki]# kubectl create secret generic cm-adapter-serving-certs --from-file=serving.key=./serving.key --from-file=serving.crt=./serving.crt -n prom
---3.替换custom-metrics-apiserver-deployment.yaml并下载新的文件需要的configmap，并将新的文件名称空间改成prom
-[root@node1 ~/manifests/monitor/prometheus/k8s-prometheus-adapter]# mv custom-metrics-apiserver-deployment.yaml{,bak}
-[root@node1 ~/manifests/monitor/prometheus/k8s-prometheus-adapter]# curl -OL https://raw.githubusercontent.com/DirectXMan12/k8s-prometheus-adapter/master/deploy/manifests/custom-metrics-apiserver-deployment.yaml
-[root@node1 ~/manifests/monitor/prometheus/k8s-prometheus-adapter]# axel  https://raw.githubusercontent.com/DirectXMan12/k8s-prometheus-adapter/master/deploy/manifests/custom-metrics-config-map.yaml
-[root@node1 ~/manifests/monitor/prometheus/k8s-prometheus-adapter]# kubectl apply -f .
-[root@node1 ~/manifests/monitor/prometheus/k8s-prometheus-adapter]# kubectl api-versions
-custom.metrics.k8s.io/v1beta1 #有这个表示k8s-prometheus-adapter部署成功
-----安装grafana
-[root@node1 ~/manifests/monitor/prometheus]# cat grafana-pod.yaml 
-apiVersion: apps/v1
-kind: Deployment
-metadata: 
-  name: pod-grafana
-  namespace: prom
-  labels: 
-    app: grafana
-    component: front
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: grafana
-      component: front
-  template:
-    metadata:
-      labels: 
-        app: grafana
-        component: front
-    spec:
-      containers:
-      - name: grafana
-        image: grafana/grafana:7.0.5
-        ports:
-        - name: grafana
-          containerPort: 3000
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: grafana
-  namespace: prom
-spec:
-  ports:
-  - targetPort: 3000
-    port: 3000
-  selector:
-    app: grafana
-    component: front
-  type: NodePort
-[root@node1 ~/manifests/monitor/prometheus]# kubectl apply -f grafana-pod.yaml
-注：就可以去grafana添加prometheus数据源了
 
 #HPA：水平pod自动伸缩
 3个node负载率为90%，每个pod负载率为60%，最多可运行多少个pod:90%X3/60%
@@ -1518,6 +1387,7 @@ spec:
 [root@node1 ~]# ab -c 1000 -n 50000 http://192.168.15.202:31328/
 
 #helm工具
+--helm官网：https://hub.kubeapps.com/charts/incubator
 无状态：nginx
 有状态：tomcat,redis,mysql,etcd..
 helm是kubernetes的另外一个项目
@@ -1554,7 +1424,9 @@ helm常用命令：
 		4. inspect #查看底层信息
 		5. package ：把本地的chart打包
 		6. verify：校验
-2. 部署chart(在如果3.2.4新版本上不用特意去安装tillar的rbac，猜测应该将tiller整合在apiserver上了直接运行即可)
+#---Helm 3移除 Tiller（helm3没有helm2稳定）
+Helm 2 是 C/S 架构，主要分为客户端 helm 和服务端 Tiller; 与之前版本相同，Helm 3 同样在 Release 页面提供了预编译好的二进制文件。差别在于原先的二进制包下载下来你会看到 helm 和 tiller 。而 Helm 3 则只有 Helm 的存在了。Tiller 主要用于在 Kubernetes 集群中管理各种应用发布的版本，在 Helm 3 中移除了 Tiller, 版本相关的数据直接存储在了 Kubernetes 中。原先，由于有 RBAC 的存在，我们在开始使用时，必须先创建一个 ServiceAccount 而现在 Helm 的权限与当前的 Kubeconfig 中配置用户的权限相同，非常容易进行控制。
+2. 部署chart
 官网helm仓库：https://hub.kubeapps.com/
 --添加helm仓库
 [root@node1 ~/manifests/helm]# helm repo add stable https://kubernetes-charts.storage.googleapis.com/ 
@@ -1573,10 +1445,80 @@ aliyun	https://apphub.aliyuncs.com
 --查看当前helm中有哪些应用
 [root@node1 ~/manifests/helm]# helm list
 NAME        	NAMESPACE	REVISION	UPDATED                                	STATUS  	CHART      	APP VERSION
-nginx-server	default  	1       	2020-07-05 16:18:13.062026367 +0800 CST	deployed	nginx-5.1.5	1.16.1     
+nginx-server	default  	1       	2020-07-05 16:18:13.062026367 +0800 CST	deployed	nginx-5.1.5	1.16.1  
+--卸载nginx
+[root@node1 ~/manifests/helm]# helm uninstall nginx-server
 #EFK日志收集系统
 [root@node1 ~/manifests]# kubectl create ns efk
-[root@node1 ~]# helm fetch aliyun/elasticsearch
-[root@node1 ~/elasticsearch]# helm install elasticsearch --namespace=efk -f values.yaml  aliyun/elasticsearch
+--添加仓库
+[root@node1 ~/elasticsearch]# helm repo add azure-stable http://mirror.azure.cn/kubernetes/charts/ 
+[root@node1 ~]# helm repo update
+----安装elasticsearch
+[root@node1 ~]# helm pull azure-stable/elasticsearch --version 1.32.4
+[root@node1 ~]# tar xf elasticsearch-1.32.4.tgz 
+[root@node1 ~]# cd elasticsearch/
+[root@node1 ~/elasticsearch]# ls
+Chart.yaml  ci  README.md  templates  values.yaml
+[root@node1 ~/elasticsearch]# grep -v '^(\ )+#\|^$' values.yaml
+[root@node1 ~/elasticsearch]# grep -Ev '^(\ )+#|^#|^$' values.yaml
+cluster:
+  name: "elasticsearch-jack"
+  xpackEnable: false
+  config: {}
+  additionalJavaOpts: ""
+  bootstrapShellCommand: ""
+  env:
+    MINIMUM_MASTER_NODES: "2"   #最小2个节点存活才能选出master,生产最小是2，并且节点是sum/2+1
+client:
+  name: client
+  replicas: 2   #生产最小是2
+  serviceType: ClusterIP
+master:
+  name: master
+  exposeHttp: false
+  replicas: 3     #3个副本，生产应最低3个才能保持高可用
+  heapSize: "512m"
+  persistence:
+    enabled: false   #生产应开启持久化存储
+    accessMode: ReadWriteOnce
+    name: data
+    size: "4Gi"
+data:
+  name: data
+  exposeHttp: false
+  replicas: 2     #2个副本，生产应最低2个
+  heapSize: "1536m"
+  persistence:
+    enabled: false
+    accessMode: ReadWriteOnce
+    name: data
+    size: "30Gi"
+  readinessProbe:
+    httpGet:
+      path: /_cluster/health?local=true
+      port: 9200
+    initialDelaySeconds: 5
+[root@node1 ~/elasticsearch]# helm install elasticsearch-jack -f values.yaml --namespace=efk --version=1.32.4 azure-stable/elasticsearch
+#----安装fluentd
+[root@node1 ~]# helm pull azure-stable/fluentd-elasticsearch --version=2.0.7
+[root@node1 ~]# tar xf fluentd-elasticsearch-2.0.7.tgz
+[root@node1 ~]# cd fluentd-elasticsearch/
+[root@node1 ~/fluentd-elasticsearch]# vim values.yaml  
+elasticsearch:
+  host: 'els1-elasticsearch-client'  #更改elasticsearch的service接口及端口以进行连接
+  port: 9200
+tolerations: 
+  - key: node-role.kubernetes.io/master  #开启容忍master节点的污点进行部署，否则daemonset控制器也不会部署在master节点上
+    operator: Exists
+    effect: NoSchedule
+[root@node1 ~/fluentd-elasticsearch]# helm install fluentd1 -f values.yaml --namespace=efk --version=2.0.7 azure-stable/fluentd-elasticsearch
+#----安装kibana
+[root@node1 ~]# helm pull azure-stable/kibana --version=3.2.6
+[root@node1 ~]# tar xf kibana-3.2.6.tgz 
+[root@node1 ~/kibana]# vim values.yaml 
+    elasticsearch.hosts: http://els1-elasticsearch-client:9200 #更改连接elasticsearch地址及端口
+service: 
+  type: NodePort  #设置为集群端口
+[root@node1 ~/kibana]# helm install kibana1 -f values.yaml --namespace=efk --version=3.2.6 azure-stable/kibana
 
 
