@@ -427,8 +427,9 @@ gpgcheck=1
 gpgkey=https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg https://mirrors.aliyun.com/kubernetes/yum/doc/rpm-package-key.gpg
 [root@salt /srv/salt/prod/keepalived]# salt-cp  -L node1,node2 /etc/yum.repos.d/k8s.repo /etc/yum.repos.d/
 #手动下载并安装kube组件，这里不使用在线安装，因为有版本需求(去清华软件镜像源或阿里源下载下来，这里版本为1.15.11)
+#----也可这样下载：yum install -y  --showduplicates kubectl-1.15.11-0 kubelet-1.15.11-0 kubeadm-1.15.11-0 kubernetes-cni-0.8.6-0 cri-tools-1.13.0-0
 [root@node1 k8s]# ls
-cri-tools-1.13.0-0.x86_64.rpm  kubectl-1.15.11-0.x86_64.rpm  	-0.8.6-0.x86_64.rpm
+cri-tools-1.13.0-0.x86_64.rpm  kubectl-1.15.11-0.x86_64.rpm  	kubernetes-cni-0.8.6-0.x86_64.rpm
 kubeadm-1.15.11-0.x86_64.rpm   kubelet-1.15.11-0.x86_64.rpm
 [root@node1 k8s]# yum localinstall -y *.rpm
 #设定docker和kubelet开启启动，所有节点都一样
@@ -452,13 +453,14 @@ kubeadm-1.15.11-0.x86_64.rpm   kubelet-1.15.11-0.x86_64.rpm
 #
 Repository="192.168.15.200:8888"
 Project="k8s"
+Kubernetes_domain="k8s.gcr.io"
 
 #batch docker pull
-function pull_k8s(){
+function pull_k8s_FromAliyun(){
 	kubeadm config images pull --image-repository=registry.aliyuncs.com/google_containers --kubernetes-version=v1.15.11 	
 }
 
-function tag_k8s(){
+function untag_k8s_FromAliyun(){
 	aliyun=(`docker image ls | grep aliyuncs | awk '{ sub(/\ +/,":"); print $1}' | sort`) #error point
 	google=(`docker image ls | grep aliyuncs | awk '{ sub(/\ +/,":"); print $1}' | awk -F '/' '{print "k8s.gcr.io/"$3}' | sort`)
 	let k8s_sum=${#aliyun[@]}-1
@@ -469,19 +471,29 @@ function tag_k8s(){
 }
 
 #batch docker tag 
-function tag(){
-	for i in `docker image ls  | grep -v 192 | grep -v REPOSITORY | awk '{ sub(/\ +/,":"); print $1}' `;do docker tag $i ${Repository}/${Project}/${i};done
+function tag_ToPriRegistry(){
+	for i in `docker image ls  | grep registry | grep -v REPOSITORY | awk '{ sub(/\ +/,":"); print $1}' `;do docker tag $i ${Repository}/${Project}/${Kubernetes_domain}/`echo ${i} | awk -F '/' '{print $3}'`;done
 }
 
 #batch docker push
-function push(){
+function push_ToPriRegistry(){
 	for i in `docker image ls  | grep 192 | grep -v REPOSITORY | awk '{ sub(/\ +/,":"); print $1}'`;do docker push $i;done
 }
 
+function pull_FromPriRegistry(){
+	docker pull 192.168.15.200:8888/k8s/k8s.gcr.io/coredns:1.3.1
+	docker pull 192.168.15.200:8888/k8s/k8s.gcr.io/pause:3.1
+	docker pull 192.168.15.200:8888/k8s/k8s.gcr.io/kube-scheduler:v1.15.11
+	docker pull 192.168.15.200:8888/k8s/k8s.gcr.io/kube-proxy:v1.15.11
+	docker pull 192.168.15.200:8888/k8s/k8s.gcr.io/kube-controller-manager:v1.15.11
+	docker pull 192.168.15.200:8888/k8s/k8s.gcr.io/kube-apiserver:v1.15.11
+	docker pull 192.168.15.200:8888/k8s/k8s.gcr.io/etcd:3.3.10
+}
+
 #batch docker untag
-function untag(){
-	list1=(`docker image ls  | grep 192 | grep -v REPOSITORY | awk '{ sub(/\ +/,":"); print $1}'`)
-	list2=(`docker image ls  | grep 192 | grep -v REPOSITORY | awk '{ sub(/\ +/,":"); print $1}' | sed 's#192.168.15.200\:8888\/k8s\/##g'`)
+function untag_FromPriRegisty(){
+	list1=(`docker image ls  | grep 192 | grep -v REPOSITORY | awk '{ sub(/\ +/,":"); print $1}' | sort`)
+	list2=(`docker image ls  | grep 192 | grep -v REPOSITORY | awk '{ sub(/\ +/,":"); print $1}' | sort | sed 's#192.168.15.200\:8888\/k8s\/##g'`)
 	let sum=${#list1[@]}-1
 	for i in `seq 0 ${sum}`;do
 		docker tag ${list1[$i]} ${list2[$i]}
@@ -489,18 +501,20 @@ function untag(){
 }
 
 case $1 in
-	tag)
-		tag;;
-	push)
-		push;;
-	untag)
-		untag;;
-	pull_k8s)
-		pull_k8s;;
-	tag_k8s)
-		tag_k8s;;
+	pull_k8s_FromAliyun)
+		pull_k8s_FromAliyun;;
+	untag_k8s_FromAliyun)
+		untag_k8s_FromAliyun;;
+	tag_ToPriRegistry)
+		tag_ToPriRegistry;;
+	push_ToPriRegistry)
+		push_ToPriRegistry;;
+	pull_FromPriRegistry)
+		pull_FromPriRegistry;;
+	untag_fromPriRegisty)
+		untag_FromPriRegisty;;
 	*)
-		echo "Usage: $0 (tag | push | untag | pull_k8s | tag_k8s)"
+		echo "Usage: $0 (pull_k8s_FromAliyun | untag_k8s_FromAliyun | tag_ToPriRegistry | push_ToPriRegistry | pull_FromPriRegistry | untag_FromPriRegisty)"
 esac
 ----------------------
 注：主要使用pull_k8s和tag_k8s两个方法
@@ -575,7 +589,7 @@ I0625 13:25:52.361403       1 server_others.go:170] Using ipvs Proxier.
 ------------------
 #第一台k8s MASTER进行安装
 [root@salt /download/k8s]# kubeadm init --config=kubeadm-config.yaml --experimental-upload-certs | tee kubeadm-init.log
-注：新版本为--upload-certs
+注：新版本为--upload-certs-----kubeadm init --config=kubeadm-config.yaml --upload-certs | tee kubeadm-init.log
 ----安装成功后如下
 To start using your cluster, you need to run the following as a regular user:
 
