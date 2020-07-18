@@ -1448,7 +1448,11 @@ NAME        	NAMESPACE	REVISION	UPDATED                                	STATUS  
 nginx-server	default  	1       	2020-07-05 16:18:13.062026367 +0800 CST	deployed	nginx-5.1.5	1.16.1  
 --卸载nginx
 [root@node1 ~/manifests/helm]# helm uninstall nginx-server
-#EFK日志收集系统
+#EFK日志收集系统--
+elasticsearch-6.8.6
+kibana-6.7.0 
+fluentd-2.3.2
+----注：新版本中kibana，elasticsearch，logstash都保持了同版本
 [root@node1 ~/manifests]# kubectl create ns efk
 --添加仓库
 [root@node1 ~/elasticsearch]# helm repo add azure-stable http://mirror.azure.cn/kubernetes/charts/ 
