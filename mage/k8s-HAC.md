@@ -923,62 +923,7 @@ networking:
   serviceSubnet: 10.96.0.0/12
 scheduler: {}
 ---------------------
-[root@node1 /download/k8s]# cat tag.sh 
-#!/bin/sh
-#
-Repository="192.168.15.200:8888"
-Project="k8s"
-
-#batch docker pull
-function pull_k8s(){
-	kubeadm config images pull --image-repository=registry.aliyuncs.com/google_containers --kubernetes-version=v1.15.11 	
-}
-
-function tag_k8s(){
-	aliyun=(`docker image ls | grep aliyuncs | awk '{ sub(/\ +/,":"); print $1}' | sort`) #error point
-	google=(`docker image ls | grep aliyuncs | awk '{ sub(/\ +/,":"); print $1}' | awk -F '/' '{print "k8s.gcr.io/"$3}' | sort`)
-	let k8s_sum=${#aliyun[@]}-1
-	for i in `seq 0 ${k8s_sum}`;do
-		docker tag ${aliyun[$i]} ${google[$i]}
-	done
-	[ $? == 0 ] && echo "tag aliyun name to google name successful" || echo "tag aliyun to google failure"
-}
-
-#batch docker tag 
-function tag(){
-	for i in `docker image ls  | grep -v 192 | grep -v REPOSITORY | awk '{ sub(/\ +/,":"); print $1}' `;do docker tag $i ${Repository}/${Project}/${i};done
-}
-
-#batch docker push
-function push(){
-	for i in `docker image ls  | grep 192 | grep -v REPOSITORY | awk '{ sub(/\ +/,":"); print $1}'`;do docker push $i;done
-}
-
-#batch docker untag
-function untag(){
-	list1=(`docker image ls  | grep 192 | grep -v REPOSITORY | awk '{ sub(/\ +/,":"); print $1}'`)
-	list2=(`docker image ls  | grep 192 | grep -v REPOSITORY | awk '{ sub(/\ +/,":"); print $1}' | sed 's#192.168.15.200\:8888\/k8s\/##g'`)
-	let sum=${#list1[@]}-1
-	for i in `seq 0 ${sum}`;do
-		docker tag ${list1[$i]} ${list2[$i]}
-	done
-}
-
-case $1 in
-	tag)
-		tag;;
-	push)
-		push;;
-	untag)
-		untag;;
-	pull_k8s)
-		pull_k8s;;
-	tag_k8s)
-		tag_k8s;;
-	*)
-		echo "Usage: $0 (tag | push | untag | pull_k8s | tag_k8s)"
-esac
----------------------
+[root@node1 /download/k8s]# cat tag.sh  --------pull k8s镜像和重打标签脚本-----见上方-----
 [root@node1 /download/k8s]# chmod +x tag.sh 
 [root@node1 /download/k8s]# ./tag.sh 
 Usage: ./tag.sh (tag | push | untag | pull_k8s | tag_k8s)
