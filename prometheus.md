@@ -1,4 +1,5 @@
 #prometheus
+<pre>
 #学习1
 #时间序列数据：
 按照时间顺序记录系统、设备状态变化的数据被称为时序数据。
@@ -402,56 +403,22 @@ count_netstat_wait_connections{exported_instance=~"web.*"}>400 #只显示web开�
 rate(): 是专门搭配counter类型数据使用的函数，它的的功能是按照设置一个时间段，取counter在这个时间段中的"平均每秒"的增量,prometheus最重要的函数之一
 例如：rate(node_network_receive_bytes_total[1m])  #在一分钟内平均每秒的增量
 注意：我们以后在使用任何counter数据类型的时候，永远记得别的先不做，先给它加上一个rate()或者increase()函数。
-increase(): 是用来针对Counter这种类型持续增长的数值，截取其中一段时间的总增量
+increase(): 是用来针对Counter这种类型持续增长的数值，截取其中一段时间的总增量，last值-first值，自动调整单调性，与delta()不同之处在于delta是求差值，而increase返回最后一个减第一个值,可为正为负。
 例如：increase(node_network_receive_bytes_total[1m])  #这样就获取了网络总使用时间在1分钟内的总增量
 注：什么时候用rate函数，什么时候用increase函数。increase一般采集不是详细的数据，比较粗糙。rate一般用于比较细的数据，瞬息万变的，例如：cpu，内存，硬盘，Io网络流量
-sum(): 起到加合的作用,多核cpu相加的平均值，没有特定数据类型
+delta（）
+计算一个范围向量v的第一个元素和最后一个元素之间的差值，只能为正。delta函数返回值类型只能是gauges
+sum(): 对多个结果进行加和，可以使用by()或者without()关键字进一步筛选，没有特定数据类型
 例如：sum(rate(node_network_receive_bytes_total[1m])) by(instance) #外面套用了一个sum即可把所有网络接收流量接口的值加合平均显示，不会看到杂乱了。by()中的instance是表示对每个机器进行拆分。by(cluster_name)是对每个集群进行抓分，cluster_name需要我们自定义标签，node_exporter是没有办法提供的
 by(instance): 这个函数可以把sum加合到一起的数值按照指定的一个方式进行一层的拆分，没有特定数据类型，通常结合sum函数一起使用
 topk(): Gauge类型数据和Counter类型数据使用
 例：topk(1,rate(node_network_receive_bytes_total[1m])) #topk因为对于每一个时间点都只取前几高的数值，那么必然会造成单个机器的采集数据不连贯。实际使用的时候，一般用topk()进行瞬时报警，而不是为了观察曲线图。
 count(): 把数值符合条件的，输出数目进行加合。一般使用它进行模糊的监控判断，例如，当cpu(或连接数)高于80%的机器大于30台就报警
 例如：count(count_netstat_wait_connections > 200) #找出当前（或历史）当TCP等待数大于200的机器数量
-predict_linear(): 可以起到对曲线变化速率的计算，以及在一段时间加速度的预测。用得不是很多
-
-#-----查询操作
-#查询时间序列
-http_requests_total
-等同于：
-http_requests_total{}
-#范围查询：
-http_request_total{}[1d]
-除了使用m表示分钟以外，PromQL的时间范围选择器支持其它时间单位：
-s - 秒
-m - 分钟
-h - 小时
-d - 天
-w - 周
-y - 年
-#时间位移操作：
-如果我们想查询，5分钟前的瞬时样本数据，或昨天一天的区间内的样本数据呢? 这个时候我们就可以使用位移操作，位移操作的关键字为offset：
-http_request_total{} offset 5m
-http_request_total{}[1d] offset 1d
-#使用聚合操作
--查询系统所有http请求的总量
-sum(http_request_total)
--按照mode计算主机CPU的平均使用时间
-avg(node_cpu) by (mode)
--按照主机查询各个主机的CPU使用率
-sum(sum(irate(node_cpu{mode!='idle'}[5m]))  / sum(irate(node_cpu[5m]))) by (instance)
-#标量和字符串
---除了使用瞬时向量表达式和区间向量表达式以外，PromQL还直接支持用户使用标量(Scalar)和字符串(String)。
--标量（Scalar）：一个浮点型的数字值
-标量只有一个数字，没有时序。
-#字符串（String）：一个简单的字符串值
-直接使用字符串，作为PromQL表达式，则会直接返回字符串。
-#合法的PromQL表达式
-http_request_total # 合法
-http_request_total{} # 合法
-{method="get"} # 合法
-{__name__=~"node_cpu_seconds_total"}
-#预测内存4小时后的剩余情况
+predict_linear(): ----例如预测内存4小时后的剩余情况
 predict_linear(node_filesystem_free_bytes{job="nodes"}[1h], 4 * 3600) / 1024 /1024
+irate()
+(last值-last前一个值)/时间戳差值
 
 ##企业级监控数据采集方法
 prometheus后台运行方式：
@@ -595,7 +562,7 @@ EOF
 1. pushgateway会形成一个单点瓶颈，假如好多个脚本同时发送给一个pushgateway的进程，如果这个进程挂了，那么监控数据也就没了。
 2. pushgateway并不能对发送过来的脚本采集数据进行更智能的判断，假如脚本中间采集出问题了，那么有问题的数据pushgateway一样照单全收发送给prometheus.
 针对缺点优化：
-1. 其实只 服务器不宕机，那么基本上pushgateway运行还是很稳定的。就算有太多的脚本同时都发送给一个pushgateway，其实也只是接收的速度会慢，丢数据没有遇到过。
+1. 其实只要服务器不宕机，那么基本上pushgateway运行还是很稳定的。就算有太多的脚本同时都发送给一个pushgateway，其实也只是接收的速度会慢，丢数据没有遇到过。
 2. 其实只要我们在写脚本的时候，细心一些，别出错就行。写的时候用自己熟悉的脚本写就好。
 #采集网络丢包率，延迟，抖动数据
 [root@node3 ~]# cat ./pushgateway-ping.sh
@@ -717,6 +684,126 @@ pagedury默认只有14天试用期，购买一个月几百元。
 2. 创建新的service
 3. 用户接收帐户设置以及报警信息的设置
 
+</pre>
+
+#prometheus-book
+<pre>
+#-----查询操作
+#查询时间序列
+http_requests_total
+等同于：
+http_requests_total{}
+#范围查询：
+http_request_total{}[1d]
+除了使用m表示分钟以外，PromQL的时间范围选择器支持其它时间单位：
+s - 秒
+m - 分钟
+h - 小时
+d - 天
+w - 周
+y - 年
+#时间位移操作：
+如果我们想查询，5分钟前的瞬时样本数据，或昨天一天的区间内的样本数据呢? 这个时候我们就可以使用位移操作，位移操作的关键字为offset：
+http_request_total{} offset 5m
+http_request_total{}[1d] offset 1d
+#使用聚合操作
+-查询系统所有http请求的总量
+sum(http_request_total)
+-按照mode计算主机CPU的平均使用时间
+avg(node_cpu) by (mode)
+-按照主机查询各个主机的CPU使用率
+sum(sum(irate(node_cpu{mode!='idle'}[5m]))  / sum(irate(node_cpu[5m]))) by (instance)
+#标量和字符串
+--除了使用瞬时向量表达式和区间向量表达式以外，PromQL还直接支持用户使用标量(Scalar)和字符串(String)。
+-标量（Scalar）：一个浮点型的数字值
+直接使用浮点型的数字值，作为PromQL表达式，则会直接返回浮点型的数字值，没有时序。
+-字符串（String）：一个简单的字符串值
+直接使用字符串，作为PromQL表达式，则会直接返回字符串。
+#合法的PromQL表达式
+http_request_total # 合法
+http_request_total{} # 合法
+{method="get"} # 合法
+{__name__=~"node_cpu_seconds_total"}
+#-----PromQL操作符
+#用> <对结果进行一次过滤，满足条件则保留，不满足则丢弃
+((node_memory_MemTotal_bytes - node_memory_MemFree_bytes) / node_memory_MemTotal_bytes ) * 100 > 70
+#用bool修饰符使结果返回0还是1
+((node_memory_MemTotal_bytes - node_memory_MemFree_bytes) / node_memory_MemTotal_bytes ) * 100 > bool 70
+#集合运算符
+and (并且,交集)
+or (或者，并集)
+unless (排除，差集)
+--and,只返回两个向量相同的结果
+node_filesystem_free_bytes{device=~"/dev/sda1"} and node_filesystem_free_bytes{device=~"/dev/sda[12]"} 
+--or,返回两个向量去重后的结果
+node_memory_MemTotal_bytes and node_memory_MemFree_bytes
+--unless,用前面多的标签 - 右边少的标签，得到的结果
+node_filesystem_free_bytes{device=~"/dev/sda[12]"} unless node_filesystem_free_bytes{device=~"/dev/sda1"}
+#操作符优先级顺序(加用()来优先运算)
+^
+*, /, %
++, -
+==, !=, <=, <, >=, >
+and, unless
+or
+#匹配模式(匹配标签)
+向量与向量之间进行运算操作时会基于默认的匹配规则：依次找到与左边向量元素匹配（标签完全一致）的右边向量元素进行运算，如果没找到匹配元素，则直接丢弃。PromQL中有两种典型的匹配模式：一对一（one-to-one）,多对一（many-to-one）或一对多（one-to-many）
+	例如当存储样本：
+		method_code:http_errors:rate5m{method="get", code="500"}  24
+		method_code:http_errors:rate5m{method="get", code="404"}  30
+		method_code:http_errors:rate5m{method="put", code="501"}  3
+		method_code:http_errors:rate5m{method="post", code="500"} 6
+		method_code:http_errors:rate5m{method="post", code="404"} 21
+		method:http_requests:rate5m{method="get"}  600
+		method:http_requests:rate5m{method="del"}  34
+		method:http_requests:rate5m{method="post"} 120
+	一对一匹配：
+		一对一匹配模式会从操作符两边表达式获取的瞬时向量依次比较并找到唯一匹配(标签完全一致)的样本值。默认情况下，使用表达式。在操作符两边表达式标签不一致的情况下，可以使用on(label list)或者ignoring(label list）来修改便签的匹配行为。使用ignoreing可以在匹配时忽略某些便签。而on则用于将匹配行为限定在某些便签之内
+		例：method_code:http_errors:rate5m{code="500"} / ignoring(code) method:http_requests:rate5m 
+		结果：	{method="get"}  0.04            //  24 / 600
+				{method="post"} 0.05            //   6 / 120
+		注解：当右边标签不能匹配左边标签时，则需要使用on()或者ignoring()来确定标签或忽略标签。结果：左边向量只有两个结果24和6，右边有三个结果是600、120和34，这里是在右边向量前使用ignoring()注明本向量没有code标签，请忽略，则左边向量去除右边向量时则会忽略code标签，即最后左边向量是{method="get"}，{method="post"}两个标签，右边需要满足左边标签则也是{method="get"}，{method="post"}
+	多对一和一对多：
+		多对一和一对多两种匹配模式指的是“一”侧的每一个向量元素可以与"多"侧的多个元素匹配的情况。在这种情况下，必须使用group修饰符：group_left或者group_right来确定哪一个向量具有更高的基数（充当“多”的角色）
+		例：method_code:http_errors:rate5m / ignoring(code) group_left method:http_requests:rate5m
+		{method="get", code="500"}  0.04            //  24 / 600
+		{method="get", code="404"}  0.05            //  30 / 600
+		{method="post", code="500"} 0.05            //   6 / 120
+		{method="post", code="404"} 0.175           //  21 / 120
+		注解：该表达式中，左向量method_code:http_errors:rate5m包含两个标签method和code。而右向量method:http_requests:rate5m中只包含一个标签method，因此匹配时需要使用ignoring限定匹配的标签为code。 在限定匹配标签后，右向量中的元素可能匹配到多个左向量中的元素 因此该表达式的匹配模式为多对一，需要使用group修饰符group_left指定左向量具有更好的基数。
+
+#----PromQL聚合函数
+sum (求和)
+min (最小值)
+max (最大值)
+avg (平均值)
+stddev (标准差)
+stdvar (标准方差)
+count (计数)
+count_values (对value进行计数)
+bottomk (后n条时序)
+topk (前n条时序)
+quantile (分位数)
+其中只有count_values, quantile, topk, bottomk支持参数(parameter)。
+without用于从计算结果中移除列举的标签，而保留其它标签。by则正好相反，结果向量中只保留列出的标签，其余标签则移除。通过without和by可以按照样本的问题对数据进行聚合。
+sum(http_requests_total) without (instance)
+等价于
+sum(http_requests_total) by (code,handler,job,method)
+count_values: count_values("tag",node_cpu_seconds_total{mode="nice"})  #将向量表达式结果值代入给标签tag，形成新的标签，值为标签出现的次数
+
+#----PromQL内置函数
+#计算Counter指标增长率
+--increase计算出最近两分钟的增长量，最后除以时间120秒得到node_cpu样本在最近两分钟的平均增长率
+increase(node_cpu[2m]) / 120
+--rate函数可以直接计算区间向量在时间窗口内平均增长速率。因此，通过以下表达式可以得到与increase函数相同的结果：
+rate(node_cpu[2m])
+--irate函数是通过区间向量中最后两个样本数据来计算区间向量的增长速率。这种方式可以避免在时间窗口范围内的“长尾问题”(rate函数无法避免长尾问题)，并且体现出更好的灵敏度，经常用于突发性指标中。
+注：irate函数相比于rate函数提供了更高的灵敏度，不过当需要分析长期趋势或者在告警规则中，irate的这种灵敏度反而容易造成干扰。因此在长期趋势分析或者告警中更推荐使用rate函数。
+#预测Gauge指标变化趋势
+--在一般情况下，系统管理员为了确保业务的持续可用运行，会针对服务器的资源设置相应的告警阈值。例如，当磁盘空间只剩512MB时向相关人员发送告警通知。 这种基于阈值的告警模式对于当资源用量是平滑增长的情况下是能够有效的工作的。 但是如果资源不是平滑变化的呢？ 比如有些某些业务增长，存储空间的增长速率提升了高几倍。这时，如果基于原有阈值去触发告警，当系统管理员接收到告警以后可能还没来得及去处理问题，系统就已经不可用了。 因此阈值通常来说不是固定的，需要定期进行调整才能保证该告警阈值能够发挥去作用。此时PromQL中内置的predict_linear(v range-vector, t scalar) 函数可以帮助系统管理员更好的处理此类情况，predict_linear函数可以预测时间序列v在t秒后的值。它基于简单线性回归的方式，对时间窗口内的样本数据进行统计，从而可以对时间序列的变化趋势做出预测。例如，基于2小时的样本数据，来预测主机可用磁盘空间的是否在4个小时候被占满，可以使用如下表达式：
+predict_linear(node_filesystem_free_bytes{job="nodes"}[1h], 4 * 3600)  <  0
+#动态标签替换
+通过up指标可以获取到当前所有运行的Exporter实例以及其状态：
 
 
 #exporter
@@ -752,3 +839,6 @@ Restart=on-failure
 WantedBy=multi-user.target
 
 2. blackbox_exporter
+
+
+</pre>
