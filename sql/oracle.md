@@ -1803,4 +1803,17 @@ truncate table 临时表名;
 drop table 临时表名;
 
 
+#oracle 删除表空间及数据文件方法
+--删除空的表空间，但是不包含物理文件
+drop tablespace tablespace_name;
+--删除非空表空间，但是不包含物理文件
+drop tablespace tablespace_name including contents;
+--删除空表空间，包含物理文件
+drop tablespace tablespace_name including datafiles;
+--删除非空表空间，包含物理文件
+drop tablespace tablespace_name including contents and datafiles;
+--如果其他表空间中的表有外键等约束关联到了本表空间中的表的字段，就要加上CASCADE CONSTRAINTS
+drop tablespace tablespace_name including contents and datafiles CASCADE CONSTRAINTS;
+
+
 </pre>

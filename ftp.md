@@ -1,4 +1,4 @@
-﻿#ftp manual
+#ftp manual
 <pre>
 ftp有三种用户：
 	1. 匿名用户
@@ -169,6 +169,14 @@ rsa_private_key_file=/etc/vsftpd/ssl/vsftpd_key.pem
 ----配置用户
 --使用系统用户建立用户时，用户家目录不能不要，登录shell必须是/bin/bash
 [root@node1 /ftp/dev]# setfacl -m g:devgroup:rwx /ftp/ops #设置facl时不使用-d -R则表示设置目标目录权限，使用-d -R表示设置目标目录下面的所有权限
+setfacl的选项：
+-m  修改或添加acl权限
+-x   删除指定的acl权限
+-b   删除所有的acl权限
+-k   删除默认的acl权限
+-d   设置默认的acl权限，通常用于目录，后期在目录中创建的新文件将采用这个acl权限值
+-R   递归设置目录及其子目录中的文件的acl权限
+
 [root@node1 /ftp/dev]# getfacl /ftp/ops
 getfacl: Removing leading '/' from absolute path names
 # file: ftp/ops
@@ -282,6 +290,84 @@ guest_username=ftpuser　　　　　　　　　指定虚拟用户的宿主用�
 virtual_use_local_privs=YES　　　　　　　 设定虚拟用户的权限符合他们的宿主用户
 
 user_config_dir=/etc/vsftpd/vconf　　　　　 设定虚拟用户个人Vsftp的配置文件存放路径
+
+</pre>
+
+
+#sftp
+<pre>
+[root@node1 ~]# groupadd sftp
+[root@node1 ~]# useradd -g sftp -M sftp1
+[root@node1 ~]# usermod -d /data/sftp/sftp1 sftp1
+[root@node1 ~]# mkdir -p /data/sftp/sftp1
+[root@node1 ~]# chown root.root /data/sftp;chmod 755 /data/sftp
+[root@jack data]# ll -d /data/sftp/
+drwxr-xr-x 3 root root 4096 Jul 21 13:42 /data/sftp/
+[root@node1 /data]# setfacl root.sftp /data/sftp/sftp1;chmod 755 /data/sftp/sftp1
+[root@jack data]# ll -d /data/sftp/sftp1
+drwxr-xr-x 3 root sftp 4096 Jul 21 14:32 /data/sftp/sftp1
+[root@jack data]# mkdir upload
+[root@jack sftp1]# ll /data/sftp/sftp1/upload/
+-rw-r--r-- 1 sftp1 sftp 29234 Jul 21 14:33 git.md
+
+
+[root@node1 ~]# cat /etc/ssh/sshd_config
+#Subsystem	sftp	/usr/libexec/openssh/sftp-server
+Subsystem sftp internal-sftp
+Match Group sftp
+ChrootDirectory /data/sftp/%u
+ForceCommand internal-sftp
+AllowTcpForwarding no
+X11Forwarding no
+
+
+</pre>
+
+
+#smb
+<pre>
+1.准备做RAID的磁盘，对磁盘进行LVM分区（在Linux系统中，例如CentOS,用fdisk /dev/sda命令进入，新建一个分区并指定大小，
+然后按t把分区格式由83改成LVM的格式8e，最后按w保存并退出，退出后用命令partprobe或重启使分区立即生效）
+2.分区建立好后，就要新建pv了，用pvcreate /dev/sda7;由于已经有LVM分区了，所以就不用vgcreate新建了，要用vgextend添加到现有
+的vg中，使用pvdisplay,vgdisplay查看pv,vg状态，要想最后成功添加到LVM,则要最后添加到lv,使用lvresize -L +12.58G /dev/myvg/mylv
+来添加12.58G容量到现有的mylv中，最后使用resize2fs来扩展文件系统
+3.安装samba,samba-client,samba-common三个软件，并设置开启自动启动smb,nmb服务，chkconfig --level 35 smb on; 
+chkconfig --level 35 nmb on;然后使用脚本设置linux帐户和smb帐户，首先创建需要的群组，使用sys-groups.sh可创建，sys-groupsdel.sh
+可删除群组，设置linux帐户时不要创建家目录，创建密码时使用mkpassword创建随机密码，这里使用脚本sys-users.sh可以自动创建，
+亦可使用sys-usersdel.sh自动删除linux帐户和smb帐户，首先得创建用户信息在sys-usersinfo里面。(samba3.5还有samba-swat图形化软件，4.10x没有看到这个软件了)
+4.编辑smb配置文件/etc/samba/smb.cnf文件，设置
+[global] 
+	workgroup = jackligroup
+        netbios name = jackliserver
+        server string = Samba Server Version %v
+
+        unix charset = utf8
+        display charset = utf8
+        dos charset = cp950
+
+        unix password sync = yes
+        passwd program = /usr/bin/passwd %u
+        pam password change = yes
+ 	log file = /var/log/samba/log.%m
+        max log size = 50
+ 	security = user
+        passdb backend = tdbsam
+	load printers = no
+[信息部]			#共享名称
+        comment = Information	#描述信息
+        path = /Share/Info	#真实目录路径
+        browseable = yes
+        writable = yes
+        valid users = @Info	#有效群组
+        create mode = 0664
+        directory mode = 0775
+
+并依例信息部设置各部门文件夹，设置特定的部门群组可读写，新建文档默认权限，新建目录默认权限。
+5.使用testparm来测试配置文件是否正确，可以排解，亦可使用testparm -v来详细测试，还要对共享的目录进行setfacl来设置跟smb.cnf
+文件中一样的权限，这样才能使smb服务权限生效，否则会造成无法写入，完后成用户可以使用\\IP的方式来访问smb服务器了，
+而smb服务器可以使用smbstatus来观察客户端情况。
+
+注意：使用smbpassword来更改smb帐户密码，使用pdbedit -a user --增加、pdbedit -x user --删除
 
 
 

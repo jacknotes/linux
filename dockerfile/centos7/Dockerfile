@@ -18,7 +18,8 @@ LABEL "TCL"="8.6.10"
 WORKDIR /download
 RUN yum install -y gcc gcc-c++ glibc openssl-devel \
 	make net-tools wget net-tools nmap-ncat \
-	openssh-server lsof iproute telnet vim openssh-clients
+	openssh-server lsof iproute telnet vim openssh-clients \
+	kde-l10n-Chinese
 
 # source package
 ADD *.tar.gz /download/ 
@@ -57,6 +58,15 @@ ENV PATH "$PATH:/usr/local/nginx/sbin/:/usr/local/jdk/bin/:/usr/local/redis/bin/
 RUN ssh-keygen -t dsa -f /etc/ssh/ssh_host_ed25519_key -q -N ''	&& \
 	ssh-keygen -t rsa -f /etc/ssh/ssh_host_rsa_key -q -N '' && \
 	ssh-keygen -t dsa -f /etc/ssh/ssh_host_ecdsa_key -q -N ''
+
+#set chinese language
+RUN localedef -c -f UTF-8 -i zh_CN zh_CN.utf8 && \
+	export LANG=zh_CN.UTF-8 && \
+	export LC_ALL=zh_CN.utf8 && \
+	echo "LANG=zh_CN.UTF-8" > /etc/locale.conf && \
+	echo 'export LANG=zh_CN.UTF-8' >> /etc/profile && \
+	echo 'export LC_ALL=zh_CN.utf8' >> /etc/profile && \
+	echo 'export PATH=$PATH:/usr/local/nginx/sbin/:/usr/local/jdk/bin/:/usr/local/redis/bin/' >> /etc/profile
 
 #add entrypoint.sh
 RUN yum clean all && \
