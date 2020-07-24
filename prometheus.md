@@ -803,7 +803,77 @@ rate(node_cpu[2m])
 --在一般情况下，系统管理员为了确保业务的持续可用运行，会针对服务器的资源设置相应的告警阈值。例如，当磁盘空间只剩512MB时向相关人员发送告警通知。 这种基于阈值的告警模式对于当资源用量是平滑增长的情况下是能够有效的工作的。 但是如果资源不是平滑变化的呢？ 比如有些某些业务增长，存储空间的增长速率提升了高几倍。这时，如果基于原有阈值去触发告警，当系统管理员接收到告警以后可能还没来得及去处理问题，系统就已经不可用了。 因此阈值通常来说不是固定的，需要定期进行调整才能保证该告警阈值能够发挥去作用。此时PromQL中内置的predict_linear(v range-vector, t scalar) 函数可以帮助系统管理员更好的处理此类情况，predict_linear函数可以预测时间序列v在t秒后的值。它基于简单线性回归的方式，对时间窗口内的样本数据进行统计，从而可以对时间序列的变化趋势做出预测。例如，基于2小时的样本数据，来预测主机可用磁盘空间的是否在4个小时候被占满，可以使用如下表达式：
 predict_linear(node_filesystem_free_bytes{job="nodes"}[1h], 4 * 3600)  <  0
 #动态标签替换
-通过up指标可以获取到当前所有运行的Exporter实例以及其状态：
+表达式：up
+up{instance="192.168.230.8:9104",job="mysqld"}
+表达式：label_replace(up,'host','$1','instance',"(.*):(.*)")
+up{host="192.168.230.8",instance="192.168.230.8:9104",job="mysqld"}
+表达式：label_join(up,'host','----','instance','job')
+up{host="192.168.230.8:9104----mysqld",instance="192.168.230.8:9104",job="mysqld"}
+
+#使用httpAPI
+"resultType": "matrix" | "vector" | "scalar" | "string"有四种数据类型，分别是：区间向量，瞬时向量，标量，字符串
+--------数据查询
+[root@node1 /usr/local/prometheus]# {"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"up","instance":"192.168.230.8:9104","job":"mysqld"},"value":[1595469514.863,"0"]},{"metric":{"__name__":"up","instance":"192.168.230.8:9100","job":"nodes"},"value":[1595469514.863,"0"]},{"metric":{"__name__":"up","instance":"192.168.230.8:8080","job":"cadvisor"},"value":[1595469514.863,"0"]},{"metric":{"__name__":"up","instance":"127.0.0.1:9090","job":"prometheus"},"value":[1595469514.863,"1"]},{"metric":{"__name__":"up","instance":"127.0.0.1:9104","job":"mysqld"},"value":[1595469514.863,"1"]},{"metric":{"__name__":"up","instance":"127.0.0.1:9091","job":"pushgateway"},"value":[1595469514.863,"1"]},{"metric":{"__name__":"up","instance":"127.0.0.1:9100","job":"nodes"},"value":[1595469514.863,"1"]}]}}
+--------区间数据查询--curl的url分号一定要
+[root@node1 /usr/local/prometheus]# curl 'http://localhost:9090/api/v1/query_range?query=up&start=2020-07-23T10:03:30.781Z&end=2020-07-23T10:04:00.781Z&step=15s'
+{"status":"success","data":{"resultType":"matrix","result":[]}}
+
+###AlertManager
+在告警规则文件中，我们可以将一组相关的规则设置定义在一个group下。在每一个group中我们可以定义多个告警规则(rule)。一条告警规则主要由以下几部分组成：
+alert：告警规则的名称。
+expr：基于PromQL表达式告警触发条件，用于计算是否有时间序列满足该条件。
+for：评估等待时间，可选参数。用于表示只有当触发条件持续一段时间后才发送告警。在等待期间新产生告警的状态为pending。
+labels：自定义标签，允许用户指定要附加到告警上的一组附加标签。
+annotations：用于指定一组附加信息，比如用于描述告警详细信息的文字等，annotations的内容在告警产生时会一同作为参数发送到Alertmanager。
+--模块化
+一般来说，在告警规则文件的annotations中使用summary描述告警的概要信息，description用于描述告警的详细信息。同时Alertmanager的UI也会根据这两个标签值，显示告警信息。为了让告警信息具有更好的可读性，Prometheus支持模板化label和annotations的中标签的值。
+通过$labels.<labelname>变量可以访问当前告警实例中指定标签的值。$value则可以获取当前PromQL表达式计算的样本值。
+--查看告警状态
+用户可以通过Prometheus WEB界面中的Alerts菜单查看当前Prometheus下的所有告警规则，以及其当前所处的活动状态。
+同时对于已经pending或者firing的告警，Prometheus也会将它们存储到时间序列ALERTS{}中。
+可以通过表达式，查询告警实例：
+ALERTS{alertname="<alert name>", alertstate="pending|firing", <additional alert labels>}
+#定义告警规则
+[root@node1 /usr/local/prometheus]# cat /usr/local/prometheus/rules/alert.yaml 
+groups:
+- name: hostStatesAlert
+  rules:
+  - alert: hostCpuUsageAlert
+    #判断条件为true则匹配到
+    expr: sum(avg without (cpu)(irate(node_cpu_seconds_total{mode!='idle'}[5m]))) by(instance) > 0.85
+    #匹配并持续多久时间
+    for: 1m
+    #增加的标签和值，可以引用模板
+    labels:
+      severity: page
+    #注解，可以引用模板
+    annotations:
+      summary: "Instance {{ $labels.instance }} CPU usage High"
+      description: "{{ $labels.instance }} CPU Usage above 85% (current value: {{ $value }})"
+  - alert: hostMemUsageAlert
+    expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.85
+    for: 1m 
+    labels:
+      severity: page
+    annotations:
+      summary: "Instance {{ $labels.instance }} Memory usage High"
+      description: "{{ $labels.instance }} Memory Usage above 85% (current value: {{ $value }})"
+----prometheus添加规则文件
+[root@node1 /usr/local/prometheus]# grep rule /usr/local/prometheus/prometheus.yml 
+rule_files:
+  - /usr/local/prometheus/rules/*.yaml
+#安装alertmanager
+[root@jack download]# axel -n 30 https://github.com/prometheus/prometheus/releases/download/v2.20.0/prometheus-2.20.0.linux-amd64.tar.gz
+[root@jack download]# tar xf 
+[root@jack download]# 
+----关联prometheus
+[root@node1 /usr/local/prometheus]# tail /usr/local/prometheus/prometheus.yml
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['localhost:9093']
+[root@node1 /usr/local/prometheus]# systemctl restart prometheus
+
 
 
 #exporter

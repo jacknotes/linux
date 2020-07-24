@@ -1815,5 +1815,47 @@ drop tablespace tablespace_name including contents and datafiles;
 --如果其他表空间中的表有外键等约束关联到了本表空间中的表的字段，就要加上CASCADE CONSTRAINTS
 drop tablespace tablespace_name including contents and datafiles CASCADE CONSTRAINTS;
 
+select * from v$datafile
+/*create tablespace and user,grant user,*/
+create tablespace testuser datafile '/usr/local/oracle/oracle/userdatafile/testuser.dbf' size 1000m
+create user testuser identified by testuser
+alter user testuser default tablespace testuser
+grant create session,create table,unlimited tablespace to testuser
+
+select * from all_users where USERNAME='testuser'
+
+
+
+/*testuser create table,insert into table*/
+create table t_stu(  
+  stuid      number(10)   primary key,  
+  stuname    varchar2(20) not null,  
+  stusex     varchar2(2)  
+)
+
+create table t_couse(  
+  couseid     number(10)   primary key,  
+  cousename   varchar2(20) not null,  
+  cousetype   varchar2(4)
+)
+
+create table t_score(  
+  scoreid    number(10) primary key,  
+  stuid      number(10) references t_stu(stuid),  
+  couseid    number(10),  
+  constraint fk_couseid foreign key(couseid)  
+  references t_couse(couseid)  
+  on delete cascade
+);
+
+select * from t_stu
+insert into t_stu (stuid,stuname,stusex) values (1,'jack','m')
+insert into t_stu (stuid,stuname,stusex) values (2,'jack','m')
+insert into t_stu (stuid,stuname,stusex) values (3,'jack','m')
+insert into t_stu (stuid,stuname,stusex) values (6,'candy','w')
+commit
+
+
+
 
 </pre>
