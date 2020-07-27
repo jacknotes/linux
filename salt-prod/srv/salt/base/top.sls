@@ -1,6 +1,6 @@
 base:
-  'node*':
+  'master':
     - init.init
 prod:
-  'node*':
+  'master':
     - docker.docker_install.install
