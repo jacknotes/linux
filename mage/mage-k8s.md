@@ -1,4 +1,4 @@
-﻿#K8S----容器编排
+#K8S----容器编排
 <pre>
 #第一节：Devops核心要点及kubernetes架构
 Devops核心要点：
@@ -5957,6 +5957,7 @@ extraInitContainers: |
 namespace/efk created
 #安装elasticsearch:
 [root@k8s elasticsearch]# helm repo update
+[root@k8s elasticsearch]# helm install --name els1 -f values.yaml stable/elasticsearch --namespace efk
 [root@k8s elasticsearch]# helm status els1
 LAST DEPLOYED: Mon May 27 12:03:55 2019
 NAMESPACE: efk

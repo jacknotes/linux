@@ -1,4 +1,4 @@
-﻿k8s知识重点：
+k8s知识重点：
 
 ##k8s集群的管理方式：
 	1. 命令式：create,run,delete,expose,edit....
@@ -1286,13 +1286,16 @@ kubelet代理内嵌插件cAdvisor监听在4194端口，负责收集本节点,pod
 metrics-server:API server（/apis/metrics.k8s.io/v1beta1）
 k8s:API server
 为了用户无缝调用api server,所以有了聚合器(kube-aggregator)，聚合器下放了所有有关的api server,例如：k8s的api server,metrics-server的api server等。用户只访问聚合器的api即可实现无缝调用所有api server。
+#部署Metrics-server
 REFERENCE:
 安全参考链接：https://aeric.io/post/k8s-metrics-server-installation/
-稳定版参考链接：https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/metrics-server 
 新版本参考链接：https://github.com/kubernetes-incubator/metrics-server/tree/master/deploy/1.8%2B
-#部署Metrics-server和prometheus监控
+注：部署metrics-server后要等一会才能获取信息值
+#部署prometheus监控
 REFERENCE: https://github.com/coreos/kube-prometheus/tree/master/manifests
-#将清单下载下来，先apply里面的setup文件夹下所有yaml文件，再应用所有manifests下yaml文件即可
+注：将清单下载下来，先apply里面的setup文件夹下所有yaml文件，再应用所有manifests下yaml文件即可,但这个无法使用持久卷
+REFERENCE: https://github.com/jacknotes/linux/tree/master/kubernetes/manifests/addons/monitor/prometheus-storage
+注：此链接可以配置持久卷
 
 
 #HPA：水平pod自动伸缩
@@ -1525,4 +1528,366 @@ service:
   type: NodePort  #设置为集群端口
 [root@node1 ~/kibana]# helm install kibana1 -f values.yaml --namespace=efk --version=3.2.6 azure-stable/kibana
 
+#######helmv2.16.9部署efk
+[root@master /kubernetes/manifests/helm]# cat tiller-rbac.yaml 
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tiller
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tiller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: tiller
+    namespace: kube-system
+[root@master /kubernetes/manifests/helm]# helm init --service-account tiller
+注：会部署一个tiller pod，此时镜像在gcr，所以需要自己手动从别处下载，我这里制作了阿里云镜像docker pull registry.cn-hangzhou.aliyuncs.com/jack-k8s/tiller:v2.16.9
+[root@master /kubernetes/manifests/helm]# helm version
+Client: &version.Version{SemVer:"v2.16.9", GitCommit:"8ad7037828e5a0fca1009dabe290130da6368e39", GitTreeState:"clean"}
+Server: &version.Version{SemVer:"v2.16.9", GitCommit:"8ad7037828e5a0fca1009dabe290130da6368e39", GitTreeState:"clean"}
+[root@master /kubernetes/manifests/helm]# helm repo list
+NAME  	URL                                             
+stable	https://kubernetes-charts.storage.googleapis.com
+local 	http://127.0.0.1:8879/charts 
+###部署elasticsearch
+[root@master /kubernetes/manifests/helm]# helm search elasticsearch
+[root@master /kubernetes/manifests/helm]# helm fetch stable/elasticsearch --version 1.32.5
+[root@master /kubernetes/manifests/helm]# vim elasticsearch/values.yaml 
+#client:开启NodePort
+   name: client
+   replicas: 2
+   serviceType: NodePort
 
+#master:设置持久卷size和storageClass，需提前准备好动态pv
+  persistence:
+    enabled: true
+    accessMode: ReadWriteOnce
+    name: data
+    size: "30Gi"
+    storageClass: "managed-nfs-storage"
+#data:设置持久卷size和storageClass，需提前准备好动态pv
+  persistence:
+    enabled: true
+    accessMode: ReadWriteOnce
+    name: data
+    size: "50Gi"
+    storageClass: "managed-nfs-storage"
+[root@master /kubernetes/manifests/helm/elasticsearch]# helm repo update
+[root@master /kubernetes/manifests/helm]# kubectl create ns efk
+[root@master /kubernetes/manifests/helm/elasticsearch]# helm install -f values.yaml --name elasticsearch stable/elasticsearch --version 1.32.5 --namespace efk
+[root@master /kubernetes/manifests/helm/elasticsearch]# helm list 
+NAME         	REVISION	UPDATED                 	STATUS  	CHART               	APP VERSION	NAMESPACE
+elasticsearch	1       	Wed Jul 29 14:35:01 2020	DEPLOYED	elasticsearch-1.32.5	6.8.6      	default 
+[root@master /kubernetes/manifests/helm/elasticsearch]# helm list
+NAME         	REVISION	UPDATED                 	STATUS  	CHART               	APP VERSION	NAMESPACE
+elasticsearch	1       	Wed Jul 29 14:42:04 2020	DEPLOYED	elasticsearch-1.32.5	6.8.6      	efk   
+[root@master /kubernetes/manifests/helm]# kubectl get pvc -n efk
+NAME                          STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS          AGE
+data-elasticsearch-data-0     Bound    pvc-7b2a230b-0dd4-4199-84f6-01859996ca1b   50Gi       RWO            managed-nfs-storage   3m1s
+data-elasticsearch-data-1     Bound    pvc-d3d34c44-faa5-4afb-aaed-cca98769e56d   50Gi       RWO            managed-nfs-storage   93s
+data-elasticsearch-master-0   Bound    pvc-d191d3ab-e2d5-4f90-99cc-cef17de7bb38   30Gi       RWO            managed-nfs-storage   3m1s
+data-elasticsearch-master-1   Bound    pvc-7f3e2081-1114-48b0-a2c3-42181eb3b7e9   30Gi       RWO            managed-nfs-storage   98s
+data-elasticsearch-master-2   Bound    pvc-6a6541b0-7f61-427c-acb6-8e9c716a9f88   30Gi       RWO            managed-nfs-storage   59s
+[root@master /kubernetes/manifests/helm]# kubectl get pods -n efk
+NAME                                    READY   STATUS    RESTARTS   AGE
+elasticsearch-client-56b4c6c5b7-92nvt   1/1     Running   0          3m9s
+elasticsearch-client-56b4c6c5b7-plbf8   1/1     Running   0          3m9s
+elasticsearch-data-0                    1/1     Running   0          3m9s
+elasticsearch-data-1                    1/1     Running   0          101s
+elasticsearch-master-0                  1/1     Running   0          3m9s
+elasticsearch-master-1                  1/1     Running   0          106s
+elasticsearch-master-2                  1/1     Running   0          67s
+#部署fluentd
+[root@master /kubernetes/manifests/helm]# helm fetch stable/fluentd-elasticsearch --version 2.0.7
+[root@master /kubernetes/manifests/helm/fluentd-elasticsearch]# vim values.yaml
+注：需要指向9200的elasticsearch的service name.并要添加一个容忍度，使fluentd能容易master上的污点
+elasticsearch:
+  host: 'elasticsearch-client'
+  port: 9200
+  scheme: 'http'
+tolerations: 
+  - key: node-role.kubernetes.io/master
+    operator: Exists
+    effect: NoSchedule
+[root@master /kubernetes/manifests/helm/fluentd-elasticsearch]# helm install -f values.yaml --name fluentd stable/fluentd-elasticsearch --version 2.0.7 --namespace efk
+[root@master /kubernetes/manifests/helm/fluentd-elasticsearch]# helm list
+NAME         	REVISION	UPDATED                 	STATUS  	CHART                         APP VERSION	NAMESPACE
+elasticsearch	1       	Wed Jul 29 14:42:04 2020	DEPLOYED	elasticsearch-1.32.5          6.8.6      	efk      
+fluentd      	1       	Wed Jul 29 14:56:32 2020	DEPLOYED	fluentd-elasticsearch-2.0.7   2.3.2      	efk 
+注：由于fluentd在gcr，所以每台节点需要手动下载镜像：[root@master /kubernetes/manifests]# ./pull.sh gcr.io/google-containers/fluentd-elasticsearch:v2.3.2
+[root@master /kubernetes/manifests]# kubectl get pods -n efk -o wide 
+NAME                                    READY   STATUS    RESTARTS   AGE     IP            NODE     NOMINATED NODE   READINESS GATES
+elasticsearch-client-56b4c6c5b7-92nvt   1/1     Running   0          17m     10.244.1.29   node2    <none>           <none>
+elasticsearch-client-56b4c6c5b7-plbf8   1/1     Running   0          17m     10.244.2.23   node1    <none>           <none>
+elasticsearch-data-0                    1/1     Running   0          17m     10.244.2.24   node1    <none>           <none>
+elasticsearch-data-1                    1/1     Running   0          16m     10.244.1.31   node2    <none>           <none>
+elasticsearch-master-0                  1/1     Running   0          17m     10.244.1.30   node2    <none>           <none>
+elasticsearch-master-1                  1/1     Running   0          16m     10.244.2.25   node1    <none>           <none>
+elasticsearch-master-2                  1/1     Running   0          15m     10.244.1.32   node2    <none>           <none>
+fluentd-fluentd-elasticsearch-27jhm     1/1     Running   0          3m24s   10.244.1.33   node2    <none>           <none>
+fluentd-fluentd-elasticsearch-8jcxg     1/1     Running   0          3m24s   10.244.2.27   node1    <none>           <none>
+fluentd-fluentd-elasticsearch-sv2mj     1/1     Running   0          3m24s   10.244.0.2    master   <none>           <none>
+#部署kibana
+[root@master /kubernetes/manifests/helm]# helm fetch stable/kibana --version 3.2.7
+[root@master /kubernetes/manifests/helm/kibana]# vim values.yaml 
+注：设定kibana连接elasticsearch的service名称及端口，以及更改kibana的集群端口类型
+    elasticsearch.hosts: http://elasticsearch-client:9200
+service:
+  type: NodePort
+[root@master /kubernetes/manifests/helm/kibana]# helm install -f values.yaml --name kibana stable/kibana --version 3.2.7 --namespace efk
+[root@master /kubernetes/manifests/helm/kibana]# helm list
+NAME         	REVISION	UPDATED                 	STATUS  	CHART                         APP VERSION	NAMESPACE
+elasticsearch	1       	Wed Jul 29 14:42:04 2020	DEPLOYED	elasticsearch-1.32.5          6.8.6      	efk      
+fluentd      	1       	Wed Jul 29 14:56:32 2020	DEPLOYED	fluentd-elasticsearch-2.0.7   2.3.2      	efk      
+kibana       	1       	Wed Jul 29 15:07:05 2020	DEPLOYED	kibana-3.2.7                  6.7.0      	efk  
+注：由于不能下载，所以自己做了个镜像从阿里云下载：
+[root@node1 /kubernetes]# docker pull registry.cn-hangzhou.aliyuncs.com/jack-k8s/kibana-oss:6.7.0
+[root@node1 /kubernetes]# docker tag registry.cn-hangzhou.aliyuncs.com/jack-k8s/kibana-oss:6.7.0 docker.elastic.co/kibana/kibana-oss:6.7.0
+[root@master /kubernetes/manifests/helm/kibana]# kubectl get pods -n efk
+NAME                                    READY   STATUS    RESTARTS   AGE
+elasticsearch-client-56b4c6c5b7-92nvt   1/1     Running   0          41m
+elasticsearch-client-56b4c6c5b7-plbf8   1/1     Running   0          41m
+elasticsearch-data-0                    1/1     Running   0          41m
+elasticsearch-data-1                    1/1     Running   0          40m
+elasticsearch-master-0                  1/1     Running   0          41m
+elasticsearch-master-1                  1/1     Running   0          40m
+elasticsearch-master-2                  1/1     Running   0          39m
+fluentd-fluentd-elasticsearch-27jhm     1/1     Running   0          27m
+fluentd-fluentd-elasticsearch-8jcxg     1/1     Running   0          27m
+fluentd-fluentd-elasticsearch-sv2mj     1/1     Running   0          27m
+kibana-7cbb579679-g7cbm                 1/1     Running   0          16m
+[root@master /kubernetes/manifests/helm/kibana]# kubectl get svc -n efk
+NAME                      TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+elasticsearch-client      NodePort    10.102.220.32   <none>        9200:32009/TCP   42m
+elasticsearch-discovery   ClusterIP   None            <none>        9300/TCP         42m
+kibana                    NodePort    10.106.59.188   <none>        443:32053/TCP    17m
+
+
+<pre>
+
+#动态PVC--NFS
+https://kubernetes.io/docs/concepts/storage/storage-classes/#glusterfs
+注：官方插件是不支持NFS动态供给的，但是我们可以用第三方的插件来实现：
+GitHub地址：https://github.com/kubernetes-incubator/external-storage/tree/master/nfs-client/deploy
+[root@master /kubernetes/manifests/dynamic-pv]# ls
+class.yaml  deployment.yaml  rbac.yaml  test-claim.yaml  test-nginx.yaml  test-pod.yaml
+
+[root@master /kubernetes/manifests/dynamic-pv]# for file in class.yaml deployment.yaml rbac.yaml  ; do curl -OL http://raw.githubusercontent.com/kubernetes-incubator/external-storage/master/nfs-client/deploy/$file ; done
+
+[root@master /kubernetes/manifests/dynamic-pv]# cat class.yaml 
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: managed-nfs-storage
+provisioner: fuseim.pri/ifs # or choose another name, must match deployment's env PROVISIONER_NAME'
+parameters:
+  archiveOnDelete: "false"
+[root@master /kubernetes/manifests/dynamic-pv]# cat class.yaml 
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: managed-nfs-storage
+provisioner: fuseim.pri/ifs # or choose another name, must match deployment's env PROVISIONER_NAME'
+parameters:
+  archiveOnDelete: "false"
+
+[root@master /kubernetes/manifests/dynamic-pv]# cat rbac.yaml 
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: nfs-client-provisioner
+  namespace: default
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: nfs-client-provisioner-runner
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumes"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "update"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "update", "patch"]
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: run-nfs-client-provisioner
+subjects:
+  - kind: ServiceAccount
+    name: nfs-client-provisioner
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: nfs-client-provisioner-runner
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: leader-locking-nfs-client-provisioner
+  namespace: default
+rules:
+  - apiGroups: [""]
+    resources: ["endpoints"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: leader-locking-nfs-client-provisioner
+  namespace: default
+subjects:
+  - kind: ServiceAccount
+    name: nfs-client-provisioner
+    namespace: default
+roleRef:
+  kind: Role
+  name: leader-locking-nfs-client-provisioner
+  apiGroup: rbac.authorization.k8s.io
+
+[root@master /kubernetes/manifests/dynamic-pv]# cat deployment.yaml 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nfs-client-provisioner
+  labels:
+    app: nfs-client-provisioner
+  namespace: default
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: nfs-client-provisioner
+  template:
+    metadata:
+      labels:
+        app: nfs-client-provisioner
+    spec:
+      serviceAccountName: nfs-client-provisioner
+      containers:
+        - name: nfs-client-provisioner
+          image: quay.io/external_storage/nfs-client-provisioner:latest
+          volumeMounts:
+            - name: nfs-client-root
+              mountPath: /persistentvolumes
+          env:
+            - name: PROVISIONER_NAME
+              value: fuseim.pri/ifs
+            - name: NFS_SERVER
+              value: 192.168.3.201
+            - name: NFS_PATH
+              value: /data/dynamicPV
+      volumes:
+        - name: nfs-client-root
+          nfs:
+            server: 192.168.3.201
+            path: /data/dynamicPV
+
+[root@master /kubernetes/manifests/dynamic-pv]# cat test-claim.yaml 
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: test-claim
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "managed-nfs-storage"
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Mi
+
+[root@master /kubernetes/manifests/dynamic-pv]# cat test-pod.yaml 
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: test-pod
+spec:
+  containers:
+  - name: test-pod
+    image: busybox:1.24
+    command:
+      - "/bin/sh"
+    args:
+      - "-c"
+      - "touch /mnt/SUCCESS && exit 0 || exit 1"
+    volumeMounts:
+      - name: nfs-pvc
+        mountPath: "/mnt"
+  restartPolicy: "Never"
+  volumes:
+    - name: nfs-pvc
+      persistentVolumeClaim:
+        claimName: test-claim
+
+[root@master /kubernetes/manifests/dynamic-pv]# cat test-nginx.yaml 
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  ports:
+  - port: 80
+    name: web
+  type: NodePort
+  selector:
+    app: nginx
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  serviceName: "nginx"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+          name: web
+        volumeMounts:
+        - name: www
+          mountPath: /usr/share/nginx/html
+  volumeClaimTemplates:
+  - metadata:
+      name: www
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "managed-nfs-storage"
+      resources:
+        requests:
+          storage: 1Gi
+注：当使用kubectl delete -f test-nginx.yaml应用配置清单时，不会删除pvc(不会删除卷申请模板),从而保留pv,即使pv回收策略是Delete也不会被删除，因为pvc没有被删除
+
+
+</pre>

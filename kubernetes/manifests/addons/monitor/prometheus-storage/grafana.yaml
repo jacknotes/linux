@@ -7,13 +7,13 @@ metadata:
     release: stable
 spec:
   capacity:
-    storage: 5Gi
+    storage: 10Gi
   accessModes:
     - ReadWriteOnce
   persistentVolumeReclaimPolicy: Recycle
   nfs:
-    path: /nfs/grafana/data
-    server: 192.168.228.128
+    path: /data/pv/grafana-data-pv
+    server: 192.168.3.201
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -25,7 +25,7 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
-      storage: 5Gi
+      storage: 10Gi
   selector:
     matchLabels:
       name: grafana-data-pv
@@ -72,7 +72,8 @@ spec:
               protocol: TCP
       volumes:
         - name: grafana-data-volume
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: grafana-data-pvc
 ---
 kind: Service
 apiVersion: v1
