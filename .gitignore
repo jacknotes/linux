@@ -13,3 +13,4 @@ docker/apollo/apollo-portal/apollo-portal-1.7.0-github.zip
 *.bz2
 *.rpm
 *.zip
+*.hpi
