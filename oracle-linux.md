@@ -370,3 +370,114 @@ plsql客户端连接oracle有两种方式，一种是Basic,一种是TNS
 7)打开plsql进行连接，输入用户名、密码、别名(tnsnames.ora文件定义的)、MODE
 
 </pre>
+
+<pre>
+oracle管理学习路线：
+1. 数据库安装
+	1. 字符集设置
+	2. 实例服务名称设置
+2. 启动关闭数据库
+	1. 启动数据库
+		1. nomount:启动参数文件
+		2. mount:启动控制文件
+		3. open:启动数据文件和日志文件的全挂载，进入数据库正常服务状态。如果数据库数据文件的检测点一致，那么直接打开，如果不一致，那么就做实例级回滚。
+	2. 关闭数据库：
+		1. immediate: 正常关闭
+		2. abort: 强行关闭
+3. 管理内存
+	1. 缓冲区高速缓存
+	2. 使用多个缓冲区池
+	3. 共享池
+	4. 大型池
+	5. java池
+	6. 重做日志缓冲区
+	7. 自动管理共享内存
+	8. 自动优化sga参数
+	9. 手动优化sga参数
+	v$parameter
+4. 表空间
+	1. 创建各种表空间，数据表空间，回滚段表空间，临时表空间
+	2. 删除表空间
+	3. 创建非标准块大小的表空间
+	4. 查询表空间
+	v$tablespace,dba_tablespaces
+5. 数据文件
+	1. 添加数据文件
+	2. 删除数据文件（10g以后才有）
+	3. 重命名数据文件
+	4. 更改数据文件大小 
+	5. 数据文件online,offline
+	6. 查看数据文件大小
+	v$datafile dba_data_files dba_temp_files
+6. 参数管理
+	1. pfile和spfile的转换
+	2. 更改spfile
+	3. 更改pfile
+	4. 查看参数
+	5. 查看sprile位置
+7. redo管理
+	1. 添加redo组
+	2. 删除redo组
+	3. 添加redo成员
+	4. 删除redo成员
+	5. 更改redo大小
+	6. drop老的redo
+	7. add新的redo
+	8. 查看redo状态
+	9. 查看redo成员状态
+	v$log v$logfile
+8. undo管理
+	1. undo表空间创建
+	2. undo表空间更改
+	3. undo表空间用途
+	4. undo保留时间的设置
+	5. ora-01555错误产生的原因
+9. 回收站
+	1. 手动回收空间
+	2. 查询回收站
+	3. 查询已删除的表中的数据 
+	4. 闪回删除的数据
+	5. dba_recyclebin
+	6. recyclebin
+10. 管理锁
+	1. 锁定机制
+	2. 数据并发处理
+	3. DML锁定
+	4. 锁定冲突的可能原因
+	5. 检测锁定冲突
+	6. 解决锁定冲突
+	7. 使用SQL解决锁定冲突
+	8. 死锁
+11. oracle用户
+	1. 创建用户
+	2. 赋予用户权限 
+	3. 管理用户
+	4. 在用户中创建对象
+	5. 管理用户对象
+	6. 删除用户
+	dba_users
+12. oracle网络
+	1. 网络包括服务端和客户端
+	2. 主要是配置tnsnames.ora listener.ora sqlnet.ora
+	3. 把服务动态注册到监听，静态注册到监听
+	4. 包括客户端连接单机库，rac库配置文件
+13. 审计，安全
+14. 数据字典
+	1. v$开头是动态视图，在nomount,mount,open状态皆可使用
+	2. dba_、all_、user_开头是静态视图，只有open状态可使用
+
+进阶学习路线：
+1. oracle体系结构
+2. oracle管理精通
+3. sql
+4. 备份恢复
+5. oracle rac
+6. 调优
+	1. 主机调优
+	2. 存储调优
+	3. 网络调优
+	4. db调优
+	5. 应用调优
+7. 灾备goldengate dataguard sharepelx
+
+</pre>

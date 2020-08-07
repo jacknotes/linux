@@ -495,6 +495,7 @@ http {
     default_type  application/octet-stream;
     sendfile        on;
     keepalive_timeout  65;
+    underscores_in_headers on;  #表示不忽略请求头为下划线的
     upstream webserver {
         server 192.168.1.239 weight=5;  #上游服务器1，轮询
         server 127.0.0.1:8080 backup;  #备份web，当所有web down掉后替换使用，当web恢复时则停用
