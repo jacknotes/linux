@@ -1,4 +1,4 @@
-k8s知识重点：
+﻿k8s知识重点：
 
 ##k8s集群的管理方式：
 	1. 命令式：create,run,delete,expose,edit....
@@ -1529,6 +1529,7 @@ service:
 [root@node1 ~/kibana]# helm install kibana1 -f values.yaml --namespace=efk --version=3.2.6 azure-stable/kibana
 
 #######helmv2.16.9部署efk
+[root@master /kubernetes/manifests/helm]# wget https://get.helm.sh/helm-v2.16.9-linux-amd64.tar.gz
 [root@master /kubernetes/manifests/helm]# cat tiller-rbac.yaml 
 apiVersion: v1
 kind: ServiceAccount
