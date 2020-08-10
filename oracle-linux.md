@@ -1,4 +1,4 @@
-﻿#Oracle
+#Oracle
 <pre>
 Environment:
 [root@node1 ~]# cat /etc/redhat-release 
@@ -478,11 +478,20 @@ oracle管理学习路线：
 	因为目标内存初始化参数是动态的，因此可以随时更改目标内存大小而不必重新启动数据库。最大内存大小相当于一个上限，以防你无意中将目标内存大小设置得太高。因为某些SGA 组件的大小不容易收缩，或者其大小必须不低于某个下限值，所以数据库还要防止你将目标内存大小设置得太低。 
 	这种间接的内存转移依赖于操作系统(OS) 的共享内存释放机制。将内存释放给 OS 后，其它组件可以通过向OS 请求内存来分配内存。目前，Linux、Solaris 、HPUX、AIX 和Windows 平台上已实施了自动内存管理。
 4. 表空间
-	1. 创建各种表空间，数据表空间，回滚段表空间，临时表空间
+	1. 创建各种表空间：数据表空间，回滚段表空间，临时表空间
 	2. 删除表空间
 	3. 创建非标准块大小的表空间
 	4. 查询表空间
 	v$tablespace,dba_tablespaces
+	创建数据表空间:
+	ORACLE物理上是由磁盘上的以下几种文件:数据文件和控制文件和LOGFILE构成的
+	格式: create tablespace 表间名 datafile '数据文件名' size 表空间大小
+	例： create tablespace data_test datafile 'e:\oracle\oradata\test\data_1.dbf' size 2000M next 50m maxsize 20480m extent management local; 
+	创建回滚段表空间：
+	CREATE UNDO TABLESPACE UNDOTBS2 DATAFILE 'd:/oracle/oradata/oradev/UNDOTBS2.dbf' SIZE 50M
+	创建临时表空间：
+	create temporary tablespace kc_temp tempfile 'C:\app\Administrator\oradata\orcl\kc_temp.dbf' size 50m
+	
 5. 数据文件
 	1. 添加数据文件
 	2. 删除数据文件（10g以后才有）
@@ -538,6 +547,9 @@ oracle管理学习路线：
 	5. 管理用户对象
 	6. 删除用户
 	dba_users
+	创建用户：
+	格式: create user 用户名 identified by 密码 default tablespace 表空间表;
+	 create user study identified by study default tablespace data_test;
 12. oracle网络
 	1. 网络包括服务端和客户端
 	2. 主要是配置tnsnames.ora listener.ora sqlnet.ora
