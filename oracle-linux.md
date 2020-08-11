@@ -380,6 +380,55 @@ oracle管理学习路线：
 	4. 数据文件格式：文件系统，raw，asm
 	5. 字符集设置
 	6. 实例服务和实例名称设置
+	一、什么是Oracle字符集
+    Oracle字符集是一个字节数据的解释的符号集合,有大小之分,有相互的包容关系。ORACLE 支持国家语言的体系结构允许你使用本地化语言来存储，处理，检索数据。它使数据库工具，错误消息，排序次序，日期，时间，货币，数字，和日历自动适应本地化语言和平台。
+	影响Oracle数据库字符集最重要的参数是NLS_LANG参数。
+	它的格式如下: NLS_LANG = language_territory.charset	
+	它有三个组成部分(语言、地域和字符集)，每个成分控制了NLS子集的特性。	
+	其中:	
+	Language： 指定服务器消息的语言， 影响提示信息是中文还是英文	
+	Territory： 指定服务器的日期和数字格式，	
+	Charset：  指定字符集。	
+	如:AMERICAN _ AMERICA. ZHS16GBK	
+	从NLS_LANG的组成我们可以看出，真正影响数据库字符集的其实是第三部分。
+	所以两个数据库之间的字符集只要第三部分一样就可以相互导入导出数据，前面影响的只是提示信息是中文还是英文。
+	--查看数据库服务器字符集：
+	SELECT * FROM NLS_DATABASE_PARAMETERS WHERE PARAMETER = 'NLS_CHARACTERSET'
+	select userenv('language') from dual;
+	--查看数据库客户端字符集
+	SELECT * FROM NLS_INSTANCE_PARAMETERS
+	--查看会话字符集环境
+	SELECT * FROM NLS_SESSION_PARAMETERS
+	涉及三方面的字符集，在做数据导入的时候，需要这三个字符集都一致才能正确导入。	
+	1. oracel server端的字符集;
+	2. oracle client端的字符集;
+	3. dmp文件的字符集。
+		--查询oracle server端的字符集
+		select userenv('language') from dual;
+		--如何查询dmp文件的字符集
+		用oracle的exp工具导出的dmp文件也包含了字符集信息，dmp文件的第2和第3个字节记录了dmp文件的字符集。如果dmp文件不大，比如只有几M或几十M，可以用UltraEdit打开(16进制方式)，看第2第3个字节的内容，如0354，然后用以下SQL查出它对应的字符集:
+		SQL> select nls_charset_name(to_number('0354','xxxx')) from dual;
+		ZHS16GBK
+		--查询oracle client端的字符集
+		 在windows平台下，就是注册表里面相应OracleHome的NLS_LANG。还可以在dos窗口里面自己设置，
+		比如: set nls_lang=AMERICAN_AMERICA.ZHS16GBK
+		这样就只影响这个窗口里面的环境变量。
+		 在unix平台下，就是环境变量NLS_LANG。
+		$echo $NLS_LANG
+		AMERICAN_AMERICA.ZHS16GBK	
+	--修改oracle的字符集
+	8i以上版本可以通过alter database来修改字符集，但也只限于子集到超集，不建议修改props$表，将可能导致严重错误。
+		Startup nomount;
+	　　Alter database mount exclusive;
+	　　Alter system enable restricted session;
+	　　Alter system set job_queue_process=0;
+	　　Alter database open;
+	　　Alter database character set zhs16gbk;
+	按照上文所说，数据库字符集在创建后原则上不能更改。因此，在设计和安装之初考虑使用哪一种字符集十分重要。对数据库server而言，错误的修改字符集将会导致很多不可测的后果，可能会严重影响数据库的正常运行，所以在修改之前一定要确认两种字符集是否存在子集和超集的关系。一般来说，除非万不得已，我们不建议修改oracle数据库server端的字符集。特别说明，我们最常用的两种字符集ZHS16GBK和ZHS16CGB231280之间不存在子集和超集关系，因此理论上讲这两种字符集之间的相互转换不受支持。
+	不过修改字符集有2种方法可行。
+	1. 通常需要导出数据库数据，重建数据库，再导入数据库数据的方式来转换。
+	2. 通过ALTER DATABASE CHARACTER SET语句修改字符集，但创建数据库后修改字符集是有限制的，只有新的字符集是当前字符集的超集时才能修改数据库字符集，例如UTF8是US7ASCII的超集，修改数据库字符集可使用ALTER DATABASE CHARACTER SET UTF8。
+	
 2. 启动关闭数据库
 	1. 启动数据库
 		1. nomount:启动参数文件
@@ -491,7 +540,20 @@ oracle管理学习路线：
 	CREATE UNDO TABLESPACE UNDOTBS2 DATAFILE 'd:/oracle/oradata/oradev/UNDOTBS2.dbf' SIZE 50M
 	创建临时表空间：
 	create temporary tablespace kc_temp tempfile 'C:\app\Administrator\oradata\orcl\kc_temp.dbf' size 50m
+	--查看默认表空间和默认临时表空间
+	select DEFAULT_TABLESPACE,TEMPORARY_TABLESPACE,username from dba_users where username='JACK'
+		   	DEFAULT_TABLESPACE	TEMPORARY_TABLESPACE	USERNAME
+			USERS	TEMP	JACK
+
+	注：默认表空间：用户在登陆后创建数据库对象时，如果没有指定表空间，那么这些数据就会存储到默认表空间	
+	--查看默认的用户永久表空间：select * from database_properties;
+		DEFAULT_TEMP_TABLESPACE	TEMP	
+		DEFAULT_PERMANENT_TABLESPACE USERS
+	--查看默认的表空间类型
+	SELECT PROPERTY_NAME, PROPERTY_VALUE FROM DATABASE_PROPERTIES WHERE PROPERTY_NAME='DEFAULT_TBS_TYPE';
+		DEFAULT_TBS_TYPE	SMALLFILE
 	
+
 5. 数据文件
 	1. 添加数据文件
 	2. 删除数据文件（10g以后才有）
@@ -573,5 +635,8 @@ oracle管理学习路线：
 	4. db调优
 	5. 应用调优
 7. 灾备goldengate dataguard sharepelx
+
+Rman备份：
+
 
 </pre>
