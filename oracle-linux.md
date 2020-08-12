@@ -1,4 +1,4 @@
-#Oracle
+﻿#Oracle
 <pre>
 Environment:
 [root@node1 ~]# cat /etc/redhat-release 
@@ -636,7 +636,96 @@ oracle管理学习路线：
 	5. 应用调优
 7. 灾备goldengate dataguard sharepelx
 
-Rman备份：
 
+####Rman备份：
+备份脚本的格式：
+%c: 备份片的副本数
+%d: 数据库名称
+%D: 位于该月的第几天
+%M: 位于该年的第几个月
+%n: 数据库名称，向右填补到最大8个字符
+%u: 一个8个字符的名称，代表备份集和创建时间
+%p: 该备份集的备份片号，从1开始到创建的文件数
+%U: 一个唯一的名字%u %p %c
+%s: 备份集的编号
+%t: 备份集的时间戳
+%T: 年月日格式(YYYY-MM-DD)
+
+#Rman备份脚本-全库
+#!/bin/sh
+export ORACLE_SID=orcl
+export ORACLE_HOME=/usr/local/oracle/oracle/product/db
+export PATH=$ORACLE_HOME/bin:$PATH
+rman target / log /tmp/rman_full.log append <<EOF
+run
+{
+allocate channel c1 type disk;
+allocate channel c2 type disk;
+backup database filesperset 4 format '/oracle/full %d %T %s %p';
+sql 'alter system archive log current';
+backup archivelog all format '/oracle/full %d %T %s %p' delete input;
+backup current controlfile format '/oracle/full %d %T %s %p';
+}
+EOF
+
+#Rman备份脚本-归档
+#!/bin/sh
+export ORACLE_SID=orcl
+export ORACLE_HOME=/usr/local/oracle/oracle/product/db
+export PATH=$ORACLE_HOME/bin:$PATH
+rman target / log /tmp/rman_full.log append <<EOF
+run
+{
+allocate channel c1 type disk;
+allocate channel c2 type disk;
+sql 'alter system archive log current';
+backup archivelog all format '/oracle/full %d %T %s %p' delete input;
+backup current controlfile format '/oracle/full %d %T %s %p';
+}
+EOF
+
+#Oracle冗余策略
+备份的冗余策略：
+recovery window:
+	哪些文件必须备份?默认值是7.
+	保留下来的备份，必须能够将数据库恢复到指定时间之内的任意一个时刻，指定这个参数为7，则表示保留的备份文件能够将数据库恢复到最近7天中
+的任何一个时刻。为了能够将数据库恢复到7天之内的任何一个时刻，那么备份文件必须满足保留7天。这样当我们需要恢复7天之内的任何一个时刻，
+那么备份文件必须满足保留7天。这样当我们需要恢复到7天之内的任何一个时刻的时候，找到满足条件的数据文件，配合日志进行恢复。如果我们只保留了最近4天的备份，那么如果我要恢复到6天前的一个时刻，那么就不能够实现。
+redundancy:
+	表示要保留的，能够将数据库恢复到最新状态的完整的备份文件的个数。根据策略，不再需要的备份文件则被认为是obsolete.
+
+#Rman备份脚本-删除冗余
+#!/bin/sh
+export ORACLE_SID=orcl
+export ORACLE_HOME=/usr/local/oracle/oracle/product/db
+export PATH=$ORACLE_HOME/bin:$PATH
+rman target / log /tmp/rman_full.log append <<EOF
+cllocate channel for maintenance type disk;
+cllocate channel for maintenance type sbt_tape;
+crosscheck archivelog all;
+crosscheck backup;
+delete noprompt obsolete;
+EOF
+
+#自动控制文件备份打开(默认位置)----从磁盘恢复
+打开控制文件自动备份(数据库必须在mount或open)
+rman target /
+rman>CONFIGURE CONTROLFILE AUTOBACKUP ON;
+rman>CONFIGURE CONTROLFILE AUTOBACKUP FORMAT FOR DEVICE TYPE DISK TO '%F';
+数据库恢复：
+rman target / nocatalog
+rman>set dbid 1333881881;
+rman>
+run{
+allocate channel c1 type disk;
+restore controlfile from auto backup;
+}
+
+#自动控制文件备份没有打开----备份到磁带上
+rman target / nocatalog log /tmp/rman-control.log
+run{
+allocate channel c1 type sbt_tape;
+restore controlfile from 'ctl_QYL_20130515_67_1';
+}
 
 </pre>
