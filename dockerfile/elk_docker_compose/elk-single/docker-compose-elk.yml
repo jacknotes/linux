@@ -9,7 +9,7 @@ services:
     environment:                                    
       - discovery.type=single-node 
       - node.name=els-master             
-      - network.publish_host=172.19.229.224
+      - network.publish_host=192.168.3.150
       - network.host=0.0.0.0               
       - bootstrap.memory_lock=true  
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"   
@@ -21,7 +21,7 @@ services:
      resources:
         limits:
            cpus: '2'
-           memory: 2G
+           memory: 3G
         reservations:
            cpus: '0.5'
            memory: 200M
@@ -52,7 +52,7 @@ services:
      resources:
         limits:
            cpus: '2'
-           memory: 500M
+           memory: 1G
         reservations:
            cpus: '0.5'
            memory: 100M
