@@ -1,0 +1,29 @@
+global:
+  resolve_timeout: 5m
+  smtp_require_tls: false
+  smtp_smarthost: 'smtp.126.com:25'
+  smtp_from: 'jacknotes@126.com'
+  smtp_auth_username: 'jacknotes@126.com'
+  smtp_auth_password: 'EHHQVBCSEGCOCOQA'
+templates:
+  #- '/usr/local/alertmanager/email.tmpl'
+  - '/usr/local/alertmanager/wechat.tmpl'
+route:
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'default-receiver'
+receivers:
+- name: 'default-receiver'
+  email_configs:
+  - to: '{{ template "email.to" . }}'
+    #html: '{{ template "email.to.html" . }}'
+    html: '{{ template "wechat.html" . }}'
+    send_resolved: true
+#inhibit_rules:
+#  - source_match:
+#      severity: 'critical'
+#    target_match:
+#      severity: 'warning'
+#    equal: ['alertname', 'dev', 'instance']
