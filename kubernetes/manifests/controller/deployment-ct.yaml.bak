@@ -36,15 +36,3 @@ spec:
         ports:
         - name: http
           containerPort: 80
-        livenessProbe:
-          httpGet:
-            port: http
-            path: /index.html
-          initialDelaySeconds: 1 
-          periodSeconds: 3 
-        readinessProbe:
-          httpGet:
-            port: http
-            path: /index.html
-          initialDelaySeconds: 1 
-          periodSeconds: 3 

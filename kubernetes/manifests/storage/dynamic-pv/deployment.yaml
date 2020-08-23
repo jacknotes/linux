@@ -4,7 +4,7 @@ metadata:
   name: nfs-client-provisioner
   labels:
     app: nfs-client-provisioner
-  namespace: default
+  namespace: storage-nfs
 spec:
   replicas: 1
   strategy:
@@ -28,11 +28,11 @@ spec:
             - name: PROVISIONER_NAME
               value: fuseim.pri/ifs
             - name: NFS_SERVER
-              value: 192.168.3.201
+              value: 192.168.15.199
             - name: NFS_PATH
-              value: /data/dynamicPV
+              value: /data/nfs
       volumes:
         - name: nfs-client-root
           nfs:
-            server: 192.168.3.201
-            path: /data/dynamicPV
+            server: 192.168.15.199
+            path: /data/nfs
