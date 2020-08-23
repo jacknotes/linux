@@ -1,4 +1,4 @@
-#prometheus
+﻿#prometheus
 <pre>
 #学习1
 #时间序列数据：
@@ -77,7 +77,7 @@ scrape_configs:  #抓取数据的配置
     static_configs:
     - targets: ['192.168.15.201:9104']
 [root@node3 /usr/local/prometheus]# vim /usr/lib/systemd/system/prometheus.service
---------------
+-------旧版-------
 [Unit]
 Description=https://prometheus.io
 After=network-online.target
@@ -89,10 +89,28 @@ Type=simple
 ExecStart=/usr/local/prometheus/prometheus \
 --config.file /usr/local/prometheus/prometheus.yml \
 --storage.tsdb.path /var/lib/prometheus/ \
--storage.local.retention 168h0m0s \
--storage.local.max-chunks-to-persist 3024288 \
--storage.local.memory-chunks=50502740 \
--storage.local.num-fingerprint-mutexes=300960 \
+--storage.local.retention 168h0m0s \
+--storage.local.max-chunks-to-persist 3024288 \
+--storage.local.memory-chunks=50502740 \
+--storage.local.num-fingerprint-mutexes=300960 \
+--web.enable-lifecycle
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+---------新版----------
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/prometheus/prometheus \
+--config.file /usr/local/prometheus/prometheus.yml \
+--storage.tsdb.path /var/lib/prometheus/ \
+--storage.tsdb.retention.time=15d \
 --web.enable-lifecycle
 Restart=on-failure
 
@@ -224,6 +242,31 @@ services:
 [root@hohong-node2 /tmp]# docker-compose -f mysqld-exporter.yaml up -d
 
 #-----安装cAdvisor监控容器
+--二进制运行：
+[root@node3 /download]# wget https://github.com/google/cadvisor/releases/latest
+[root@node3 /download]# cp cadvisor /usr/local/bin/
+[root@node3 /download]# chmod +x /usr/local/bin/cadvisor
+[root@node3 /download]# chown root.root /usr/local/bin/cadvisor
+[root@node3 /download]# cat /usr/lib/systemd/system/cadvisor.service 
+---------------
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+
+[Service]
+User=root
+Group=root
+Type=simple
+ExecStart=/usr/local/bin/cadvisor -port=8080 &>>/var/log/cadvisor.log
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+---------------
+[root@node3 /download]# netstat -tnlp | grep 8080
+tcp6       0      0 :::8080                 :::*                    LISTEN      25771/cadvisor 
+
+--docker运行
 docker run \
   --volume=/:/rootfs:ro \
   --volume=/var/run:/var/run:rw \
@@ -233,6 +276,8 @@ docker run \
   --detach=true \
   --name=cadvisor \
   google/cadvisor:latest
+[root@node3 /download]# netstat -tnlp | grep 8080
+tcp6       0      0 :::8080                 :::*                    LISTEN      25771/cadvisor 	
 
 #node3安装grafana
 [root@node3 /download]# wget https://dl.grafana.com/oss/release/grafana-7.0.3-1.x86_64.rpm
@@ -262,11 +307,15 @@ percona模板连接：https://github.com/percona/grafana-dashboards #percon专�
 10000
 8588
 315
+11277
+11558
 第二部分
 监控物理机/虚拟机(linux)
 推荐ID
 8919
 9276
+ok:1860
+ok:10242
 监控物理机/虚拟机(windows)
 推荐ID
 10467
@@ -282,6 +331,7 @@ dns监控dns
 9965
 实操模板：
 mysqld-exporter: 7362
+docker cadvisor: 8321
 cadvisor: 11277
 
 #grafana+onealert报警
@@ -863,16 +913,81 @@ groups:
 rule_files:
   - /usr/local/prometheus/rules/*.yaml
 #安装alertmanager
-[root@jack download]# axel -n 30 https://github.com/prometheus/prometheus/releases/download/v2.20.0/prometheus-2.20.0.linux-amd64.tar.gz
-[root@jack download]# tar xf 
-[root@jack download]# 
+[root@node3 /download]# tar xf alertmanager-0.20.0.linux-amd64.tar.gz -C /usr/local/
+[root@node3 /download]# ln -sv /usr/local/alertmanager-0.20.0.linux-amd64 /usr/local/alertmanager
+----默认的存储路径为data/。因此，在启动Alertmanager之前需要创建相应的目录
+[root@node3 /usr/local/alertmanager]# mkdir -p /usr/local/alertmanager/data
+[root@node3 /usr/local/alertmanager]# chown -R prometheus.prometheus /usr/local/alertmanager-0.20.0.linux-amd64/
+[root@node3 /usr/local/alertmanager]# cp /usr/lib/systemd/system/node_exporter.service /usr/lib/systemd/system/alertmanager.service
+[root@node3 /usr/local/alertmanager]# cat /usr/lib/systemd/system/alertmanager.service
+----------------
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/alertmanager/alertmanager --config.file=/usr/local/alertmanager/alertmanager.yml \
+--storage.path=/usr/local/alertmanager/data/
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+----------------
+--访问alertmanager WEB界面：http://192.168.15.203:9093/
 ----关联prometheus
 [root@node1 /usr/local/prometheus]# tail /usr/local/prometheus/prometheus.yml
 alerting:
   alertmanagers:
     - static_configs:
         - targets: ['localhost:9093']
-[root@node1 /usr/local/prometheus]# systemctl restart prometheus
+[root@node1 /usr/local/prometheus]# curl -XPOST http://localhost:9090/-/reload
+
+#alertmanager配置文件：
+--alertmanager参数
+resolve_timeout:该参数定义了当Alertmanager持续多长时间未接收到告警后标记告警状态为resolved（已解决）。该参数的定义可能会影响到告警恢复通知的接收时间，读者可根据自己的实际场景进行定义，其默认值为5分钟
+group_by:使用group_by来定义分组规则,基于告警中包含的标签，如果满足group_by中定义标签名称，那么这些告警将会合并为一个通知发送给接收器
+group_wait:新分组默认等待30s批量发送
+repeat_interval:发送成功的告警等待3h后重复发送，如果设置太小则会导致收到重复的垃圾邮件
+group_interval:存在分组有新告警加入等待5m批量发送
+告警的匹配有两种方式可以选择:
+match_re:通过设置match_re验证当前告警标签的值是否满足正则表达式的内容。
+match:通过设置match规则判断当前告警中是否存在标签labelname并且其值等于labelvalue
+每一个告警都会从配置文件中顶级的route进入路由树，需要注意的是顶级的route必须匹配所有告警(即不能有任何的匹配设置match和match_re)，每一个路由都可以定义自己的接受人以及匹配规则。默认情况下，告警进入到顶级route后会遍历所有的子节点，直到找到最深的匹配route，并将告警发送到该route定义的receiver中。但如果route中设置continue的值为false，那么告警在匹配到第一个子节点之后就直接停止。如果continue为true，报警则会继续进行后续子节点的匹配。如果当前告警匹配不到任何的子节点，那该告警将会基于当前路由节点的接收器配置方式进行处理。
+[root@node3 /usr/local/alertmanager]# cat alertmanager.yml 
+--------------
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: smtp.126.com:25
+  smtp_from: jacknodes@126.com
+  smtp_auth_username: jacknotes@126.com
+  smtp_auth_identity: jacknotes@126.com
+  smtp_auth_password: EHHQVBCSEGCOCOQA
+
+route:
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'default-receiver'
+receivers:
+- name: 'default-receiver'
+  email_configs:
+  - to: jacknotes@163.com
+    send_resolved: true
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'dev', 'instance']
+--------------
+
+#----alertmanager与SMTP邮件集成
+----重载alertmanager配置
+[root@node3 /usr/local/alertmanager]# curl -XPOST http://localhost:9093/-/reload
 
 
 
