@@ -956,16 +956,18 @@ group_interval:存在分组有新告警加入等待5m批量发送
 match_re:通过设置match_re验证当前告警标签的值是否满足正则表达式的内容。
 match:通过设置match规则判断当前告警中是否存在标签labelname并且其值等于labelvalue
 每一个告警都会从配置文件中顶级的route进入路由树，需要注意的是顶级的route必须匹配所有告警(即不能有任何的匹配设置match和match_re)，每一个路由都可以定义自己的接受人以及匹配规则。默认情况下，告警进入到顶级route后会遍历所有的子节点，直到找到最深的匹配route，并将告警发送到该route定义的receiver中。但如果route中设置continue的值为false，那么告警在匹配到第一个子节点之后就直接停止。如果continue为true，报警则会继续进行后续子节点的匹配。如果当前告警匹配不到任何的子节点，那该告警将会基于当前路由节点的接收器配置方式进行处理。
+#----alertmanager与SMTP邮件集成
 [root@node3 /usr/local/alertmanager]# cat alertmanager.yml 
---------------
+-------------- 
 global:
   resolve_timeout: 5m
-  smtp_smarthost: smtp.126.com:25
-  smtp_from: jacknodes@126.com
-  smtp_auth_username: jacknotes@126.com
-  smtp_auth_identity: jacknotes@126.com
-  smtp_auth_password: EHHQVBCSEGCOCOQA
-
+  smtp_require_tls: false
+  smtp_smarthost: 'smtp.126.com:25'
+  smtp_from: 'jacknotes@126.com'
+  smtp_auth_username: 'jacknotes@126.com'
+  smtp_auth_password: 'EHHQVBC'
+templates:
+  - '/usr/local/alertmanager/wechat.tmpl'
 route:
   group_by: ['alertname']
   group_wait: 10s
@@ -975,7 +977,8 @@ route:
 receivers:
 - name: 'default-receiver'
   email_configs:
-  - to: jacknotes@163.com
+  - to: '{{ template "email.to" . }}'
+    html: '{{ template "wechat.html" . }}'
     send_resolved: true
 inhibit_rules:
   - source_match:
@@ -984,11 +987,133 @@ inhibit_rules:
       severity: 'warning'
     equal: ['alertname', 'dev', 'instance']
 --------------
-
-#----alertmanager与SMTP邮件集成
+[root@node3 /usr/local/alertmanager]# cat wechat.tmpl 
+{{ define "email.from" }}jacknotes@126.com{{ end }}
+{{ define "email.to" }}jacknotes@163.com, jacknotes@126.com{{ end }}
+{{ define "wechat.html" }}
+{{- if gt (len .Alerts.Firing) 0 -}}{{ range .Alerts }}
+@警报<br>
+=========start==========<br>
+实例: {{ .Labels.instance }}<br>
+信息: {{ .Annotations.summary }}<br>
+详情: {{ .Annotations.description }}<br>
+时间: {{ .StartsAt.Format "2006-01-02 15:04:05" }}<br>
+=========end==========<br>
+{{ end }}{{ end -}}
+{{- if gt (len .Alerts.Resolved) 0 -}}{{ range .Alerts }}
+@恢复<br>
+=========start==========<br>
+实例: {{ .Labels.instance }}<br>
+信息: {{ .Annotations.summary }}<br>
+时间: {{ .StartsAt.Format "2006-01-02 15:04:05" }}<br>
+恢复: {{ .EndsAt.Format "2006-01-02 15:04:05" }}<br>
+=========end==========<br>
+{{ end }}{{ end -}}
+{{- end }}
 ----重载alertmanager配置
 [root@node3 /usr/local/alertmanager]# curl -XPOST http://localhost:9093/-/reload
+#与钉钉集成webhook
+--docker安装钉钉报警插件，启用一个名为：webhook1的钉钉机器人：
+[root@node3 /download]# docker run -d --name dingtalk --restart always -p 8060:8060 timonwong/prometheus-webhook-dingtalk:master --ding.profile="webhook1=https://oapi.dingtalk.com/robot/send?access_token=dcdb94119d8f6d349bb1311c60fa749ab701b55a5d5a6b9f41ae9548bf1ea8a01"
+[root@node3 /download]# netstat -tnlp | grep 8060
+tcp6       0      0 :::8060                 :::*                    LISTEN      16946/docker-proxy  
+--增加webhook配置
+[root@node3 /usr/local/alertmanager]# cat alertmanager.yml 
+-----------------
+global:
+  resolve_timeout: 5m
+  smtp_require_tls: false
+  smtp_smarthost: 'smtp.126.com:25'
+  smtp_from: 'jacknotes@126.com'
+  smtp_auth_username: 'jacknotes@126.com'
+  smtp_auth_password: 'EHHQVBC'
+templates:
+  - '/usr/local/alertmanager/wechat.tmpl'
+route:
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'webhook'
+receivers:
+- name: 'default-receiver'
+  email_configs:
+  - to: '{{ template "email.to" . }}'
+    html: '{{ template "wechat.html" . }}'
+    send_resolved: true
+- name: 'webhook'
+  webhook_configs:
+  - url: 'http://127.0.0.1:8060/dingtalk/webhook1/send'
+    send_resolved: true
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'dev', 'instance']
+-----------------
+[root@node3 /usr/local/alertmanager]# curl -XPOST http://localhost:9093/-/reload
+--测试cpu
+[root@node3 /download]# cat /dev/zero > /dev/null 
+----此时钉钉收到信息
+[FIRING:1] hostCpuUsagelert
+Alerts Firing
+[PAGE] Instance localhost:9100 CPU Usage hight
+Description: localhost:9100 CPU Usage above 85% (current value: 0.28501900126675117)
+Graph: 
+Details:
+alertname: hostCpuUsagelert
+instance: localhost:9100
 
+#屏蔽告警通知
+Alertmanager提供了方式可以帮助用户控制告警通知的行为，包括预先定义的抑制机制和临时定义的静默规则。
+#----抑制机制
+Alertmanager的抑制机制可以避免当某种问题告警产生之后用户接收到大量由此问题导致的一系列的其它告警通知。例如当集群不可用时，用户可能只希望接收到一条告警，告诉他这时候集群出现了问题，而不是大量的如集群中的应用异常、中间件服务异常的告警通知。
+例如当集群中的某一个主机节点异常宕机导致告警NodeDown被触发，同时在告警规则中定义了告警级别severity=critical。由于主机异常宕机，该主机上部署的所有服务，中间件会不可用并触发报警。根据抑制规则的定义，如果有新的告警级别为severity=critical，并且告警中标签node的值与NodeDown告警的相同，则说明新的告警是由NodeDown导致的，则启动抑制机制停止向接收器发送通知。
+- source_match:
+    alertname: NodeDown
+    severity: critical
+  target_match:
+    severity: critical
+  equal:
+    - node
+
+[root@node3 /usr/local/alertmanager]# cat alertmanager.yml 
+global:
+  resolve_timeout: 5m
+  smtp_require_tls: false
+  smtp_smarthost: 'smtp.126.com:25'
+  smtp_from: 'jacknotes@126.com'
+  smtp_auth_username: 'jacknotes@126.com'
+  smtp_auth_password: 'EHHQVBCSEGCOCOQA'
+templates:
+  - '/usr/local/alertmanager/wechat.tmpl'
+route:
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 10s
+  receiver: 'default-receiver'
+receivers:
+- name: 'default-receiver'
+  email_configs:
+  - to: '{{ template "email.to" . }}'
+    html: '{{ template "wechat.html" . }}'
+    send_resolved: true
+- name: 'webhook'
+  webhook_configs:
+  - url: 'http://127.0.0.1:8060/dingtalk/webhook1/send'
+    send_resolved: true
+inhibit_rules:
+  - source_match:
+      alertname: hostCpuUsagelert
+      severity: page
+    target_match:
+      severity: page
+      #jack: jack
+注：表示当一个报警名称为hostCpuUsagelert的告警生效时，并且这个告警中有标签和值为：severity: page的告警，当有一个新的告警中携带标签值为severity: page时，则这个新的报警将被抑制，否则不会被抑制。当多个标签时表示为‘与’的关系
+#----临时静默
+除了基于抑制机制可以控制告警通知的行为以外，用户或者管理员还可以直接通过Alertmanager的UI临时屏蔽特定的告警通知。通过定义标签的匹配规则(字符串或者正则表达式)，如果新的告警通知满足静默规则的设置，则停止向receiver发送通知。进入Alertmanager UI，点击"New Silence"，用户可以通过该UI定义新的静默规则的开始时间以及持续时间，通过Matchers部分可以设置多条匹配规则(字符串匹配或者正则匹配)。填写当前静默规则的创建者以及创建原因后，点击"Create"按钮即可。通过"Preview Alerts"可以查看预览当前匹配规则匹配到的告警信息。静默规则创建成功后，Alertmanager会开始加载该规则并且设置状态为Pending,当规则生效后则进行到Active状态。
 
 
 #exporter
@@ -1024,6 +1149,29 @@ Restart=on-failure
 WantedBy=multi-user.target
 
 2. blackbox_exporter
+----黑盒监控即以用户的身份测试服务的外部可见性，常见的黑盒监控包括HTTP探针、TCP探针等用于检测站点或者服务的可访问性，以及访问效率等。
+[root@node3 /download]# tar xf blackbox_exporter-0.17.0.linux-amd64.tar.gz -C /usr/local/
+[root@node3 /download]# chown -R prometheus.prometheus /usr/local/blackbox_exporter-0.17.0.linux-amd64/
+[root@node3 /download]# ln -sv /usr/local/blackbox_exporter-0.17.0.linux-amd64/ /usr/local/blackbox_exporter
+[root@node3 /download]# cat /usr/lib/systemd/system/blackbox_exporter.service
+--------
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/blackbox_exporter/blackbox_exporter --config.file=/usr/local/blackbox_exporter/blackbox.yml
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+--------
+[root@node3 /usr/local/blackbox_exporter]# systemctl start blackbox_exporter
+[root@node3 /usr/local/blackbox_exporter]# netstat -tnlp | grep 9115
+tcp6       0      0 :::9115                 :::*                    LISTEN      13601/blackbox_expo 
 
 
 </pre>
