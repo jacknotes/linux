@@ -12,12 +12,12 @@
       }
     ]
   },
-  "description": "node_exporter Usage Dashboard",
+  "description": "ä¸»æœºåŸºç¡€ç›‘æ§(cpuï¼Œå†…å­˜ï¼Œç£ç›˜ï¼Œç½‘ç»œ)",
   "editable": true,
   "gnetId": 9276,
   "graphTooltip": 0,
   "id": 2,
-  "iteration": 1598366826921,
+  "iteration": 1598431180183,
   "links": [],
   "panels": [
     {
@@ -87,7 +87,7 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": false
       },
-      "tableColumn": "{instance=\"localhost:9100\", job=\"node_exporter\"}",
+      "tableColumn": "{instance=\"127.0.0.1:9100\", job=\"node_exporter\"}",
       "targets": [
         {
           "expr": "time() - node_boot_time_seconds{instance=~\"$node\"}",
@@ -100,7 +100,7 @@
         }
       ],
       "thresholds": "",
-      "title": "ÏµÍ³ÔËĞĞÊ±¼ä",
+      "title": "ç³»ç»Ÿè¿è¡Œæ—¶é—´",
       "type": "singlestat",
       "valueFontSize": "100%",
       "valueMaps": [
@@ -191,7 +191,7 @@
         }
       ],
       "thresholds": "",
-      "title": "CPU ºËÊı",
+      "title": "CPU æ ¸æ•°",
       "type": "singlestat",
       "valueFontSize": "100%",
       "valueMaps": [
@@ -285,7 +285,7 @@
         }
       ],
       "thresholds": "50,80",
-      "title": "CPUÊ¹ÓÃÂÊ£¨1m£©",
+      "title": "CPUä½¿ç”¨ç‡ï¼ˆ1mï¼‰",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -365,7 +365,7 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": true
       },
-      "tableColumn": "{instance=\"localhost:9100\", job=\"node_exporter\"}",
+      "tableColumn": "{instance=\"127.0.0.1:9100\", job=\"node_exporter\"}",
       "targets": [
         {
           "expr": "((node_memory_MemTotal_bytes{instance=~\"$node\"} - node_memory_MemFree_bytes{instance=~\"$node\"} - node_memory_Buffers_bytes{instance=~\"$node\"} - node_memory_Cached_bytes{instance=~\"$node\"}) / (node_memory_MemTotal_bytes{instance=~\"$node\"} )) * 100",
@@ -378,7 +378,7 @@
         }
       ],
       "thresholds": "80,90",
-      "title": "ÄÚ´æÊ¹ÓÃÂÊ",
+      "title": "å†…å­˜ä½¿ç”¨ç‡",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [],
@@ -395,7 +395,7 @@
       ],
       "datasource": "Prometheus",
       "decimals": null,
-      "description": "Í¨¹ı±äÁ¿maxmount»ñÈ¡×î´óµÄ·ÖÇø¡£",
+      "description": "é€šè¿‡å˜é‡maxmountè·å–æœ€å¤§çš„åˆ†åŒºã€‚",
       "fieldConfig": {
         "defaults": {
           "custom": {}
@@ -453,20 +453,19 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": true
       },
-      "tableColumn": "{device=\"/dev/sda2\", fstype=\"xfs\", instance=\"localhost:9100\", job=\"node_exporter\", mountpoint=\"/\"}",
+      "tableColumn": "{device=\"/dev/xvda2\", fstype=\"xfs\", instance=\"127.0.0.1:9100\", job=\"node_exporter\", mountpoint=\"/\"}",
       "targets": [
         {
           "expr": "100 - ((node_filesystem_avail_bytes{instance=~\"$node\",mountpoint=\"$maxmount\",fstype=~\"ext4|xfs\"} * 100) / node_filesystem_size_bytes {instance=~\"$node\",mountpoint=\"$maxmount\",fstype=~\"ext4|xfs\"})",
           "format": "time_series",
           "interval": "10s",
           "intervalFactor": 1,
-          "legendFormat": "",
           "refId": "A",
           "step": 20
         }
       ],
       "thresholds": "70,90",
-      "title": "×î´ó·ÖÇø($maxmount)Ê¹ÓÃÂÊ",
+      "title": "æœ€å¤§åˆ†åŒº($maxmount)ä½¿ç”¨ç‡",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -555,7 +554,7 @@
         }
       ],
       "thresholds": "1,4",
-      "title": "ÏµÍ³Æ½¾ù¸ºÔØ£¨1m£©",
+      "title": "ç³»ç»Ÿå¹³å‡è´Ÿè½½ï¼ˆ1mï¼‰",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -634,7 +633,7 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": false
       },
-      "tableColumn": "localhost:9100",
+      "tableColumn": "127.0.0.1:9100",
       "targets": [
         {
           "expr": "node_memory_MemTotal_bytes{instance=~\"$node\"}",
@@ -647,7 +646,7 @@
         }
       ],
       "thresholds": "",
-      "title": "ÄÚ´æ×ÜÁ¿",
+      "title": "å†…å­˜æ€»é‡",
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -667,12 +666,12 @@
         "iowait": "#EAB839",
         "irq": "#BF1B00",
         "nice": "#C15C17",
-        "sdb_Ã¿ÃëI/O²Ù×÷%": "#d683ce",
+        "sdb_æ¯ç§’I/Oæ“ä½œ%": "#d683ce",
         "softirq": "#E24D42",
         "steal": "#FCE2DE",
         "system": "#508642",
         "user": "#5195CE",
-        "´ÅÅÌ»¨·ÑÔÚI/O²Ù×÷Õ¼±È": "#ba43a9"
+        "ç£ç›˜èŠ±è´¹åœ¨I/Oæ“ä½œå æ¯”": "#ba43a9"
       },
       "bars": false,
       "dashLength": 10,
@@ -767,7 +766,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "CPUÊ¹ÓÃÂÊ£¨%£©",
+      "title": "CPUä½¿ç”¨ç‡ï¼ˆ%ï¼‰",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -807,9 +806,9 @@
     },
     {
       "aliasColors": {
-        "15·ÖÖÓ": "#6ED0E0",
-        "1·ÖÖÓ": "#BF1B00",
-        "5·ÖÖÓ": "#CCA300"
+        "15åˆ†é’Ÿ": "#6ED0E0",
+        "1åˆ†é’Ÿ": "#BF1B00",
+        "5åˆ†é’Ÿ": "#CCA300"
       },
       "bars": false,
       "dashLength": 10,
@@ -901,7 +900,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "ÏµÍ³Æ½¾ù¸ºÔØ",
+      "title": "ç³»ç»Ÿå¹³å‡è´Ÿè½½",
       "tooltip": {
         "msResolution": false,
         "shared": true,
@@ -939,11 +938,11 @@
     },
     {
       "aliasColors": {
-        "ÄÚ´æ_Avaliable": "#6ED0E0",
-        "ÄÚ´æ_Cached": "#EF843C",
-        "ÄÚ´æ_Free": "#629E51",
-        "ÄÚ´æ_Total": "#6d1f62",
-        "ÄÚ´æ_Used": "#eab839"
+        "å†…å­˜_Avaliable": "#6ED0E0",
+        "å†…å­˜_Cached": "#EF843C",
+        "å†…å­˜_Free": "#629E51",
+        "å†…å­˜_Total": "#6d1f62",
+        "å†…å­˜_Used": "#eab839"
       },
       "bars": false,
       "dashLength": 10,
@@ -997,7 +996,7 @@
           "format": "time_series",
           "hide": false,
           "intervalFactor": 2,
-          "legendFormat": "×ÜÄÚ´æ",
+          "legendFormat": "æ€»å†…å­˜",
           "refId": "A",
           "step": 4
         },
@@ -1006,7 +1005,7 @@
           "format": "time_series",
           "hide": false,
           "intervalFactor": 2,
-          "legendFormat": "ÒÑÓÃ",
+          "legendFormat": "å·²ç”¨",
           "refId": "B",
           "step": 4
         },
@@ -1015,7 +1014,7 @@
           "format": "time_series",
           "hide": true,
           "intervalFactor": 2,
-          "legendFormat": "ÄÚ´æ_Free",
+          "legendFormat": "å†…å­˜_Free",
           "refId": "C",
           "step": 4
         },
@@ -1024,7 +1023,7 @@
           "format": "time_series",
           "hide": true,
           "intervalFactor": 2,
-          "legendFormat": "ÄÚ´æ_Buffers",
+          "legendFormat": "å†…å­˜_Buffers",
           "refId": "D",
           "step": 4
         },
@@ -1033,7 +1032,7 @@
           "format": "time_series",
           "hide": true,
           "intervalFactor": 2,
-          "legendFormat": "ÄÚ´æ_Cached",
+          "legendFormat": "å†…å­˜_Cached",
           "refId": "E",
           "step": 4
         },
@@ -1043,7 +1042,7 @@
           "hide": false,
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "¿ÉÓÃ",
+          "legendFormat": "å¯ç”¨",
           "refId": "F",
           "step": 4
         }
@@ -1052,7 +1051,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "ÄÚ´æĞÅÏ¢",
+      "title": "å†…å­˜ä¿¡æ¯",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1123,7 +1122,7 @@
           "type": "hidden"
         },
         {
-          "alias": "·ÖÇø",
+          "alias": "åˆ†åŒº",
           "align": "auto",
           "colorMode": null,
           "colors": [
@@ -1142,7 +1141,7 @@
           "unit": "bytes"
         },
         {
-          "alias": "ÒÑÓÃ¿Õ¼ä",
+          "alias": "å·²ç”¨ç©ºé—´",
           "align": "auto",
           "colorMode": null,
           "colors": [
@@ -1162,7 +1161,7 @@
           "unit": "bytes"
         },
         {
-          "alias": "Ê¹ÓÃÂÊ",
+          "alias": "ä½¿ç”¨ç‡",
           "align": "auto",
           "colorMode": "cell",
           "colors": [
@@ -1182,7 +1181,7 @@
           "unit": "percentunit"
         },
         {
-          "alias": "×Ü¿Õ¼ä",
+          "alias": "æ€»ç©ºé—´",
           "align": "auto",
           "colorMode": null,
           "colors": [
@@ -1200,7 +1199,7 @@
           "unit": "bytes"
         },
         {
-          "alias": "ÎÄ¼şÏµÍ³",
+          "alias": "æ–‡ä»¶ç³»ç»Ÿ",
           "align": "auto",
           "colorMode": null,
           "colors": [
@@ -1273,7 +1272,7 @@
           "refId": "D"
         }
       ],
-      "title": "¸÷·ÖÇø¿ÉÓÃ¿Õ¼ä",
+      "title": "å„åˆ†åŒºå¯ç”¨ç©ºé—´",
       "transform": "table",
       "type": "table-old"
     },
@@ -1323,7 +1322,7 @@
       "renderer": "flot",
       "seriesOverrides": [
         {
-          "alias": "/.*_outÉÏ´«$/",
+          "alias": "/.*_outä¸Šä¼ $/",
           "transform": "negative-Y"
         }
       ],
@@ -1334,9 +1333,8 @@
         {
           "expr": "irate(node_network_receive_bytes_total{instance=~'$node',device=~'$nic'}[5m])*8",
           "format": "time_series",
-          "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "{{device}}_½ø´ø¿í(in)",
+          "legendFormat": "{{device}}_è¿›å¸¦å®½(in)",
           "refId": "A",
           "step": 4
         }
@@ -1345,7 +1343,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "ÍøÂç½ø´ø¿í£¨in£©",
+      "title": "ç½‘ç»œè¿›å¸¦å®½ï¼ˆinï¼‰",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1362,7 +1360,7 @@
       "yaxes": [
         {
           "format": "bps",
-          "label": "ÉÏ´«£¨-£©/ÏÂÔØ£¨+£©",
+          "label": "ä¸Šä¼ ï¼ˆ-ï¼‰/ä¸‹è½½ï¼ˆ+ï¼‰",
           "logBase": 1,
           "max": null,
           "min": null,
@@ -1428,7 +1426,7 @@
       "renderer": "flot",
       "seriesOverrides": [
         {
-          "alias": "/.*_outÉÏ´«$/",
+          "alias": "/.*_outä¸Šä¼ $/",
           "transform": "negative-Y"
         }
       ],
@@ -1440,7 +1438,7 @@
           "expr": "irate(node_network_transmit_bytes_total{instance=~'$node',device=~'$nic'}[5m])*8",
           "format": "time_series",
           "intervalFactor": 2,
-          "legendFormat": "{{device}}_³ö´ø¿í(out)",
+          "legendFormat": "{{device}}_å‡ºå¸¦å®½(out)",
           "refId": "B",
           "step": 4
         }
@@ -1449,7 +1447,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "ÍøÂç³ö´ø¿í£¨out£©",
+      "title": "ç½‘ç»œå‡ºå¸¦å®½ï¼ˆoutï¼‰",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1466,7 +1464,7 @@
       "yaxes": [
         {
           "format": "bps",
-          "label": "ÉÏ´«£¨-£©/ÏÂÔØ£¨+£©",
+          "label": "ä¸Šä¼ ï¼ˆ-ï¼‰/ä¸‹è½½ï¼ˆ+ï¼‰",
           "logBase": 1,
           "max": null,
           "min": null,
@@ -1494,7 +1492,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Prometheus",
-      "description": "Reads completed: Ã¿¸ö´ÅÅÌ·ÖÇøÃ¿Ãë¶ÁÍê³É´ÎÊı\n\nWrites completed: Ã¿¸ö´ÅÅÌ·ÖÇøÃ¿ÃëĞ´Íê³É´ÎÊı\n\nIO now Ã¿¸ö´ÅÅÌ·ÖÇøÃ¿ÃëÕıÔÚ´¦ÀíµÄÊäÈë/Êä³öÇëÇóÊı",
+      "description": "Reads completed: æ¯ä¸ªç£ç›˜åˆ†åŒºæ¯ç§’è¯»å®Œæˆæ¬¡æ•°\n\nWrites completed: æ¯ä¸ªç£ç›˜åˆ†åŒºæ¯ç§’å†™å®Œæˆæ¬¡æ•°\n\nIO now æ¯ä¸ªç£ç›˜åˆ†åŒºæ¯ç§’æ­£åœ¨å¤„ç†çš„è¾“å…¥/è¾“å‡ºè¯·æ±‚æ•°",
       "fieldConfig": {
         "defaults": {
           "custom": {}
@@ -1535,7 +1533,7 @@
       "renderer": "flot",
       "seriesOverrides": [
         {
-          "alias": "/.*_¶ÁÈ¡$/",
+          "alias": "/.*_è¯»å–$/",
           "transform": "negative-Y"
         }
       ],
@@ -1549,7 +1547,7 @@
           "hide": false,
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "{{device}}_¶ÁÈ¡",
+          "legendFormat": "{{device}}_è¯»å–",
           "refId": "A",
           "step": 10
         },
@@ -1558,7 +1556,7 @@
           "format": "time_series",
           "hide": false,
           "intervalFactor": 2,
-          "legendFormat": "{{device}}_Ğ´Èë",
+          "legendFormat": "{{device}}_å†™å…¥",
           "refId": "B",
           "step": 10
         },
@@ -1576,7 +1574,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "´ÅÅÌ¶ÁĞ´ËÙÂÊ£¨IOPS£©",
+      "title": "ç£ç›˜è¯»å†™é€Ÿç‡ï¼ˆIOPSï¼‰",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1594,7 +1592,7 @@
         {
           "decimals": null,
           "format": "iops",
-          "label": "¶ÁÈ¡£¨-£©/Ğ´Èë£¨+£©I/O ops/sec",
+          "label": "è¯»å–ï¼ˆ-ï¼‰/å†™å…¥ï¼ˆ+ï¼‰I/O ops/sec",
           "logBase": 1,
           "max": null,
           "min": null,
@@ -1622,7 +1620,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Prometheus",
-      "description": "Read bytes Ã¿¸ö´ÅÅÌ·ÖÇøÃ¿Ãë¶ÁÈ¡µÄ±ÈÌØÊı\nWritten bytes Ã¿¸ö´ÅÅÌ·ÖÇøÃ¿ÃëĞ´ÈëµÄ±ÈÌØÊı",
+      "description": "Read bytes æ¯ä¸ªç£ç›˜åˆ†åŒºæ¯ç§’è¯»å–çš„æ¯”ç‰¹æ•°\nWritten bytes æ¯ä¸ªç£ç›˜åˆ†åŒºæ¯ç§’å†™å…¥çš„æ¯”ç‰¹æ•°",
       "fieldConfig": {
         "defaults": {
           "custom": {}
@@ -1663,7 +1661,7 @@
       "renderer": "flot",
       "seriesOverrides": [
         {
-          "alias": "/.*_¶ÁÈ¡$/",
+          "alias": "/.*_è¯»å–$/",
           "transform": "negative-Y"
         }
       ],
@@ -1676,7 +1674,7 @@
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "{{device}}_¶ÁÈ¡",
+          "legendFormat": "{{device}}_è¯»å–",
           "refId": "A",
           "step": 10
         },
@@ -1685,7 +1683,7 @@
           "format": "time_series",
           "hide": false,
           "intervalFactor": 2,
-          "legendFormat": "{{device}}_Ğ´Èë",
+          "legendFormat": "{{device}}_å†™å…¥",
           "refId": "B",
           "step": 10
         }
@@ -1694,7 +1692,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "´ÅÅÌ¶ÁĞ´ÈİÁ¿´óĞ¡",
+      "title": "ç£ç›˜è¯»å†™å®¹é‡å¤§å°",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1712,7 +1710,7 @@
         {
           "decimals": null,
           "format": "Bps",
-          "label": "¶ÁÈ¡£¨-£©/Ğ´Èë£¨+£©",
+          "label": "è¯»å–ï¼ˆ-ï¼‰/å†™å…¥ï¼ˆ+ï¼‰",
           "logBase": 1,
           "max": null,
           "min": null,
@@ -1740,7 +1738,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Prometheus",
-      "description": "Read time ms Ã¿¸ö´ÅÅÌ·ÖÇø¶Á²Ù×÷»¨·ÑµÄÃëÊı\n\nWrite time ms Ã¿¸ö´ÅÅÌ·ÖÇøĞ´²Ù×÷»¨·ÑµÄÃëÊı\n\nIO time ms Ã¿¸ö´ÅÅÌ·ÖÇøÊäÈë/Êä³ö²Ù×÷»¨·ÑµÄÃëÊı\n\nIO time weighted Ã¿¸ö´ÅÅÌ·ÖÇøÊäÈë/Êä³ö²Ù×÷»¨·ÑµÄ¼ÓÈ¨ÃëÊı",
+      "description": "Read time ms æ¯ä¸ªç£ç›˜åˆ†åŒºè¯»æ“ä½œèŠ±è´¹çš„ç§’æ•°\n\nWrite time ms æ¯ä¸ªç£ç›˜åˆ†åŒºå†™æ“ä½œèŠ±è´¹çš„ç§’æ•°\n\nIO time ms æ¯ä¸ªç£ç›˜åˆ†åŒºè¾“å…¥/è¾“å‡ºæ“ä½œèŠ±è´¹çš„ç§’æ•°\n\nIO time weighted æ¯ä¸ªç£ç›˜åˆ†åŒºè¾“å…¥/è¾“å‡ºæ“ä½œèŠ±è´¹çš„åŠ æƒç§’æ•°",
       "fieldConfig": {
         "defaults": {
           "custom": {}
@@ -1781,7 +1779,7 @@
       "renderer": "flot",
       "seriesOverrides": [
         {
-          "alias": "/,*_¶ÁÈ¡$/",
+          "alias": "/,*_è¯»å–$/",
           "transform": "negative-Y"
         }
       ],
@@ -1804,7 +1802,7 @@
           "format": "time_series",
           "hide": true,
           "intervalFactor": 1,
-          "legendFormat": "{{device}}_¼ÓÈ¨",
+          "legendFormat": "{{device}}_åŠ æƒ",
           "refId": "D"
         },
         {
@@ -1813,7 +1811,7 @@
           "hide": false,
           "interval": "",
           "intervalFactor": 1,
-          "legendFormat": "{{device}}_¶ÁÈ¡",
+          "legendFormat": "{{device}}_è¯»å–",
           "refId": "B"
         },
         {
@@ -1821,7 +1819,7 @@
           "format": "time_series",
           "hide": false,
           "intervalFactor": 1,
-          "legendFormat": "{{device}}_Ğ´Èë",
+          "legendFormat": "{{device}}_å†™å…¥",
           "refId": "C"
         }
       ],
@@ -1829,7 +1827,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "´ÅÅÌIO¶ÁĞ´Ê±¼ä",
+      "title": "ç£ç›˜IOè¯»å†™æ—¶é—´",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1846,7 +1844,7 @@
       "yaxes": [
         {
           "format": "s",
-          "label": "¶ÁÈ¡£¨-£©/Ğ´Èë£¨+£©",
+          "label": "è¯»å–ï¼ˆ-ï¼‰/å†™å…¥ï¼ˆ+ï¼‰",
           "logBase": 1,
           "max": null,
           "min": null,
@@ -1872,7 +1870,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Prometheus",
-      "description": "node_disk_io_time_seconds_total£º\n´ÅÅÌ»¨·ÑÔÚÊäÈë/Êä³ö²Ù×÷ÉÏµÄºÁÃëÊı¡£¸ÃÖµÎªÀÛ¼ÓÖµ¡££¨Milliseconds Spent Doing I/Os£©\n\nirate(node_disk_io_time_seconds_total[1m])£º\n¼ÆËãÃ¿ÃëµÄËÙÂÊ£º(lastÖµ-lastÇ°Ò»¸öÖµ)/Ê±¼ä´Á²îÖµ£¬¼´£º1ÃëÖÓÄÚ´ÅÅÌ»¨·ÑÔÚI/O²Ù×÷µÄÊ±¼äÕ¼±È¡£",
+      "description": "node_disk_io_time_seconds_totalï¼š\nç£ç›˜èŠ±è´¹åœ¨è¾“å…¥/è¾“å‡ºæ“ä½œä¸Šçš„æ¯«ç§’æ•°ã€‚è¯¥å€¼ä¸ºç´¯åŠ å€¼ã€‚ï¼ˆMilliseconds Spent Doing I/Osï¼‰\n\nirate(node_disk_io_time_seconds_total[1m])ï¼š\nè®¡ç®—æ¯ç§’çš„é€Ÿç‡ï¼š(lastå€¼-lastå‰ä¸€ä¸ªå€¼)/æ—¶é—´æˆ³å·®å€¼ï¼Œå³ï¼š1ç§’é’Ÿå†…ç£ç›˜èŠ±è´¹åœ¨I/Oæ“ä½œçš„æ—¶é—´å æ¯”ã€‚",
       "fieldConfig": {
         "defaults": {
           "custom": {}
@@ -1919,7 +1917,7 @@
           "expr": "irate(node_disk_io_time_seconds_total{instance=~\"$node\"}[1m])",
           "format": "time_series",
           "intervalFactor": 1,
-          "legendFormat": "{{device}}_Ã¿ÃëI/O²Ù×÷%",
+          "legendFormat": "{{device}}_æ¯ç§’I/Oæ“ä½œ%",
           "refId": "A"
         }
       ],
@@ -1927,7 +1925,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "´ÅÅÌÃ¿ÃëµÄI/O²Ù×÷ºÄ·ÑÊ±¼ä£¨%£©",
+      "title": "ç£ç›˜æ¯ç§’çš„I/Oæ“ä½œè€—è´¹æ—¶é—´ï¼ˆ%ï¼‰",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -1972,7 +1970,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Prometheus",
-      "description": "CurrEstab - µ±Ç°×´Ì¬Îª ESTABLISHED »ò CLOSE-WAIT µÄ TCP Á¬½ÓÊı\n\nActiveOpens - ÒÑ´Ó CLOSED ×´Ì¬Ö±½Ó×ª»»µ½ SYN-SENT ×´Ì¬µÄ TCP Æ½¾ùÁ¬½ÓÊı(1·ÖÖÓÄÚ)\n\nPassiveOpens - ÒÑ´Ó LISTEN ×´Ì¬Ö±½Ó×ª»»µ½ SYN-RCVD ×´Ì¬µÄ TCP Æ½¾ùÁ¬½ÓÊı(1·ÖÖÓÄÚ)\n\nTCP_alloc - ÒÑ·ÖÅä£¨ÒÑ½¨Á¢¡¢ÒÑÉêÇëµ½sk_buff£©µÄTCPÌ×½Ó×ÖÊıÁ¿\n\nTCP_inuse - ÕıÔÚÊ¹ÓÃ£¨ÕıÔÚÕìÌı£©µÄTCPÌ×½Ó×ÖÊıÁ¿\n\nTCP_tw - µÈ´ı¹Ø±ÕµÄTCPÁ¬½ÓÊı",
+      "description": "CurrEstab - å½“å‰çŠ¶æ€ä¸º ESTABLISHED æˆ– CLOSE-WAIT çš„ TCP è¿æ¥æ•°\n\nActiveOpens - å·²ä» CLOSED çŠ¶æ€ç›´æ¥è½¬æ¢åˆ° SYN-SENT çŠ¶æ€çš„ TCP å¹³å‡è¿æ¥æ•°(1åˆ†é’Ÿå†…)\n\nPassiveOpens - å·²ä» LISTEN çŠ¶æ€ç›´æ¥è½¬æ¢åˆ° SYN-RCVD çŠ¶æ€çš„ TCP å¹³å‡è¿æ¥æ•°(1åˆ†é’Ÿå†…)\n\nTCP_alloc - å·²åˆ†é…ï¼ˆå·²å»ºç«‹ã€å·²ç”³è¯·åˆ°sk_buffï¼‰çš„TCPå¥—æ¥å­—æ•°é‡\n\nTCP_inuse - æ­£åœ¨ä½¿ç”¨ï¼ˆæ­£åœ¨ä¾¦å¬ï¼‰çš„TCPå¥—æ¥å­—æ•°é‡\n\nTCP_tw - ç­‰å¾…å…³é—­çš„TCPè¿æ¥æ•°",
       "fieldConfig": {
         "defaults": {
           "custom": {}
@@ -2066,7 +2064,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "TCP Á¬½ÓÇé¿ö",
+      "title": "TCP è¿æ¥æƒ…å†µ",
       "tooltip": {
         "shared": true,
         "sort": 0,
@@ -2118,19 +2116,19 @@
         "allValue": null,
         "current": {
           "selected": false,
-          "text": "cadvisor",
-          "value": "cadvisor"
+          "text": "node_exporter",
+          "value": "node_exporter"
         },
         "datasource": "Prometheus",
-        "definition": "",
+        "definition": "label_values(up{job=\"node_exporter\"},job)",
         "hide": 0,
         "includeAll": false,
-        "label": "·Ö×éÃû³Æ",
+        "label": "åˆ†ç»„åç§°",
         "multi": false,
         "multiFormat": "regex values",
         "name": "job",
         "options": [],
-        "query": "label_values(up,job)",
+        "query": "label_values(up{job=\"node_exporter\"},job)",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
@@ -2146,14 +2144,14 @@
         "allValue": null,
         "current": {
           "selected": false,
-          "text": "localhost:8080",
-          "value": "localhost:8080"
+          "text": "127.0.0.1:9100",
+          "value": "127.0.0.1:9100"
         },
         "datasource": "Prometheus",
         "definition": "",
         "hide": 0,
         "includeAll": false,
-        "label": "IPµØÖ·",
+        "label": "IPåœ°å€",
         "multi": false,
         "multiFormat": "regex values",
         "name": "node",
@@ -2172,10 +2170,9 @@
       {
         "allValue": null,
         "current": {
-          "isNone": true,
           "selected": false,
-          "text": "None",
-          "value": ""
+          "text": "/",
+          "value": "/"
         },
         "datasource": "Prometheus",
         "definition": "query_result(topk(1,sort_desc (max(node_filesystem_size_bytes{instance=~'$node',fstype=~\"ext4|xfs\"}) by (mountpoint))))",
@@ -2204,14 +2201,14 @@
           "value": "eth0"
         },
         "datasource": "Prometheus",
-        "definition": "query_result(node_network_up{device=\"eth0\"})",
+        "definition": "query_result(node_network_up{device=~\"eth0|ens33\"})",
         "hide": 2,
         "includeAll": false,
-        "label": "Íø¿¨",
+        "label": "",
         "multi": false,
         "name": "nic",
         "options": [],
-        "query": "query_result(node_network_up{device=\"eth0\"})",
+        "query": "query_result(node_network_up{device=~\"eth0|ens33\"})",
         "refresh": 1,
         "regex": "/device=\"(.*)\",instance/",
         "skipUrlSync": false,
@@ -2257,5 +2254,5 @@
   "timezone": "browser",
   "title": "node_exporter",
   "uid": "Bkl9bBYik",
-  "version": 4
+  "version": 35
 }
