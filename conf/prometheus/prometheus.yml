@@ -1,24 +1,101 @@
-# my global config
 global:
-  scrape_interval:     15s 
+  scrape_interval:     15s
   evaluation_interval: 15s
-# Alertmanager configuration
+
 alerting:
   alertmanagers:
   - static_configs:
     - targets:
-      - localhost:9093
+      - 'localhost:9093'
 
 rule_files:
-  - /usr/local/prometheus/rules/*.rule
+  - "/usr/local/prometheus/rules/*.rule"
 
 scrape_configs:
   - job_name: 'prometheus'
     static_configs:
-    - targets: ['localhost:9090']
+    - targets: ['127.0.0.1:9090']
   - job_name: 'node_exporter'
     static_configs:
-    - targets: ['localhost:9100']
-  - job_name: 'cadvisor'
+    - targets: ['127.0.0.1:9100']
+  - job_name: 'blackbox-http'
+    metrics_path: /probe
+    params:
+      module: [http_custom_httpcode]
     static_configs:
-    - targets: ['localhost:8080','192.168.15.202:8080','192.168.15.201:8080','192.168.15.199:8080']
+      - targets:
+        - http://nexus.hs.com/
+        - http://conf.hs.com
+        - http://clog.hs.com
+        - http://blog.hs.com
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+  - job_name: 'blackbox-tcp'
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    static_configs:
+      - targets:
+        - 192.168.13.21:8081
+        - 192.168.13.21:8090
+        - 192.168.13.160:8081
+        - 192.168.13.160:26389
+        - 192.168.13.160:6379
+        - 192.168.13.161:26379
+        - 192.168.13.162:26399
+        - 192.168.13.162:6379
+        - 192.168.13.162:8081
+        - 192.168.13.223:6002
+        - 192.168.13.223:6001
+        - 192.168.13.223:8002
+        - 192.168.13.223:8001
+        - 192.168.13.223:9200
+        - 192.168.13.235:8000
+        - 192.168.13.235:6379
+        - 192.168.13.237:9200
+        - 192.168.13.238:80
+        - 192.168.13.238:8090
+        - 192.168.13.238:8999
+        - 192.168.13.238:8989
+        - 192.168.13.238:10890
+        - 192.168.13.238:10900
+        - 192.168.13.238:10880
+        - 192.168.13.238:11990
+        - 192.168.13.238:11980
+        - 192.168.13.238:8081
+        - 192.168.13.239:9800
+        - 192.168.13.239:11980
+        - 192.168.13.239:8081
+        - 192.168.13.239:8092
+        - 192.168.13.239:11990
+        - 192.168.13.239:8090
+        - 192.168.13.239:9000
+        - 192.168.13.239:10890
+        - 192.168.13.239:10900
+        - 192.168.13.239:10880
+        - 192.168.13.239:8080
+        - 192.168.13.239:80
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+  - job_name: 'docker'
+    static_configs:
+    - targets: 
+      - '192.168.13.21:7070'
+      - '192.168.13.160:7070'
+      - '192.168.13.161:7070'
+      - '192.168.13.162:7070'
+      - '192.168.13.223:7070'
+      - '192.168.13.235:7070'
+      - '192.168.13.237:7070'
+      - '192.168.13.238:7070'
+      - '192.168.13.239:7070'

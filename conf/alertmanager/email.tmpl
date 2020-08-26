@@ -1,15 +1,23 @@
-{{ define "email.from" }}jacknotes@126.com{{ end }}
-{{ define "email.to" }}jacknotes@163.com, jacknotes@126.com{{ end }}
-{{ define "email.to.html" }}
-{{ range .Alerts }}
+{{ define "email.from" }}jack.li@homsom.com{{ end }}
+{{ define "email.to" }}jack.li@homsom.com{{ end }}
+{{ define "email.html" }}
+{{- if gt (len .Alerts.Firing) 0 -}}{{ range .Alerts }}
+@警报<br>
 =========start==========<br>
-告警程序: prometheus_alert <br>
-告警级别: {{ .Labels.severity }} 级 <br>
-告警类型: {{ .Labels.alertname }} <br>
-故障主机: {{ .Labels.instance }} <br>
-告警主题: {{ .Annotations.summary }} <br>
-告警详情: {{ .Annotations.description }} <br>
-触发时间: {{ .StartsAt.Format "2006-01-02 15:04:05" }} <br>
+实例: {{ .Labels.instance }}<br>
+信息: {{ .Annotations.summary }}<br>
+详情: {{ .Annotations.description }}<br>
+时间: {{ (.StartsAt.Add 28800e9).Format "2006-01-02 15:04:05" }}<br>
 =========end==========<br>
-{{ end }}
-{{ end }}
+{{ end }}{{ end -}}
+{{- if gt (len .Alerts.Resolved) 0 -}}{{ range .Alerts }}
+@恢复<br>
+=========start==========<br>
+实例: {{ .Labels.instance }}<br>
+信息: {{ .Annotations.summary }}<br>
+时间: {{ .StartsAt.Format "2006-01-02 15:04:05" }}<br>
+恢复: {{ (.EndsAt.Add 28800e9).Format "2006-01-02 15:04:05" }}<br>
+=========end==========<br>
+{{ end }}{{ end -}}
+{{- end }}
+

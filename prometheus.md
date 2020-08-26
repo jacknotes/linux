@@ -1085,7 +1085,7 @@ global:
   smtp_smarthost: 'smtp.126.com:25'
   smtp_from: 'jacknotes@126.com'
   smtp_auth_username: 'jacknotes@126.com'
-  smtp_auth_password: 'EHHQVBCSEGCOCOQA'
+  smtp_auth_password: 'EHHQOCOQA'
 templates:
   - '/usr/local/alertmanager/wechat.tmpl'
 route:
@@ -1153,6 +1153,90 @@ WantedBy=multi-user.target
 [root@node3 /download]# tar xf blackbox_exporter-0.17.0.linux-amd64.tar.gz -C /usr/local/
 [root@node3 /download]# chown -R prometheus.prometheus /usr/local/blackbox_exporter-0.17.0.linux-amd64/
 [root@node3 /download]# ln -sv /usr/local/blackbox_exporter-0.17.0.linux-amd64/ /usr/local/blackbox_exporter
+[root@salt /usr/local/blackbox_exporter]# cat blackbox.yml
+modules:
+  http_2xx:
+    prober: http
+    timeout: 5s
+    http:
+      method: GET
+      preferred_ip_protocol: ip4
+  https_2xx:
+    prober: http
+    timeout: 5s
+    http:
+      method: GET
+      preferred_ip_protocol: ip4
+      tls_config:
+        ca_file: "/certs/my_cert.crt"
+  http_custom_httpcode:
+    prober: http
+    timeout: 5s
+    http:
+      method: GET
+      valid_http_versions: ["HTTP/1.1","HTTP/2"]
+      valid_status_codes: [200,201,202,203,204,300,301,302]
+      preferred_ip_protocol: ip4
+  http_post_2xx:
+    prober: http
+    timeout: 5s
+    http:
+      method: POST
+      preferred_ip_protocol: ip4
+      headers:
+        Content-Type: application/json
+      body: '{}'
+  http_post_2xx_basic_auth:
+    prober: http
+    timeout: 5s
+    http:
+      method: POST
+      preferred_ip_protocol: ip4
+      headers:
+        Host: 'login.baidu.com'
+      basic_auth:
+        username: 'username'
+        password: 'password'
+  tcp_connect:
+    prober: tcp
+    timeout: 3s
+    tcp:
+      preferred_ip_protocol: ip4
+  pop3s_banner:
+    prober: tcp
+    timeout: 3s
+    tcp:
+      query_response:
+      - expect: "^+OK"
+      tls: true
+      tls_config:
+        insecure_skip_verify: false
+  ssh_banner:
+    prober: tcp
+    timeout: 3s
+    tcp:
+      query_response:
+      - expect: "^SSH-2.0-"
+  irc_banner:
+    prober: tcp
+    tcp:
+      query_response:
+      - send: "NICK prober"
+      - send: "USER prober prober prober :prober"
+      - expect: "PING :([^ ]+)"
+        send: "PONG ${1}"
+      - expect: "^:[^ ]+ 001"
+  icmp:
+    prober: icmp
+  dns:
+    prober: dns
+    timeout: 3s
+    dns:
+      query_name: 'homsom.com'
+      preferred_ip_protocol: 'ip4'
+      source_ip_address: '127.0.0.1'
+      transport_protocol: 'udp'
+      query_type: 'ANY'
 [root@node3 /download]# cat /usr/lib/systemd/system/blackbox_exporter.service
 --------
 [Unit]
@@ -1172,6 +1256,69 @@ WantedBy=multi-user.target
 [root@node3 /usr/local/blackbox_exporter]# systemctl start blackbox_exporter
 [root@node3 /usr/local/blackbox_exporter]# netstat -tnlp | grep 9115
 tcp6       0      0 :::9115                 :::*                    LISTEN      13601/blackbox_expo 
+#Prometheus的Relabeling机制----在Prometheus所有的Target实例中，都包含一些默认的Metadata标签信息。可以通过Prometheus UI的Targets页面中查看这些实例的Metadata标签的内容：默认情况下，当Prometheus加载Target实例完成后，这些Target时候都会包含一些默认的标签：
+__address__：当前Target实例的访问地址<host>:<port>  #例如:http://127.0.0.1:9115
+__scheme__：采集目标服务访问地址的HTTP Scheme，HTTP或者HTTPS  #http或https协议
+__metrics_path__：采集目标服务访问地址的访问路径  #例如/probe
+__param_<name>：采集任务目标服务的中包含的请求参数  #例如http://127.0.0.1:9115/probe?module=http_2xx&target=http://baidu.com   ,则__param_target表示获取URL的参数:target=http://baidu.com
+-----------------------
+[root@prometheus prometheus]# cat prometheus.yml
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
 
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - 'localhost:9093'
+
+rule_files:
+  - "/usr/local/prometheus/rules/*.rule"
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+    - targets: ['127.0.0.1:9090']
+  - job_name: 'node_exporter'
+    static_configs:
+    - targets: ['127.0.0.1:9100']
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - http://baidu.com
+        - https://prometheus.io
+        - http://mi.com
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 172.168.2.222:9115
+  - job_name: 'docker'
+    static_configs:
+    - targets: 
+      - '192.168.13.21:7070'
+      - '192.168.13.160:7070'
+      - '192.168.13.161:7070'
+      - '192.168.13.162:7070'
+      - '192.168.13.223:7070'
+      - '192.168.13.235:7070'
+      - '192.168.13.237:7070'
+      - '192.168.13.238:7070'
+      - '192.168.13.239:7070'
+-----------------------
+relabel_configs注解：
+1. source_labels: [__address__]:表示获取targets实例中的地址，例如http://baidu.com，https://prometheus.io，http://mi.com
+2. target_label: __param_target:表示将获取到底的__address__值写入到新的标签target中，其值将被传入URL中当参数使用，例如target=http://baidu.com,target=https://prometheus.io,target=http://mi.com
+3. source_labels: [__param_target]:表示获取__param_target的值,例如target=http://baidu.com,target=https://prometheus.io,target=http://mi.com
+4. target_label: instance:表示将__param_target的值写入到instance标签中，写入为instance=http://baidu.com,instance=https://prometheus.io,instance=target=http://mi.com
+5. target_label: __address__:表示将操作这个目标标签
+6. replacement: 172.168.2.222:9115:表示替换__address__这个标签的值为172.168.2.222:9115
+-----------------------
 
 </pre>

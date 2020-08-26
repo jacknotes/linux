@@ -1,0 +1,27 @@
+groups:
+- name: hostStatesAlert
+  rules:
+  - alert: NodeDwon
+    expr: up == 0
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "{{$labels.instance}}: Server is Down"
+      description: "{{$labels.instance}}: Server is Down,time keep 1m"
+  - alert: hostCpuUsageAlert
+    expr: sum(avg without (cpu)(irate(node_cpu_seconds_total{mode!='idle'}[5m]))) by(instance) > 0.25
+    for: 1m
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Instance {{ $labels.instance }} CPU usage High"
+      description: "{{ $labels.instance }} CPU Usage above 85% (current value: {{ $value }})"
+  - alert: hostMemUsageAlert
+    expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.25
+    for: 1m 
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Instance {{ $labels.instance }} Memory usage High"
+      description: "{{ $labels.instance }} Memory Usage above 85% (current value: {{ $value }})"
