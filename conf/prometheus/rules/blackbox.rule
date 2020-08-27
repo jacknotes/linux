@@ -1,0 +1,12 @@
+groups:
+- name: blackboxServiceAlert
+  rules:
+  - alert: blackboxServiceAlert
+    expr: probe_success < 1
+    for: 1m
+    labels:
+      severity: warnning
+    annotations:
+      summary: "probe failure"
+      description: "blackbox: {{ $labels.instance }} is probe fail (current value: {{ $value }})"
+

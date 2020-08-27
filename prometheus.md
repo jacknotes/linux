@@ -1228,6 +1228,8 @@ modules:
       - expect: "^:[^ ]+ 001"
   icmp:
     prober: icmp
+    icmp:
+      preferred_ip_protocol: ip4
   dns:
     prober: dns
     timeout: 3s
@@ -1237,6 +1239,7 @@ modules:
       source_ip_address: '127.0.0.1'
       transport_protocol: 'udp'
       query_type: 'ANY'
+注：icmp这个功能需要调整linux内核参数，否则除root外的普通用户无法ping，应在/etc/sysctl.conf设为：net.ipv4.ping_group_range = 0 9090，表示0到9090的组ID范围，运行blackbox_exporter的用户组ID必须在这范围内才有效
 [root@node3 /download]# cat /usr/lib/systemd/system/blackbox_exporter.service
 --------
 [Unit]
@@ -1321,4 +1324,12 @@ relabel_configs注解：
 6. replacement: 172.168.2.222:9115:表示替换__address__这个标签的值为172.168.2.222:9115
 -----------------------
 
+#prometheus API
+--管理API
+错误：Only queries that return single series/table is supported
+清除某个实例的信息，但数据还存在在磁盘中，prometheus在下一次压缩时会进行清理：
+curl -X POST -g 'http://localhost:9090/api/v1/admin/tsdb/delete_series?match[]={instance="127.0.0.1:9100"}'
+手动清理：
+curl -XPOST http://localhost:9090/api/v1/admin/tsdb/clean_tombstones
+注：当报警邮件收到时，明明一条报警信息，却邮件收到两条，只是实例名称不一样，例如：TCP:172.168.2.222:6379和172.168.2.222:9100，此时需要使用管理API进行清理，{instance="TCP:172.168.2.222:6379"}
 </pre>

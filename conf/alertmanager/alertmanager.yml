@@ -4,15 +4,14 @@ global:
   smtp_smarthost: 'smtp.qiye.163.com:465'
   smtp_from: 'prometheus@homsom.com'
   smtp_auth_username: 'prometheus@homsom.com'
-  smtp_auth_password: 'password'
+  smtp_auth_password: 'Homsom+4006'
 templates:
   - '/usr/local/alertmanager/email.tmpl'
 route:
   group_by: ['alertname']
-  group_wait: 10s
-  group_interval: 10s
+  group_wait: 15s
+  group_interval: 15s
   repeat_interval: 4h
-  #repeat_interval: 30s
   receiver: 'default-receiver'
 receivers:
 - name: 'default-receiver'
@@ -25,5 +24,5 @@ inhibit_rules:
       alertname: 'NodeDown'
       severity: 'High'
     target_match:
-      severity: 'warnnings'
+      job: 'blackbox-tcp'
     equal: ['instance']

@@ -17,7 +17,29 @@ scrape_configs:
     - targets: ['127.0.0.1:9090']
   - job_name: 'node_exporter'
     static_configs:
-    - targets: ['127.0.0.1:9100']
+    - targets: ['127.0.0.1:9100','172.168.2.222:9100']
+  - job_name: 'blackbox-icmp'
+    scrape_interval: 5s
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    static_configs:
+      - targets:
+        - '58.246.78.149'
+        labels:
+          group: 'ISP:telecom'
+      - targets:
+        - '222.66.21.209'
+        labels:
+          group: 'ISP:unicom'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+        replacement: ICMP:${1}
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
   - job_name: 'blackbox-http'
     metrics_path: /probe
     params:
@@ -28,19 +50,33 @@ scrape_configs:
         - http://conf.hs.com
         - http://clog.hs.com
         - http://blog.hs.com
+        - http://hlog.hs.com
+        - http://jenkins.hs.com/login
+        - http://newjenkins.hs.com/login
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
-      - source_labels: [__param_target]
-        target_label: instance
       - target_label: __address__
         replacement: 127.0.0.1:9115
+      - source_labels: [__param_target]
+        replacement: HTTP:${1}
+        target_label: instance
   - job_name: 'blackbox-tcp'
     metrics_path: /probe
     params:
       module: [tcp_connect]
     static_configs:
       - targets:
+        - 192.168.13.195:6379
+        labels:
+          description: 'pdredis1.hs.com,windows redis server'
+      - targets:
+        - 192.168.13.235:6379
+        labels:
+          description: 'pdredis2.hs.com,linux redis server'
+      - targets:
+        - 172.168.2.222:6379
+        - 172.168.2.222:3306
         - 192.168.13.21:8081
         - 192.168.13.21:8090
         - 192.168.13.160:8081
@@ -56,7 +92,6 @@ scrape_configs:
         - 192.168.13.223:8001
         - 192.168.13.223:9200
         - 192.168.13.235:8000
-        - 192.168.13.235:6379
         - 192.168.13.237:9200
         - 192.168.13.238:80
         - 192.168.13.238:8090
@@ -84,6 +119,7 @@ scrape_configs:
       - source_labels: [__address__]
         target_label: __param_target
       - source_labels: [__param_target]
+        replacement: TCP:${1}
         target_label: instance
       - target_label: __address__
         replacement: 127.0.0.1:9115

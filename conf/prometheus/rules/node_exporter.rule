@@ -1,27 +1,67 @@
 groups:
 - name: hostStatesAlert
   rules:
-  - alert: NodeDwon
-    expr: up == 0
+  - alert: NodeDown
+    expr: up{job="node_exporter"} == 0
     for: 1m
     labels:
       severity: High
     annotations:
-      summary: "{{$labels.instance}}: Server is Down"
-      description: "{{$labels.instance}}: Server is Down,time keep 1m"
+      summary: "node_exporter is Down"
+      description: "node_exporter: {{$labels.instance}} is Down,Server Machine can shutdown,time keep 1m"
   - alert: hostCpuUsageAlert
-    expr: sum(avg without (cpu)(irate(node_cpu_seconds_total{mode!='idle'}[5m]))) by(instance) > 0.25
+    expr: (sum(avg(irate(node_cpu_seconds_total{mode!="idle"}[5m])) without(cpu))  by(instance)) * 100 > 85
     for: 1m
     labels:
       severity: warnning
     annotations:
-      summary: "Instance {{ $labels.instance }} CPU usage High"
-      description: "{{ $labels.instance }} CPU Usage above 85% (current value: {{ $value }})"
+      summary: "CPU(5m) usage High"
+      description: "instance: {{ $labels.instance }} CPU(5m) Usage above 85% (current value: {{ $value }})"
   - alert: hostMemUsageAlert
-    expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.25
+    expr: ((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes) * 100 > 85
     for: 1m 
     labels:
       severity: warnning
     annotations:
-      summary: "Instance {{ $labels.instance }} Memory usage High"
-      description: "{{ $labels.instance }} Memory Usage above 85% (current value: {{ $value }})"
+      summary: "Memory usage High"
+      description: "instance: {{ $labels.instance }} Memory Usage above 85% (current value: {{ $value }})"
+  - alert: hostDiskUsageAlert
+    expr: (1- (node_filesystem_avail_bytes{fstype=~"ext2|ext3|ext4|xfs",mountpoint="/"}) / (node_filesystem_size_bytes{fstype=~"ext2|ext3|ext4|xfs",mountpoint="/"})) * 100 > 85
+    for: 1m 
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Disk available use space lower"
+      description: "instance: {{ $labels.instance }} '/' Filesystem Disk Usage above 85% (current value: {{ $value }})"
+  - alert: hostDiskIOUsageAlert
+    expr: (avg(irate(node_disk_io_time_seconds_total[1m])) by(instance)* 100) >60
+    for: 1m 
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Host Disk IO Usage High"
+      description: "instance: {{ $labels.instance }} Disk IO Usage above 60% (current value: {{ $value }})"
+  - alert: hostNetworkReceiveAlert
+    expr: (sum(rate (node_network_receive_bytes_total{device!~'tap.*|veth.*|br.*|docker.*|virbr*|lo*'}[5m])) by(instance) /100) >80000
+    for: 1m 
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Host Network Receive Rate High"
+      description: "instance: {{ $labels.instance }} download rate above 80000k (current value: {{ $value }})"
+  - alert: hostNetworkSendAlert
+    expr: ((sum(rate (node_network_transmit_bytes_total{device!~'tap.*|veth.*|br.*|docker.*|virbr*|lo*'}[5m])) by (instance)) / 100) >80000
+    for: 1m 
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Host Network Send Rate High"
+      description: "instance: {{ $labels.instance }} Send rate above 80000k (current value: {{ $value }})"
+  - alert: hostDiskCapacityAlert
+    expr: (100-(node_filesystem_free_bytes{fstype=~"ext4|xfs"}/node_filesystem_size_bytes {fstype=~"ext4|xfs"}*100)) > 80
+    for: 1m 
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Host Usage Disk Capacity High"
+      description: "instance: {{ $labels.instance }} Host Usage Disk Capacity above 80% (current value: {{ $value }})"
