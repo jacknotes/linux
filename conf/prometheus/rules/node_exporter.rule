@@ -25,14 +25,22 @@ groups:
     annotations:
       summary: "Memory usage High"
       description: "instance: {{ $labels.instance }} Memory Usage above 85% (current value: {{ $value }})"
-  - alert: hostDiskUsageAlert
-    expr: (1- (node_filesystem_avail_bytes{fstype=~"ext2|ext3|ext4|xfs",mountpoint="/"}) / (node_filesystem_size_bytes{fstype=~"ext2|ext3|ext4|xfs",mountpoint="/"})) * 100 > 85
+  - alert: hostDiskCapacityAlert
+    expr: (100-(node_filesystem_free_bytes{fstype=~"ext4|xfs"}/node_filesystem_size_bytes {fstype=~"ext4|xfs"}*100)) > 80
     for: 1m 
     labels:
       severity: warnning
     annotations:
-      summary: "Disk available use space lower"
-      description: "instance: {{ $labels.instance }} '/' Filesystem Disk Usage above 85% (current value: {{ $value }})"
+      summary: "Host Usage Disk Capacity High"
+      description: "instance: {{ $labels.instance }} Host Usage Disk Capacity above 80% (current value: {{ $value }})"
+#  - alert: hostDiskUsageAlert
+#    expr: (1- (node_filesystem_avail_bytes{fstype=~"ext2|ext3|ext4|xfs",mountpoint="/"}) / (node_filesystem_size_bytes{fstype=~"ext2|ext3|ext4|xfs",mountpoint="/"})) * 100 > 85
+#    for: 1m 
+#    labels:
+#      severity: warnning
+#    annotations:
+#      summary: "Disk available use space lower"
+#      description: "instance: {{ $labels.instance }} '/' Filesystem Disk Usage above 85% (current value: {{ $value }})"
   - alert: hostDiskIOUsageAlert
     expr: (avg(irate(node_disk_io_time_seconds_total[1m])) by(instance)* 100) >60
     for: 1m 
@@ -57,11 +65,3 @@ groups:
     annotations:
       summary: "Host Network Send Rate High"
       description: "instance: {{ $labels.instance }} Send rate above 80000k (current value: {{ $value }})"
-  - alert: hostDiskCapacityAlert
-    expr: (100-(node_filesystem_free_bytes{fstype=~"ext4|xfs"}/node_filesystem_size_bytes {fstype=~"ext4|xfs"}*100)) > 80
-    for: 1m 
-    labels:
-      severity: warnning
-    annotations:
-      summary: "Host Usage Disk Capacity High"
-      description: "instance: {{ $labels.instance }} Host Usage Disk Capacity above 80% (current value: {{ $value }})"
