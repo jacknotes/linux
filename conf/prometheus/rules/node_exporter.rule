@@ -18,7 +18,7 @@ groups:
       summary: "CPU(5m) usage High"
       description: "instance: {{ $labels.instance }} CPU(5m) Usage above 85% (current value: {{ $value }})"
   - alert: hostMemUsageAlert
-    expr: ((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes) * 100 > 85
+    expr: (1 - ((node_memory_Buffers_bytes + node_memory_Cached_bytes + node_memory_MemFree_bytes) /node_memory_MemTotal_bytes)) * 100 > 85
     for: 1m 
     labels:
       severity: warnning

@@ -4,7 +4,7 @@ global:
   smtp_smarthost: 'smtp.qiye.163.com:465'
   smtp_from: 'prometheus@homsom.com'
   smtp_auth_username: 'prometheus@homsom.com'
-  smtp_auth_password: 'password'
+  smtp_auth_password: 'Homsom+4006'
 templates:
   - '/usr/local/alertmanager/email.tmpl'
 route:

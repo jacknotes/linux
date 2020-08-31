@@ -111,6 +111,8 @@ ExecStart=/usr/local/prometheus/prometheus \
 --config.file /usr/local/prometheus/prometheus.yml \
 --storage.tsdb.path /var/lib/prometheus/ \
 --storage.tsdb.retention.time=15d \
+--web.external-url=http://192.168.13.236:9090 \
+--web.enable-admin-api \
 --web.enable-lifecycle
 Restart=on-failure
 
@@ -930,7 +932,7 @@ User=prometheus
 Group=prometheus
 Type=simple
 ExecStart=/usr/local/alertmanager/alertmanager --config.file=/usr/local/alertmanager/alertmanager.yml \
---storage.path=/usr/local/alertmanager/data/
+--storage.path=/usr/local/alertmanager/data/ --web.external-url=http://192.168.13.236:9093
 Restart=on-failure
 
 [Install]

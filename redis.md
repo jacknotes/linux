@@ -2013,7 +2013,13 @@ redis迁移数据：
 3. 停掉目标redis server服务，将复制过来的AOF和rdb数据替换目标redis上的AOF和rdb，因为redis会先从AOF中找rdb的序言(preamble)，从而先
 载入rdb，最后载入剩下的AOF数据。
 
-
+sentinelAPI:
+[root@localhost redis]# redis-cli -p 26379 sentinel get-master-addr-by-name mymaster
+1) "192.168.13.33"
+2) "6379"
+[root@localhost redis]# redis-cli -p 26379 sentinel masters
+[root@localhost redis]# redis-cli -p 26379 sentinel slaves
+[root@localhost redis]# redis-cli -p 26379 sentinel sentinels
 </pre>
 
 
