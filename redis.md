@@ -1996,6 +1996,24 @@ S: 9fdc0ccf2ab5427bba92f694efb43e718f8d2208 127.0.0.1:6383
 
 #结论：当你向slave写数据时，redis会自动重定向到master，当你向slave读数据时，redis也自动重定向到master，这个说明slave现在没有存储数据，它们只是映射关系。始终存储在拥有slot的master上，不会存储在没有slot的slave上，slave也不会存储slot，只有当slave接管master时才会拥有slot
 
+
+
+INFO: Next failover delay: I will not start a failover before Mon Aug 31 14:17:56 2020
+
+redis master-slave cluster sentinel 同步机制:
+1. 当有主从在线时，sentinel将按照配置的故障时间进行转移，默认是30秒，
+2. 如果在最后一个master/slave down掉以后，没有可选的slave进行选举，此时sentinel将会在日志中告知下一个延迟时间(Next failover delay)默认是6分钟，
+3. 此时当你启动了一个slave，则依然会等待6分钟后再进行故障转移，
+4. 等6分钟到来后将会选举这个唯一slave为master，此后sentinel依旧按照30秒时间来进行故障转移选举。
+5. 当在等待6分钟到来的时间内，以前的master此时正常服务了，则这个master依然为master，而6分钟到来后，其它slave也正常服务了，则其它slave的主将会依然是这个master
+
+redis迁移数据：
+1. shutdown save
+2. 复制源redis server的AOF和rdb两份数据移到目标redis server上。
+3. 停掉目标redis server服务，将复制过来的AOF和rdb数据替换目标redis上的AOF和rdb，因为redis会先从AOF中找rdb的序言(preamble)，从而先
+载入rdb，最后载入剩下的AOF数据。
+
+
 </pre>
 
 

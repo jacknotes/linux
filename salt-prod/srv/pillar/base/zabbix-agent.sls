@@ -1,1 +1,1 @@
-Zabbix_Server: 192.168.15.199
+Zabbix_Server: 172.168.2.222

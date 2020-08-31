@@ -25,7 +25,7 @@ REDIS_SERVER_CONF_FILE="/usr/local/redis/redis-slave.conf"
  
 [ -f /etc/sysconfig/redis_server ] && . /etc/sysconfig/redis_server
  
-lockfile=/var/lock/subsys/redis_server
+lockfile=/var/lock/subsys/redis_server.lock
  
 start() {
     [ -x $redis_server ] || exit 5

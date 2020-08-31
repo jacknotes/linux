@@ -1,12 +1,12 @@
 #!/bin/sh
 #
-# redis - this script starts and stops the redis daemon
+# redis - this script starts and stops the redis-sentinel daemon
 #
 # chkconfig:   - 86 14
-# description: redis service shell 
-# processname: redis-server
-# config:      /usr/local/redis/redis-master.conf
-# pidfile:     /var/run/redis_6379.pid
+# description: redis sentinel service shell 
+# processname: redis-sentinel
+# config:      /usr/local/redis/sentinel.conf
+# pidfile:     /var/run/redis-sentinel.pid
 
  
 # Source function library.
@@ -18,20 +18,20 @@
 # Check that networking is up.
 [ "$NETWORKING" = "no" ] && exit 0
  
-redis_server="/usr/local/redis/bin/redis-server"
-prog=$(basename $redis_server)
+redis_sentinel="/usr/local/redis/bin/redis-sentinel"
+prog=$(basename $redis_sentinel)
  
-REDIS_SERVER_CONF_FILE="/usr/local/redis/redis-master.conf"
+REDIS_SERVER_CONF_FILE="/usr/local/redis/sentinel.conf"
  
-[ -f /etc/sysconfig/redis_server ] && . /etc/sysconfig/redis_server
+[ -f /etc/sysconfig/redis_sentinel ] && . /etc/sysconfig/redis_sentinel
  
-lockfile=/var/lock/subsys/redis_server.lock
+lockfile=/var/lock/subsys/redis_sentinel.lock
  
 start() {
-    [ -x $redis_server ] || exit 5
+    [ -x $redis_sentinel ] || exit 5
     [ -f $REDIS_SERVER_CONF_FILE ] || exit 6
     echo -n $"Starting $prog: "
-    $redis_server $REDIS_SERVER_CONF_FILE
+    $redis_sentinel $REDIS_SERVER_CONF_FILE
     retval=$?
     echo
     [ $retval -eq 0 ] && touch $lockfile
@@ -54,7 +54,7 @@ restart() {
 }
  
 status() {
-    /usr/bin/ps aux | /usr/bin/grep $prog | /usr/bin/grep -v 'grep' >& /dev/null && echo "$prog is running...." || echo "$prog is stop"
+    /usr/bin/ps aux | /usr/bin/grep $prog | /usr/bin/grep -v 'grep'  >& /dev/null && echo "$prog is running...." || echo "$prog is stop"
 }
  
 case "$1" in

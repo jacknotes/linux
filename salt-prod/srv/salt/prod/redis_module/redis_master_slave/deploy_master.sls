@@ -56,7 +56,7 @@ redis-service:
 redis-sentinel-init:
   file.managed:
     - name: /etc/init.d/redis-sentinel
-    - source: salt://redis_module/redis_master_slave/files/redis-sentinel
+    - source: salt://redis_module/redis_master_slave/files/redis-sentinel-init
     - user: root
     - group: root
     - mode: 755
