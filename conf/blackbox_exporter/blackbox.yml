@@ -5,6 +5,22 @@ modules:
     http:
       method: GET
       preferred_ip_protocol: ip4
+  http_es_onlyread_test:
+    prober: http
+    timeout: 5s
+    http:
+      method: GET
+      preferred_ip_protocol: ip4
+      fail_if_body_matches_regexp:
+        - 'read_only_allow_delete'
+  http_es_health_test:
+    prober: http
+    timeout: 5s
+    http:
+      method: GET
+      preferred_ip_protocol: ip4
+      fail_if_body_not_matches_regexp:
+        - 'green'
   https_2xx:
     prober: http
     timeout: 5s

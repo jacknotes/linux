@@ -62,6 +62,38 @@ scrape_configs:
         replacement: ICMP:${1}
       - target_label: __address__
         replacement: 127.0.0.1:9115
+  - job_name: 'blackbox-http-elasticsearch-readonly'
+    metrics_path: /probe
+    params:
+      module: [http_es_onlyread_test]
+    static_configs:
+      - targets:
+        - http://hlog.hs.com:9200/clog/_settings?pretty=true
+        - http://clog.hs.com:9200/clog/_settings?pretty=true
+        - http://blog.hs.com:9200/homsom_log/_settings?pretty=true
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+      - source_labels: [__param_target]
+        replacement: HTTP:${1}
+        target_label: instance
+  - job_name: 'blackbox-http-elasticsearch-health'
+    metrics_path: /probe
+    params:
+      module: [http_es_health_test]
+    static_configs:
+      - targets:
+        - http://blog.hs.com:9200/_cat/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+      - source_labels: [__param_target]
+        replacement: HTTP:${1}
+        target_label: instance
   - job_name: 'blackbox-http'
     metrics_path: /probe
     params:
@@ -75,6 +107,9 @@ scrape_configs:
         - http://hlog.hs.com
         - http://jenkins.hs.com/login
         - http://newjenkins.hs.com/login
+        - http://pm.hs.com/
+        - http://gitlab.hs.com/
+        - http://172.168.2.174:55505/
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target

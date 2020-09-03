@@ -50,7 +50,7 @@ groups:
       summary: "Host Disk IO Usage High"
       description: "instance: {{ $labels.instance }} Disk IO Usage above 60% (current value: {{ $value }})"
   - alert: hostNetworkReceiveAlert
-    expr: (sum(rate (node_network_receive_bytes_total{device!~'tap.*|veth.*|br.*|docker.*|virbr*|lo*'}[5m])) by(instance) /100) >80000
+    expr: sum(irate(node_network_receive_bytes_total{device!~"tap.*|veth.*|br.*|docker.*|virbr*|lo*"}[5m]) * 8 / 1000 ) by(instance)  > 80000
     for: 1m 
     labels:
       severity: warnning
@@ -58,7 +58,7 @@ groups:
       summary: "Host Network Receive Rate High"
       description: "instance: {{ $labels.instance }} download rate above 80000k (current value: {{ $value }})"
   - alert: hostNetworkSendAlert
-    expr: ((sum(rate (node_network_transmit_bytes_total{device!~'tap.*|veth.*|br.*|docker.*|virbr*|lo*'}[5m])) by (instance)) / 100) >80000
+    expr: sum(irate(node_network_transmit_bytes_total{device!~"tap.*|veth.*|br.*|docker.*|virbr*|lo*"}[5m]) * 8 / 1000 ) by(instance)  > 80000
     for: 1m 
     labels:
       severity: warnning
