@@ -3940,4 +3940,120 @@ show profile all for query 6 查看第6条语句的所有的执行信息。
 set @d=now();
 select * from comment;
 select timestampdiff(second,@d,now());
+
+
+
+
+mysql5.7主主集群
+#192.168.13.160
+[root@localhost mysqldata]# cat /etc/my.cnf 
+[mysqld]
+datadir = /home/mysqldata
+basedir = /usr/local/mysql
+socket=/usr/local/mysql/mysql.sock
+gtid-mode=on
+enforce-gtid-consistency=true
+master-info-repository=TABLE 
+relay-log-info-repository=TABLE
+sync-master-info=1
+slave-parallel-workers=2
+binlog-checksum=CRC32 
+master-verify-checksum=1
+slave-sql-verify-checksum=1
+binlog_format = ROW
+log-bin=master-bin
+log-bin-index=master-bin.index
+character-set-server=utf8mb4
+relay-log=relay-master
+relay-log-index=relay-master.index
+slow_query_log_file = /home/mysqldata/mysql-slow.log
+slow_query_log = 1
+log_error = /home/mysqldata/mysql.err
+innodb_file_per_table=1
+auto-increment-increment = 2
+auto-increment-offset=2
+server-id = 20
+sql_mode=NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES 
+default-storage-engine = InnoDB
+default-tmp-storage-engine = InnoDB
+internal-tmp-disk-storage-engine = InnoDB
+
+[client]
+default-character-set = utf8mb4
+socket=/usr/local/mysql/mysql.sock
+
+#192.168.13.116
+[root@localhost mysqldata]# cat /etc/my.cnf 
+[mysqld]
+#skip-grant-tables = 1
+datadir = /home/mysqldata
+basedir = /usr/local/mysql
+socket=/usr/local/mysql/mysql.sock
+gtid-mode=on
+enforce-gtid-consistency=true
+master-info-repository=TABLE 
+relay-log-info-repository=TABLE
+sync-master-info=1
+slave-parallel-workers=2
+binlog-checksum=CRC32 
+master-verify-checksum=1
+slave-sql-verify-checksum=1
+binlog_format = ROW
+log-bin=master-bin
+log-bin-index=master-bin.index
+character-set-server=utf8mb4
+relay-log=relay-master
+relay-log-index=relay-master.index
+slow_query_log_file = /home/mysqldata/mysql-slow.log
+slow_query_log = 1
+log_error = /home/mysqldata/mysql.err
+innodb_file_per_table=1
+auto-increment-increment = 2
+auto-increment-offset=1
+server-id = 10
+sql_mode=NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES 
+default-storage-engine = InnoDB
+default-tmp-storage-engine = InnoDB
+internal-tmp-disk-storage-engine = InnoDB
+
+[client]
+default-character-set = utf8mb4
+socket=/usr/local/mysql/mysql.sock
+
+
+主1：
+grant replication slave on *.* to repluser@'192.168.13.%' identified by 'homsom';
+flush privileges;
+show grants for repluser@'192.168.13.%';
+flush binary logs;
+mysql> show master status;
++-------------------+----------+--------------+------------------+--------------------------------------------------------------------------------------+
+| File              | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set                                                                    |
++-------------------+----------+--------------+------------------+--------------------------------------------------------------------------------------+
+| master-bin.000012 |      194 |              |                  | 172a28db-ede3-11ea-894c-e619baff355e:1-30,
+84ff5380-ee50-11ea-bbd9-4cd98f3bab94:9-10 |
++-------------------+----------+--------------+------------------+--------------------------------------------------------------------------------------+
+change master to master_host='192.168.13.116',master_user='repluser',master_password='homsom',master_log_file='master-bin.000012',MASTER_LOG_POS=194;
+主2：
+grant replication slave on *.* to repluser@'192.168.13.%' identified by 'homsom';
+flush privileges;
+show grants for repluser@'192.168.13.%';
+flush binary logs;
+mysql> show master status;
++-------------------+----------+--------------+------------------+---------------------------------------------------------------------------------------+
+| File              | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set                                                                     |
++-------------------+----------+--------------+------------------+---------------------------------------------------------------------------------------+
+| master-bin.000008 |      194 |              |                  | 172a28db-ede3-11ea-894c-e619baff355e:16-26,
+84ff5380-ee50-11ea-bbd9-4cd98f3bab94:1-12 |
++-------------------+----------+--------------+------------------+---------------------------------------------------------------------------------------+
+change master to master_host='192.168.13.160',master_user='repluser',master_password='homsom',master_log_file='master-bin.000008',MASTER_LOG_POS=194;
+或
+主1：
+CHANGE MASTER TO MASTER_HOST='192.168.13.160',MASTER_USER='repluser',MASTER_PASSWORD='homsom',MASTER_AUTO_POSITION=1;
+主2：
+CHANGE MASTER TO MASTER_HOST='192.168.13.116',MASTER_USER='repluser',MASTER_PASSWORD='homsom',MASTER_AUTO_POSITION=1;
+#注：无法使用MASTER_AUTO_POSITION=1进行主主集群时，需要使用reset master重置下mysql二进制文件，问题通常出在先手动删除了部分二进制文件，然后进行配置主主集群连接时报错
+change master to master_auto_position=0       表示使用GTID不自动从binlog.000001去找，而是指定文件名及位置同步
+change master to master_auto_position=1        表示使用GTID自动同步，从binlog.000001去找
+stop slave;    停止slave线程
 </pre>

@@ -1,0 +1,35 @@
+[mysqld]
+datadir = /home/mysqldata
+basedir = /usr/local/mysql
+socket=/usr/local/mysql/mysql.sock
+gtid-mode=on
+enforce-gtid-consistency=true
+master-info-repository=TABLE 
+relay-log-info-repository=TABLE
+sync-master-info=1
+slave-parallel-workers=2
+binlog-checksum=CRC32 
+master-verify-checksum=1
+slave-sql-verify-checksum=1
+binlog_format = ROW
+log-bin=master-bin
+log-bin-index=master-bin.index
+character-set-server=utf8mb4
+relay-log=relay-master
+relay-log-index=relay-master.index
+slow_query_log_file = /home/mysqldata/mysql-slow.log
+slow_query_log = 1
+log_error = /home/mysqldata/mysql.err
+innodb_file_per_table=1
+auto-increment-increment = 2
+auto-increment-offset=2
+server-id = 20
+sql_mode=NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES 
+default-storage-engine = InnoDB
+default-tmp-storage-engine = InnoDB
+internal-tmp-disk-storage-engine = InnoDB
+
+[client]
+default-character-set = utf8mb4
+socket=/usr/local/mysql/mysql.sock
+

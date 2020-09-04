@@ -2006,6 +2006,7 @@ redis master-slave cluster sentinel 同步机制:
 3. 此时当你启动了一个slave，则依然会等待6分钟后再进行故障转移，
 4. 等6分钟到来后将会选举这个唯一slave为master，此后sentinel依旧按照30秒时间来进行故障转移选举。
 5. 当在等待6分钟到来的时间内，以前的master此时正常服务了，则这个master依然为master，而6分钟到来后，其它slave也正常服务了，则其它slave的主将会依然是这个master
+注：当在等待6分钟期间，已经把redis服务都启动起来后，不愿意等待6分钟到来，则可以重启全部的sentinel，这时sentinel立即检查redis服务
 
 redis迁移数据：
 1. shutdown save
