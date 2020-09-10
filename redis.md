@@ -2019,8 +2019,8 @@ sentinelAPI:
 1) "192.168.13.33"
 2) "6379"
 [root@localhost redis]# redis-cli -p 26379 sentinel masters
-[root@localhost redis]# redis-cli -p 26379 sentinel slaves
-[root@localhost redis]# redis-cli -p 26379 sentinel sentinels
+[root@localhost redis]# redis-cli -p 26379 sentinel slaves mymaster
+[root@localhost redis]# redis-cli -p 26379 sentinel sentinels mymaster
 </pre>
 
 

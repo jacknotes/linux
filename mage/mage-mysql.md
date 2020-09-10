@@ -3932,7 +3932,6 @@ kill query 12041  #杀掉ID为12041的查询
 查看方法： show variables like "%pro%";
 设置开启方法： set profiling = 1;
 show profiles；即可查看所有sql的总的执行时间。
-show profiles；即可查看所有sql的总的执行时间。
 show profile cpu, block io, memory,swaps,context switches,source for query 6;可以查看出一条SQL语句执行的各种资源消耗情况，比如CPU，IO等
 show profile all for query 6 查看第6条语句的所有的执行信息。
 方法二： timestampdiff来查看执行时间。
