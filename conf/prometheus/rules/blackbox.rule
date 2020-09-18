@@ -8,5 +8,5 @@ groups:
       severity: warnning
     annotations:
       summary: "probe failure"
-      description: "blackbox: {{ $labels.instance }} is probe fail (current value: {{ $value }})"
+      description: "job: {{ $labels.job }},blackbox_instance: {{ $labels.instance }} is probe fail (current value: {{ $value }})"
 
