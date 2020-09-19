@@ -281,6 +281,114 @@ docker run \
 [root@node3 /download]# netstat -tnlp | grep 8080
 tcp6       0      0 :::8080                 :::*                    LISTEN      25771/cadvisor 	
 
+#--redis_exporter监控redis主从集群
+wget https://github.com/oliver006/redis_exporter/releases/download/v1.11.1/redis_exporter-v1.11.1.linux-amd64.tar.gz
+tar -xf redis_exporter-v1.11.1.linux-amd64.tar.gz -C /usr/local
+chmod -R prometheus.prometheus /usr/local//usr/local/redis_exporter-v1.11.1.linux-amd64/
+ln -sv /usr/local//usr/local/redis_exporter-v1.11.1.linux-amd64/ /usr/local/redis_exporter
+[root@prometheus redis_exporter]# cat /usr/lib/systemd/system/redis_exporter.service 
+------------
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/redis_exporter/redis_exporter -redis.addr 192.168.13.160:6369 -redis.password hmIpAjs/BunNqw==
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+------------
+--注：运行redis_exporter程序时必须指定一个集群节点，这样redis_exporter才能找到其他节点，有认证必须使用密码,集群密码必须统一,然后在prometheus.yml配置文件中添加redis_exporter和redis节点两个job，如果只添加redis_exporter则只会监控上述的192.168.13.160:6369节点，需要监控其它节点需要在再添加一个redis节点的job，并重写标签让这些节点的__address__变量值为redis_exporter的地址，这样才能使节点从127.0.0.1:9121的metric指标中promQL查询出值来。
+systemctl daemon-reload
+systemctl enable redis_exporter
+systemctl start redis_exporter
+[root@prometheus prometheus]# less prometheus.yml
+-------------
+  - job_name: 'redis_exporter_target'
+    static_configs:
+      - targets:
+        - redis://192.168.13.160:6369
+        - redis://192.168.13.161:6369
+        - redis://192.168.13.162:6369
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.13.236:9121
+  - job_name: 'redis_exporter'
+    static_configs:
+    - targets: 
+      - '192.168.13.236:9121'
+------------
+[root@prometheus prometheus]# curl -X POST http://localhost:9090/-/reload
+注：grafana添加redis cluster模板显示,模板ID:763
+
+#--mysqld_exporter监控mysql集群
+wget https://github.com/prometheus/mysqld_exporter/releases/download/v0.12.1/mysqld_exporter-0.12.1.linux-amd64.tar.gz
+[root@prometheus download]# tar xf mysqld_exporter-0.12.1.linux-amd64.tar.gz -C /usr/local/
+[root@prometheus download]# chown -R prometheus.prometheus /usr/local/mysqld_exporter-0.12.1.linux-amd64/
+[root@prometheus download]# ln -sv /usr/local/mysqld_exporter-0.12.1.linux-amd64/ /usr/local/mysqld_exporter
+--配置mysqld访问帐户
+mysql> CREATE USER 'exporter'@'192.168.13.%' IDENTIFIED BY 'mysqld_exporter' WITH MAX_USER_CONNECTIONS 3;
+mysql> GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO 'exporter'@'192.168.13.%';
+[root@prometheus mysqld_exporter]# yum install -y mysql
+[root@prometheus mysqld_exporter]# cat /usr/local/mysqld_exporter/.my.cnf 
+-----------
+[client]
+host=192.168.13.160
+port=3306
+user=exporter
+password='mysqld_exporter'
+-----------
+[root@prometheus download]# cat /usr/lib/systemd/system/mysqld_exporter.service
+------------
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/mysqld_exporter/mysqld_exporter --config.my-cnf=/usr/local/mysqld_exporter/.my.cnf \
+--collect.auto_increment.columns \
+--collect.info_schema.processlist
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+------------
+[root@prometheus download]# systemctl daemon-reload 
+[root@prometheus download]# systemctl start mysqld_exporter
+[root@prometheus download]# systemctl enable mysqld_exporter.service 
+[root@prometheus prometheus]# less prometheus.yml
+-----------------
+  - job_name: 'mysqld_exporter_target'
+    static_configs:
+      - targets:
+        - mysql://192.168.13.160:3306
+        - mysql://192.168.13.116:3306
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.13.236:9104
+  - job_name: 'mysqld_exporter'
+    static_configs:
+    - targets: 
+      - '192.168.13.236:9104'
+-----------------
+[root@prometheus prometheus]# curl -XPOST http://localhost:9090/-/reload
+注：去grafana添加模板，模板ID：7362
+
 #node3安装grafana
 [root@node3 /download]# wget https://dl.grafana.com/oss/release/grafana-7.0.3-1.x86_64.rpm
 [root@node3 /download]# sudo yum install grafana-7.0.3-1.x86_64.rpm -y
