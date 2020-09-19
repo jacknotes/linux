@@ -389,6 +389,11 @@ WantedBy=multi-user.target
 [root@prometheus prometheus]# curl -XPOST http://localhost:9090/-/reload
 注：去grafana添加模板，模板ID：7362
 
+#--windows_exporter
+注：windows_exporter客户端使用版本为windows_exporter-0.13.0-amd64.msi，此版本不能采集windows server 2003系统。
+#--wmi_exporter
+注：wmi_exporter客户端使用版本为wmi_exporter-0.8.3-386.msi,此版本可以采集windows server 2003系统。
+
 #node3安装grafana
 [root@node3 /download]# wget https://dl.grafana.com/oss/release/grafana-7.0.3-1.x86_64.rpm
 [root@node3 /download]# sudo yum install grafana-7.0.3-1.x86_64.rpm -y
