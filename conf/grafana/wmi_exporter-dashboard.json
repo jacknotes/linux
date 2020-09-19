@@ -17,7 +17,7 @@
   "gnetId": 8781,
   "graphTooltip": 1,
   "id": 18,
-  "iteration": 1600528394783,
+  "iteration": 1600529383739,
   "links": [],
   "panels": [
     {
@@ -261,7 +261,7 @@
       "pluginVersion": "7.1.4",
       "targets": [
         {
-          "expr": "100 - (wmi_logical_disk_free_bytes{volume!=\"HarddiskVolume1\"} / wmi_logical_disk_size_bytes{volume!=\"HarddiskVolume1\"})*100",
+          "expr": "100 - (wmi_logical_disk_free_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"} / wmi_logical_disk_size_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"})*100",
           "interval": "",
           "legendFormat": "{{volume}}",
           "refId": "A"
@@ -853,7 +853,7 @@
           "application": {
             "filter": ""
           },
-          "expr": " wmi_logical_disk_size_bytes{volume!=\"HarddiskVolume1\"} - wmi_logical_disk_free_bytes{volume!=\"HarddiskVolume1\"} ",
+          "expr": " wmi_logical_disk_size_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"} - wmi_logical_disk_free_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"} ",
           "functions": [],
           "group": {
             "filter": ""
@@ -877,7 +877,7 @@
           "step": 20
         },
         {
-          "expr": "wmi_logical_disk_size_bytes{volume!=\"HarddiskVolume1\"}",
+          "expr": "wmi_logical_disk_size_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"}",
           "instant": false,
           "interval": "",
           "legendFormat": "Total {{volume}}",
@@ -1632,9 +1632,9 @@
       {
         "allValue": null,
         "current": {
-          "selected": false,
-          "text": "172.168.2.174:9182",
-          "value": "172.168.2.174:9182"
+          "selected": true,
+          "text": "172.168.2.172:9182",
+          "value": "172.168.2.172:9182"
         },
         "datasource": "Prometheus",
         "definition": "",
@@ -1658,7 +1658,7 @@
     ]
   },
   "time": {
-    "from": "now-3h",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {
@@ -1689,5 +1689,5 @@
   "timezone": "browser",
   "title": "Windows for server 2003",
   "uid": "4UePATWRk",
-  "version": 19
+  "version": 24
 }
