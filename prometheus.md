@@ -901,7 +901,7 @@ unless (排除，差集)
 --and,只返回两个向量相同的结果
 node_filesystem_free_bytes{device=~"/dev/sda1"} and node_filesystem_free_bytes{device=~"/dev/sda[12]"} 
 --or,返回两个向量去重后的结果
-node_memory_MemTotal_bytes and node_memory_MemFree_bytes
+node_memory_MemTotal_bytes or node_memory_MemFree_bytes
 --unless,用前面多的标签 - 右边少的标签，得到的结果
 node_filesystem_free_bytes{device=~"/dev/sda[12]"} unless node_filesystem_free_bytes{device=~"/dev/sda1"}
 #操作符优先级顺序(加用()来优先运算)

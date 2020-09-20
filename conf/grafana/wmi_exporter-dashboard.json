@@ -16,8 +16,8 @@
   "editable": true,
   "gnetId": 8781,
   "graphTooltip": 1,
-  "id": 18,
-  "iteration": 1600529383739,
+  "id": 19,
+  "iteration": 1600573359049,
   "links": [],
   "panels": [
     {
@@ -27,6 +27,7 @@
           "custom": {
             "align": null
           },
+          "decimals": 0,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -87,6 +88,7 @@
           "custom": {
             "align": null
           },
+          "decimals": 0,
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
@@ -197,7 +199,7 @@
       "repeatDirection": "h",
       "targets": [
         {
-          "expr": "(wmi_os_physical_memory_free_bytes{instance=~\"$server\"} / wmi_os_process_memory_limix_bytes{instance=~\"$server\"}) * 100",
+          "expr": "100 - (wmi_os_physical_memory_free_bytes{instance=~\"$server\"} / wmi_cs_physical_memory_bytes{instance=~\"$server\"}) * 100",
           "instant": false,
           "interval": "",
           "intervalFactor": 1,
@@ -215,6 +217,7 @@
       "fieldConfig": {
         "defaults": {
           "custom": {},
+          "decimals": 0,
           "mappings": [],
           "max": 100,
           "min": 0,
@@ -261,7 +264,8 @@
       "pluginVersion": "7.1.4",
       "targets": [
         {
-          "expr": "100 - (wmi_logical_disk_free_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"} / wmi_logical_disk_size_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"})*100",
+          "expr": "(100 - wmi_logical_disk_free_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"} / custom_wmi_logical_disk_size_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"} * 100)  or (100 - (wmi_logical_disk_free_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"} / wmi_logical_disk_size_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"}) * 100) ",
+          "instant": true,
           "interval": "",
           "legendFormat": "{{volume}}",
           "refId": "A"
@@ -853,7 +857,7 @@
           "application": {
             "filter": ""
           },
-          "expr": " wmi_logical_disk_size_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"} - wmi_logical_disk_free_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"} ",
+          "expr": "( (custom_wmi_logical_disk_size_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"} - wmi_logical_disk_free_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"} ) / 1024 /1024 /1024 ) or ((wmi_logical_disk_size_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"} - wmi_logical_disk_free_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"} ) / 1024 /1024 /1024)",
           "functions": [],
           "group": {
             "filter": ""
@@ -862,6 +866,7 @@
           "host": {
             "filter": ""
           },
+          "instant": true,
           "interval": "",
           "intervalFactor": 1,
           "item": {
@@ -877,7 +882,7 @@
           "step": 20
         },
         {
-          "expr": "wmi_logical_disk_size_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"}",
+          "expr": " (custom_wmi_logical_disk_size_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"} / 1024 /1024 /1024) or \n (wmi_logical_disk_size_bytes{instance=~\"$server\",volume!~\"Harddisk.*\"} / 1024 /1024 /1024)",
           "instant": false,
           "interval": "",
           "legendFormat": "Total {{volume}}",
@@ -904,7 +909,7 @@
       },
       "yaxes": [
         {
-          "format": "decbytes",
+          "format": "decgbytes",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -1633,8 +1638,8 @@
         "allValue": null,
         "current": {
           "selected": true,
-          "text": "172.168.2.172:9182",
-          "value": "172.168.2.172:9182"
+          "text": "172.168.2.111:9182",
+          "value": "172.168.2.111:9182"
         },
         "datasource": "Prometheus",
         "definition": "",
@@ -1689,5 +1694,5 @@
   "timezone": "browser",
   "title": "Windows for server 2003",
   "uid": "4UePATWRk",
-  "version": 24
+  "version": 13
 }
