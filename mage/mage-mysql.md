@@ -4077,6 +4077,19 @@ mysql>  START SLAVE;
 最后解决办法：
 1. 重置slave和master,重新建立集群连接
 2. 重置slave设置，重新配置slave连接信息，指定binlog文件及位置
+
+#mysql缓冲区大小设置详解：
+当您增加或减少缓冲池大小时，该操作将按块执行。块大小由innodb_buffer_pool_chunk_size变量定义，该变量的默认值为 128 MB。
+缓冲池大小必须始终等于innodb_buffer_pool_chunk_size * innodb_buffer_pool_instances或倍数。如果将缓冲池大小更改为不等于innodb_buffer_pool_chunk_size * innodb_buffer_pool_instances或倍数的值，则缓冲池大小将自动调整为等于innodb_buffer_pool_chunk_size * innodb_buffer_pool_instances或倍数的值。
+innodb_buffer_pool_size可以动态设置，这使您无需重新启动服务器即可调整缓冲池的大小。
+例：
+innodb-buffer-pool-chunk-size = 134217728
+innodb-buffer-pool-instances = 8
+innodb-buffer-pool-size = 8589934592
+#innodb-buffer-pool-size = 8G * innodb-buffer-pool-chunk-size * innodb-buffer-pool-instances
+
+
+
 </pre>
 
 

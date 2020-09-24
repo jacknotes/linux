@@ -29,9 +29,10 @@ sql_mode=NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES
 default-storage-engine = InnoDB
 default-tmp-storage-engine = InnoDB
 internal-tmp-disk-storage-engine = InnoDB
-innodb-buffer-pool-size = 8589934592
+innodb-buffer-pool-chunk-size = 134217728
 innodb-buffer-pool-instances = 8
-
+innodb-buffer-pool-size = 6442450944
+#innodb-buffer-pool-size = 6G * innodb-buffer-pool-chunk-size * innodb-buffer-pool-instances
 
 [client]
 default-character-set = utf8mb4
