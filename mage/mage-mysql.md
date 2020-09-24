@@ -4055,4 +4055,28 @@ CHANGE MASTER TO MASTER_HOST='192.168.13.116',MASTER_USER='repluser',MASTER_PASS
 change master to master_auto_position=0       表示使用GTID不自动从binlog.000001去找，而是指定文件名及位置同步
 change master to master_auto_position=1        表示使用GTID自动同步，从binlog.000001去找
 stop slave;    停止slave线程
+
+
+mysql主主集群GTID
+1. 当两个节点数据不一致时，操作数据库后，数据库自动同步会出错，
+此时是因为另外一个节点不能操作不存储的对象导致的。
+解决办法 ：
+停止当前节点的slave（包括IO和SQL线程），然后reset master，重置
+本节点的master GTID信息，再设置GTID_PURGED为从show slave status\G;
+中获取到的Retrieved_Gtid_Set值。最后重启slave线程即可解决。
+例如 ：
+mysql>  STOP SLAVE;
+mysql> RESET MASTER;  （此步骤会清空二进制文件，有需要手动备份下）
+mysql>   SET @@GLOBAL.GTID_PURGED ='8f9e146f-0a18-11e7-810a-0050568833c8:1-4'
+mysql>  START SLAVE;
+上面这些命令的用意是，忽略8f9e146f-0a18-11e7-810a-0050568833c8:1-4 这个GTID事务，下
+一次事务接着从 5 这个GTID开始，即可跳过上述错误。
+注:set @@GLOBAL.GTID_PURGED只能往后设，不能往前设，否则会报错。
+如果非要往前设，那么只能重置本节点的slave信息，重新建立连接了。
+
+最后解决办法：
+1. 重置slave和master,重新建立集群连接
+2. 重置slave设置，重新配置slave连接信息，指定binlog文件及位置
 </pre>
+
+

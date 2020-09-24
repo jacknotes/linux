@@ -21,8 +21,8 @@
   "editable": true,
   "gnetId": 7362,
   "graphTooltip": 1,
-  "id": 11,
-  "iteration": 1600506359058,
+  "id": 20,
+  "iteration": 1600767085474,
   "links": [],
   "panels": [
     {
@@ -50,7 +50,7 @@
         "rgba(50, 172, 45, 0.97)"
       ],
       "datasource": "Prometheus",
-      "decimals": 1,
+      "decimals": 0,
       "description": "**MySQL Uptime**\n\nThe amount of time since the last restart of the MySQL server process.",
       "editable": true,
       "error": false,
@@ -109,7 +109,7 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": false
       },
-      "tableColumn": "mysql_global_status_uptime{instance=\"192.168.13.160:9100\", job=\"mysqld_exporter_target\"}",
+      "tableColumn": "mysql_global_status_uptime{instance=\"192.168.13.116:3306\", job=\"mysqld_exporter\", mysql_host=\"192.168.13.116:9100\"}",
       "targets": [
         {
           "calculatedInterval": "10m",
@@ -207,7 +207,7 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": true
       },
-      "tableColumn": "{instance=\"192.168.13.160:9100\", job=\"mysqld_exporter_target\"}",
+      "tableColumn": "{instance=\"192.168.13.116:3306\", job=\"mysqld_exporter\", mysql_host=\"192.168.13.116:9100\"}",
       "targets": [
         {
           "calculatedInterval": "10m",
@@ -305,7 +305,7 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": false
       },
-      "tableColumn": "mysql_global_variables_innodb_buffer_pool_size{instance=\"192.168.13.160:9100\", job=\"mysqld_exporter_target\"}",
+      "tableColumn": "mysql_global_variables_innodb_buffer_pool_size{instance=\"192.168.13.116:3306\", job=\"mysqld_exporter\", mysql_host=\"192.168.13.116:9100\"}",
       "targets": [
         {
           "calculatedInterval": "10m",
@@ -406,13 +406,13 @@
         "minValue": 0,
         "show": true
       },
-      "tableColumn": "{instance=\"192.168.13.160:9100\"}",
+      "tableColumn": "",
       "targets": [
         {
           "calculatedInterval": "10m",
           "datasourceErrors": {},
           "errors": {},
-          "expr": "(mysql_global_variables_innodb_buffer_pool_size{instance=\"$host\"} * 100) / on (instance) node_memory_MemTotal_bytes{instance=\"$host\"}",
+          "expr": "sum(mysql_global_variables_innodb_buffer_pool_size{instance=\"$host\"} * 100) / sum(node_memory_MemTotal_bytes{instance=\"$mysql_host\"})",
           "format": "time_series",
           "interval": "5m",
           "intervalFactor": 1,
@@ -449,6 +449,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
+      "datasource": null,
       "datource": "Prometheus",
       "decimals": 0,
       "description": "**Max Connections** \n\nMax Connections is the maximum permitted number of simultaneous client connections. By default, this is 151. Increasing this value increases the number of file descriptors that mysqld requires. If the required number of descriptors are not available, the server reduces the value of Max Connections.\n\nmysqld actually permits Max Connections + 1 clients to connect. The extra connection is reserved for use by accounts that have the SUPER privilege, such as root.\n\nMax Used Connections is the maximum number of connections that have been in use simultaneously since the server started.\n\nConnections is the number of connection attempts (successful or not) to the MySQL server.",
@@ -1923,7 +1924,7 @@
           "calculatedInterval": "2m",
           "datasourceErrors": {},
           "errors": {},
-          "expr": "rate(mysql_global_status_bytes_received{instance=\"$host\"}[$interval]) or irate(mysql_global_status_bytes_received{instance=\"$host\"}[5m])",
+          "expr": "rate(mysql_global_status_bytes_received{instance=\"$host\"}[$interval])  or irate(mysql_global_status_bytes_received{instance=\"$host\"}[5m])",
           "format": "time_series",
           "interval": "$interval",
           "intervalFactor": 1,
@@ -4052,7 +4053,7 @@
           "calculatedInterval": "2s",
           "datasourceErrors": {},
           "errors": {},
-          "expr": "rate(node_vmstat_pgpgin{instance=\"$host\"}[$interval]) * 1024 or irate(node_vmstat_pgpgin{instance=\"$host\"}[5m]) * 1024",
+          "expr": "rate(node_vmstat_pgpgin{instance=\"$host\"}[$interval]) * 1024 or irate(node_vmstat_pgpgin{instance=\"$mysql_host\"}[5m]) * 1024",
           "interval": "$interval",
           "intervalFactor": 1,
           "legendFormat": "Page In",
@@ -4065,7 +4066,7 @@
           "calculatedInterval": "2s",
           "datasourceErrors": {},
           "errors": {},
-          "expr": "rate(node_vmstat_pgpgout{instance=\"$host\"}[$interval]) * 1024 or irate(node_vmstat_pgpgout{instance=\"$host\"}[5m]) * 1024",
+          "expr": "rate(node_vmstat_pgpgout{instance=\"$host\"}[$interval]) * 1024 or irate(node_vmstat_pgpgout{instance=\"$mysql_host\"}[5m]) * 1024",
           "interval": "$interval",
           "intervalFactor": 1,
           "legendFormat": "Page Out",
@@ -4175,7 +4176,8 @@
           "calculatedInterval": "2s",
           "datasourceErrors": {},
           "errors": {},
-          "expr": "node_memory_MemTotal_bytes{instance=\"$host\"} - (node_memory_MemFree_bytes{instance=\"$host\"} + node_memory_Buffers{instance=\"$host\"} + node_memory_Cached{instance=\"$host\"})",
+          "expr": "node_memory_MemTotal_bytes{instance=\"$mysql_host\"} - (node_memory_MemFree_bytes{instance=\"$mysql_host\"} + node_memory_Buffers_bytes{instance=\"$mysql_host\"} + node_memory_Cached_bytes{instance=\"$mysql_host\"})",
+          "hide": false,
           "interval": "$interval",
           "intervalFactor": 1,
           "legendFormat": "Used",
@@ -4188,7 +4190,8 @@
           "calculatedInterval": "2s",
           "datasourceErrors": {},
           "errors": {},
-          "expr": "node_memory_MemFree_bytes{instance=\"$host\"}",
+          "expr": "node_memory_MemFree_bytes{instance=\"$mysql_host\"}",
+          "hide": false,
           "interval": "$interval",
           "intervalFactor": 1,
           "legendFormat": "Free",
@@ -4201,7 +4204,8 @@
           "calculatedInterval": "2s",
           "datasourceErrors": {},
           "errors": {},
-          "expr": "node_memory_Buffers{instance=\"$host\"}",
+          "expr": "node_memory_Buffers_bytes{instance=\"$mysql_host\"}",
+          "hide": false,
           "interval": "$interval",
           "intervalFactor": 1,
           "legendFormat": "Buffers",
@@ -4214,7 +4218,7 @@
           "calculatedInterval": "2s",
           "datasourceErrors": {},
           "errors": {},
-          "expr": "node_memory_Cached{instance=\"$host\"}",
+          "expr": "node_memory_Cached_bytes{instance=\"$mysql_host\"}",
           "interval": "$interval",
           "intervalFactor": 1,
           "legendFormat": "Cached",
@@ -4348,7 +4352,7 @@
           "calculatedInterval": "2s",
           "datasourceErrors": {},
           "errors": {},
-          "expr": "clamp_max(((avg by (mode) ( (clamp_max(rate(node_cpu_seconds_total{instance=\"$host\",mode!=\"idle\"}[$interval]),1)) or (clamp_max(irate(node_cpu_seconds_total{instance=\"$host\",mode!=\"idle\"}[5m]),1)) ))*100 or (avg_over_time(node_cpu_seconds_total_average{instance=~\"$host\", mode!=\"total\", mode!=\"idle\"}[$interval]) or avg_over_time(node_cpu_seconds_total_average{instance=~\"$host\", mode!=\"total\", mode!=\"idle\"}[5m]))),100)",
+          "expr": "clamp_max(((avg by (mode) ( (clamp_max(rate(node_cpu_seconds_total{instance=\"$mysql_host\",mode!=\"idle\"}[$interval]),1)) or (clamp_max(irate(node_cpu_seconds_total{instance=\"$mysql_host\",mode!=\"idle\"}[5m]),1)) ))*100 or (avg_over_time(node_cpu_seconds_total_average{instance=~\"$mysql_host\", mode!=\"total\", mode!=\"idle\"}[$interval]) or avg_over_time(node_cpu_seconds_total_average{instance=~\"$mysql_host\", mode!=\"total\", mode!=\"idle\"}[5m]))),100)",
           "format": "time_series",
           "hide": false,
           "interval": "$interval",
@@ -4359,9 +4363,9 @@
           "step": 20
         },
         {
-          "expr": "clamp_max(max by () (sum  by (cpu) ( (clamp_max(rate(node_cpu_seconds_total{instance=\"$host\",mode!=\"idle\",mode!=\"iowait\"}[$interval]),1)) or (clamp_max(irate(node_cpu_seconds_total{instance=\"$host\",mode!=\"idle\",mode!=\"iowait\"}[5m]),1)) ))*100,100)",
+          "expr": "clamp_max(max by () (sum  by (cpu) ( (clamp_max(rate(node_cpu_seconds_total{instance=\"$mysql_host\",mode!=\"idle\",mode!=\"iowait\"}[$interval]),1)) or (clamp_max(irate(node_cpu_seconds_total{instance=\"$mysql_host\",mode!=\"idle\",mode!=\"iowait\"}[5m]),1)) ))*100,100)",
           "format": "time_series",
-          "hide": true,
+          "hide": false,
           "interval": "$interval",
           "intervalFactor": 1,
           "legendFormat": "Max Core Utilization",
@@ -4369,9 +4373,10 @@
           "step": 20
         },
         {
-          "expr": "node_load1{instance=\"$host\"}",
+          "expr": "node_load1{instance=\"$mysql_host\"}",
           "format": "time_series",
           "hide": false,
+          "interval": "$interval",
           "intervalFactor": 2,
           "legendFormat": "Load 1m",
           "refId": "C"
@@ -4477,7 +4482,7 @@
           "calculatedInterval": "2m",
           "datasourceErrors": {},
           "errors": {},
-          "expr": "rate(node_disk_read_time_seconds_total{device!~\"dm-.+|^sr.*$\", instance=\"$host\"}[$interval])",
+          "expr": "rate(node_disk_read_time_seconds_total{device!~\"dm-.+|^sr.*$\", instance=\"$mysql_host\"}[5m])",
           "format": "time_series",
           "hide": false,
           "instant": false,
@@ -4493,7 +4498,7 @@
           "calculatedInterval": "2m",
           "datasourceErrors": {},
           "errors": {},
-          "expr": "rate(node_disk_write_time_seconds_total{device!~\"dm-.+\", instance=\"$host\"}[$interval])",
+          "expr": "rate(node_disk_write_time_seconds_total{device!~\"dm-.+\", instance=\"$mysql_host\"}[5m])",
           "format": "time_series",
           "hide": false,
           "interval": "$interval",
@@ -4508,7 +4513,7 @@
           "calculatedInterval": "2m",
           "datasourceErrors": {},
           "errors": {},
-          "expr": "rate(node_disk_reads_completed_total{device!~\"dm-.+\", instance=\"$host\"}[$interval])",
+          "expr": "rate(node_disk_reads_completed_total{device!~\"dm-.+\", instance=\"$mysql_host\"}[5m])",
           "format": "time_series",
           "hide": false,
           "interval": "$interval",
@@ -4523,7 +4528,7 @@
           "calculatedInterval": "2m",
           "datasourceErrors": {},
           "errors": {},
-          "expr": "rate(node_disk_writes_completed_total{device!~\"dm-.+\", instance=\"$host\"}[$interval])",
+          "expr": "rate(node_disk_writes_completed_total{device!~\"dm-.+\", instance=\"$mysql_host\"}[5m])",
           "format": "time_series",
           "hide": false,
           "interval": "$interval",
@@ -4641,7 +4646,7 @@
           "calculatedInterval": "2s",
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(rate(node_network_receive_bytes_total{instance=\"$host\", device!=\"lo\"}[$interval])) or sum(irate(node_network_receive_bytes_total{instance=\"$host\", device!=\"lo\"}[5m])) or sum(max_over_time(rdsosmetrics_network_rx{instance=\"$host\"}[$interval])) or sum(max_over_time(rdsosmetrics_network_rx{instance=\"$host\"}[5m])) ",
+          "expr": "sum(rate(node_network_receive_bytes_total{instance=\"$mysql_host\", device!=\"lo\"}[$interval])) or sum(irate(node_network_receive_bytes_total{instance=\"$mysql_host\", device!=\"lo\"}[5m])) or sum(max_over_time(rdsosmetrics_network_rx{instance=\"$mysql_host\"}[$interval])) or sum(max_over_time(rdsosmetrics_network_rx{instance=\"$mysql_host\"}[5m])) ",
           "format": "time_series",
           "interval": "$interval",
           "intervalFactor": 1,
@@ -4655,7 +4660,7 @@
           "calculatedInterval": "2s",
           "datasourceErrors": {},
           "errors": {},
-          "expr": "sum(rate(node_network_transmit_bytes_total{instance=\"$host\", device!=\"lo\"}[$interval])) or sum(irate(node_network_transmit_bytes_total{instance=\"$host\", device!=\"lo\"}[5m])) or\nsum(max_over_time(rdsosmetrics_network_tx{instance=\"$host\"}[$interval])) or sum(max_over_time(rdsosmetrics_network_tx{instance=\"$host\"}[5m]))",
+          "expr": "sum(rate(node_network_transmit_bytes_total{instance=\"$mysql_host\", device!=\"lo\"}[$interval])) or sum(irate(node_network_transmit_bytes_total{instance=\"$mysql_host\", device!=\"lo\"}[5m])) or\nsum(max_over_time(rdsosmetrics_network_tx{instance=\"$mysql_host\"}[$interval])) or sum(max_over_time(rdsosmetrics_network_tx{instance=\"$mysql_host\"}[5m]))",
           "format": "time_series",
           "interval": "$interval",
           "intervalFactor": 1,
@@ -4765,7 +4770,7 @@
           "calculatedInterval": "2s",
           "datasourceErrors": {},
           "errors": {},
-          "expr": "rate(node_vmstat_pswpin{instance=\"$host\"}[$interval]) * 4096 or irate(node_vmstat_pswpin{instance=\"$host\"}[5m]) * 4096",
+          "expr": "rate(node_vmstat_pswpin{instance=\"$mysql_host\"}[$interval]) * 4096 or irate(node_vmstat_pswpin{instance=\"$mysql_host\"}[5m]) * 4096",
           "interval": "$interval",
           "intervalFactor": 1,
           "legendFormat": "Swap In (Reads)",
@@ -4778,7 +4783,7 @@
           "calculatedInterval": "2s",
           "datasourceErrors": {},
           "errors": {},
-          "expr": "rate(node_vmstat_pswpout{instance=\"$host\"}[$interval]) * 4096 or irate(node_vmstat_pswpout{instance=\"$host\"}[5m]) * 4096",
+          "expr": "rate(node_vmstat_pswpout{instance=\"$mysql_host\"}[$interval]) * 4096 or irate(node_vmstat_pswpout{instance=\"$mysql_host\"}[5m]) * 4096",
           "interval": "$interval",
           "intervalFactor": 1,
           "legendFormat": "Swap Out (Writes)",
@@ -4845,9 +4850,9 @@
         "auto_count": 200,
         "auto_min": "1s",
         "current": {
-          "selected": false,
-          "text": "5m",
-          "value": "5m"
+          "selected": true,
+          "text": "5s",
+          "value": "5s"
         },
         "datasource": "Prometheus",
         "hide": 0,
@@ -4868,7 +4873,7 @@
             "value": "1s"
           },
           {
-            "selected": false,
+            "selected": true,
             "text": "5s",
             "value": "5s"
           },
@@ -4878,7 +4883,7 @@
             "value": "1m"
           },
           {
-            "selected": true,
+            "selected": false,
             "text": "5m",
             "value": "5m"
           },
@@ -4909,19 +4914,19 @@
         "allValue": null,
         "current": {
           "selected": true,
-          "text": "192.168.13.160:9100",
-          "value": "192.168.13.160:9100"
+          "text": "192.168.13.116:3306",
+          "value": "192.168.13.116:3306"
         },
         "datasource": "Prometheus",
-        "definition": "label_values(mysql_up{instance=~\".+9100\"}, instance)",
+        "definition": "label_values(mysql_up, instance)",
         "hide": 0,
         "includeAll": false,
-        "label": "Host",
+        "label": "instance",
         "multi": false,
         "multiFormat": "regex values",
         "name": "host",
         "options": [],
-        "query": "label_values(mysql_up{instance=~\".+9100\"}, instance)",
+        "query": "label_values(mysql_up, instance)",
         "refresh": 1,
         "refresh_on_load": false,
         "regex": "",
@@ -4930,6 +4935,32 @@
         "tagValuesQuery": null,
         "tags": [],
         "tagsQuery": null,
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "192.168.13.160:9100",
+          "value": "192.168.13.160:9100"
+        },
+        "datasource": "Prometheus",
+        "definition": "label_values(mysql_up, mysql_host)",
+        "hide": 0,
+        "includeAll": false,
+        "label": "mysql_host",
+        "multi": false,
+        "name": "mysql_host",
+        "options": [],
+        "query": "label_values(mysql_up, mysql_host)",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
         "type": "query",
         "useTags": false
       }
@@ -4974,5 +5005,5 @@
   "timezone": "browser",
   "title": "MySQL",
   "uid": "MQWgroiiz",
-  "version": 6
+  "version": 21
 }

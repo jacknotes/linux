@@ -311,9 +311,9 @@ systemctl start redis_exporter
   - job_name: 'redis_exporter_target'
     static_configs:
       - targets:
-        - redis://192.168.13.160:6369
-        - redis://192.168.13.161:6369
-        - redis://192.168.13.162:6369
+        - 192.168.13.160:6369
+        - 192.168.13.161:6369
+        - 192.168.13.162:6369
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
@@ -338,16 +338,21 @@ wget https://github.com/prometheus/mysqld_exporter/releases/download/v0.12.1/mys
 mysql> CREATE USER 'exporter'@'192.168.13.%' IDENTIFIED BY 'mysqld_exporter' WITH MAX_USER_CONNECTIONS 3;
 mysql> GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO 'exporter'@'192.168.13.%';
 [root@prometheus mysqld_exporter]# yum install -y mysql
-[root@prometheus mysqld_exporter]# cat /usr/local/mysqld_exporter/.my.cnf 
------------
+[root@prometheus mysqld_exporter]# cat .my_160.cnf 
 [client]
 host=192.168.13.160
 port=3306
 user=exporter
 password='mysqld_exporter'
------------
-[root@prometheus download]# cat /usr/lib/systemd/system/mysqld_exporter.service
 ------------
+[root@prometheus mysqld_exporter]# cat .my_116.cnf 
+[client]
+host=192.168.13.116
+port=3306
+user=exporter
+password='mysqld_exporter'
+------------
+[root@prometheus mysqld_exporter]# cat /usr/lib/systemd/system/mysqld_exporter_160.service 
 [Unit]
 Description=https://prometheus.io
 After=network-online.target
@@ -356,7 +361,26 @@ After=network-online.target
 User=prometheus
 Group=prometheus
 Type=simple
-ExecStart=/usr/local/mysqld_exporter/mysqld_exporter --config.my-cnf=/usr/local/mysqld_exporter/.my.cnf \
+ExecStart=/usr/local/mysqld_exporter/mysqld_exporter --config.my-cnf=/usr/local/mysqld_exporter/.my_160.cnf \
+--web.listen-address=0.0.0.0:9104 \
+--collect.auto_increment.columns \
+--collect.info_schema.processlist
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+------------
+[root@prometheus mysqld_exporter]# cat /usr/lib/systemd/system/mysqld_exporter_116.service 
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/mysqld_exporter/mysqld_exporter --config.my-cnf=/usr/local/mysqld_exporter/.my_116.cnf \
+--web.listen-address=0.0.0.0:9105 \
 --collect.auto_increment.columns \
 --collect.info_schema.processlist
 Restart=on-failure
@@ -365,26 +389,29 @@ Restart=on-failure
 WantedBy=multi-user.target
 ------------
 [root@prometheus download]# systemctl daemon-reload 
-[root@prometheus download]# systemctl start mysqld_exporter
-[root@prometheus download]# systemctl enable mysqld_exporter.service 
+[root@prometheus download]# systemctl start mysqld_exporter_160.service
+[root@prometheus download]# systemctl start mysqld_exporter_116.service
+[root@prometheus download]# systemctl enable mysqld_exporter_160.service 
+[root@prometheus download]# systemctl enable mysqld_exporter_116.service 
 [root@prometheus prometheus]# less prometheus.yml
 -----------------
-  - job_name: 'mysqld_exporter_target'
-    static_configs:
-      - targets:
-        - mysql://192.168.13.160:3306
-        - mysql://192.168.13.116:3306
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: __param_target
-      - source_labels: [__param_target]
-        target_label: instance
-      - target_label: __address__
-        replacement: 192.168.13.236:9104
   - job_name: 'mysqld_exporter'
     static_configs:
-    - targets: 
+    - labels:
+        instance: 192.168.13.160:3306
+        mysql_host: 192.168.13.160:9100
+      targets: 
       - '192.168.13.236:9104'
+    - labels:
+        instance: 192.168.13.116:3306
+        mysql_host: 192.168.13.116:9100
+      targets: 
+      - '192.168.13.236:9105'
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: (.*)
+        target_label: __address__
+        replacement: $1
 -----------------
 [root@prometheus prometheus]# curl -XPOST http://localhost:9090/-/reload
 注：去grafana添加模板，模板ID：7362

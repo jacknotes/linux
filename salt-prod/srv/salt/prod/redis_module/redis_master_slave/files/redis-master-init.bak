@@ -5,7 +5,8 @@
 # chkconfig:   - 86 14
 # description: redis service shell 
 # processname: redis-server
-# config:      /usr/local/redis/redis-slave.conf
+# config:      /usr/local/redis/redis-master.conf
+# pidfile:     /var/run/redis_6379.pid
 
  
 # Source function library.
@@ -19,9 +20,8 @@
  
 redis_server="/usr/local/redis/bin/redis-server"
 prog=$(basename $redis_server)
-pid=$(ps aux | grep "${redis_server}" | grep -v 'grep' | awk '{print $2}')
  
-REDIS_SERVER_CONF_FILE="/usr/local/redis/redis-slave.conf"
+REDIS_SERVER_CONF_FILE="/usr/local/redis/redis-master.conf"
  
 [ -f /etc/sysconfig/redis_server ] && . /etc/sysconfig/redis_server
  
@@ -40,7 +40,7 @@ start() {
  
 stop() {
     echo -n $"Stopping $prog: "
-    kill -QUIT ${pid} 
+    killproc $prog -QUIT
     retval=$?
     echo
     [ $retval -eq 0 ] && rm -f $lockfile
@@ -54,7 +54,7 @@ restart() {
 }
  
 status() {
-    /usr/bin/ps aux | /usr/bin/grep ${redis_server} | /usr/bin/grep -v 'grep' >& /dev/null && echo "$prog is running...." || echo "$prog is stop"
+    /usr/bin/ps aux | /usr/bin/grep $prog | /usr/bin/grep -v 'grep' >& /dev/null && echo "$prog is running...." || echo "$prog is stop"
 }
  
 case "$1" in

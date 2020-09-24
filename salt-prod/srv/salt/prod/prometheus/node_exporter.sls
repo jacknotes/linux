@@ -3,13 +3,13 @@ include:
 
 node_exporter-source-install:
   file.managed:
-    - name: /usr/local/src/node_exporter-0.18.1.linux-amd64.tar.gz
-    - source: salt://prometheus/files/node_exporter-0.18.1.linux-amd64.tar.gz
+    - name: /usr/local/src/node_exporter-1.0.1.linux-amd64.tar.gz
+    - source: salt://prometheus/files/node_exporter-1.0.1.linux-amd64.tar.gz
     - user: root
     - group: root
     - mode: 755
   cmd.run:
-    - name: cd /usr/local/src && tar xf node_exporter-0.18.1.linux-amd64.tar.gz -C /usr/local/ && chown -R prometheus:prometheus /usr/local/node_exporter-0.18.1.linux-amd64/ && ln -s /usr/local/node_exporter-0.18.1.linux-amd64 /usr/local/node_exporter
+    - name: cd /usr/local/src && tar xf node_exporter-1.0.1.linux-amd64.tar.gz -C /usr/local/ && chown -R prometheus:prometheus /usr/local/node_exporter-1.0.1.linux-amd64/ && ln -s /usr/local/node_exporter-1.0.1.linux-amd64/ /usr/local/node_exporter
     - unless: test -x /usr/local/node_exporter/node_exporter
     - require:
       - file: node_exporter-source-install

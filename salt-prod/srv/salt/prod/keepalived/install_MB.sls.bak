@@ -1,6 +1,6 @@
 {% set keepalived_tar= 'keepalived-2.0.19.tar.gz'  %}
 {% set keepalived_source= 'salt://keepalived/files/'  %}
-{% set keepalived_config= 'mysql-MB-keepalived.conf'  %}
+{% set keepalived_config= 'nginx-MB-keepalived.conf'  %}
 
 keepalived-install:
   file.managed:
@@ -22,8 +22,8 @@ keepalived-install:
 
 keepalived-shell:
   file.managed:
-    - name: /etc/keepalived/chk_mysql.sh
-    - source: {{ keepalived_source }}chk_mysql.sh
+    - name: /etc/keepalived/chk_nginx.sh
+    - source: {{ keepalived_source }}chk_nginx.sh
     - mode: 755
     - user: root
     - group: root
@@ -38,15 +38,19 @@ keepalived-conf:
     - user: root
     - group: root
     - template: jinja
-    - VIP: 192.168.13.117
-    {% if grains['id'] == 'redis-master' %}
-    - ROUTEID: mysql_ha
+    - VIP: 192.168.15.198
+    {% if grains['fqdn'] == 'salt' %}
+    - ROUTEID: k8s_ha
     - STATEID: MASTER
     - PRIORITYID: 150
-    {% elif grains['id'] == '192.168.13.116' %}
-    - ROUTEID: mysql_ha
+    {% elif grains['fqdn'] == 'node1' %}
+    - ROUTEID: k8s_ha
     - STATEID: BACKUP
     - PRIORITYID: 100
+    {% elif grains['fqdn'] == 'node2' %}
+    - ROUTEID: k8s_ha
+    - STATEID: BACKUP
+    - PRIORITYID: 80
     {% endif %}
     - require:
       - file: /etc/keepalived

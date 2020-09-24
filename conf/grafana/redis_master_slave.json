@@ -17,7 +17,7 @@
   "gnetId": 763,
   "graphTooltip": 0,
   "id": 8,
-  "iteration": 1600423266456,
+  "iteration": 1600767564312,
   "links": [],
   "panels": [
     {
@@ -183,11 +183,12 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": true
       },
-      "tableColumn": "redis_connected_clients{instance=\"redis://192.168.13.162:6369\", job=\"redis_exporter_target\"}",
+      "tableColumn": "redis_connected_clients{instance=\"192.168.13.162:6369\", job=\"redis_exporter_target\"}",
       "targets": [
         {
           "expr": "redis_connected_clients{instance=~\"$instance\"}",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 2,
           "legendFormat": "",
           "metric": "",
@@ -282,7 +283,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "100 * (avg(redis_memory_used_bytes{instance=~\"$instance\"}) / avg(node_memory_MemTotal_bytes{instance=~\"$node_memory\"}))",
+          "expr": "100 * (avg(redis_memory_used_bytes{instance=~\"$instance\"}) / avg(node_memory_MemTotal_bytes{instance=~\"$redis_host\"}))",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -1207,18 +1208,18 @@
         "allValue": null,
         "current": {
           "selected": false,
-          "text": "redis://192.168.13.162:6369",
-          "value": "redis://192.168.13.162:6369"
+          "text": "192.168.13.162:6369",
+          "value": "192.168.13.162:6369"
         },
         "datasource": "Prometheus",
-        "definition": "label_values(redis_up, instance)",
+        "definition": "label_values(redis_up{instance=~\"192.168.13.16[012]:6369\"}, instance)",
         "hide": 0,
         "includeAll": false,
         "label": null,
         "multi": false,
         "name": "instance",
         "options": [],
-        "query": "label_values(redis_up, instance)",
+        "query": "label_values(redis_up{instance=~\"192.168.13.16[012]:6369\"}, instance)",
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
@@ -1233,22 +1234,22 @@
         "allValue": null,
         "current": {
           "selected": false,
-          "text": "192.168.13.162:9100",
-          "value": "192.168.13.162:9100"
+          "text": "192.168.13.161:9100",
+          "value": "192.168.13.161:9100"
         },
         "datasource": "Prometheus",
         "definition": "label_values(node_memory_MemTotal_bytes{instance=~\"192.168.13.16[012]:9100\"}, instance)",
         "hide": 0,
         "includeAll": false,
-        "label": "node_memory",
+        "label": "redis_host",
         "multi": false,
-        "name": "node_memory",
+        "name": "redis_host",
         "options": [],
         "query": "label_values(node_memory_MemTotal_bytes{instance=~\"192.168.13.16[012]:9100\"}, instance)",
         "refresh": 2,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 0,
+        "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
         "tagsQuery": "",
@@ -1258,7 +1259,7 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {
@@ -1287,7 +1288,7 @@
     ]
   },
   "timezone": "browser",
-  "title": "Redis  Cluster",
+  "title": "Redis",
   "uid": "OY8i3bdMk",
-  "version": 5
+  "version": 13
 }

@@ -1,6 +1,5 @@
 include:
-  - redis_module.redis_master_slave.sysctl-redis
-
+  - redis_module.redis_master_slave.pkg
 redis-require-package:
   pkg.installed:
     - names:
