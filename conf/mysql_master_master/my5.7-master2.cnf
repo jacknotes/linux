@@ -1,8 +1,9 @@
 [mysqld]
 #skip-grant-tables = 1
-datadir = /home/mysqldata
+datadir = /data/mysql
 basedir = /usr/local/mysql
 socket=/usr/local/mysql/mysql.sock
+pid-file=/data/mysql/mysql.pid
 gtid-mode=on
 enforce-gtid-consistency=true
 master-info-repository=TABLE 
@@ -18,9 +19,9 @@ log-bin-index=master-bin.index
 character-set-server=utf8mb4
 relay-log=relay-master
 relay-log-index=relay-master.index
-slow_query_log_file = /home/mysqldata/mysql-slow.log
+slow_query_log_file = /data/mysql/mysql-slow.log
 slow_query_log = 1
-log_error = /home/mysqldata/mysql.err
+log_error = /data/mysql/mysql.err
 innodb_file_per_table=1
 auto-increment-increment = 2
 auto-increment-offset=1
@@ -33,6 +34,9 @@ innodb-buffer-pool-chunk-size = 134217728
 innodb-buffer-pool-instances = 8
 innodb-buffer-pool-size = 6442450944
 #innodb-buffer-pool-size = 6G * innodb-buffer-pool-chunk-size * innodb-buffer-pool-instances
+sync-binlog = 1
+log-slave-updates = 1  #multi level copy
+
 
 [client]
 default-character-set = utf8mb4

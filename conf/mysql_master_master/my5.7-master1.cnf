@@ -2,6 +2,7 @@
 datadir = /home/mysqldata
 basedir = /usr/local/mysql
 socket=/usr/local/mysql/mysql.sock
+pid-file=/home/mysqldata/mysql.pid
 gtid-mode=on
 enforce-gtid-consistency=true
 master-info-repository=TABLE 
@@ -32,6 +33,8 @@ innodb-buffer-pool-chunk-size = 134217728
 innodb-buffer-pool-instances = 8
 innodb-buffer-pool-size = 8589934592
 #innodb-buffer-pool-size = 8G * innodb-buffer-pool-chunk-size * innodb-buffer-pool-instances
+sync-binlog = 1
+log-slave-updates = 1  #multi level copy
 
 [client]
 default-character-set = utf8mb4

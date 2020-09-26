@@ -4087,6 +4087,8 @@ innodb-buffer-pool-chunk-size = 134217728
 innodb-buffer-pool-instances = 8
 innodb-buffer-pool-size = 8589934592
 #innodb-buffer-pool-size = 8G * innodb-buffer-pool-chunk-size * innodb-buffer-pool-instances
+sync-binlog = 1  #1表示每有一次事务提交就从内存缓存同步到二进制日志文件中
+log-slave-updates = 1  #multi level copy,多级复制，可以实现多主架构,表示在主1中插入一条数据时，此时主2会通过IO线程从主1上复制二进制日志到relay-log和binlog中，如果不开启这个，则只会同步到relay-log中，这样一台如果主2有一节点为从，则从节点无法同步主1上改变的二进制内容，如果用户请求正好被高度到主2的从节点时，则此请求不会被正确处理。
 
 
 
