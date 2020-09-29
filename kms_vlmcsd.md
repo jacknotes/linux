@@ -1,3 +1,4 @@
+#REFERENCE: https://github.com/Dwarven/vlmcsd
 --windows激活方法
 <pre>
  slmgr.vbs -upk
