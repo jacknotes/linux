@@ -421,6 +421,72 @@ WantedBy=multi-user.target
 #--wmi_exporter
 注：wmi_exporter客户端使用版本为wmi_exporter-0.8.3-386.msi,此版本可以采集windows server 2003系统。
 
+-----------------
+#snmp_exporter
+[root@prometheus download]# tar xf snmp_exporter-0.19.0.linux-amd64.tar.gz -C /usr/local/
+[root@prometheus download]# chown -R prometheus.prometheus /usr/local/snmp_exporter-0.19.0.linux-amd64/
+[root@prometheus download]# ln -sv /usr/local/snmp_exporter-0.19.0.linux-amd64/ /usr/local/snmp_exporter
+----
+[root@prometheus download]# cat /usr/lib/systemd/system/snmp_exporter.service
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/snmp_exporter/snmp_exporter \
+--config.file=/usr/local/snmp_exporter/snmp.yml
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+----
+[root@prometheus snmp_exporter]# systemctl daemon-reload
+[root@prometheus snmp_exporter]# systemctl start snmp_exporter
+[root@prometheus snmp_exporter]# systemctl enable snmp_exporter
+[root@prometheus snmp_exporter]# netstat -tnlp | grep 9116
+tcp6       0      0 :::9116                 :::*                    LISTEN      19832/snmp_exporter 
+
+-----------------
+
+#SQL_EXPORTER(SQLSERVER)
+-----------------
+[root@prometheus download]# tar xf sql_exporter-0.5.linux-amd64.tar.gz -C /usr/local/
+[root@prometheus download]# chown -R prometheus.prometheus /usr/local/sql_exporter-0.5.linux-amd64
+[root@prometheus download]# ln -sv /usr/local/sql_exporter-0.5.linux-amd64 /usr/local/sql_exporter
+[root@prometheus sql_exporter]# cat sql_exporter.yml  | grep -vE '#|^$'
+global:
+  scrape_timeout_offset: 500ms
+  min_interval: 0s
+  max_connections: 10
+  max_idle_connections: 3
+target:
+  data_source_name: sqlserver://prom:password@172.168.2.219:1433?encrypt=disable
+  collectors: [mssql_standard]
+collector_files: 
+  - "*.collector.yml"
+[root@prometheus sql_exporter]# cat /usr/lib/systemd/system/sql_exporter.service 
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/sql_exporter/sql_exporter \
+-config.file=/usr/local/sql_exporter/sql_exporter.yml
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+[root@prometheus prometheus]# systemctl daemon-reload 
+[root@prometheus prometheus]# systemctl start sql_exporter
+[root@prometheus prometheus]# systemctl enable sql_exporter
+-----------------
+
 #node3安装grafana
 [root@node3 /download]# wget https://dl.grafana.com/oss/release/grafana-7.0.3-1.x86_64.rpm
 [root@node3 /download]# sudo yum install grafana-7.0.3-1.x86_64.rpm -y
