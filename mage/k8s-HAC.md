@@ -872,6 +872,29 @@ kubeadm alpha certs check-expiration
 #--------使用脚本将kubeadm的证书延长至10年
 REFERENCE:https://github.com/luckylucky421/kubernetes1.17.3
 将这个项目clone下来或者将update-kubeadm-cert.sh脚本下下来，在所有master上执行./update-kubeadm-cert.sh all即可。
+
+#方式一：升级K8S集群，自动更新证书
+kubeadm config view >> kube-config.yaml  #保存原配置
+yum list all --showduplicates | grep kubeadm #查看所有kubeadm版本
+yum install -y --showduplicates kubeadm-1.15.12  #安装升级目标版本
+kubeadm upgrade plan  #查看升级计划
+kubeadm config images pull --image-repository=registry.aliyuncs.com/google_containers --kubernetes-version=v1.15.12 #下载升级目标版本k8s套件
+docker tag registry.aliyuncs.com/google_containers/kube-apiserver:v1.15.12 k8s.gcr.io/kube-apiserver:v1.15.12 #将从阿里云下载的版本打标记成k8s可以认的镜像，具体哪些版本打标记需看kubeadm upgrade plan升级计划中的详细版本
+docker tag registry.aliyuncs.com/google_containers/kube-proxy:v1.15.12 k8s.gcr.io/kube-proxy:v1.15.12
+docker tag registry.aliyuncs.com/google_containers/kube-scheduler:v1.15.12 k8s.gcr.io/kube-scheduler:v1.15.12
+docker tag registry.aliyuncs.com/google_containers/kube-controller-manager:v1.15.12 k8s.gcr.io/kube-controller-manager:v1.15.12
+kubeadm upgrade apply v1.15.12 #应用升级版本
+kubeadm upgrade node #升级k8s，升级完成后，kubectl version可以看到server端的版本从v1.15.11变成v1.15.12了
+yum install -y kubectl-1.15.12 kubelet-1.15.12  --showduplicates #master安装
+systemctl daemon-reload
+systemctl restart kubelet
+[root@master ~]# kubectl get nodes  #此时可以看到升级版本了，其余master节点跟这个master节点一样升级，node节点只需要安装kubelet新版本并重新启动即可，完成后证书截止日期就变成明年的今天了
+NAME     STATUS     ROLES    AGE   VERSION
+master   Ready      master   79d   v1.15.12
+node1    Ready      <none>   79d   v1.15.12
+node2    NotReady   <none>   79d   v1.15.11
+
+
 </pre>
 
 
