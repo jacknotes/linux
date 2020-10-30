@@ -17,7 +17,7 @@
   "gnetId": 10467,
   "graphTooltip": 1,
   "id": 3,
-  "iteration": 1598431242492,
+  "iteration": 1604036325081,
   "links": [
     {
       "asDropdown": true,
@@ -62,7 +62,7 @@
       "pageSize": null,
       "showHeader": true,
       "sort": {
-        "col": 0,
+        "col": 13,
         "desc": true
       },
       "styles": [
@@ -1166,7 +1166,7 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": false
       },
-      "tableColumn": "{instance=\"172.18.50.249:9182\", job=\"windows-exporter\"}",
+      "tableColumn": "{app=\"GuanChaShi Machine\", instance=\"172.168.2.10:9182\", job=\"windows\"}",
       "targets": [
         {
           "expr": "time() - windows_system_system_up_time{job=~\"$job\",instance=~\"$instance\"}",
@@ -1336,7 +1336,7 @@
       "pluginVersion": "7.1.4",
       "targets": [
         {
-          "expr": "100 - (windows_logical_disk_free_bytes{job=~\"$job\",instance=~\"$instance\"} / windows_logical_disk_size_bytes{job=~\"$job\",instance=~\"$instance\"})*100",
+          "expr": "100 - (windows_logical_disk_free_bytes{job=~\"$job\",instance=~\"$instance\",volume!=\"HarddiskVolume1\"} / windows_logical_disk_size_bytes{job=~\"$job\",instance=~\"$instance\",volume!=\"HarddiskVolume1\"})*100",
           "instant": false,
           "interval": "",
           "legendFormat": "{{volume}}",
@@ -1642,7 +1642,7 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": false
       },
-      "tableColumn": "windows_cs_logical_processors{instance=\"172.18.50.249:9182\", job=\"windows-exporter\"}",
+      "tableColumn": "windows_cs_logical_processors{app=\"GuanChaShi Machine\", instance=\"172.168.2.10:9182\", job=\"windows\"}",
       "targets": [
         {
           "expr": "windows_cs_logical_processors{job=~\"$job\",instance=~\"$instance\"}",
@@ -1734,7 +1734,7 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": true
       },
-      "tableColumn": "{instance=\"172.18.50.249:9182\", job=\"windows-exporter\"}",
+      "tableColumn": "{app=\"GuanChaShi Machine\", instance=\"172.168.2.10:9182\", job=\"windows\"}",
       "targets": [
         {
           "expr": "100 - (windows_os_physical_memory_free_bytes{job=~\"$job\",instance=~\"$instance\"} / windows_cs_physical_memory_bytes{job=~\"$job\",instance=~\"$instance\"})*100",
@@ -1825,7 +1825,7 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": false
       },
-      "tableColumn": "windows_cs_physical_memory_bytes{instance=\"172.18.50.249:9182\", job=\"windows-exporter\"}",
+      "tableColumn": "windows_cs_physical_memory_bytes{app=\"GuanChaShi Machine\", instance=\"172.168.2.10:9182\", job=\"windows\"}",
       "targets": [
         {
           "expr": "windows_cs_physical_memory_bytes{job=~\"$job\",instance=~\"$instance\"}",
@@ -3226,10 +3226,9 @@
       {
         "allValue": null,
         "current": {
-          "isNone": true,
           "selected": false,
-          "text": "None",
-          "value": ""
+          "text": "windows",
+          "value": "windows"
         },
         "datasource": "Prometheus",
         "definition": "label_values(windows_cs_hostname, job)",
@@ -3279,10 +3278,9 @@
       {
         "allValue": null,
         "current": {
-          "isNone": true,
           "selected": false,
-          "text": "None",
-          "value": ""
+          "text": "172.168.2.10:9182",
+          "value": "172.168.2.10:9182"
         },
         "datasource": "Prometheus",
         "definition": "label_values(windows_cs_hostname{job=~\"$job\",hostname=~\"$hostname\"}, instance)",
@@ -3306,10 +3304,9 @@
       {
         "allValue": null,
         "current": {
-          "isNone": true,
           "selected": false,
-          "text": "None",
-          "value": ""
+          "text": "SC-201604011604",
+          "value": "SC-201604011604"
         },
         "datasource": "Prometheus",
         "definition": "label_values(windows_cs_hostname{job=~\"$job\",instance=~\"$instance\"}, hostname)",
@@ -3363,5 +3360,5 @@
   "timezone": "",
   "title": "windows_exporter",
   "uid": "Kdh0OoSGz",
-  "version": 2
+  "version": 4
 }

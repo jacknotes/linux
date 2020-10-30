@@ -16,8 +16,8 @@
   "editable": true,
   "gnetId": 8781,
   "graphTooltip": 1,
-  "id": 19,
-  "iteration": 1600573359049,
+  "id": 21,
+  "iteration": 1604036282015,
   "links": [],
   "panels": [
     {
@@ -1637,9 +1637,10 @@
       {
         "allValue": null,
         "current": {
-          "selected": true,
-          "text": "172.168.2.111:9182",
-          "value": "172.168.2.111:9182"
+          "isNone": true,
+          "selected": false,
+          "text": "None",
+          "value": ""
         },
         "datasource": "Prometheus",
         "definition": "",
@@ -1694,5 +1695,5 @@
   "timezone": "browser",
   "title": "Windows for server 2003",
   "uid": "4UePATWRk",
-  "version": 13
+  "version": 1
 }

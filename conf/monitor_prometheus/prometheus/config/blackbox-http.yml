@@ -1,0 +1,48 @@
+- targets:
+  - http://nexus.hs.com/
+  labels:
+    app: "nexus.hs.com"
+- targets:
+  - http://conf.hs.com
+  labels:
+    app: "conf.hs.com"
+- targets:
+  - http://clog.hs.com
+  labels:
+    app: "clog.hs.com"
+- targets:
+  - http://blog.hs.com
+  labels:
+    app: "blog.hs.com"
+- targets:
+  - http://hlog.hs.com
+  labels:
+    app: "hlog.hs.com"
+- targets:
+  - http://jenkins.hs.com/login
+  labels:
+    app: "jenkins.hs.com"
+- targets:
+  - http://newjenkins.hs.com/login
+  labels:
+    app: "newjenkins.hs.com"
+- targets:
+  - http://pm.hs.com/
+  labels:
+    app: "pm.hs.com"
+- targets:
+  - http://gitlab.hs.com/
+  labels:
+    app: "gitlab.hs.com"
+- targets:
+  - http://172.168.2.174:55505/
+  labels:
+    description: 'callcenter_luyin'
+    app: 'callcenter_luyin'
+- targets:
+  - http://192.168.1.3/index.php
+  labels:
+    type: "Network"
+    app: 'Antasys'
+    description: 'HanTan XingWeiGuanLi'
+

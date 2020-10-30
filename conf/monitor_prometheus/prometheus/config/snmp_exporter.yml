@@ -1,0 +1,27 @@
+- targets:
+  - '192.168.13.252'
+  labels:
+    app: 'Cisco_Core01'
+    type: "network"
+    job: "snmp_cisco"
+
+- targets:
+  - '192.168.13.253'
+  labels:
+    app: 'Cisco_Core01'
+    type: "network"
+    job: "snmp_cisco"
+
+- targets:
+  - '192.168.3.1'
+  labels:
+    app: 'NewDon_Firewall'
+    type: "network"
+    job: "snmp_Firewall"
+
+- targets:
+  - '192.168.13.204'
+  - '192.168.13.205'
+  labels:
+    app: 'windows_snmp'
+    job: "snmp_windows"

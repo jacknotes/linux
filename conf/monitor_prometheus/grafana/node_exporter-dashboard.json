@@ -17,7 +17,7 @@
   "gnetId": 9276,
   "graphTooltip": 0,
   "id": 2,
-  "iteration": 1598431180183,
+  "iteration": 1604035019116,
   "links": [],
   "panels": [
     {
@@ -87,7 +87,7 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": false
       },
-      "tableColumn": "{instance=\"127.0.0.1:9100\", job=\"node_exporter\"}",
+      "tableColumn": "{app=\"Image Server\", instance=\"192.168.13.206:9100\", job=\"node_exporter\"}",
       "targets": [
         {
           "expr": "time() - node_boot_time_seconds{instance=~\"$node\"}",
@@ -270,10 +270,10 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": true
       },
-      "tableColumn": "",
+      "tableColumn": "{instance=\"192.168.13.206:9100\"}",
       "targets": [
         {
-          "expr": "100 - (avg(irate(node_cpu_seconds_total{instance=~\"$node\",mode=\"idle\"}[1m])) * 100)",
+          "expr": "(sum(avg(irate(node_cpu_seconds_total{instance=\"$node\",mode!=\"idle\"}[1m])) without(cpu))  by(instance)) * 100",
           "format": "time_series",
           "hide": false,
           "instant": false,
@@ -365,14 +365,15 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": true
       },
-      "tableColumn": "{instance=\"127.0.0.1:9100\", job=\"node_exporter\"}",
+      "tableColumn": "{app=\"Image Server\", instance=\"192.168.13.206:9100\", job=\"node_exporter\"}",
       "targets": [
         {
-          "expr": "((node_memory_MemTotal_bytes{instance=~\"$node\"} - node_memory_MemFree_bytes{instance=~\"$node\"} - node_memory_Buffers_bytes{instance=~\"$node\"} - node_memory_Cached_bytes{instance=~\"$node\"}) / (node_memory_MemTotal_bytes{instance=~\"$node\"} )) * 100",
+          "expr": "(1 - ((node_memory_Buffers_bytes{instance=~\"$node\"}  + node_memory_Cached_bytes{instance=~\"$node\"}  + node_memory_MemFree_bytes{instance=~\"$node\"} ) /node_memory_MemTotal_bytes{instance=~\"$node\"} )) * 100",
           "format": "time_series",
           "hide": false,
           "interval": "10s",
           "intervalFactor": 1,
+          "legendFormat": "",
           "refId": "A",
           "step": 20
         }
@@ -453,7 +454,7 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": true
       },
-      "tableColumn": "{device=\"/dev/xvda2\", fstype=\"xfs\", instance=\"127.0.0.1:9100\", job=\"node_exporter\", mountpoint=\"/\"}",
+      "tableColumn": "{app=\"Image Server\", device=\"/dev/mapper/VolGroup-lv_root\", fstype=\"ext4\", instance=\"192.168.13.206:9100\", job=\"node_exporter\", mountpoint=\"/\"}",
       "targets": [
         {
           "expr": "100 - ((node_filesystem_avail_bytes{instance=~\"$node\",mountpoint=\"$maxmount\",fstype=~\"ext4|xfs\"} * 100) / node_filesystem_size_bytes {instance=~\"$node\",mountpoint=\"$maxmount\",fstype=~\"ext4|xfs\"})",
@@ -633,7 +634,7 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": false
       },
-      "tableColumn": "127.0.0.1:9100",
+      "tableColumn": "192.168.13.206:9100",
       "targets": [
         {
           "expr": "node_memory_MemTotal_bytes{instance=~\"$node\"}",
@@ -1333,6 +1334,7 @@
         {
           "expr": "irate(node_network_receive_bytes_total{instance=~'$node',device=~'$nic'}[5m])*8",
           "format": "time_series",
+          "interval": "",
           "intervalFactor": 2,
           "legendFormat": "{{device}}_进带宽(in)",
           "refId": "A",
@@ -2102,12 +2104,12 @@
       }
     }
   ],
-  "refresh": false,
+  "refresh": "5s",
   "schemaVersion": 26,
   "style": "dark",
   "tags": [
-    "StarsL",
-    "Prometheus"
+    "Prometheus",
+    "Linux"
   ],
   "templating": {
     "list": [
@@ -2116,8 +2118,8 @@
         "allValue": null,
         "current": {
           "selected": false,
-          "text": "node_exporter",
-          "value": "node_exporter"
+          "text": "None",
+          "value": ""
         },
         "datasource": "Prometheus",
         "definition": "label_values(up{job=\"node_exporter\"},job)",
@@ -2143,9 +2145,10 @@
         "allFormat": "glob",
         "allValue": null,
         "current": {
+          "isNone": true,
           "selected": false,
-          "text": "127.0.0.1:9100",
-          "value": "127.0.0.1:9100"
+          "text": "None",
+          "value": ""
         },
         "datasource": "Prometheus",
         "definition": "",
@@ -2160,7 +2163,7 @@
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 2,
+        "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
         "tagsQuery": "",
@@ -2170,9 +2173,10 @@
       {
         "allValue": null,
         "current": {
+          "isNone": true,
           "selected": false,
-          "text": "/",
-          "value": "/"
+          "text": "None",
+          "value": ""
         },
         "datasource": "Prometheus",
         "definition": "query_result(topk(1,sort_desc (max(node_filesystem_size_bytes{instance=~'$node',fstype=~\"ext4|xfs\"}) by (mountpoint))))",
@@ -2197,20 +2201,20 @@
         "allValue": null,
         "current": {
           "selected": false,
-          "text": "eth0",
-          "value": "eth0"
+          "text": "None",
+          "value": ""
         },
         "datasource": "Prometheus",
-        "definition": "query_result(node_network_up{device=~\"eth0|ens33\"})",
-        "hide": 2,
+        "definition": "query_result(avg(node_network_up{device=~\"eth0|ens33|em1|eno1\"}) by(device))",
+        "hide": 0,
         "includeAll": false,
         "label": "",
         "multi": false,
         "name": "nic",
         "options": [],
-        "query": "query_result(node_network_up{device=~\"eth0|ens33\"})",
+        "query": "query_result(avg(node_network_up{device=~\"eth0|ens33|em1|eno1\"}) by(device))",
         "refresh": 1,
-        "regex": "/device=\"(.*)\",instance/",
+        "regex": "/device=\"(.*)\"/",
         "skipUrlSync": false,
         "sort": 0,
         "tagValuesQuery": "",
@@ -2254,5 +2258,5 @@
   "timezone": "browser",
   "title": "node_exporter",
   "uid": "Bkl9bBYik",
-  "version": 35
+  "version": 49
 }

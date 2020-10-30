@@ -22,7 +22,7 @@
   "gnetId": 7362,
   "graphTooltip": 1,
   "id": 20,
-  "iteration": 1600767085474,
+  "iteration": 1604036192108,
   "links": [],
   "panels": [
     {
@@ -109,7 +109,7 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": false
       },
-      "tableColumn": "mysql_global_status_uptime{instance=\"192.168.13.116:3306\", job=\"mysqld_exporter\", mysql_host=\"192.168.13.116:9100\"}",
+      "tableColumn": "mysql_global_status_uptime{app=\"mysql\", instance=\"192.168.13.116:3306\", job=\"mysqld_exporter\", mysql_env=\"test\", mysql_host=\"192.168.13.116:9100\"}",
       "targets": [
         {
           "calculatedInterval": "10m",
@@ -138,8 +138,147 @@
       "colorValue": false,
       "colors": [
         "rgba(245, 54, 54, 0.9)",
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": false,
+        "hide": true,
+        "iconColor": "#e0752d",
+        "limit": 100,
+        "name": "PMM Annotations",
+        "showIn": 0,
+        "tags": [
+          "pmm_annotation"
+        ],
+        "type": "tags"
+      }
+    ]
+  },
+  "description": "Dashboard ID:7362",
+  "editable": true,
+  "gnetId": 7362,
+  "graphTooltip": 1,
+  "id": 20,
+  "iteration": 1604036192108,
+  "links": [],
+  "panels": [
+    {
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 382,
+      "panels": [],
+      "repeat": null,
+      "title": "",
+      "type": "row"
+    },
+    {
+      "cacheTimeout": null,
+      "colorBackground": false,
+      "colorValue": true,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
         "rgba(237, 129, 40, 0.89)",
         "rgba(50, 172, 45, 0.97)"
+      ],
+      "datasource": "Prometheus",
+      "decimals": 0,
+      "description": "**MySQL Uptime**\n\nThe amount of time since the last restart of the MySQL server process.",
+      "editable": true,
+      "error": false,
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "format": "s",
+      "gauge": {
+        "maxValue": 100,
+        "minValue": 0,
+        "show": false,
+        "thresholdLabels": false,
+        "thresholdMarkers": true
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 1
+      },
+      "height": "125px",
+      "id": 12,
+      "interval": "$interval",
+      "links": [],
+      "mappingType": 1,
+      "mappingTypes": [
+        {
+          "name": "value to text",
+          "value": 1
+        },
+        {
+          "name": "range to text",
+          "value": 2
+        }
+      ],
+      "maxDataPoints": 100,
+      "nullPointMode": "connected",
+      "nullText": null,
+      "postfix": "s",
+      "postfixFontSize": "80%",
+      "prefix": "",
+      "prefixFontSize": "80%",
+      "rangeMaps": [
+        {
+          "from": "null",
+          "text": "N/A",
+          "to": "null"
+        }
+      ],
+      "sparkline": {
+        "fillColor": "rgba(31, 118, 189, 0.18)",
+        "full": false,
+        "lineColor": "rgb(31, 120, 193)",
+        "show": false
+      },
+      "tableColumn": "mysql_global_status_uptime{app=\"mysql\", instance=\"192.168.13.116:3306\", job=\"mysqld_exporter\", mysql_env=\"test\", mysql_host=\"192.168.13.116:9100\"}",
+      "targets": [
+        {
+          "calculatedInterval": "10m",
+          "datasourceErrors": {},
+          "errors": {},
+          "expr": "mysql_global_status_uptime{instance=\"$host\"}",
+          "format": "time_series",
+          "interval": "5m",
+          "intervalFactor": 1,
+          "legendFormat": "",
+          "metric": "",
+          "refId": "A",
+          "step": 300
+        }
+      ],
+      "thresholds": "300,3600",
+      "title": "MySQL Uptime",
+      "type": "singlestat",
+      "valueFontSize": "80%",
+      "valueMaps": [],
+      "valueName": "current"
+    },
+    {
+      "cacheTimeout": null,
+      "colorBackground": false,
+      "colorValue": false,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129        (50, 172, 45, 0.97)"
       ],
       "datasource": "Prometheus",
       "decimals": 2,
@@ -207,7 +346,7 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": true
       },
-      "tableColumn": "{instance=\"192.168.13.116:3306\", job=\"mysqld_exporter\", mysql_host=\"192.168.13.116:9100\"}",
+      "tableColumn": "{app=\"mysql\", instance=\"192.168.13.116:3306\", job=\"mysqld_exporter\", mysql_env=\"test\", mysql_host=\"192.168.13.116:9100\"}",
       "targets": [
         {
           "calculatedInterval": "10m",
@@ -305,7 +444,7 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": false
       },
-      "tableColumn": "mysql_global_variables_innodb_buffer_pool_size{instance=\"192.168.13.116:3306\", job=\"mysqld_exporter\", mysql_host=\"192.168.13.116:9100\"}",
+      "tableColumn": "mysql_global_variables_innodb_buffer_pool_size{app=\"mysql\", instance=\"192.168.13.116:3306\", job=\"mysqld_exporter\", mysql_env=\"test\", mysql_host=\"192.168.13.116:9100\"}",
       "targets": [
         {
           "calculatedInterval": "10m",
@@ -4839,8 +4978,8 @@
   "schemaVersion": 26,
   "style": "dark",
   "tags": [
-    "Percona",
-    "MySQL"
+    "MySQL",
+    "prometheus"
   ],
   "templating": {
     "list": [
@@ -4850,9 +4989,9 @@
         "auto_count": 200,
         "auto_min": "1s",
         "current": {
-          "selected": true,
-          "text": "5s",
-          "value": "5s"
+          "selected": false,
+          "text": "5m",
+          "value": "5m"
         },
         "datasource": "Prometheus",
         "hide": 0,
@@ -4869,13 +5008,13 @@
           },
           {
             "selected": false,
-            "text": "1s",
-            "value": "1s"
-          },
-          {
-            "selected": true,
             "text": "5s",
             "value": "5s"
+          },
+          {
+            "selected": false,
+            "text": "15s",
+            "value": "15s"
           },
           {
             "selected": false,
@@ -4883,7 +5022,7 @@
             "value": "1m"
           },
           {
-            "selected": false,
+            "selected": true,
             "text": "5m",
             "value": "5m"
           },
@@ -4903,7 +5042,7 @@
             "value": "1d"
           }
         ],
-        "query": "1s,5s,1m,5m,1h,6h,1d",
+        "query": "5s,15s,1m,5m,1h,6h,1d",
         "queryValue": "",
         "refresh": 2,
         "skipUrlSync": false,
@@ -4913,9 +5052,10 @@
         "allFormat": "glob",
         "allValue": null,
         "current": {
-          "selected": true,
-          "text": "192.168.13.116:3306",
-          "value": "192.168.13.116:3306"
+          "isNone": true,
+          "selected": false,
+          "text": "None",
+          "value": ""
         },
         "datasource": "Prometheus",
         "definition": "label_values(mysql_up, instance)",
@@ -4941,9 +5081,10 @@
       {
         "allValue": null,
         "current": {
+          "isNone": true,
           "selected": false,
-          "text": "192.168.13.160:9100",
-          "value": "192.168.13.160:9100"
+          "text": "None",
+          "value": ""
         },
         "datasource": "Prometheus",
         "definition": "label_values(mysql_up, mysql_host)",
@@ -4957,7 +5098,7 @@
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
-        "sort": 0,
+        "sort": 1,
         "tagValuesQuery": "",
         "tags": [],
         "tagsQuery": "",
@@ -5005,5 +5146,5 @@
   "timezone": "browser",
   "title": "MySQL",
   "uid": "MQWgroiiz",
-  "version": 21
-}
+  "version": 28
+}"rgba(237, 129

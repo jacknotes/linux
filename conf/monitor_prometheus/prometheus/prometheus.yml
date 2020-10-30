@@ -1,0 +1,215 @@
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - 'localhost:9093'
+
+rule_files:
+  - "/usr/local/prometheus/rules/*.rule"
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+    - targets: ['127.0.0.1:9090']
+      labels:
+        app: "prometheus server"
+
+  - job_name: 'node_exporter'
+    file_sd_configs:
+    - files:
+      - config/node_exporter.yml
+      refresh_interval: 5m
+
+  - job_name: 'blackbox-icmp'
+    scrape_interval: 5s
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    file_sd_configs:
+    - files:
+      - config/blackbox-icmp.yml
+      refresh_interval: 5m
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+        replacement: ICMP:${1}
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+
+  - job_name: 'blackbox-http-elasticsearch-readonly'
+    scrape_interval: 5s
+    metrics_path: /probe
+    params:
+      module: [http_es_onlyread_test]
+    file_sd_configs:
+    - files:
+      - config/blackbox-http-elasticsearch-readonly.yml
+      refresh_interval: 5m
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+      - source_labels: [__param_target]
+        replacement: HTTP:${1}
+        target_label: instance
+
+  - job_name: 'blackbox-http-elasticsearch-health'
+    metrics_path: /probe
+    scrape_interval: 5s
+    params:
+      module: [http_es_health_test]
+    file_sd_configs:
+    - files:
+      - config/blackbox-http-elasticsearch-health.yml
+      refresh_interval: 5m
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+      - source_labels: [__param_target]
+        replacement: HTTP:${1}
+        target_label: instance
+
+  - job_name: 'blackbox-http'
+    metrics_path: /probe
+    scrape_interval: 5s
+    params:
+      module: [http_custom_httpcode]
+    file_sd_configs:
+    - files:
+      - config/blackbox-http.yml
+      refresh_interval: 5m
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+      - source_labels: [__param_target]
+        replacement: HTTP:${1}
+        target_label: instance
+
+  - job_name: 'blackbox-tcp'
+    metrics_path: /probe
+    scrape_interval: 5s
+    params:
+      module: [tcp_connect]
+    file_sd_configs:
+    - files:
+      - config/blackbox-tcp.yml
+      refresh_interval: 5m
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        replacement: TCP:${1}
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+
+  - job_name: 'docker'
+    file_sd_configs:
+    - files:
+      - config/docker.yml
+      refresh_interval: 5m
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+
+  - job_name: 'redis_exporter_target'
+    file_sd_configs:
+    - files:
+      - config/redis_exporter_target.yml
+      refresh_interval: 5m
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.13.236:9121
+
+  - job_name: 'redis_exporter'
+    file_sd_configs:
+    - files:
+      - config/redis_exporter.yml
+      refresh_interval: 5m
+
+  - job_name: 'mysqld_exporter'
+    file_sd_configs:
+    - files:
+      - config/mysqld_exporter.yml
+      refresh_interval: 5m
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: (.*)
+        target_label: __address__
+        replacement: $1
+
+  - job_name: 'windows'
+    file_sd_configs:
+    - files:
+      - config/windows.yml
+      refresh_interval: 5m
+
+  - job_name: 'windows_server2003'
+    file_sd_configs:
+    - files:
+      - config/windows_server2003.yml
+      refresh_interval: 5m
+
+  - job_name: 'snmp_exporter'
+    metrics_path: /snmp
+    params:
+      module: 
+      - if_mib
+      community: [public]
+    file_sd_configs:
+    - files:
+      - config/snmp_exporter.yml
+      refresh_interval: 5m
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - source_labels: [community]
+        target_label: __param_community
+      - source_labels: [module]
+        target_label: __param_module
+      - target_label: __address__
+        replacement: 192.168.13.236:9116
+
+#  - job_name: 'snmp_exporter'
+#    metrics_path: /snmp
+#    params:
+#      module: [if_mib,apcups,arista_sw,cisco_wlc,ddwrt,infrapower_pdu,keepalived,nec_ix,paloalto_fw,printer_mib,raritan,servertech_sentry3,synology,ubiquiti_airfiber,ubiquiti_airmax,ubiquiti_unifi]
+#      community: [public]
+#    file_sd_configs:
+#    - files:
+#      - config/snmp_exporter.yml
+#      refresh_interval: 5m
+#    relabel_configs:
+#      - source_labels: [__address__]
+#        target_label: __param_target
+#      - source_labels: [__param_target]
+#        target_label: instance
+#      - source_labels: [community]
+#        target_label: __param_community
+#      - source_labels: [module]
+#        target_label: __param_module
+#      - target_label: __address__
+#        replacement: 192.168.13.236:9116
+
+  - job_name: 'file_ds'
+    file_sd_configs:
+    - files:
+      - config/file_ds.yml
+      refresh_interval: 5m

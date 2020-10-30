@@ -3,9 +3,9 @@ groups:
   rules:
   - alert: blackboxServiceAlert
     expr: probe_success < 1
-    for: 1m
+    for: 15s
     labels:
-      severity: warnning
+      severity: High
     annotations:
       summary: "probe failure"
       description: "job: {{ $labels.job }},blackbox_instance: {{ $labels.instance }} is probe fail (current value: {{ $value }})"

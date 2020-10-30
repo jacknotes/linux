@@ -12,12 +12,12 @@
       }
     ]
   },
-  "description": "Redis Dashboard for Prometheus Redis Exporter 1.x (763)",
+  "description": "Docker monitoring with Prometheus and cAdvisor with node selection",
   "editable": true,
-  "gnetId": 763,
-  "graphTooltip": 0,
-  "id": 8,
-  "iteration": 1600767564312,
+  "gnetId": 8321,
+  "graphTooltip": 1,
+  "id": 7,
+  "iteration": 1604036149910,
   "links": [],
   "panels": [
     {
@@ -30,101 +30,6 @@
         "rgba(50, 172, 45, 0.97)"
       ],
       "datasource": "Prometheus",
-      "decimals": 0,
-      "editable": true,
-      "error": false,
-      "fieldConfig": {
-        "defaults": {
-          "custom": {}
-        },
-        "overrides": []
-      },
-      "format": "s",
-      "gauge": {
-        "maxValue": 100,
-        "minValue": 0,
-        "show": false,
-        "thresholdLabels": false,
-        "thresholdMarkers": true
-      },
-      "gridPos": {
-        "h": 7,
-        "w": 2,
-        "x": 0,
-        "y": 0
-      },
-      "id": 9,
-      "interval": null,
-      "isNew": true,
-      "links": [],
-      "mappingType": 1,
-      "mappingTypes": [
-        {
-          "name": "value to text",
-          "value": 1
-        },
-        {
-          "name": "range to text",
-          "value": 2
-        }
-      ],
-      "maxDataPoints": 100,
-      "nullPointMode": "connected",
-      "nullText": null,
-      "postfix": "",
-      "postfixFontSize": "50%",
-      "prefix": "",
-      "prefixFontSize": "50%",
-      "rangeMaps": [
-        {
-          "from": "null",
-          "text": "N/A",
-          "to": "null"
-        }
-      ],
-      "sparkline": {
-        "fillColor": "rgba(31, 118, 189, 0.18)",
-        "full": false,
-        "lineColor": "rgb(31, 120, 193)",
-        "show": true
-      },
-      "tableColumn": "",
-      "targets": [
-        {
-          "expr": "max(max_over_time(redis_uptime_in_seconds{instance=~\"$instance\"}[$__interval]))",
-          "format": "time_series",
-          "interval": "",
-          "intervalFactor": 2,
-          "legendFormat": "",
-          "metric": "",
-          "refId": "A",
-          "step": 1800
-        }
-      ],
-      "thresholds": "",
-      "title": "Uptime",
-      "type": "singlestat",
-      "valueFontSize": "70%",
-      "valueMaps": [
-        {
-          "op": "=",
-          "text": "N/A",
-          "value": "null"
-        }
-      ],
-      "valueName": "current"
-    },
-    {
-      "cacheTimeout": null,
-      "colorBackground": false,
-      "colorValue": false,
-      "colors": [
-        "rgba(245, 54, 54, 0.9)",
-        "rgba(237, 129, 40, 0.89)",
-        "rgba(50, 172, 45, 0.97)"
-      ],
-      "datasource": "Prometheus",
-      "decimals": 0,
       "editable": true,
       "error": false,
       "fieldConfig": {
@@ -142,13 +47,13 @@
         "thresholdMarkers": true
       },
       "gridPos": {
-        "h": 7,
-        "w": 2,
-        "x": 2,
+        "h": 3,
+        "w": 8,
+        "x": 0,
         "y": 0
       },
-      "hideTimeOverride": true,
-      "id": 12,
+      "height": "20",
+      "id": 7,
       "interval": null,
       "isNew": true,
       "links": [],
@@ -181,25 +86,116 @@
         "fillColor": "rgba(31, 118, 189, 0.18)",
         "full": false,
         "lineColor": "rgb(31, 120, 193)",
-        "show": true
+        "show": false
       },
-      "tableColumn": "redis_connected_clients{instance=\"192.168.13.162:6369\", job=\"redis_exporter_target\"}",
+      "tableColumn": "",
       "targets": [
         {
-          "expr": "redis_connected_clients{instance=~\"$instance\"}",
-          "format": "time_series",
+          "expr": "count(container_last_seen{instance=~\"$node:$port\",job=~\"$job\",image!=\"\"})",
           "interval": "",
           "intervalFactor": 2,
           "legendFormat": "",
-          "metric": "",
+          "metric": "container_last_seen",
           "refId": "A",
-          "step": 2
+          "step": 240
         }
       ],
       "thresholds": "",
-      "timeFrom": "1m",
-      "timeShift": null,
-      "title": "Clients",
+      "title": "Running containers",
+      "transparent": true,
+      "type": "singlestat",
+      "valueFontSize": "80%",
+      "valueMaps": [
+        {
+          "op": "=",
+          "text": "N/A",
+          "value": "null"
+        }
+      ],
+      "valueName": "avg"
+    },
+    {
+      "cacheTimeout": null,
+      "colorBackground": false,
+      "colorValue": false,
+      "colors": [
+        "rgba(245, 54, 54, 0.9)",
+        "rgba(237, 129, 40, 0.89)",
+        "rgba(50, 172, 45, 0.97)"
+      ],
+      "datasource": "Prometheus",
+      "editable": true,
+      "error": false,
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "format": "mbytes",
+      "gauge": {
+        "maxValue": 100,
+        "minValue": 0,
+        "show": false,
+        "thresholdLabels": false,
+        "thresholdMarkers": true
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "height": "20",
+      "id": 5,
+      "interval": null,
+      "isNew": true,
+      "links": [],
+      "mappingType": 1,
+      "mappingTypes": [
+        {
+          "name": "value to text",
+          "value": 1
+        },
+        {
+          "name": "range to text",
+          "value": 2
+        }
+      ],
+      "maxDataPoints": 100,
+      "nullPointMode": "connected",
+      "nullText": null,
+      "postfix": "",
+      "postfixFontSize": "50%",
+      "prefix": "",
+      "prefixFontSize": "50%",
+      "rangeMaps": [
+        {
+          "from": "null",
+          "text": "N/A",
+          "to": "null"
+        }
+      ],
+      "sparkline": {
+        "fillColor": "rgba(31, 118, 189, 0.18)",
+        "full": false,
+        "lineColor": "rgb(31, 120, 193)",
+        "show": false
+      },
+      "tableColumn": "",
+      "targets": [
+        {
+          "expr": "sum(container_memory_usage_bytes{instance=~\"$node:$port\",job=~\"$job\",image!=\"\"})/1024/1024",
+          "intervalFactor": 2,
+          "legendFormat": "",
+          "metric": "container_memory_usage_bytes",
+          "refId": "A",
+          "step": 240
+        }
+      ],
+      "thresholds": "",
+      "title": "Total Memory Usage",
+      "transparent": true,
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -216,12 +212,11 @@
       "colorBackground": false,
       "colorValue": false,
       "colors": [
-        "rgba(50, 172, 45, 0.97)",
+        "rgba(245, 54, 54, 0.9)",
         "rgba(237, 129, 40, 0.89)",
-        "rgba(245, 54, 54, 0.9)"
+        "rgba(50, 172, 45, 0.97)"
       ],
       "datasource": "Prometheus",
-      "decimals": 0,
       "editable": true,
       "error": false,
       "fieldConfig": {
@@ -234,18 +229,18 @@
       "gauge": {
         "maxValue": 100,
         "minValue": 0,
-        "show": true,
+        "show": false,
         "thresholdLabels": false,
         "thresholdMarkers": true
       },
       "gridPos": {
-        "h": 7,
-        "w": 4,
-        "x": 4,
+        "h": 3,
+        "w": 8,
+        "x": 16,
         "y": 0
       },
-      "hideTimeOverride": true,
-      "id": 11,
+      "height": "20",
+      "id": 6,
       "interval": null,
       "isNew": true,
       "links": [],
@@ -278,25 +273,22 @@
         "fillColor": "rgba(31, 118, 189, 0.18)",
         "full": false,
         "lineColor": "rgb(31, 120, 193)",
-        "show": true
+        "show": false
       },
       "tableColumn": "",
       "targets": [
         {
-          "expr": "100 * (avg(redis_memory_used_bytes{instance=~\"$instance\"}) / avg(node_memory_MemTotal_bytes{instance=~\"$redis_host\"}))",
-          "format": "time_series",
-          "interval": "",
+          "expr": "sum(rate(container_cpu_user_seconds_total{instance=~\"$node:$port\",job=~\"$job\",image!=\"\"}[5m]) * 100)",
           "intervalFactor": 2,
           "legendFormat": "",
-          "metric": "",
+          "metric": "container_memory_usage_bytes",
           "refId": "A",
-          "step": 2
+          "step": 240
         }
       ],
-      "thresholds": "80,95",
-      "timeFrom": "1m",
-      "timeShift": null,
-      "title": "Memory Usage",
+      "thresholds": "",
+      "title": "Total CPU Usage",
+      "transparent": true,
       "type": "singlestat",
       "valueFontSize": "80%",
       "valueMaps": [
@@ -314,6 +306,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Prometheus",
+      "decimals": 2,
       "editable": true,
       "error": false,
       "fieldConfig": {
@@ -327,21 +320,23 @@
       "grid": {},
       "gridPos": {
         "h": 7,
-        "w": 8,
-        "x": 8,
-        "y": 0
+        "w": 24,
+        "x": 0,
+        "y": 3
       },
       "hiddenSeries": false,
       "id": 2,
       "isNew": true,
       "legend": {
-        "avg": false,
-        "current": false,
+        "alignAsTable": true,
+        "avg": true,
+        "current": true,
         "max": false,
         "min": false,
-        "show": false,
+        "rightSide": true,
+        "show": true,
         "total": false,
-        "values": false
+        "values": true
       },
       "lines": true,
       "linewidth": 2,
@@ -358,22 +353,20 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "rate(redis_commands_processed_total{instance=~\"$instance\"}[1m])",
-          "format": "time_series",
+          "expr": "rate(container_cpu_user_seconds_total{instance=~\"$node:$port\",job=~\"$job\",image!=\"\"}[5m]) * 100",
           "interval": "",
           "intervalFactor": 2,
-          "legendFormat": "",
-          "metric": "A",
+          "legendFormat": "{{name}}",
+          "metric": "cpu",
           "refId": "A",
-          "step": 240,
-          "target": ""
+          "step": 10
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Commands Executed / sec",
+      "title": "CPU Usage",
       "tooltip": {
         "msResolution": false,
         "shared": true,
@@ -390,7 +383,7 @@
       },
       "yaxes": [
         {
-          "format": "short",
+          "format": "percent",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -431,358 +424,16 @@
       "grid": {},
       "gridPos": {
         "h": 7,
-        "w": 8,
-        "x": 16,
-        "y": 0
+        "w": 24,
+        "x": 0,
+        "y": 10
       },
       "hiddenSeries": false,
       "id": 1,
       "isNew": true,
       "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": false,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "connected",
-      "percentage": true,
-      "pluginVersion": "7.1.4",
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "irate(redis_keyspace_hits_total{instance=~\"$instance\"}[5m])",
-          "format": "time_series",
-          "hide": false,
-          "interval": "",
-          "intervalFactor": 2,
-          "legendFormat": "hits",
-          "metric": "",
-          "refId": "A",
-          "step": 240,
-          "target": ""
-        },
-        {
-          "expr": "irate(redis_keyspace_misses_total{instance=~\"$instance\"}[5m])",
-          "format": "time_series",
-          "hide": false,
-          "interval": "",
-          "intervalFactor": 2,
-          "legendFormat": "misses",
-          "metric": "",
-          "refId": "B",
-          "step": 240,
-          "target": ""
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "Hits / Misses per Sec",
-      "tooltip": {
-        "msResolution": false,
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "short",
-          "label": "",
-          "logBase": 1,
-          "max": null,
-          "min": 0,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {
-        "max": "#BF1B00"
-      },
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus",
-      "editable": true,
-      "error": false,
-      "fieldConfig": {
-        "defaults": {
-          "custom": {}
-        },
-        "overrides": []
-      },
-      "fill": 1,
-      "fillGradient": 0,
-      "grid": {},
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 7
-      },
-      "hiddenSeries": false,
-      "id": 7,
-      "isNew": true,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "hideEmpty": false,
-        "hideZero": false,
-        "max": false,
-        "min": false,
-        "show": true,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "null as zero",
-      "percentage": false,
-      "pluginVersion": "7.1.4",
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "avg(redis_memory_used_bytes{instance=~\"$instance\"})",
-          "format": "time_series",
-          "interval": "",
-          "intervalFactor": 2,
-          "legendFormat": "used",
-          "metric": "",
-          "refId": "A",
-          "step": 240,
-          "target": ""
-        },
-        {
-          "expr": "avg(node_memory_MemTotal_bytes{instance=~\"$node_memory\"})",
-          "format": "time_series",
-          "hide": false,
-          "interval": "",
-          "intervalFactor": 2,
-          "legendFormat": "max",
-          "refId": "B",
-          "step": 240
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "Total Memory Usage",
-      "tooltip": {
-        "msResolution": false,
-        "shared": true,
-        "sort": 0,
-        "value_type": "cumulative"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "bytes",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": 0,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus",
-      "editable": true,
-      "error": false,
-      "fieldConfig": {
-        "defaults": {
-          "custom": {}
-        },
-        "overrides": []
-      },
-      "fill": 1,
-      "fillGradient": 0,
-      "grid": {},
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 12,
-        "y": 7
-      },
-      "hiddenSeries": false,
-      "id": 10,
-      "isNew": true,
-      "legend": {
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": true,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "connected",
-      "percentage": false,
-      "pluginVersion": "7.1.4",
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "rate(redis_net_input_bytes_total{instance=~\"$instance\"}[5m])",
-          "format": "time_series",
-          "intervalFactor": 2,
-          "legendFormat": "{{ input }}",
-          "refId": "A",
-          "step": 240
-        },
-        {
-          "expr": "rate(redis_net_output_bytes_total{instance=~\"$instance\"}[5m])",
-          "format": "time_series",
-          "interval": "",
-          "intervalFactor": 2,
-          "legendFormat": "{{ output }}",
-          "refId": "B",
-          "step": 240
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "Network I/O",
-      "tooltip": {
-        "msResolution": true,
-        "shared": true,
-        "sort": 0,
-        "value_type": "cumulative"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "bytes",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus",
-      "editable": true,
-      "error": false,
-      "fieldConfig": {
-        "defaults": {
-          "custom": {}
-        },
-        "overrides": []
-      },
-      "fill": 7,
-      "fillGradient": 0,
-      "grid": {},
-      "gridPos": {
-        "h": 7,
-        "w": 12,
-        "x": 0,
-        "y": 14
-      },
-      "hiddenSeries": false,
-      "id": 5,
-      "isNew": true,
-      "legend": {
         "alignAsTable": true,
-        "avg": false,
+        "avg": true,
         "current": true,
         "max": false,
         "min": false,
@@ -802,30 +453,29 @@
       "renderer": "flot",
       "seriesOverrides": [],
       "spaceLength": 10,
-      "stack": true,
+      "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum (redis_db_keys{instance=~\"$instance\"}) by (db)",
-          "format": "time_series",
-          "interval": "",
+          "expr": "container_memory_usage_bytes{instance=~\"$node:$port\",job=~\"$job\",image!=\"\"}",
+          "hide": false,
           "intervalFactor": 2,
-          "legendFormat": "{{ db }} ",
+          "legendFormat": "{{name}}",
+          "metric": "container_memory_usage_bytes",
           "refId": "A",
-          "step": 240,
-          "target": ""
+          "step": 10
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Total Items per DB",
+      "title": "Memory Usage",
       "tooltip": {
         "msResolution": false,
         "shared": true,
         "sort": 0,
-        "value_type": "individual"
+        "value_type": "cumulative"
       },
       "type": "graph",
       "xaxis": {
@@ -837,7 +487,107 @@
       },
       "yaxes": [
         {
-          "format": "none",
+          "format": "bytes",
+          "label": "",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": false
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "editable": true,
+      "error": false,
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "grid": {},
+      "gridPos": {
+        "h": 7,
+        "w": 12,
+        "x": 0,
+        "y": 17
+      },
+      "hiddenSeries": false,
+      "id": 3,
+      "isNew": true,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 2,
+      "links": [],
+      "nullPointMode": "connected",
+      "percentage": false,
+      "pluginVersion": "7.1.4",
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "irate(container_network_receive_bytes_total{instance=~\"$node:$port\",job=~\"$job\",image!=\"\"}[5m])",
+          "intervalFactor": 2,
+          "legendFormat": "{{name}}",
+          "metric": "container_network_receive_bytes_total",
+          "refId": "A",
+          "step": 20
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Network Rx",
+      "tooltip": {
+        "msResolution": false,
+        "shared": true,
+        "sort": 0,
+        "value_type": "cumulative"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "Bps",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -872,17 +622,17 @@
         },
         "overrides": []
       },
-      "fill": 7,
+      "fill": 1,
       "fillGradient": 0,
       "grid": {},
       "gridPos": {
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 14
+        "y": 17
       },
       "hiddenSeries": false,
-      "id": 13,
+      "id": 4,
       "isNew": true,
       "legend": {
         "avg": false,
@@ -904,40 +654,27 @@
       "renderer": "flot",
       "seriesOverrides": [],
       "spaceLength": 10,
-      "stack": true,
+      "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum (redis_db_keys{instance=~\"$instance\"}) - sum (redis_db_keys_expiring{instance=~\"$instance\"}) ",
-          "format": "time_series",
-          "interval": "",
+          "expr": "irate(container_network_transmit_bytes_total{instance=~\"$node:$port\",job=~\"$job\",image!=\"\"}[5m])",
           "intervalFactor": 2,
-          "legendFormat": "not expiring",
+          "legendFormat": "{{name}}",
           "refId": "A",
-          "step": 240,
-          "target": ""
-        },
-        {
-          "expr": "sum (redis_db_keys_expiring{instance=~\"$instance\"}) ",
-          "format": "time_series",
-          "interval": "",
-          "intervalFactor": 2,
-          "legendFormat": "expiring",
-          "metric": "",
-          "refId": "B",
-          "step": 240
+          "step": 20
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Expiring vs Not-Expiring Keys",
+      "title": "Network Tx",
       "tooltip": {
         "msResolution": false,
         "shared": true,
         "sort": 0,
-        "value_type": "individual"
+        "value_type": "cumulative"
       },
       "type": "graph",
       "xaxis": {
@@ -949,7 +686,7 @@
       },
       "yaxes": [
         {
-          "format": "short",
+          "format": "Bps",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -971,11 +708,7 @@
       }
     },
     {
-      "aliasColors": {
-        "evicts": "#890F02",
-        "memcached_items_evicted_total{instance=\"172.17.0.1:9150\",job=\"prometheus\"}": "#890F02",
-        "reclaims": "#3F6833"
-      },
+      "aliasColors": {},
       "bars": false,
       "dashLength": 10,
       "dashes": false,
@@ -995,7 +728,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 21
+        "y": 24
       },
       "hiddenSeries": false,
       "id": 8,
@@ -1018,43 +751,25 @@
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
-      "seriesOverrides": [
-        {
-          "alias": "reclaims",
-          "yaxis": 2
-        }
-      ],
+      "seriesOverrides": [],
       "spaceLength": 10,
       "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(rate(redis_expired_keys_total{instance=~\"$instance\"}[5m])) by (instance)",
-          "format": "time_series",
-          "hide": false,
-          "interval": "",
+          "expr": "irate(container_fs_reads_bytes_total{instance=~\"$node:$port\",job=~\"$job\",image!=\"\"}[5m])",
           "intervalFactor": 2,
-          "legendFormat": "expired",
-          "metric": "",
+          "legendFormat": "{{name}}",
+          "metric": "container_fs_reads_bytes_total",
           "refId": "A",
-          "step": 240,
-          "target": ""
-        },
-        {
-          "expr": "sum(rate(redis_evicted_keys_total{instance=~\"$instance\"}[5m])) by (instance)",
-          "format": "time_series",
-          "interval": "",
-          "intervalFactor": 2,
-          "legendFormat": "evicted",
-          "refId": "B",
-          "step": 240
+          "step": 20
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Expired / Evicted",
+      "title": "I/O Rx",
       "tooltip": {
         "msResolution": false,
         "shared": true,
@@ -1071,7 +786,7 @@
       },
       "yaxes": [
         {
-          "format": "short",
+          "format": "Bps",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -1106,17 +821,17 @@
         },
         "overrides": []
       },
-      "fill": 8,
+      "fill": 1,
       "fillGradient": 0,
       "grid": {},
       "gridPos": {
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 21
+        "y": 24
       },
       "hiddenSeries": false,
-      "id": 14,
+      "id": 9,
       "isNew": true,
       "legend": {
         "avg": false,
@@ -1128,7 +843,7 @@
         "values": false
       },
       "lines": true,
-      "linewidth": 1,
+      "linewidth": 2,
       "links": [],
       "nullPointMode": "connected",
       "percentage": false,
@@ -1138,27 +853,25 @@
       "renderer": "flot",
       "seriesOverrides": [],
       "spaceLength": 10,
-      "stack": true,
+      "stack": false,
       "steppedLine": false,
       "targets": [
         {
-          "expr": "topk(5, irate(redis_commands_total{instance=~\"$instance\"} [1m]))",
-          "format": "time_series",
-          "interval": "",
+          "expr": "irate(container_fs_writes_bytes_total{instance=~\"$node:$port\",job=~\"$job\",image!=\"\"}[5m])",
           "intervalFactor": 2,
-          "legendFormat": "{{ cmd }}",
-          "metric": "redis_command_calls_total",
+          "legendFormat": "{{name}}",
+          "metric": "container_fs_writes_bytes_total",
           "refId": "A",
-          "step": 240
+          "step": 20
         }
       ],
       "thresholds": [],
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Command Calls / sec",
+      "title": "I/O Tx",
       "tooltip": {
-        "msResolution": true,
+        "msResolution": false,
         "shared": true,
         "sort": 0,
         "value_type": "cumulative"
@@ -1173,7 +886,7 @@
       },
       "yaxes": [
         {
-          "format": "short",
+          "format": "Bps",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -1195,12 +908,12 @@
       }
     }
   ],
-  "refresh": "30s",
+  "refresh": "10s",
   "schemaVersion": 26,
   "style": "dark",
   "tags": [
     "prometheus",
-    "redis"
+    "docker"
   ],
   "templating": {
     "list": [
@@ -1208,19 +921,19 @@
         "allValue": null,
         "current": {
           "selected": false,
-          "text": "192.168.13.162:6369",
-          "value": "192.168.13.162:6369"
+          "text": "docker",
+          "value": "docker"
         },
         "datasource": "Prometheus",
-        "definition": "label_values(redis_up{instance=~\"192.168.13.16[012]:6369\"}, instance)",
+        "definition": "",
         "hide": 0,
         "includeAll": false,
-        "label": null,
+        "label": "Job",
         "multi": false,
-        "name": "instance",
+        "name": "job",
         "options": [],
-        "query": "label_values(redis_up{instance=~\"192.168.13.16[012]:6369\"}, instance)",
-        "refresh": 2,
+        "query": "label_values(container_cpu_user_seconds_total, job)",
+        "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
         "sort": 1,
@@ -1234,22 +947,48 @@
         "allValue": null,
         "current": {
           "selected": false,
-          "text": "192.168.13.161:9100",
-          "value": "192.168.13.161:9100"
+          "text": "192.168.13.160",
+          "value": "192.168.13.160"
         },
         "datasource": "Prometheus",
-        "definition": "label_values(node_memory_MemTotal_bytes{instance=~\"192.168.13.16[012]:9100\"}, instance)",
+        "definition": "label_values(up{job=~\"$job\"}, instance)",
         "hide": 0,
         "includeAll": false,
-        "label": "redis_host",
+        "label": "Host",
         "multi": false,
-        "name": "redis_host",
+        "name": "node",
         "options": [],
-        "query": "label_values(node_memory_MemTotal_bytes{instance=~\"192.168.13.16[012]:9100\"}, instance)",
-        "refresh": 2,
-        "regex": "",
+        "query": "label_values(up{job=~\"$job\"}, instance)",
+        "refresh": 1,
+        "regex": "/([^:]+):.*/",
         "skipUrlSync": false,
         "sort": 1,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "7070",
+          "value": "7070"
+        },
+        "datasource": "Prometheus",
+        "definition": "label_values(up{instance=~\"$node:(7070)\"}, instance)",
+        "hide": 2,
+        "includeAll": false,
+        "label": "Port",
+        "multi": false,
+        "name": "port",
+        "options": [],
+        "query": "label_values(up{instance=~\"$node:(7070)\"}, instance)",
+        "refresh": 1,
+        "regex": "/[^:]+:(.*)/",
+        "skipUrlSync": false,
+        "sort": 3,
         "tagValuesQuery": "",
         "tags": [],
         "tagsQuery": "",
@@ -1259,7 +998,7 @@
     ]
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-3h",
     "to": "now"
   },
   "timepicker": {
@@ -1288,7 +1027,7 @@
     ]
   },
   "timezone": "browser",
-  "title": "Redis",
-  "uid": "OY8i3bdMk",
+  "title": "Docker",
+  "uid": "ZB5s0fHGz",
   "version": 13
 }

@@ -1,0 +1,22 @@
+- labels:
+    instance: 192.168.13.160:3306
+    mysql_host: 192.168.13.160:9100
+    mysql_env: prod
+    app: 'mysql cluster node'
+  targets:
+  - '192.168.13.236:9104'
+- labels:
+    instance: 192.168.13.163:3306
+    mysql_host: 192.168.13.163:9100
+    mysql_env: prod
+    app: 'mysql cluster node'
+  targets:
+  - '192.168.13.236:9105'
+- labels:
+    instance: 192.168.13.116:3306
+    mysql_host: 192.168.13.116:9100
+    mysql_env: test
+    app: 'mysql'
+  targets:
+  - '192.168.13.236:9106'
+

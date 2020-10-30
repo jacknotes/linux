@@ -1,0 +1,13 @@
+- targets:
+  - '58.246.78.149'
+  - '58.246.78.150'
+  labels:
+    group: 'ISP:unicom'
+    app: 'ISP Network'
+- targets:
+  - '222.66.21.209'
+  - '222.66.21.210'
+  labels:
+    group: 'ISP:telecom'
+    app: 'ISP Network'
+

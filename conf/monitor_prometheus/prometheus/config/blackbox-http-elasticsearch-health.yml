@@ -1,0 +1,16 @@
+- targets:
+  - http://blog.hs.com:9200/_cat/health?v
+  labels:
+    app: "blog health check"
+
+- targets:
+  - http://homsom-elk01.hs.com:9202/_cat/health?v
+  - http://homsom-elk02.hs.com:9202/_cat/health?v
+  labels:
+    app: "hoteles rubbish health check"
+
+- targets:
+  - http://192.168.13.235:9200/_cat/health?v
+  labels:
+    app: "hoteles healtch check"
+

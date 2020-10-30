@@ -1,0 +1,26 @@
+- targets:
+  - http://homsom-elk01:9202/youyouenhotel_db/_settings?pretty=true
+  - http://homsom-elk01:9202/youyouhotel_db/_settings?pretty=true
+  labels:
+    app: "hoteles rubbish readonly check"
+
+- targets:
+  - http://hlog.hs.com:9200/clog/_settings?pretty=true
+  labels:
+    app: "hloges readonly check"
+
+- targets:
+  - http://clog.hs.com:9200/clog/_settings?pretty=true
+  labels:
+    app: "cloges readonly check"
+
+- targets:
+  - http://blog.hs.com:9200/homsom_log/_settings?pretty=true
+  labels:
+    app: "bloges readonly check"
+
+- targets:
+  - http://192.168.13.235:9200/youyouenhotel_db/_settings?pretty=true
+  - http://192.168.13.235:9200/youyouhotel_db/_settings?pretty=true
+  labels:
+    app: "hoteles readonly check"

@@ -1,0 +1,33 @@
+- targets:
+  - '172.168.2.111:9182'
+  labels:
+    custom_disk: 'yes'
+    app: 'Callcenter'
+- targets:
+  - '172.168.2.110:9182'
+  - '172.168.2.172:9182'
+  - '172.168.2.173:9182'
+  - '172.168.2.174:9182'
+  labels:
+    app: 'Calccenter'
+- targets:
+  - '172.168.2.121:9182'
+  labels:
+    app: 'Fax Server'
+- targets:
+  - '172.168.2.186:9182'
+  labels:
+    app: 'New Eterm Server'
+- targets:
+  - '192.168.10.187:9182'
+  labels:
+    app: 'Files Server'
+- targets:
+  - '192.168.10.161:9182'
+  labels:
+    app: 'Kingdee Server'
+- targets:
+  - '192.168.10.198:9182'
+  labels:
+    app: 'Printer Server'
+

@@ -1,0 +1,119 @@
+groups:
+- name: windowsHostStatesAlert
+  rules:
+  - alert: windowsNodeDown
+    expr: up{job="windows"} == 0
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "windows is Down"
+      description: "job: {{ $labels.job }},windows: {{$labels.instance}} is Down,Server Machine can shutdown,time keep 1m"
+
+  - alert: windowsHostCpuUsageAlert
+    expr: (100 - (avg(irate(windows_cpu_time_total{job=~"windows",mode="idle"}[1m])) by(instance))*100) > 85
+    for: 5m
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Host CPU(1m) usage High"
+      description: "job: {{ $labels.job }},instance: {{ $labels.instance }} CPU(1m) Usage above 85% (current value: {{ $value }})"
+
+  - alert: windowsHostCpuUsage100%Alert
+    expr: (100 - (avg(irate(windows_cpu_time_total{job=~"windows",mode="idle"}[1m])) by(instance))*100) >= 99
+    for: 1m
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Host CPU(1m) usage High"
+      description: "job: {{ $labels.job }},instance: {{ $labels.instance }} CPU(1m) Usage above equal 99% (current value: {{ $value }})"
+
+  - alert: windowsHostMemUsageAlert
+    expr: (100 - (windows_os_physical_memory_free_bytes{job=~"windows"} / windows_cs_physical_memory_bytes{job=~"windows"}) * 100) > 85
+    for: 5m 
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Host Memory usage High"
+      description: "job: {{ $labels.job }},instance: {{ $labels.instance }} Memory Usage above 85% (current value: {{ $value }})"
+
+  - alert: windowsHostMemUsage100%Alert
+    expr: (100 - (windows_os_physical_memory_free_bytes{job=~"windows"} / windows_cs_physical_memory_bytes{job=~"windows"}) * 100) >= 99
+    for: 1m 
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Host Memory usage High"
+      description: "job: {{ $labels.job }},instance: {{ $labels.instance }} Memory Usage above equal 99% (current value: {{ $value }})"
+
+  - alert: windowsHostDiskUsageCapacityAlert
+    expr: (100 - (windows_logical_disk_free_bytes{job="windows",volume!~"HarddiskVolume.*"} / windows_logical_disk_size_bytes{job="windows",volume!~"HarddiskVolume.*"}) * 100 ) > 90
+    for: 1m 
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Host Disk Usage Capacity High"
+      description: "job: {{ $labels.job }},instance: {{ $labels.instance }} Host Disk Capacity Usage above 90% (volume: {{ $labels.volume }},value: {{ $value }})"
+
+  - alert: windowsHostDiskAvailableCapacityAlert
+    expr: windows_logical_disk_free_bytes{job=~"windows",volume!~"HarddiskVolume.*"} / 1024 / 1024 / 1024 <  0.8
+    for: 1m 
+    labels:
+      severity: High
+    annotations:
+      summary: "Host Disk Available Capacity High"
+      description: "job: {{ $labels.job }},instance: {{ $labels.instance }} Host Disk Available Capacity under 0.8(800M) (volume: {{ $labels.volume }},value: {{ $value }})"
+
+  - alert: windowsHostDiskIOPSReadRateAlert
+    expr: irate(windows_logical_disk_reads_total{job=~"windows",volume!~"HarddiskVolume.*"}[1m]) > 600
+    for: 3m 
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Host Disk[1m] IOPS Read Rate High"
+      description: "job: {{ $labels.job }},instance: {{ $labels.instance }} Disk[1m] IOPS Read Rate above 600 (volume: {{ $labels.volume }},value: {{ $value }})"
+
+  - alert: windowsHostDiskIOPSWriteRateAlert
+    expr: irate(windows_logical_disk_writes_total{job=~"windows",volume!~"HarddiskVolume.*"}[1m]) > 600
+    for: 3m 
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Host Disk[1m] IOPS Write Rate High"
+      description: "job: {{ $labels.job }},instance: {{ $labels.instance }} Disk[1m] IOPS Write Rate above 600 (volume: {{ $labels.volume }},value: {{ $value }})"
+
+  - alert: windowsHostDiskReadCapacityAlert
+    expr: irate(windows_logical_disk_read_bytes_total{job=~"windows",volume!~"HarddiskVolume.*"}[1m]) / 1024 / 1024  > 60
+    for: 5m 
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Host Disk[1m] Read Capacity High"
+      description: "job: {{ $labels.job }},instance: {{ $labels.instance }} Disk[1m] Read Capacity above 60M (volume: {{ $labels.volume }},value: {{ $value }})"
+
+  - alert: windowsHostDiskWriteCapacityAlert
+    expr: irate(windows_logical_disk_writes_total{job=~"windows",volume!~"HarddiskVolume.*"}[1m]) / 1024 / 1024  > 60
+    for: 5m 
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Host Disk[1m] Write Capacity High"
+      description: "job: {{ $labels.job }},instance: {{ $labels.instance }} Disk[1m] Write Capacity above 60M (volume: {{ $labels.volume }},value: {{ $value }})"
+
+  - alert: windowsHostNetworkReceiveAlert
+    expr: irate(windows_net_bytes_received_total{job=~"windows",nic!~'isatap.*|VPN.*'}[1m]) *8 /1024 /1024 > 80
+    for: 5m 
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Host Network[1m] Receive Rate High"
+      description: "job: {{ $labels.job }},instance: {{ $labels.instance }} Network[1m] Download Rate above 80Mbps (nic: {{ $labels.nic }},value: {{ $value }})"
+
+  - alert: windowsHostNetworkSendAlert
+    expr: irate(windows_net_bytes_sent_total{job=~"windows",nic!~'isatap.*|VPN.*'}[1m]) *8 /1024 /1024 > 80
+    for: 5m 
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Host Network[1m] Send Rate High"
+      description: "job: {{ $labels.job }},instance: {{ $labels.instance }} Network[1m] Send Rate above 80Mbps (nic: {{ $labels.nic }},value: {{ $value }})"

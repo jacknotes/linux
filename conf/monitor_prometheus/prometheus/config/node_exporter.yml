@@ -1,0 +1,63 @@
+- targets: [ "192.168.13.207:9100","192.168.13.215:9100","192.168.13.218:9100" ]
+  labels:
+    app: "nginx server for productor"
+- targets:
+  - '127.0.0.1:9100'
+  labels:
+    app: 'Prometheus Server'
+- targets:
+  - '192.168.13.21:9100'
+  labels:
+    app: 'Nexus,Confluence,Zendao Server'
+- targets:
+  - '192.168.13.160:9100'
+  - '192.168.13.161:9100'
+  - '192.168.13.162:9100'
+  labels:
+    app: 'Redis,mysql,rabbitmq Server'
+- targets:
+  - '192.168.13.223:9100'
+  labels:
+    app: 'Clog,FAT,UAT Application Server'
+- targets:
+  - '192.168.13.235:9100'
+  labels:
+    app: 'Harbor Server'
+- targets:
+  - '192.168.13.237:9100'
+  labels:
+    app: 'Hlog Server'
+- targets:
+  - '192.168.13.238:9100'
+  - '192.168.13.239:9100'
+  labels:
+    app: 'Blog Server'
+- targets:
+  - '192.168.13.213:9100'
+  labels:
+    app: 'Gitlab Server'
+- targets:
+  - '192.168.13.206:9100'
+  labels:
+    app: 'Image Server'
+- targets:
+  - '192.168.13.212:9100'
+  labels:
+    app: 'Redmine Server'
+- targets:
+  - '192.168.13.214:9100'
+  labels:
+    app: 'NewJenkins Server'
+- targets:
+  - '192.168.13.230:9100'
+  labels:
+    app: 'Nginx Server for Test'
+- targets:
+  - '192.168.13.163:9100'
+  labels:
+    app: 'Mysql Cluster Node for productor'
+- targets:
+  - '192.168.13.116:9100'
+  labels:
+    app: 'Mysql for Test'
+ 

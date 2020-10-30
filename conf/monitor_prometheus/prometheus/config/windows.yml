@@ -1,0 +1,78 @@
+- targets:
+  - '192.168.13.112:9182'
+  - '192.168.13.111:9182'
+  - '192.168.13.108:9182'
+  - '192.168.13.107:9182'
+  - '192.168.13.115:9182'
+  labels:
+    app: 'SQLSERVER_Cluster'
+- targets:
+  - '192.168.10.250:9182'
+  - '192.168.10.110:9182'
+  - '192.168.13.251:9182'
+  labels:
+    app: 'Active Directory'
+- targets:
+  - '192.168.13.233:9182'
+  - '192.168.13.232:9182'
+  - '192.168.13.229:9182'
+  - '192.168.13.228:9182'
+  - '192.168.13.205:9182'
+  - '192.168.13.204:9182'
+  labels:
+    app: 'Web Sites for productor'
+- targets:
+  - '172.168.2.220:9182'
+  - '192.168.13.24:9182'
+  - '192.168.13.193:9182'
+  labels:
+    app: 'Travel Hotel Site Image Server'
+- targets:
+  - '192.168.13.200:9182'
+  - '192.168.13.211:9182'
+  - '192.168.13.103:9182'
+  labels:
+    app: 'Develop Test UAT Server'
+- targets:
+  - '192.168.13.222:9182'
+  labels:
+    app: 'DFS upload Server'
+- targets:
+  - '192.168.13.195:9182'
+  labels:
+    app: 'Ticketing Round Robin'
+- targets:
+  - '192.168.13.191:9182'
+  labels:
+    app: 'SVN Server'
+- targets:
+  - '192.168.13.190:9182'
+  labels:
+    app: 'Round Robin Server'
+- targets:
+  - '192.168.13.182:9182'
+  labels:
+    app: 'Backup Server'
+- targets:
+  - '192.168.13.180:9182'
+  labels:
+    app: 'Jenkins Server'
+- targets:
+  - '172.168.2.184:9182'
+  - '172.168.2.183:9182'
+  labels:
+    app: 'Eterm Server'
+- targets:
+  - '172.168.2.185:9182'
+  labels:
+    app: 'New Eterm Server'
+- targets:
+  - '172.168.2.99:9182'
+  labels:
+    app: 'CalcenterDB Backup Server'
+- targets:
+  - '172.168.2.129:9182'
+  - '172.168.2.10:9182'
+  labels:
+    app: 'GuanChaShi Machine'
+
