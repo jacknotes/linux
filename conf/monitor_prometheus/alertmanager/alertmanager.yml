@@ -5,7 +5,7 @@ global:
   smtp_hello: 'alertmanager'
   smtp_from: 'prometheus@homsom.com'
   smtp_auth_username: 'prometheus@homsom.com'
-  smtp_auth_password: 'Homsom@4006!@#'
+  smtp_auth_password: 'Hom34256'
 templates:
   - '/usr/local/alertmanager/email.tmpl'
 route:
