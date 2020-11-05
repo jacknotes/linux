@@ -269,17 +269,18 @@ WantedBy=multi-user.target
 tcp6       0      0 :::8080                 :::*                    LISTEN      25771/cadvisor 
 
 --docker运行
-docker run \
+docker run -d \
   --volume=/:/rootfs:ro \
   --volume=/var/run:/var/run:rw \
   --volume=/sys:/sys:ro \
   --volume=/var/lib/docker/:/var/lib/docker:ro \
-  --publish=8080:8080 \
+  --publish=7070:8080 \
   --detach=true \
   --name=cadvisor \
+  --restart=always \
   google/cadvisor:latest
-[root@node3 /download]# netstat -tnlp | grep 8080
-tcp6       0      0 :::8080                 :::*                    LISTEN      25771/cadvisor 	
+[root@node3 /download]# netstat -tnlp | grep 7070
+tcp6       0      0 :::7070                 :::*                    LISTEN      25771/cadvisor 	
 
 #--redis_exporter监控redis主从集群
 wget https://github.com/oliver006/redis_exporter/releases/download/v1.11.1/redis_exporter-v1.11.1.linux-amd64.tar.gz
