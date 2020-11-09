@@ -2023,4 +2023,202 @@ sentinelAPI:
 [root@localhost redis]# redis-cli -p 26379 sentinel sentinels mymaster
 </pre>
 
+<pre>
+#docker deploy redis
+docker pull redis:5.0.10
 
+---------------redis_master_slave--------------
+----master----
+[root@test /usr/local/data/redis_ms]# cat redis_master.conf 
+bind 0.0.0.0
+port 6379
+requirepass "123456"
+masterauth "123456"
+#alert,must is no
+daemonize no
+pidfile "/data/redis_6369.pid"
+loglevel notice
+logfile "redis_6369.log"
+databases 16
+always-show-logo yes
+save 900 1
+save 300 10
+save 60 10000
+stop-writes-on-bgsave-error yes
+rdbcompression yes
+rdbchecksum yes
+dbfilename "dump_6369.rdb"
+#open aof
+appendonly yes
+appendfilename "appendonly_6369.aof"
+#aof log everysec sync persistent device
+appendfsync everysec
+no-appendfsync-on-rewrite yes
+auto-aof-rewrite-percentage 100
+auto-aof-rewrite-min-size 64mb
+aof-load-truncated yes
+aof-use-rdb-preamble yes
+slowlog-log-slower-than 10000
+slowlog-max-len 128
+aof-rewrite-incremental-fsync yes
+rdb-save-incremental-fsync yes
+replica-priority 30
+maxmemory 1gb
+----slave01----
+[root@test /usr/local/data/redis_ms]# cat redis_slave01.conf 
+bind 0.0.0.0
+port 6379
+requirepass "123456"
+masterauth "123456"
+#alert,must is no
+daemonize no
+pidfile "/data/redis_6369.pid"
+loglevel notice
+logfile "redis_6369.log"
+databases 16
+always-show-logo yes
+save 900 1
+save 300 10
+save 60 10000
+stop-writes-on-bgsave-error yes
+rdbcompression yes
+rdbchecksum yes
+dbfilename "dump_6369.rdb"
+#open aof
+appendonly yes
+appendfilename "appendonly_6369.aof"
+#aof log everysec sync persistent device
+appendfsync everysec
+no-appendfsync-on-rewrite yes
+auto-aof-rewrite-percentage 100
+auto-aof-rewrite-min-size 64mb
+aof-load-truncated yes
+aof-use-rdb-preamble yes
+slowlog-log-slower-than 10000
+slowlog-max-len 128
+aof-rewrite-incremental-fsync yes
+rdb-save-incremental-fsync yes
+replica-priority 40
+replicaof redis_master 6379
+maxmemory 1gb
+----slave02----
+[root@test /usr/local/data/redis_ms]# cat redis_slave02.conf 
+bind 0.0.0.0
+port 6379
+requirepass "123456"
+masterauth "123456"
+#alert,must is no
+daemonize no
+pidfile "/data/redis_6369.pid"
+loglevel notice
+logfile "redis_6369.log"
+databases 16
+always-show-logo yes
+save 900 1
+save 300 10
+save 60 10000
+stop-writes-on-bgsave-error yes
+rdbcompression yes
+rdbchecksum yes
+dbfilename "dump_6369.rdb"
+#open aof
+appendonly yes
+appendfilename "appendonly_6369.aof"
+#aof log everysec sync persistent device
+appendfsync everysec
+no-appendfsync-on-rewrite yes
+auto-aof-rewrite-percentage 100
+auto-aof-rewrite-min-size 64mb
+aof-load-truncated yes
+aof-use-rdb-preamble yes
+slowlog-log-slower-than 10000
+slowlog-max-len 128
+aof-rewrite-incremental-fsync yes
+rdb-save-incremental-fsync yes
+replica-priority 40
+replicaof redis_master 6379
+maxmemory 1gb
+---------------
+
+#redis_master:
+docker run -d \
+-p 6379:6379 \
+-v /usr/local/data/redis_ms/redis_master.conf:/usr/local/etc/redis/redis_master.conf \
+-v /usr/local/data/redis_ms/master:/data \
+--name redis_master \
+--privileged \
+redis:5.0.10 \
+redis-server /usr/local/etc/redis/redis_master.conf
+
+#redis_slave01:
+docker run -d \
+-p 6380:6379 \
+--link redis_master:redis_master \
+-v /usr/local/data/redis_ms/redis_slave01.conf:/usr/local/etc/redis/redis_slave01.conf \
+-v /usr/local/data/redis_ms/slave01:/data \
+--name redis_slave01 \
+--privileged \
+redis:5.0.10 \
+redis-server /usr/local/etc/redis/redis_slave01.conf
+
+#redis_slave02:
+docker run -d \
+-p 6381:6379 \
+--link redis_master:redis_master \
+-v /usr/local/data/redis_ms/redis_slave02.conf:/usr/local/etc/redis/redis_slave02.conf \
+-v /usr/local/data/redis_ms/slave02:/data \
+--name redis_slave02 \
+--privileged \
+redis:5.0.10 \
+redis-server /usr/local/etc/redis/redis_slave02.conf
+
+
+---------------redis_sentinel--------------
+[root@test /usr/local/data/redis_ms]# cat redis_sentinel01.conf 
+port 26379
+daemonize no
+pidfile "redis-sentinel.pid"
+logfile "sentinel.log"
+dir "/data"
+sentinel deny-scripts-reconfig yes
+sentinel monitor mymaster redis_master 6379 2
+sentinel auth-pass mymaster 123456
+
+#redis_sentinel02.conf and redis_sentinel03.conf like redis_sentinel01.conf
+#chmod 666 redis_sentinel0*
+
+#redis_sentinel01
+docker run -d \
+-p 26379:26379 \
+--link redis_master:redis_master \
+-v /usr/local/data/redis_ms/redis_sentinel01.conf:/usr/local/etc/redis/redis_sentinel01.conf \
+-v /usr/local/data/redis_ms/sentinel01:/data \
+--name redis_sentinel01 \
+--privileged=true \
+redis:5.0.10 \
+redis-server /usr/local/etc/redis/redis_sentinel01.conf --sentinel
+
+#redis_sentinel02
+docker run -d \
+-p 26380:26379 \
+--link redis_master:redis_master \
+-v /usr/local/data/redis_ms/redis_sentinel02.conf:/usr/local/etc/redis/redis_sentinel02.conf \
+-v /usr/local/data/redis_ms/sentinel02:/data \
+--name redis_sentinel02 \
+--privileged=true \
+redis:5.0.10 \
+redis-server /usr/local/etc/redis/redis_sentinel02.conf --sentinel
+
+#redis_sentinel03
+docker run -d \
+-p 26381:26379 \
+--link redis_master:redis_master \
+-v /usr/local/data/redis_ms/redis_sentinel03.conf:/usr/local/etc/redis/redis_sentinel03.conf \
+-v /usr/local/data/redis_ms/sentinel03:/data \
+--name redis_sentinel03 \
+--privileged=true \
+redis:5.0.10 \
+redis-server /usr/local/etc/redis/redis_sentinel03.conf --sentinel
+
+
+</pre>
