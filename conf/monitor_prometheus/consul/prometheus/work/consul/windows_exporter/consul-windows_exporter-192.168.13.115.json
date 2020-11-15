@@ -1,0 +1,24 @@
+{
+  "Name": "windows_exporter",
+  "ID": "windows_exporter-192.168.13.115",
+  "Tags": [
+    "windows_exporter"
+  ],
+  "Address": "192.168.13.115",
+  "Port": 9182,
+  "Meta": {
+    "app": "slserver_mirror",
+    "env": "pro",
+    "project": "services",
+    "team": "dba"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://192.168.13.115:9182/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}

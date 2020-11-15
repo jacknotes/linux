@@ -1,0 +1,24 @@
+{
+  "Name": "windows_exporter",
+  "ID": "windows_exporter-192.168.13.190",
+  "Tags": [
+    "windows_exporter"
+  ],
+  "Address": "192.168.13.190",
+  "Port": 9182,
+  "Meta": {
+    "app": "RoundRobin",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://192.168.13.190:9182/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}

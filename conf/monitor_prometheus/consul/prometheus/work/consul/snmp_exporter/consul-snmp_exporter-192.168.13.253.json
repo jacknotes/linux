@@ -1,0 +1,15 @@
+{
+  "Name": "snmp_exporter",
+  "ID": "snmp_exporter-192.168.13.253",
+  "Tags": [
+    "snmp_exporter"
+  ],
+  "Address": "192.168.13.253",
+  "Meta": {
+    "app": "Cisco_Switch_Core02",
+    "env": "pro",
+    "project": "network",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

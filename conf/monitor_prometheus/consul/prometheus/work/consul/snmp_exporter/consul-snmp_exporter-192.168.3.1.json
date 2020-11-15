@@ -1,0 +1,15 @@
+{
+  "Name": "snmp_exporter",
+  "ID": "snmp_exporter-192.168.3.1",
+  "Tags": [
+    "snmp_exporter"
+  ],
+  "Address": "192.168.3.1",
+  "Meta": {
+    "app": "NewDon_Firewall",
+    "env": "pro",
+    "project": "network",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

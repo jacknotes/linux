@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_tcp",
+  "ID": "blackbox_tcp-192.168.13.239:9000",
+  "Tags": [
+    "blackbox_tcp"
+  ],
+  "Address": "192.168.13.239:9000",
+  "Meta": {
+    "app": "192.168.13.21:5000/systemlog/pro-systemlog",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

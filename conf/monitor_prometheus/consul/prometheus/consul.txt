@@ -1,0 +1,122 @@
+--consul注册服务
+curl -X PUT -d '{"id": "node-exporter","name": "node-exporter-192.168.13.50","address": "192.168.13.50","port": 9100,"tags": ["test"],"checks": [{"http": "http://192.168.13.50:9100/metrics", "interval": "5s"}]}'  http://192.168.13.236:8500/v1/agent/service/register
+
+--consul注销服务
+curl -X PUT http://192.168.13.236:8500/v1/agent/service/deregister/node-exporter 
+
+--添加consul配置，并设置过滤条件，只保留__meta_consul_tags标签值包含test的实例
+- job_name: 'consul-prometheus'
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*test.*
+        action: keep
+
+--编写consul的注册服务信息文件
+[root@prometheus work]# cat consul-0.json 
+{
+  "ID": "node-exporter",
+  "Name": "node-exporter-192.168.13.235",
+  "Tags": [
+    "test"
+  ],
+  "Address": "192.168.13.235",
+  "Port": 9100,
+  "Meta": {
+    "app": "rabbitmq",
+    "team": "ops",
+    "project": "jinyu"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://192.168.13.236:9100/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}
+
+--向consul注册服务信息
+curl -X PUT --data @consul-0.json http://192.168.13.236:8500/v1/agent/service/register?replace-existing-checks=1
+
+
+
+--给每个服务标记不同的 Tag，然后通过 relabel_configs 来进行匹配区分
+[root@prometheus work]# cat consul-0.json 
+{
+  "ID": "node-exporter",
+  "Name": "node-exporter-192.168.13.50",
+  "Tags": [
+    "node-exporter"
+  ],
+  "Address": "192.168.13.50",
+  "Port": 9100,
+  "Meta": {
+    "app": "rabbitmq",
+    "team": "dev",
+    "project": "jinyu"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://192.168.13.50:9100/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}
+[root@prometheus work]# cat consul-1.json 
+{
+  "ID": "cadvisor-exporter",
+  "Name": "cadvisor-exporter-192.168.13.50",
+  "Tags": [
+    "cadvisor-exporter"
+  ],
+  "Address": "192.168.13.50",
+  "Port": 7070,
+  "Meta": {
+    "app": "docker",
+    "team": "ops",
+    "project": "jinyu"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://192.168.13.50:7070/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}
+[root@prometheus work]# curl -XPUT --data @consul-0.json http://192.168.13.236:8500/v1/agent/service/register?replace-existing-checks=1
+[root@prometheus work]# curl -XPUT --data @consul-1.json http://192.168.13.236:8500/v1/agent/service/register?replace-existing-checks=1
+  - job_name: 'consul-node-exporter'
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*node.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+
+  - job_name: 'consul-cadvisor-exporter'
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*cadvisor.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+[root@prometheus prometheus]# curl -XPOST http://localhost:9090/-/reload
+
+

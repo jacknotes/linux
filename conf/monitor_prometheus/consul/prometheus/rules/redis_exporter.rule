@@ -1,0 +1,58 @@
+groups:
+- name: redis_exporter
+  rules:
+  - alert: redis_exporterStatusAlert
+    expr: redis_up < 1
+    for: 15s
+    labels:
+      severity: High
+    annotations:
+      summary: "redis_exporter is down"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} is down(current value: {{ $value }})"
+
+  - alert: redisLinkMasterStatusAlert
+    expr: redis_master_link_up < 1
+    for: 15s
+    labels:
+      severity: High
+    annotations:
+      summary: "Redis Connect Master Is Down"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} connect master is down(current value: {{ $value }})"
+
+  - alert: redisUsageMemoryAlert
+    expr: (redis_memory_used_bytes / redis_memory_max_bytes) * 100 > 30
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "Redis Usage Host Memory Many"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }}Usage Host Memory Many(current value: {{ $value }})"
+
+  - alert: redisClientConnectNumberAlert
+    expr: redis_connected_clients > 200
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "Redis Client Connect Number Many"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Client Connect Number Many(current value: {{ $value }})"
+
+  - alert: redisNetworkInputAlert
+    expr: rate(redis_net_input_bytes_total[5m]) /1024 /1024 > 2
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "Redis Network Input Flow Many"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Input Flow Many(current value: {{ $value }})"
+
+
+  - alert: redisNetworkOutputAlert
+    expr: rate(redis_net_output_bytes_total[5m]) /1024 /1024 > 2
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "Redis Network Output Flow Many"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Output Flow Many(current value: {{ $value }})"
+

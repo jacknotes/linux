@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_tcp",
+  "ID": "blackbox_tcp-192.168.13.239:8080",
+  "Tags": [
+    "blackbox_tcp"
+  ],
+  "Address": "192.168.13.239:8080",
+  "Meta": {
+    "app": "hotel_elk",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

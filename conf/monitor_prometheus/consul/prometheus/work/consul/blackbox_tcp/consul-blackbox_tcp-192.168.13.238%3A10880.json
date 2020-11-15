@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_tcp",
+  "ID": "blackbox_tcp-192.168.13.238:10880",
+  "Tags": [
+    "blackbox_tcp"
+  ],
+  "Address": "192.168.13.238:10880",
+  "Meta": {
+    "app": "192.168.13.235:8000/pro/travelproductservice",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

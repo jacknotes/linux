@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_http",
+  "ID": "blackbox_http-172.168.2.174:55505",
+  "Tags": [
+    "blackbox_http"
+  ],
+  "Address": "http://172.168.2.174:55505/",
+  "Meta": {
+    "app": "CallcenterLuyin",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

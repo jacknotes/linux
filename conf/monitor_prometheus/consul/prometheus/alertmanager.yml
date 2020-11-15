@@ -1,0 +1,44 @@
+global:
+  resolve_timeout: 5m
+  smtp_require_tls: false
+  smtp_smarthost: 'smtp.qiye.163.com:465'
+  smtp_hello: 'alertmanager'
+  smtp_from: 'prometheus@homsom.com'
+  smtp_auth_username: 'prometheus@homsom.com'
+  smtp_auth_password: 'Homsom@4006!@#'
+templates:
+  - '/usr/local/alertmanager/email.tmpl'
+route:
+  receiver: 'email'
+  group_by: ['alertname']
+  group_wait: 15s
+  group_interval: 15s
+  repeat_interval: 4h
+  routes:
+  - receiver: 'email'
+    group_wait: 10s
+    continue: true
+    match_re: 
+      job: .*[a-z].*
+  - receiver: 'webhook'
+    group_wait: 10s
+    continue: true
+    match_re: 
+      job: .*[a-z].*
+receivers:
+- name: 'email'
+  email_configs:
+  - to: '{{ template "email.to" . }}'
+    html: '{{ template "email.html" . }}'
+    send_resolved: true
+- name: 'webhook'
+  webhook_configs:
+  - url: 'http://192.168.13.235:8060/dingtalk/webhook1/send'
+    send_resolved: true
+inhibit_rules:
+  - source_match:
+      alertname: 'NodeDown'
+      severity: 'High'
+    target_match:
+      job: 'blackbox-tcp'
+    equal: ['instance']

@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_http_elasticsearch_readonly",
+  "ID": "blackbox_http_elasticsearch_readonly-hlog.hs.com",
+  "Tags": [
+    "blackbox_http_elasticsearch_readonly"
+  ],
+  "Address": "http://hlog.hs.com:9200/clog/_settings?pretty=true",
+  "Meta": {
+    "app": "hlog.hs.com",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

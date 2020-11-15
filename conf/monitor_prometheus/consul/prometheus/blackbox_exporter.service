@@ -1,0 +1,14 @@
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local//blackbox_exporter/blackbox_exporter --config.file /usr/local/blackbox_exporter/blackbox.yml
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+

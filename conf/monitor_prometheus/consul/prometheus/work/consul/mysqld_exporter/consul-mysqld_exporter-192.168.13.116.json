@@ -1,0 +1,24 @@
+{
+  "Name": "mysql_exporter",
+  "ID": "mysql_exporter-192.168.13.116",
+  "Tags": [
+    "mysql_exporter"
+  ],
+  "Address": "192.168.13.116",
+  "Port": 9104,
+  "Meta": {
+    "app": "mysql_test",
+    "env": "test",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://192.168.13.116:9104/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}

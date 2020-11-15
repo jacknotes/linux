@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_http",
+  "ID": "blackbox_http-antasys",
+  "Tags": [
+    "blackbox_http"
+  ],
+  "Address": "http://192.168.1.3/index.php",
+  "Meta": {
+    "app": "Antasys",
+    "env": "pro",
+    "project": "network",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

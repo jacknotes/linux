@@ -1,0 +1,75 @@
+groups:
+- name: mysqld_exporter
+  rules:
+  - alert: mysqld_exporterStatusAlert
+    expr: mysql_up < 1
+    for: 15s
+    labels:
+      severity: High
+    annotations:
+      summary: "mysql_exporter is down"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} is down(current value: {{ $value }})"
+
+  - alert: mysqlQPSAlert
+    expr: irate(mysql_global_status_queries[5m]) > 50
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "Mysql QPS Is Many"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} QPS is greater 50(current value: {{ $value }})"
+
+  - alert: mysqlConnectNumberAlert
+    expr: mysql_global_status_threads_connected > 50
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "Mysql Connect Number Is Many"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} connect number is greater 50(current value: {{ $value }})"
+
+  - alert: mysqlNetworkReciveAlert
+    expr: irate(mysql_global_status_bytes_received[5m])  /1024 /1024 >1
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "Mysql Network Receive Traffic Is Many"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} mysql network traffic is greater 1mbps(current value: {{ $value }})"
+
+  - alert: mysqlSelectNumberAlert
+    expr: irate(mysql_global_status_commands_total{command="select"}[5m]) >50
+    for: 1m
+    labels:
+      severity: Warnning
+    annotations:
+      summary: "Mysql Select(DML) Number Is Many"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} select number is greater 50(current value: {{ $value }})"
+
+  - alert: mysqlDeleteNumberAlert
+    expr: irate(mysql_global_status_commands_total{command="delete"}[5m]) > 10
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "Mysql Delete(DML) Number Is Many"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} delete number is greater 10(current value: {{ $value }})"
+
+  - alert: mysqlSlowQueryAlert
+    expr: irate(mysql_global_status_slow_queries[1m]) > 1
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "Mysql Slow Query Is Many"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} slow query is greater 1(current value: {{ $value }})"
+
+  - alert: mysqlTableLocksWaitedAlert
+    expr: irate(mysql_global_status_table_locks_waited[1m]) >1
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "Mysql Table Locks Waited Trigger"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Table Locks Waited is greater 1(current value: {{ $value }})"
+

@@ -1,0 +1,14 @@
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/alertmanager/alertmanager --config.file=/usr/local/alertmanager/alertmanager.yml \
+--storage.path=/usr/local/alertmanager/data/ --web.external-url=http://192.168.13.236:9093
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

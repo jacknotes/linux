@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_http",
+  "ID": "blackbox_http-jenkins.hs.com",
+  "Tags": [
+    "blackbox_http"
+  ],
+  "Address": "http://jenkins.hs.com/login",
+  "Meta": {
+    "app": "jenkins.hs.com",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

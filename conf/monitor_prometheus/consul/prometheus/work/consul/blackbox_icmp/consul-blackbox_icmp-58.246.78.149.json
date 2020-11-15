@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_icmp",
+  "ID": "blackbox_icmp-58.246.78.149",
+  "Tags": [
+    "blackbox_icmp"
+  ],
+  "Address": "58.246.78.149",
+  "Meta": {
+    "app": "unicom",
+    "env": "pro",
+    "project": "network",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

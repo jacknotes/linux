@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_tcp",
+  "ID": "blackbox_tcp-192.168.13.162:8081",
+  "Tags": [
+    "blackbox_tcp"
+  ],
+  "Address": "192.168.13.162:8081",
+  "Meta": {
+    "app": "rabbitMQ_node02",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

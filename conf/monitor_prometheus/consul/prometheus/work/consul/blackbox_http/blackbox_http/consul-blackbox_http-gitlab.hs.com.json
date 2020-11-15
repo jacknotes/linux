@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_http",
+  "ID": "blackbox_http-gitlab.hs.com",
+  "Tags": [
+    "blackbox_http"
+  ],
+  "Address": "http://gitlab.hs.com/",
+  "Meta": {
+    "app": "gitlab.hs.com",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

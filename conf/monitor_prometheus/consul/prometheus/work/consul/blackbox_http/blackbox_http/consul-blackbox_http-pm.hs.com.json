@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_http",
+  "ID": "blackbox_http-pm.hs.com",
+  "Tags": [
+    "blackbox_http"
+  ],
+  "Address": "http://pm.hs.com/",
+  "Meta": {
+    "app": "pm.hs.com",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

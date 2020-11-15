@@ -1,0 +1,18 @@
+--register
+curl -X PUT -d '{"id": "node-exporter","name": "node-exporter-192.168.13.50","address": "192.168.13.50","port": 9100,"tags": ["test"],"checks": [{"http": "http://192.168.13.50:9100/metrics", "interval": "5s"}]}'  http://192.168.13.236:8500/v1/agent/service/register
+
+--register
+curl -X PUT --data @consul-node_exporter.json http://192.168.13.236:8500/v1/agent/service/register?replace-existing-checks=1
+
+--deregister
+curl -X PUT http://192.168.13.236:8500/v1/agent/service/deregister/node-exporter
+
+--bat register
+for i in 50 21 160 161 162 223 235 237 238 239; do curl -XPUT --data @consul-cadvisor_exporter-192.168.13.${i}.json http://192.168.13.236:8500/v1/agent/service/register?replace-existing-check=1;done
+
+for i in 236; do curl -XPUT --data @consul/cadvisor/consul-cadvisor_exporter-192.168.13.${i}.json http://192.168.13.236:8500/v1/agent/service/register?replace-existing-check=1;done
+
+for i in 236 117; do curl -XPUT --data @consul/node_exporter/consul-node_exporter-192.168.13.${i}.json http://192.168.13.236:8500/v1/agent/service/register?replace-existing-check=1;done
+
+--all apply
+for i in `ls /root/work/consul/windows_exporter | sed "s:^:/root/work/consul/windows_exporter/:"`;do curl -XPUT --data @${i} http://192.168.13.236:8500/v1/agent/service/register?replace-existing-check=1;done

@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_http_elasticsearch_readonly",
+  "ID": "blackbox_http_elasticsearch_readonly-hoteles.hs.com_youyouenhotel_db",
+  "Tags": [
+    "blackbox_http_elasticsearch_readonly"
+  ],
+  "Address": "http://192.168.13.235:9200/youyouenhotel_db/_settings?pretty=true",
+  "Meta": {
+    "app": "hoteles.hs.com",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_icmp",
+  "ID": "blackbox_icmp-222.66.21.210",
+  "Tags": [
+    "blackbox_icmp"
+  ],
+  "Address": "222.66.21.210",
+  "Meta": {
+    "app": "telecom",
+    "env": "pro",
+    "project": "network",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

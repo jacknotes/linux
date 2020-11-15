@@ -1,0 +1,13 @@
+{{ define "email.from" }}jack.li@homsom.com{{ end }}
+{{ define "email.to" }}jack.li@homsom.com{{ end }}
+{{ define "email.html" }}
+{{ range .Alerts }}
+ <pre>
+状态：{{   .Status }} 
+实例: {{ .Labels.instance }} 
+信息: {{ .Annotations.summary }} 
+详情: {{ .Annotations.description }}
+时间: {{ (.StartsAt.Add 28800e9).Format "2006-01-02 15:04:05" }} 
+ </pre>
+{{ end }}
+{{ end }}

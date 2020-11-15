@@ -1,0 +1,24 @@
+{
+  "Name": "node_exporter",
+  "ID": "node_exporter-192.168.13.21",
+  "Tags": [
+    "node_exporter"
+  ],
+  "Address": "192.168.13.21",
+  "Port": 9100,
+  "Meta": {
+    "app": "zendao",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://192.168.13.21:9100/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}

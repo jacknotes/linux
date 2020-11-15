@@ -1,0 +1,229 @@
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - 'localhost:9093'
+
+rule_files:
+  - "/usr/local/prometheus/rules/*.rule"
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+    - targets: ['127.0.0.1:9090']
+      labels:
+        app: "prometheus server"
+
+  - job_name: 'consul-node_exporter'
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*node.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+
+  - job_name: 'consul-cadvisor_exporter'
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*cadvisor.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+
+  - job_name: 'consul-redis_exporter'
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*redis.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+
+  - job_name: 'consul-mysqld_exporter'
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*mysql.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+
+  - job_name: 'consul-windows_exporter'
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*windows_exporter.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+
+  - job_name: 'consul-wmi_exporter'
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*wmi_exporter.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+
+  - job_name: 'consul-blackbox_icmp'
+    scrape_interval: 5s
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*icmp.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - source_labels: [__address__]
+        regex: (.*):(.*)
+        target_label: __param_target
+        replacement: ${1}
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.13.236:9115
+
+  - job_name: 'consul-blackbox_http_elasticsearch_readonly'
+    scrape_interval: 5s
+    metrics_path: /probe
+    params:
+      module: [http_es_onlyread_test]
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*blackbox_http_elasticsearch_readonly.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - source_labels: [__address__]
+        regex: \[(.*)\]:(.*)
+        target_label: __param_target
+        replacement: ${1}
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.13.236:9115
+
+  - job_name: 'consul-blackbox_http_elasticsearch_health'
+    scrape_interval: 5s
+    metrics_path: /probe
+    params:
+      module: [http_es_health_test]
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*blackbox_http_elasticsearch_health.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - source_labels: [__address__]
+        regex: \[(.*)\]:(.*)
+        target_label: __param_target
+        replacement: ${1}
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.13.236:9115
+
+  - job_name: 'consul-blackbox-http'
+    scrape_interval: 5s
+    metrics_path: /probe
+    params:
+      module: [http_custom_httpcode]
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*blackbox_http,
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - source_labels: [__address__]
+        regex: \[(.*)\]:(.*)
+        target_label: __param_target
+        replacement: ${1}
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.13.236:9115
+
+  - job_name: 'consul-blackbox-tcp'
+    scrape_interval: 5s
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*blackbox_tcp.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - source_labels: [__address__]
+        regex: \[(.*)\]:(.*)
+        target_label: __param_target
+        replacement: ${1}
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.13.236:9115
+
+  - job_name: 'consul-snmp_exporter'
+    scrape_interval: 5s
+    metrics_path: /snmp
+    params:
+      module: [if_mib]
+      community: [public]
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*snmp_exporter.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - source_labels: [__address__]
+        regex: (.*):(.*)
+        target_label: __param_target
+        replacement: ${1}
+      - source_labels: [__param_target]
+        target_label: instance
+      - source_labels: [community]
+        target_label: __param_community
+      - source_labels: [module]
+        target_label: __param_module
+      - target_label: __address__
+        replacement: 192.168.13.236:9116
+

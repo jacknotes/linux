@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_http_elasticsearch_readonly",
+  "ID": "blackbox_http_elasticsearch_readonly-blog.hs.com",
+  "Tags": [
+    "blackbox_http_elasticsearch_readonly"
+  ],
+  "Address": "http://blog.hs.com:9200/homsom_log/_settings?pretty=true",
+  "Meta": {
+    "app": "blog.hs.com",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}
