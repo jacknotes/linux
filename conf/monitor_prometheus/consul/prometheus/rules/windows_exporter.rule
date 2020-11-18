@@ -8,7 +8,7 @@ groups:
       severity: High
     annotations:
       summary: "windows is Down"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{$labels.instance}} is Down,Server Machine can shutdown,time keep 1m"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{$labels.instance}} is Down,Server Machine can shutdown,time keep 1m(current value: {{ $value }})"
 
   - alert: windowsHostCpuUsageAlert
     expr: (100 - (avg(irate(windows_cpu_time_total{job=~".*windows_exporter.*",mode="idle"}[1m])) by(instance))*100) > 85

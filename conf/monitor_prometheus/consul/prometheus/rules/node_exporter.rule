@@ -8,10 +8,10 @@ groups:
       severity: High
     annotations:
       summary: "node_exporter is Down"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{$labels.instance}} is Down,Server Machine can shutdown,time keep 1m"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{$labels.instance}} is Down,Server Machine can shutdown,time keep 1m(current value: {{ $value }})"
 
   - alert: linuxHostCpuUsageAlert
-    expr: (sum(avg(irate(node_cpu_seconds_total{job=~".*node_exporter.*",mode!="idle"}[5m])) without(cpu))  by(instance)) * 100 > 85
+    expr: (sum((avg(irate(node_cpu_seconds_total{job=~".*node_exporter.*",mode!="idle"}[5m]))  without(cpu)))  by(instance,team,project,job,app) ) * 100 >85
     for: 5m
     labels:
       severity: warnning
@@ -20,7 +20,7 @@ groups:
       description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} CPU Usage above 85% (current value: {{ $value }})"
 
   - alert: linuxHostCpuUsage100%Alert
-    expr: (sum(avg(irate(node_cpu_seconds_total{job=~".*node_exporter.*",mode!="idle"}[5m])) without(cpu))  by(instance)) * 100 >= 99
+    expr: (sum((avg(irate(node_cpu_seconds_total{job=~".*node_exporter.*",mode!="idle"}[5m]))  without(cpu)))  by(instance,team,project,job,app) ) * 100 >=99
     for: 1m
     labels:
       severity: warnning
@@ -71,7 +71,7 @@ groups:
       severity: warnning
     annotations:
       summary: "Host Disk[5m] Read Capacity High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk[1m] Read Capacity above 60M (device: {{ $labels.device }},value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Read Capacity above 60M (device: {{ $labels.device }},value: {{ $value }})"
 
   - alert: linuxHostDiskWriteCapacityAlert
     expr: irate(node_disk_written_bytes_total[5m]) /1024 /1024 > 60
@@ -80,7 +80,7 @@ groups:
       severity: warnning
     annotations:
       summary: "Host Disk[5m] Write Capacity High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk[1m] Write Capacity above 60M (device: {{ $labels.device }},value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Write Capacity above 60M (device: {{ $labels.device }},value: {{ $value }})"
 
   - alert: linuxHostDiskIOPSReadRateAlert
     expr: irate(node_disk_reads_completed_total{job=~".*node_exporter.*"}[5m]) > 600
@@ -89,7 +89,7 @@ groups:
       severity: warnning
     annotations:
       summary: "Host Disk[5m] IOPS Read Rate High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk[1m] Read IOPS Rate above 600 (device: {{ $labels.device }},value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Read IOPS Rate above 600 (device: {{ $labels.device }},value: {{ $value }})"
 
   - alert: linuxHostDiskIOPSWriteRateAlert
     expr: irate(node_disk_writes_completed_total{job=~".*node_exporter.*"}[5m]) > 600
@@ -98,22 +98,22 @@ groups:
       severity: warnning
     annotations:
       summary: "Host Disk[5m] IOPS Write Rate High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk[1m] Write IOPS Rate above 600 (device: {{ $labels.device }},value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Write IOPS Rate above 600 (device: {{ $labels.device }},value: {{ $value }})"
 
   - alert: linuxHostNetworkReceiveAlert
-    expr: sum(irate(node_network_receive_bytes_total{device!~"tap.*|veth.*|br.*|docker.*|virbr*|lo*"}[5m]) * 8 / 1024 / 1024 ) by(instance)  > 80
+    expr: irate(node_network_receive_bytes_total{device!~"tap.*|veth.*|br.*|docker.*|virbr*|lo*"}[5m]) * 8 / 1024 / 1024 > 80
     for: 5m 
     labels:
       severity: warnning
     annotations:
       summary: "Host Network[5m] Receive Rate High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network[1m] Download rate above 80Mbps (current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Download rate above 80Mbps (current value: {{ $value }})"
 
   - alert: linuxHostNetworkSendAlert
-    expr: sum(irate(node_network_transmit_bytes_total{device!~"tap.*|veth.*|br.*|docker.*|virbr*|lo*"}[5m]) * 8 / 1024 / 1024 ) by(instance)  > 80
+    expr: irate(node_network_transmit_bytes_total{device!~"tap.*|veth.*|br.*|docker.*|virbr*|lo*"}[5m]) * 8 / 1024 / 1024 > 80
     for: 5m 
     labels:
       severity: warnning
     annotations:
       summary: "Host Network[5m] Send Rate High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network[1m] Send rate above 80Mbps (current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Send rate above 80Mbps (current value: {{ $value }})"

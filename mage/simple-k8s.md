@@ -1891,4 +1891,27 @@ spec:
 注：当使用kubectl delete -f test-nginx.yaml应用配置清单时，不会删除pvc(不会删除卷申请模板),从而保留pv,即使pv回收策略是Delete也不会被删除，因为pvc没有被删除
 
 
+#设置nodeport端口范围
+1.[root@k8sMaster01 ~/k8s/addons/dashboard]# vim /etc/kubernetes/manifests/kube-apiserver.yaml 
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    component: kube-apiserver
+    tier: control-plane
+  name: kube-apiserver
+  namespace: kube-system
+spec:
+  containers:
+  - command:
+    - kube-apiserver
+    - --advertise-address=192.168.13.51
+    - --allow-privileged=true
+    - --service-node-port-range=30000-40000 #添加此行，设置端口范围
+2.等待10秒钟apiserver的pod自动重启应用新配置，或者手动删除apiserver的pod,等apiserver自动重建
+[root@k8sMaster01 ~/k8s/addons/dashboard]# kubectl describe pods kube-apiserver-k8smaster01.hs.com -n kube-system | grep service-node-port-range
+      --service-node-port-range=30000-40000
+--上面就是更改后的效果
+
 </pre>
