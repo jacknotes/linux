@@ -729,3 +729,43 @@ restore controlfile from 'ctl_QYL_20130515_67_1';
 }
 
 </pre>
+
+
+<pre>
+#oracle 10g内存调整
+前提：oracle 开启了ASMM(自动共享内存管理)
+如果查看是否开启ASMM：
+sqlplus / as sysdba
+SQL>show parameter statistics_level
+--当结果VALUE是typical或者all是启动ASMM，如果是basic则为关闭ASSMM
+#当确定oracle开启了ASMM，则可以使用如下命令查看分配内存的大小：
+SQL>show parameter sga;
+NAME TYPE VALUE
+------------------------------------ ----------- ------------------------------
+lock_sga boolean FALSE
+pre_page_sga boolean FALSE
+sga_max_size big integer 152M
+sga_target big integer 152M
+--SGA_MAX_SIZE是从oracle9i以来一直存在﹐是不可动态修改的。
+--SGA_TARGET是oracle10g中用于实现自动SGA内存管理而新增加的。
+--SGA_MAX_SIZE指的是可动态分配的最大值﹐而SGA_TARGET是当前已分配的最大sga。
+--SGA_MAX_SIZE是不可以动态修改的，而SGA_TARGET是可动态修改﹐直到SGA_MAX_SIZE的值
+SQL>alter system set sga_max_size=200M scope=spfile;  
+--表示设置sga动态分配内存总大小，在oracle实例启动后生效，作用域是配置文件
+SQL>alter system set sga_target=200M scope=spfile;
+--表示设置当前sga内存的大小，作用域是配置文件，也是在oracle实例启动后生效。
+SQL>alter system set sga_target=100M;
+--表示设置当前sga内存的大小，作用域是所有，表示立即生效，不用在oracle实例启动后生效。这个值不能大于当前sga_max_size的值，也不能太小，设置太小oracle会告警报错。
+
+
+1．ASMM的作用
+从Oracle 10g开始，Oracle提供了自动SGA的管理（简称ASMM，Automatic SharedMemory Management）新特性。所谓ASMM，就是指我们不再需要手工设置shared pool、buffer pool等若干内存池的大小，而是为 SGA 设置一个总的大小尺寸即可。Oracle数据库会根据系统负载变化，自动调整各组件的大小，从而使得内存始终能够流向最需要它的地方。
+例如，假设某个系统在上午10：00到下午9：00属于OLTP应用，因而可能会用到较多的BUFFER CACHE；而下午9：00到上午10：00属于OLAP系统，可能会用到较大的SHARED POOL和LARGE POOL。如果我们启用了ASMM，数据库就会根据负载的变化而自动对内存大小进行调整，就不需要数据库管理员手工进行调整了。
+ 
+2．如何使用ASMM
+Oracle 10g提供了一个新的初始化参数：sga_target来启动ASMM，该参数定义了整个SGA的总容量。同时，初始化参数statistics_level必须设置为typical或all才能启动ASMM，否则如果设置为basic，则关闭ASMM。ASMM只能自动调整5个内存池的大小，它们是：shared pool、buffer cache、large pool、java pool 和stream pool。我 们 不 再 需要 设 置 shared_pool_size、db_cache_size large_pool_size、java_pool_size、streams_pool_size这五个初始化参数。而其他的内存池，比如log buffer、keep buffer cache 等仍然需要DBA手工进行调整。
+
+
+
+</pre>
+
