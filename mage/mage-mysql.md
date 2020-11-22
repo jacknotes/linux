@@ -4090,6 +4090,617 @@ innodb-buffer-pool-size = 8589934592
 sync-binlog = 1  #1表示每有一次事务提交就从内存缓存同步到二进制日志文件中
 log-slave-updates = 1  #multi level copy,多级复制，可以实现多主架构,表示在主1中插入一条数据时，此时主2会通过IO线程从主1上复制二进制日志到relay-log和binlog中，如果不开启这个，则只会同步到relay-log中，这样一台如果主2有一节点为从，则从节点无法同步主1上改变的二进制内容，如果用户请求正好被高度到主2的从节点时，则此请求不会被正确处理。
 
+</pre>
+
+#Mysql Backup
+<pre>
+数据库还原最好不要改数据库名称，因为mysql使用binlog还原时会找最原始的数据库，你改完数据库名称再用binlog还原会失败，
+可以在binlog还原后再改回来，如果执行到一半提示数据库名称不正确，可使用下面脚本改回数据库原始名称：
+-----------Change_DBname_Shell----------
+#!/bin/bash
+SDB="'jack123'"
+DDB=jack
+USER=root
+PASSWORD=homsom
+SQL="select table_name from information_schema.TABLES where TABLE_SCHEMA=${SDB}"
+list_table=$(mysql -u${USER} -p${PASSWORD} -Nse "${SQL}")
+
+mysql -u${USER} -p${PASSWORD} -e "create database if not exists ${DDB}"
+for table in $list_table
+do
+    mysql -u${USER} -p${PASSWORD} -e "rename table `echo ${SDB} | sed s"/'//"g`.$table to ${DDB}.$table"
+done
+----------------------------------------
+#binlog还原一定要在mysql命令行中执行，不要在shell中执行。mysql完全备份可以在shell和mysql命令行中执行
+#从多个数据库的备份文件中提取一个数据库(例如数据库为test1)文件进行恢复
+sed -n '/^-- Current Database: `test1`/,/^-- Current Database: `/p' Fat_Full-20201121-180137.sql > test1_db.sql
+#提取出来后恢复时更改数据库名称进行恢复
+sed -i 's/USE `test1`/USE `jack`/g' test1_db.sql
+
+从binlog日志文件中只恢复jack增量部分
+CHANGE MASTER TO MASTER_LOG_FILE='master-bin.000128', MASTER_LOG_POS=6643;
+[root@test /data/backup]# mysqlbinlog --no-defaults --start-position=6643 master-bin.000128 > jack_increment.sql
+[root@test /data/backup]# grep 'create database' jack_increment.sql
+create database jack2
+#将binlog日志中新建数据库注解掉，以免造成回滚binlog日志时多创建了数据库，恢复其它库数据，视情况而定
+[root@test /data/backup]# sed -i 's/^create database/#create database/g' jack_increment.sql
+[root@test /data/backup]# grep 'create database' jack_increment.sql
+#create database jack2
+mysql> source /data/backup/jack_increment.sql   #回放binlog只是覆盖已有数据创建新数据而已。
+#############事务数据库测试
+create database transaction;
+use transaction;
+CREATE TABLE `user` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `name` varchar(50) DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4;
+insert into user (name) values ('jack');
+insert into transaction.user (name) values ('jack');
+start transaction;
+insert into transaction.user (name) values ('test');
+select * from user;
++----+------+
+| id | name |
++----+------+
+|  1 | jack |
+|  2 | jack |
++----+------+
+commit;
+select * from user;
++----+------+
+| id | name |
++----+------+
+|  1 | jack |
+|  2 | jack |
+|  3 | test |
++----+------+
+delete from transaction.user where id=3;
+select * from user;
++----+------+
+| id | name |
++----+------+
+|  1 | jack |
+|  2 | jack |
++----+------+
+insert into transaction.user (name) values ('test234');
+select * from user;
++----+---------+
+| id | name    |
++----+---------+
+|  1 | jack    |
+|  2 | jack    |
+|  4 | test234 |
++----+---------+
+start transaction;
+insert into transaction.user (name) values ('test345');
+mysql> select * from transaction.user;  #启动事务未提交事务的终端所查看的结果
++----+---------+
+| id | name    |
++----+---------+
+|  1 | jack    |
+|  2 | jack    |
+|  4 | test234 |
+|  5 | test345 |
++----+---------+
+select * from user;  #其它终端所查看的结果
++----+---------+
+| id | name    |
++----+---------+
+|  1 | jack    |
+|  2 | jack    |
+|  4 | test234 |
++----+---------+
+#第一次完全备份
+insert into transaction.user (name) values ('test456');
+select * from user;
++----+---------+
+| id | name    |
++----+---------+
+|  1 | jack    |
+|  2 | jack    |
+|  4 | test234 |
+|  6 | test456 |
++----+---------+
+#第二次完全备份
+mysql> insert into transaction.user (name) values ('test789');
+select * from user;
++----+---------+
+| id | name    |
++----+---------+
+|  1 | jack    |
+|  2 | jack    |
+|  4 | test234 |
+|  6 | test456 |
+|  7 | test789 |
++----+---------+
+show binary logs;
++-------------------+-----------+
+| Log_name          | File_size |
++-------------------+-----------+
+| master-bin.000134 |      2618 |
++-------------------+-----------+
+flush logs;
+show binary logs;
++-------------------+-----------+
+| Log_name          | File_size |
++-------------------+-----------+
+| master-bin.000134 |      2666 |
+| master-bin.000135 |       154 |
++-------------------+-----------+
+[root@test /data/backup]# cp /data/mysql/master-bin.000134 .
+#第一次增量备份
+insert into transaction.user (name) values ('test000');
+select * from user;
++----+---------+
+| id | name    |
++----+---------+
+|  1 | jack    |
+|  2 | jack    |
+|  4 | test234 |
+|  6 | test456 |
+|  7 | test789 |
+|  8 | test000 |
++----+---------+
+commit； #前面未提交的事务进行提交
+select * from transaction.user;  #提交事务终端和其它终端都可以看到此结果
++----+---------+
+| id | name    |
++----+---------+
+|  1 | jack    |
+|  2 | jack    |
+|  4 | test234 |
+|  5 | test345 |
+|  6 | test456 |
+|  7 | test789 |
+|  8 | test000 |
++----+---------+
+mysql> show binary logs;
++-------------------+-----------+
+| Log_name          | File_size |
++-------------------+-----------+
+| master-bin.000134 |      2666 |
+| master-bin.000135 |       714 |
++-------------------+-----------+
+flush logs;
+show binary logs;
++-------------------+-----------+
+| Log_name          | File_size |
++-------------------+-----------+
+| master-bin.000134 |      2666 |
+| master-bin.000135 |       762 |
+| master-bin.000136 |       154 |
++-------------------+-----------+
+[root@test /data/backup]# cp /data/mysql/master-bin.000135 .
+#第二次增量备份
+####经过binlog还原测试得出结论：当事务未提交是不会写入到binlog文件中，所以当我们用第一次增量文件还原binlog数据时事务没有提交，所以没有写入到第一次的binlog文件。
+####当第二次binlog还原时，之前的事务已经提交，并且事务改变了数据库，从而写入到第二次binlog文件中了，当我们使用第二次增量文件恢复时所以恢复了提交的事务结果。
+
+
+
+-----FULL_BACKUP_ALLDB_AND_BINLOG_Shell-----
+[root@test /data]# cat shell/mysql/v2/mysql_full_backup_allDB_and_binlog.sh 
+#!/bin/bash  
+#Describe: Shell Script For Backup MySQL Database Everyday Automatically By Crontab  
+#Type: Multi_Or_ALL_Database_Full_Backup
+#Duthor: JackLi
+#Date: 2020-11-22
+   
+ENV=Pro
+TYPE=Full
+USER=root  
+HOSTNAME="localhost"  
+PASSWORD="homsom"  
+#DATABASE="jack jackli test1 test2 test3 test4"  
+DATABASE="all-databases"   #所有数据库备份
+IPADDR=`ip add show | grep 192 | awk '{print $2}' | awk -F '/' '{print $1}'`
+BACKUP_DIR=/data/jackbackup  #备份文件存储路径  
+LOGFILE=${BACKUP_DIR}/mysql_backup.log #日记文件路径  
+MYSQL_CONF=/etc/my.cnf   #mysql配置文件路径
+MYSQL_BOOT_SHELL=/etc/init.d/mysqld  #mysql启动脚本
+MYSQL_CONF_NAME=`basename ${MYSQL_CONF}`   #mysql配置文件名称
+MYSQL_BOOT_SHELL_NAME=`basename ${MYSQL_BOOT_SHELL}`  #mysql启动脚本名称
+DATE=`date '+%Y%m%d_%H%M%S'` #日期格式（作为文件名）  
+DATE_YEAR=`date '+%Y'`
+DATE_MONTH=`date '+%m'`
+FORMAT=${ENV}_${TYPE}_${DATE}
+BACKUP_DIR_CHILD="${DATE_YEAR}/${DATE_MONTH}/${FORMAT}"
+DUMPFILE=${FORMAT}.sql #备份文件名  
+DUMPFILE_INFO=${FORMAT}.sql.info #备份数据库信息名称  
+ARCHIVE=${FORMAT}.tar.gz #压缩文件名  
+MYSQL_DATADIR=`mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e "show global variables like 'datadir';" | awk '{print $2}' | tail -n 1`
+MYSQL_BINLOG_BASENAME="dirname `mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e "show global variables like 'log_bin_basename';" | awk '{print $2}' | tail -n 1`"
+MYSQL_BINLOG_INDEX=`mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e "show global variables like 'log_bin_index';" | awk '{print $2}' | tail -n 1`
+INNODB_VERSION=`mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e "show global variables like 'innodb_version';" | awk '{print $2}' | tail -n 1`
+BASE_DIR=`mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e "show global variables like 'basedir';" | awk '{print $2}' | tail -n 1`
+OPT='--single-transaction --flush-logs --master-data=2 --all-databases'
+#OPT="--single-transaction --master-data=2 --flush-logs --databases ${DATABASE}"
+OPTIONS="-h${HOSTNAME} -u${USER} -p${PASSWORD} ${OPT}"    
+
+##判断备份文件存储目录和二进制存储目录是否存在，否则创建该目录  
+if [ ! -d "${BACKUP_DIR}/${BACKUP_DIR_CHILD}" ]; then mkdir -p "${BACKUP_DIR}/${BACKUP_DIR_CHILD}"; fi
+
+#开始备份之前，将备份信息头写入日记文件   
+echo "———————————————–————————————————————————" >> $LOGFILE  
+echo "BACKUP DATETIME: "${DATE} >> $LOGFILE  
+echo "———————————————–————————————————————–———" >> $LOGFILE  
+
+#使用mysqldump 命令备份制定数据库，并以格式化的时间戳命名备份文件  
+cd ${BACKUP_DIR}/${BACKUP_DIR_CHILD} && echo "Full_Backup_Databases: ${DATABASE}.........." >> $LOGFILE
+
+#开始备份
+mysqldump ${OPTIONS} > ${DUMPFILE} 2> /dev/null 
+
+#判断数据库备份是否成功  
+if [[ $? == 0 ]]; then  
+    echo "Full_Backup_Databases: Success" >> $LOGFILE
+
+    #存放binlog文件名变量数组
+    VAR_BINLOG_NAME_LONG=(`cat ${MYSQL_BINLOG_INDEX} | sed "s#^.#$(${MYSQL_BINLOG_BASENAME})#g" | sort | head -n -1`)
+    VAR_BINLOG_NAME_SHORT=(`cat ${MYSQL_BINLOG_INDEX} | sed "s#^./##g" | sort | head -n -1`)
+
+    #对binlog进行存档
+    echo "Copy_Mysql_Binlog_To_Bakcup_Binlogs_Dir.........." >> ${LOGFILE}  
+    for i in `seq 0 ${#VAR_BINLOG_NAME_LONG[*]}`;do
+	if [ "${i}" != "${#VAR_BINLOG_NAME_LONG[*]}" ];then
+    		\cp -ar ${VAR_BINLOG_NAME_LONG[$[i]]} ${VAR_BINLOG_NAME_SHORT[${i}]}_${FORMAT}
+	fi
+    done
+
+    #删除之前旧binlog
+    if [[ $? == 0 ]]; then  
+    	echo "Copy_Mysql_Binlog_To_Bakcup_Binlogs_Dir: Success" >> ${LOGFILE}  
+        PURGE_BINARY_LOGS="purge binary logs to `mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e 'show binary logs;' | tail -n 1 | awk '{print $1}'`"
+        PURGE_BINARY_LOGS_RESULT=`echo ${PURGE_BINARY_LOGS} | sed -e 's/to /to \"/g' | sed -e 's/$/\"/g'`
+	echo "Delete_Old_Binlog.........." >> ${LOGFILE}
+        mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e "${PURGE_BINARY_LOGS_RESULT}"
+	[ $? == 0 ] && echo "Delete_Old_Binlog: Success" >> ${LOGFILE} || echo "Delete_Old_Binlog: Failure" >> ${LOGFILE} 
+    else
+    	echo "Copy_Mysql_Binlog_To_Bakcup_Binlogs_Dir: Failure" >> ${LOGFILE}  
+    fi
+
+    #对配置文件和启动脚本进行存档
+    echo "Copy_Mysql_Config_File_and_Boot_Shell_To_Bakcup_Dir.........." >> ${LOGFILE}  
+    \cp -ar ${MYSQL_CONF} ${BACKUP_DIR}/${BACKUP_DIR_CHILD}/${FORMAT}_${MYSQL_CONF_NAME}  && \cp -ar ${MYSQL_BOOT_SHELL} ${BACKUP_DIR}/${BACKUP_DIR_CHILD}/${FORMAT}_${MYSQL_BOOT_SHELL_NAME}
+    [ $? == 0 ] && echo "Copy_Mysql_Config_File_and_Boot_Shell_To_Bakcup_Dir: Success" >> ${LOGFILE} || echo "Copy_Mysql_Config_File_and_Boot_Shell_To_Bakcup_Dir: Failure" >> ${LOGFILE} 
+
+    #写入信息到文件
+    echo "———————————————–————————————————————————" >> ${DUMPFILE_INFO}
+    echo "MYSQL_INFO" >> ${DUMPFILE_INFO}
+    echo "———————————————–————————————————————–———" >> ${DUMPFILE_INFO}
+    echo "BACKUP_HOST: ${IPADDR}" >> ${DUMPFILE_INFO}
+    echo "BACKUP_ENV: ${ENV}" >> ${DUMPFILE_INFO}
+    echo "BACKUP_TYPE: ${TYPE}" >> ${DUMPFILE_INFO}
+    echo "BACKUP_DATABASE: ${DATABASE[@]}" >> ${DUMPFILE_INFO}
+    echo "BACKUP_DATABASE_VERSION: ${INNODB_VERSION}" >> ${DUMPFILE_INFO}
+    echo "BACKUP_DATABASE_BASE_DIR: ${BASE_DIR}" >> ${DUMPFILE_INFO}
+    echo "BACKUP_DATABASE_DATA_DIR: ${MYSQL_DATADIR}" >> ${DUMPFILE_INFO}
+    echo "BACKUP_DATABASE_CONF: ${MYSQL_CONF}" >> ${DUMPFILE_INFO}
+    echo "BACKUP_DATABASE_START_SHELL: ${MYSQL_BOOT_SHELL}" >> ${DUMPFILE_INFO}
+    echo "  " >> ${DUMPFILE_INFO}
+    echo "———————————————–————————————————————————" >> ${DUMPFILE_INFO}
+    echo "MYSQL_BACKUP_LOG" >> ${DUMPFILE_INFO}
+    sed -n "/${DATE}/,/Bakcup_Dir:/p" ${LOGFILE} >> ${DUMPFILE_INFO}
+
+    #创建备份文件的压缩包  
+    echo "Create_Compression_File.........." >> ${LOGFILE}  
+    cd .. && tar czf ${ARCHIVE} ${FORMAT} >& /dev/null 
+    #判断压缩是否成功
+    if [ $? == 0 ];then
+	echo "Create_Compression_File: Success" >> ${LOGFILE}
+    	#删除原始备份文件，只需保留数据库备份文件的压缩包即可  
+	echo "Delete_Source_Backup_files.........." >> ${LOGFILE}
+    	rm -rf ${FORMAT}
+	[ $? == 0 ] && echo "Delete_Source_Backup_files: Success" >> ${LOGFILE} || echo "Delete_Source_Backup_files: Failure" >> ${LOGFILE}
+    	echo "[${ARCHIVE}] Backup_Succeed!" >> ${LOGFILE} 
+    else
+	echo "Create_Compression_File: Failure" >> ${LOGFILE}
+	echo "[${ARCHIVE}] Backup_Failure!" >> ${LOGFILE} 
+    fi
+else  
+    echo "[${DUMPFILE}] Database_Backup_Failure!" >> ${LOGFILE}  
+fi  
+
+#输出备份过程结束的提醒消息  
+echo "Backup_Process_Done" >> ${LOGFILE}
+echo "  " >> ${LOGFILE}  
+-----------FULL_BACKUP_ALLDB_Shell----------
+[root@test /data]# cat mysql_full_backup_allDB.sh
+#!/bin/bash  
+#Describe: Shell Script For Backup MySQL Database Everyday Automatically By Crontab  
+#Type: Multi_Or_ALL_Database_Full_Backup
+#Duthor: JackLi
+#Date: 2020-11-22
+   
+ENV=Pro
+TYPE=Full
+USER=root  
+HOSTNAME="localhost"  
+PASSWORD="homsom"  
+#DATABASE="jack jackli test1 test2 test3 test4"  
+DATABASE="all-databases"   #所有数据库备份
+IPADDR=`ip add show | grep 192 | awk '{print $2}' | awk -F '/' '{print $1}'`
+BACKUP_DIR=/data/jackbackup  #备份文件存储路径  
+LOGFILE=${BACKUP_DIR}/mysql_backup.log #日记文件路径  
+MYSQL_CONF=/etc/my.cnf   #mysql配置文件路径
+MYSQL_BOOT_SHELL=/etc/init.d/mysqld  #mysql启动脚本
+MYSQL_CONF_NAME=`basename ${MYSQL_CONF}`   #mysql配置文件名称
+MYSQL_BOOT_SHELL_NAME=`basename ${MYSQL_BOOT_SHELL}`  #mysql启动脚本名称
+DATE=`date '+%Y%m%d_%H%M%S'` #日期格式（作为文件名）  
+DATE_YEAR=`date '+%Y'`
+DATE_MONTH=`date '+%m'`
+FORMAT=${ENV}_${TYPE}_${DATE}
+BACKUP_DIR_CHILD="${DATE_YEAR}/${DATE_MONTH}/${FORMAT}"
+DUMPFILE=${FORMAT}.sql #备份文件名  
+DUMPFILE_INFO=${FORMAT}.sql.info #备份数据库信息名称  
+ARCHIVE=${FORMAT}.tar.gz #压缩文件名  
+MYSQL_DATADIR=`mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e "show global variables like 'datadir';" | awk '{print $2}' | tail -n 1`
+INNODB_VERSION=`mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e "show global variables like 'innodb_version';" | awk '{print $2}' | tail -n 1`
+BASE_DIR=`mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e "show global variables like 'basedir';" | awk '{print $2}' | tail -n 1`
+OPT='--single-transaction --master-data=2 --all-databases'
+#OPT="--single-transaction --master-data=2 --flush-logs --databases ${DATABASE}"
+OPTIONS="-h${HOSTNAME} -u${USER} -p${PASSWORD} ${OPT}"    
+
+##判断备份文件存储目录和二进制存储目录是否存在，否则创建该目录  
+if [ ! -d "${BACKUP_DIR}/${BACKUP_DIR_CHILD}" ]; then mkdir -p "${BACKUP_DIR}/${BACKUP_DIR_CHILD}"; fi
+
+#开始备份之前，将备份信息头写入日记文件   
+echo "———————————————–————————————————————————" >> $LOGFILE  
+echo "BACKUP DATETIME: "${DATE} >> $LOGFILE  
+echo "———————————————–————————————————————–———" >> $LOGFILE  
+
+#使用mysqldump 命令备份制定数据库，并以格式化的时间戳命名备份文件  
+cd ${BACKUP_DIR}/${BACKUP_DIR_CHILD} && echo "Full_Backup_Databases: ${DATABASE}.........." >> $LOGFILE
+
+#开始备份
+mysqldump ${OPTIONS} > ${DUMPFILE} 2> /dev/null 
+
+#判断数据库备份是否成功  
+if [[ $? == 0 ]]; then  
+    echo "Full_Backup_Databases: Success" >> $LOGFILE
+
+    #对配置文件和启动脚本进行存档
+    echo "Copy_Mysql_Config_File_and_Boot_Shell_To_Bakcup_Dir.........." >> ${LOGFILE}  
+    \cp -ar ${MYSQL_CONF} ${BACKUP_DIR}/${BACKUP_DIR_CHILD}/${FORMAT}_${MYSQL_CONF_NAME}  && \cp -ar ${MYSQL_BOOT_SHELL} ${BACKUP_DIR}/${BACKUP_DIR_CHILD}/${FORMAT}_${MYSQL_BOOT_SHELL_NAME}
+    [ $? == 0 ] && echo "Copy_Mysql_Config_File_and_Boot_Shell_To_Bakcup_Dir: Success" >> ${LOGFILE} || echo "Copy_Mysql_Config_File_and_Boot_Shell_To_Bakcup_Dir: Failure" >> ${LOGFILE} 
+
+    #写入信息到文件
+    echo "———————————————–————————————————————————" >> ${DUMPFILE_INFO}
+    echo "MYSQL_INFO" >> ${DUMPFILE_INFO}
+    echo "———————————————–————————————————————–———" >> ${DUMPFILE_INFO}
+    echo "BACKUP_HOST: ${IPADDR}" >> ${DUMPFILE_INFO}
+    echo "BACKUP_ENV: ${ENV}" >> ${DUMPFILE_INFO}
+    echo "BACKUP_TYPE: ${TYPE}" >> ${DUMPFILE_INFO}
+    echo "BACKUP_DATABASE: ${DATABASE[@]}" >> ${DUMPFILE_INFO}
+    echo "BACKUP_DATABASE_VERSION: ${INNODB_VERSION}" >> ${DUMPFILE_INFO}
+    echo "BACKUP_DATABASE_BASE_DIR: ${BASE_DIR}" >> ${DUMPFILE_INFO}
+    echo "BACKUP_DATABASE_DATA_DIR: ${MYSQL_DATADIR}" >> ${DUMPFILE_INFO}
+    echo "BACKUP_DATABASE_CONF: ${MYSQL_CONF}" >> ${DUMPFILE_INFO}
+    echo "BACKUP_DATABASE_START_SHELL: ${MYSQL_BOOT_SHELL}" >> ${DUMPFILE_INFO}
+    echo "  " >> ${DUMPFILE_INFO}
+    echo "———————————————–————————————————————————" >> ${DUMPFILE_INFO}
+    echo "MYSQL_BACKUP_LOG" >> ${DUMPFILE_INFO}
+    sed -n "/${DATE}/,/Bakcup_Dir:/p" ${LOGFILE} >> ${DUMPFILE_INFO}
+
+    #创建备份文件的压缩包  
+    echo "Create_Compression_File.........." >> ${LOGFILE}  
+    cd .. && tar czf ${ARCHIVE} ${FORMAT} >& /dev/null 
+    #判断压缩是否成功
+    if [ $? == 0 ];then
+	echo "Create_Compression_File: Success" >> ${LOGFILE}
+    	#删除原始备份文件，只需保留数据库备份文件的压缩包即可  
+	echo "Delete_Source_Backup_files.........." >> ${LOGFILE}
+    	rm -rf ${FORMAT}
+	[ $? == 0 ] && echo "Delete_Source_Backup_files: Success" >> ${LOGFILE} || echo "Delete_Source_Backup_files: Failure" >> ${LOGFILE}
+    	echo "[${ARCHIVE}] Backup_Succeed!" >> ${LOGFILE} 
+    else
+	echo "Create_Compression_File: Failure" >> ${LOGFILE}
+	echo "[${ARCHIVE}] Backup_Failure!" >> ${LOGFILE} 
+    fi
+else  
+    echo "[${DUMPFILE}] Database_Backup_Failure!" >> ${LOGFILE}  
+fi  
+
+#输出备份过程结束的提醒消息  
+echo "Backup_Process_Done" >> ${LOGFILE}
+echo "  " >> ${LOGFILE} 
+-----------FULL_BACKUP_SingleDB_Shell----------
+[root@test /data]# cat mysql_full_backup_singleDB.sh 
+#!/bin/bash  
+#Describe: Shell Script For Backup MySQL Database Everyday Automatically By Crontab  
+#Type: Single_Database_Full_Backup
+#Author: JackLi
+#Date: 2020-11-22
+#set -e
+   
+ENV=Pro
+TYPE=Full
+USER=root  
+HOSTNAME="localhost"  
+PASSWORD="homsom"  
+DATABASE=(transaction)
+IPADDR=`ip add show | grep 192 | awk '{print $2}' | awk -F '/' '{print $1}'`
+BACKUP_DIR=/data/jackbackup  #备份文件存储路径  
+LOGFILE=${BACKUP_DIR}/mysql_backup.log #日记文件路径  
+MYSQL_CONF=/etc/my.cnf   #mysql配置文件路径
+MYSQL_BOOT_SHELL=/etc/init.d/mysqld  #mysql启动脚本路径
+MYSQL_CONF_NAME=`basename ${MYSQL_CONF}`   #mysql配置文件名称
+MYSQL_BOOT_SHELL_NAME=`basename ${MYSQL_BOOT_SHELL}`  #mysql启动脚本名称
+DATE=`date '+%Y%m%d_%H%M%S'` #日期格式（作为文件名）  
+DATE_YEAR=`date '+%Y'`
+DATE_MONTH=`date '+%m'`
+FORMAT=${ENV}_${TYPE}_${DATE}
+BACKUP_DIR_CHILD="${DATE_YEAR}/${DATE_MONTH}/${FORMAT}"
+DUMPFILE_INFO=${FORMAT}.sql.info #备份数据库信息名称  
+MYSQL_DATADIR=`mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e "show global variables like 'datadir';" | awk '{print $2}' | tail -n 1`
+INNODB_VERSION=`mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e "show global variables like 'innodb_version';" | awk '{print $2}' | tail -n 1`
+BASE_DIR=`mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e "show global variables like 'basedir';" | awk '{print $2}' | tail -n 1`
+OPT="--single-transaction --master-data=2 --databases "
+OPTIONS="-h${HOSTNAME} -u${USER} -p${PASSWORD} ${OPT}"    
+
+##判断备份文件存储目录和二进制存储目录是否存在，否则创建该目录  
+if [ ! -d "${BACKUP_DIR}/${BACKUP_DIR_CHILD}" ]; then mkdir -p "${BACKUP_DIR}/${BACKUP_DIR_CHILD}"; fi
+cd ${BACKUP_DIR}/${BACKUP_DIR_CHILD}
+
+#开始备份之前，将备份信息头写入日记文件   
+echo "———————————————–————————————————————————" >> $LOGFILE  
+echo "BACKUP DATETIME:" ${DATE} >> $LOGFILE  
+echo "———————————————–————————————————————–———" >> $LOGFILE  
+
+#开始备份
+for i in `seq 0 ${#DATABASE[*]}`;do
+	if [ ${i} != ${#DATABASE[*]} ];then
+		DUMPFILE=${FORMAT}_${DATABASE[${i}]}.sql #备份文件名  
+		echo "Full_Backup_Databases: ${DATABASE[${i}]}.........." >> $LOGFILE
+		mysqldump ${OPTIONS} ${DATABASE[${i}]} > ${DUMPFILE} 2> /dev/null 
+		#判断数据库备份是否成功  
+		if [[ $? == 0 ]]; then  
+    		echo "Full_Backup_Databases ${DATABASE[${i}]}: Success" >> $LOGFILE
+		else  
+    		echo "Full_Backup_Databases ${DATABASE[${i}]}: Falure" >> ${LOGFILE}  
+		fi  
+	fi
+done
+
+#对配置文件和启动脚本进行存档
+echo "Copy_Mysql_Config_File_and_Boot_Shell_To_Bakcup_Dir.........." >> ${LOGFILE}  
+\cp -ar ${MYSQL_CONF} ${BACKUP_DIR}/${BACKUP_DIR_CHILD}/${FORMAT}_${MYSQL_CONF_NAME}  && \cp -ar ${MYSQL_BOOT_SHELL} ${BACKUP_DIR}/${BACKUP_DIR_CHILD}/${FORMAT}_${MYSQL_BOOT_SHELL_NAME}
+[ $? == 0 ] && echo "Copy_Mysql_Config_File_and_Boot_Shell_To_Bakcup_Dir: Success" >> ${LOGFILE} || echo "Copy_Mysql_Config_File_and_Boot_Shell_To_Bakcup_Dir: Failure" >> ${LOGFILE} 
+
+#写入信息到文件
+echo "———————————————–————————————————————————" >> ${DUMPFILE_INFO}
+echo "MYSQL_INFO" >> ${DUMPFILE_INFO}
+echo "———————————————–————————————————————–———" >> ${DUMPFILE_INFO}
+echo "BACKUP_HOST: ${IPADDR}" >> ${DUMPFILE_INFO}
+echo "BACKUP_ENV: ${ENV}" >> ${DUMPFILE_INFO}
+echo "BACKUP_TYPE: ${TYPE}" >> ${DUMPFILE_INFO}
+echo "BACKUP_DATABASE: ${DATABASE[@]}" >> ${DUMPFILE_INFO}
+echo "BACKUP_DATABASE_VERSION: ${INNODB_VERSION}" >> ${DUMPFILE_INFO}
+echo "BACKUP_DATABASE_BASE_DIR: ${BASE_DIR}" >> ${DUMPFILE_INFO}
+echo "BACKUP_DATABASE_DATA_DIR: ${MYSQL_DATADIR}" >> ${DUMPFILE_INFO}
+echo "BACKUP_DATABASE_CONF: ${MYSQL_CONF}" >> ${DUMPFILE_INFO}
+echo "BACKUP_DATABASE_START_SHELL: ${MYSQL_BOOT_SHELL}" >> ${DUMPFILE_INFO}
+echo "  " >> ${DUMPFILE_INFO}
+echo "———————————————–————————————————————————" >> ${DUMPFILE_INFO}
+echo "MYSQL_BACKUP_LOG" >> ${DUMPFILE_INFO}
+sed -n "/${DATE}/,/Bakcup_Dir:/p" ${LOGFILE} >> ${DUMPFILE_INFO}
+
+#创建备份文件的压缩包  
+echo "Create_Compression_File.........." >> ${LOGFILE}  
+ARCHIVE=${FORMAT}.tar.gz #压缩文件名  
+cd .. && tar czf ${ARCHIVE} ${FORMAT} >& /dev/null 
+#判断压缩是否成功  
+if [ $? == 0 ];then
+	echo "Create_Compression_File: Success" >> ${LOGFILE}
+    	#删除原始备份文件，只需保留数据库备份文件的压缩包即可  
+	echo "Delete_Source_Backup_files.........." >> ${LOGFILE}
+	rm -rf ${FORMAT}
+	[ $? == 0 ] && echo "Delete_Source_Backup_files: Success" >> ${LOGFILE} || echo "Delete_Source_Backup_files: Failure" >> ${LOGFILE}
+	echo "[${ARCHIVE}] Backup_Succeed!" >> ${LOGFILE} 
+else
+	echo "Create_Compression_File: Failure" >> ${LOGFILE}
+	echo "[${ARCHIVE}] Backup_Failure!" >> ${LOGFILE} 
+fi
+
+#输出备份过程结束的提醒消息  
+echo "Backup_Process_Done" >> ${LOGFILE}
+echo "  " >> ${LOGFILE}  
+-----------INCREMENT_BACKUP_ALLDB_Shell----------
+[root@test /data]# cat mysql_increment_backup.sh 
+#!/bin/bash
+#Describe: Shell Command For Backup MySQL Database Everyday Automatically By Crontab  
+#Type: Increment Backup
+#Author: JackLi
+#Date: 2020-11-22
+
+export LANG=en_US.UTF-8
+
+ENV=Pro
+TYPE=Increment
+USER=root
+HOSTNAME="localhost"
+PASSWORD="homsom"
+BACKUP_DIR=/data/jackbackup  #备份文件存储路径  
+LOGFILE=${BACKUP_DIR}/mysql_backup.log #日记文件路径  
+DATE=`date '+%Y%m%d_%H%M%S'` #日期格式（作为文件名）  
+DATE_YEAR=`date '+%Y'`
+DATE_MONTH=`date '+%m'`
+FORMAT=${ENV}_${TYPE}_${DATE}
+BACKUP_DIR_CHILD="${DATE_YEAR}/${DATE_MONTH}/${FORMAT}"
+DUMPFILE_INFO=${FORMAT}.sql.info #备份数据库信息名称  
+ARCHIVE=${FORMAT}.tar.gz #压缩文件名  
+MYSQL_BINLOG_INDEX=`mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e "show global variables like 'log_bin_index';" | awk '{print $2}' | tail -n 1`
+MYSQL_BINLOG_BASENAME="dirname `mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e "show global variables like 'log_bin_basename';" | awk '{print $2}' | tail -n 1`"
+
+##判断备份文件存储目录和二进制存储目录是否存在，否则创建该目录  
+if [ ! -d "${BACKUP_DIR}/${BACKUP_DIR_CHILD}" ]; then mkdir -p "${BACKUP_DIR}/${BACKUP_DIR_CHILD}"; fi
+
+#开始备份之前，将备份信息头写入日记文件   
+echo "———————————————–————————————————————————" >> $LOGFILE
+echo "BACKUP DATETIME: "${DATE} >> $LOGFILE
+echo "———————————————–————————————————————–———" >> $LOGFILE
+
+#对binlog进行存档
+cd ${BACKUP_DIR}/${BACKUP_DIR_CHILD} && echo "Increment_Backup_Databases.........." >> $LOGFILE
+
+#mysql日志切割
+mysqladmin -h${HOSTNAME} -u${USER} -p${PASSWORD} flush-logs 2> /dev/null
+if [[ $? == 0 ]]; then
+    #存放binlog文件名变量数组
+    VAR_BINLOG_NAME_LONG=(`cat ${MYSQL_BINLOG_INDEX} | sed "s#^.#$(${MYSQL_BINLOG_BASENAME})#g" | sort | head -n -1`)
+    VAR_BINLOG_NAME_SHORT=(`cat ${MYSQL_BINLOG_INDEX} | sed "s#^./##g" | sort | head -n -1`)
+
+    #循环复制binlog日志到备份目录
+    echo "Copy_Binlog_To_BackupDir.........." >> $LOGFILE
+    for i in `seq 0 ${#VAR_BINLOG_NAME_LONG[*]}`;do
+        if [ "${i}" != "${#VAR_BINLOG_NAME_LONG[*]}" ];then
+                \cp -ar ${VAR_BINLOG_NAME_LONG[$[i]]} ${VAR_BINLOG_NAME_SHORT[${i}]}_${FORMAT}
+        fi
+    done
+
+    #删除之前旧binlog
+    if [[ $? == 0 ]]; then
+        echo "Copy_Binlog_To_BackupDir: Success" >> $LOGFILE
+        PURGE_BINARY_LOGS="purge binary logs to `mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e 'show binary logs;' | tail -n 1 | awk '{print $1}'`"
+        PURGE_BINARY_LOGS_RESULT=`echo ${PURGE_BINARY_LOGS} | sed -e 's/to /to \"/g' | sed -e 's/$/\"/g'`
+        echo "Delete_Old_Binlog.........." >> ${LOGFILE}
+        mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e "${PURGE_BINARY_LOGS_RESULT}"
+        if [[ $? == 0 ]];then
+	    echo "Delete_Old_Binlog: Success" >> ${LOGFILE} 
+	else
+	    echo "Delete_Old_Binlog: Failure" >> ${LOGFILE}
+        fi
+    else
+        echo "Copy_Binlog_To_BackupDir: Failure" >> $LOGFILE
+    fi
+
+    #创建备份文件的压缩包  
+    echo "Create_Compression_File.........." >> ${LOGFILE}
+    cd .. && tar czf ${ARCHIVE} ${FORMAT} >& /dev/null
+
+    #判断压缩是否成功
+    if [ $? == 0 ];then
+        echo "Create_Compression_File: Success" >> ${LOGFILE}
+
+        #删除原始备份文件，只需保留数据库备份文件的压缩包即可  
+        echo "Delete_Source_Backup_files.........." >> ${LOGFILE}
+        rm -rf ${FORMAT}
+        if [ $? == 0 ];then
+	    echo "Delete_Source_Backup_files: Success" >> ${LOGFILE} 
+            echo "[${ARCHIVE}] Backup_Succeed!" >> ${LOGFILE}
+            echo "Increment_Backup_Databases: Success" >> $LOGFILE
+	else 
+	    echo "Delete_Source_Backup_files: Failure" >> ${LOGFILE}
+        fi
+    else
+        echo "Create_Compression_File: Failure" >> ${LOGFILE}
+        echo "[${ARCHIVE}] Backup_Failure!" >> ${LOGFILE}
+    fi
+else
+    echo "Increment_Backup_Databases: Failure" >> $LOGFILE
+fi
+----------------------------------------
+
 
 
 </pre>
