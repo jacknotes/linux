@@ -4285,6 +4285,8 @@ show binary logs;
 #Type: Multi_Or_ALL_Database_Full_Backup
 #Duthor: JackLi
 #Date: 2020-11-22
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/usr/local/mysql/bin
+export LANG=en_US.UTF-8
    
 ENV=Pro
 TYPE=Full
@@ -4411,7 +4413,9 @@ echo "  " >> ${LOGFILE}
 #Type: Multi_Or_ALL_Database_Full_Backup
 #Duthor: JackLi
 #Date: 2020-11-22
-   
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/usr/local/mysql/bin
+export LANG=en_US.UTF-8
+ 
 ENV=Pro
 TYPE=Full
 USER=root  
@@ -4512,6 +4516,8 @@ echo "  " >> ${LOGFILE}
 #Author: JackLi
 #Date: 2020-11-22
 #set -e
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/usr/local/mysql/bin
+export LANG=en_US.UTF-8
    
 ENV=Pro
 TYPE=Full
@@ -4612,7 +4618,7 @@ echo "  " >> ${LOGFILE}
 #Type: Increment Backup
 #Author: JackLi
 #Date: 2020-11-22
-
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/usr/local/mysql/bin
 export LANG=en_US.UTF-8
 
 ENV=Pro
