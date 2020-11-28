@@ -155,6 +155,23 @@ case "$1" in
         exit 2
 esac
 --------------
+nginx的access日志格式 ：
+#nginx json logs
+log_format log_json '{ "@timestamp": "$time_local", '
+'"remote_addr": "$remote_addr", '
+'"referer": "$http_referer", '
+'"host": "$host", '
+'"request": "$request", '
+'"status": $status, '
+'"bytes": $body_bytes_sent, '
+'"agent": "$http_user_agent", '
+'"x_forwarded": "$http_x_forwarded_for", '
+'"up_addr": "$upstream_addr",'
+'"up_host": "$upstream_http_host",'
+'"up_resp_time": "$upstream_response_time",'
+'"request_time": "$request_time"'
+' }';
+nginx: access日志可以自定义日志格式，error日志不可以自定义日志格式。只能通过类似logstash的grok功能进行编排json格式了,可以通过filebeat收集access日志发送到elasticsearch
 
 nginx配置文件解析：
 process 1 ;表示进程数，cpu密集型的为cpu个数相等，非密集型的为cpu个数的1.5-2倍
