@@ -4406,6 +4406,7 @@ fi
 #输出备份过程结束的提醒消息  
 echo "Backup_Process_Done" >> ${LOGFILE}
 echo "  " >> ${LOGFILE}  
+
 -----------FULL_BACKUP_ALLDB_Shell----------
 [root@test /data]# cat mysql_full_backup_allDB.sh
 #!/bin/bash  
@@ -4508,31 +4509,41 @@ fi
 #输出备份过程结束的提醒消息  
 echo "Backup_Process_Done" >> ${LOGFILE}
 echo "  " >> ${LOGFILE} 
+
 -----------FULL_BACKUP_SingleDB_Shell----------
-[root@test /data]# cat mysql_full_backup_singleDB.sh 
 #!/bin/bash  
 #Describe: Shell Script For Backup MySQL Database Everyday Automatically By Crontab  
 #Type: Single_Database_Full_Backup
+#mysql_info: mysql5.7
 #Author: JackLi
-#Date: 2020-11-22
+#Date: 2020-12-04
 #set -e
+
+#----user authrization
+#grant select,lock tables,replication client,show view,trigger,reload,execute,super on *.* to dbbackup@'localhost';
+#[root@salt ~]# openssl rand -base64 5
+#hZH3oCw=
+#alter user dbbackup@'localhost' identified by "hZH3oCw=";
+#flush privileges;
+
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/usr/local/mysql/bin
 export LANG=en_US.UTF-8
    
-ENV=Pro
+ENV=Dev
 TYPE=Full
-USER=root  
+USER=dbbackup 
 HOSTNAME="localhost"  
-PASSWORD="homsom"  
-DATABASE=(transaction)
+PASSWORD="hZH3oCw="  
+DATABASE=(car_platform flight_manager hotelresource payorder travelproduct)
 IPADDR=`ip add show | grep 192 | awk '{print $2}' | awk -F '/' '{print $1}'`
-BACKUP_DIR=/data/jackbackup  #备份文件存储路径  
+BACKUP_DIR=/home/backup  #备份文件存储路径  
 LOGFILE=${BACKUP_DIR}/mysql_backup.log #日记文件路径  
 MYSQL_CONF=/etc/my.cnf   #mysql配置文件路径
 MYSQL_BOOT_SHELL=/etc/init.d/mysqld  #mysql启动脚本路径
 MYSQL_CONF_NAME=`basename ${MYSQL_CONF}`   #mysql配置文件名称
 MYSQL_BOOT_SHELL_NAME=`basename ${MYSQL_BOOT_SHELL}`  #mysql启动脚本名称
-DATE=`date '+%Y%m%d_%H%M%S'` #日期格式（作为文件名）  
+DATE=`date +%Y%m%d_%H%M%S` #日期格式（作为目录名）  
+DATE_FILE="date +%Y%m%d_%H%M%S" #日期格式（作为文件名） 
 DATE_YEAR=`date '+%Y'`
 DATE_MONTH=`date '+%m'`
 FORMAT=${ENV}_${TYPE}_${DATE}
@@ -4549,6 +4560,7 @@ if [ ! -d "${BACKUP_DIR}/${BACKUP_DIR_CHILD}" ]; then mkdir -p "${BACKUP_DIR}/${
 cd ${BACKUP_DIR}/${BACKUP_DIR_CHILD}
 
 #开始备份之前，将备份信息头写入日记文件   
+echo " " >> $LOGFILE
 echo "———————————————–————————————————————————" >> $LOGFILE  
 echo "BACKUP DATETIME:" ${DATE} >> $LOGFILE  
 echo "———————————————–————————————————————–———" >> $LOGFILE  
@@ -4556,7 +4568,7 @@ echo "———————————————–————————�
 #开始备份
 for i in `seq 0 ${#DATABASE[*]}`;do
 	if [ ${i} != ${#DATABASE[*]} ];then
-		DUMPFILE=${FORMAT}_${DATABASE[${i}]}.sql #备份文件名  
+		DUMPFILE=${ENV}_${TYPE}_`${DATE_FILE}`_${DATABASE[${i}]}.sql #备份文件名
 		echo "Full_Backup_Databases: ${DATABASE[${i}]}.........." >> $LOGFILE
 		mysqldump ${OPTIONS} ${DATABASE[${i}]} > ${DUMPFILE} 2> /dev/null 
 		#判断数据库备份是否成功  
@@ -4611,24 +4623,35 @@ fi
 #输出备份过程结束的提醒消息  
 echo "Backup_Process_Done" >> ${LOGFILE}
 echo "  " >> ${LOGFILE}  
+
 -----------INCREMENT_BACKUP_ALLDB_Shell----------
 [root@test /data]# cat mysql_increment_backup.sh 
 #!/bin/bash
 #Describe: Shell Command For Backup MySQL Database Everyday Automatically By Crontab  
 #Type: Increment Backup
+#mysql_info: mysql5.7
 #Author: JackLi
 #Date: 2020-11-22
+
+#----user authrization
+#grant select,lock tables,replication client,show view,trigger,reload,execute,super on *.* to dbbackup@'localhost';
+#[root@salt ~]# openssl rand -base64 5
+#hZH3oCw=
+#alter user dbbackup@'localhost' identified by "hZH3oCw=";
+#flush privileges;
+
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/usr/local/mysql/bin
 export LANG=en_US.UTF-8
 
-ENV=Pro
+ENV=Dev
 TYPE=Increment
-USER=root
+USER=dbbackup
 HOSTNAME="localhost"
-PASSWORD="homsom"
-BACKUP_DIR=/data/jackbackup  #备份文件存储路径  
+PASSWORD="hZH3oCw="
+BACKUP_DIR=/home/backup  #备份文件存储路径  
 LOGFILE=${BACKUP_DIR}/mysql_backup.log #日记文件路径  
 DATE=`date '+%Y%m%d_%H%M%S'` #日期格式（作为文件名）  
+DATE_FILE="date +%Y%m%d_%H%M%S" #日期格式（作为文件名） 
 DATE_YEAR=`date '+%Y'`
 DATE_MONTH=`date '+%m'`
 FORMAT=${ENV}_${TYPE}_${DATE}
@@ -4660,7 +4683,7 @@ if [[ $? == 0 ]]; then
     echo "Copy_Binlog_To_BackupDir.........." >> $LOGFILE
     for i in `seq 0 ${#VAR_BINLOG_NAME_LONG[*]}`;do
         if [ "${i}" != "${#VAR_BINLOG_NAME_LONG[*]}" ];then
-                \cp -ar ${VAR_BINLOG_NAME_LONG[$[i]]} ${VAR_BINLOG_NAME_SHORT[${i}]}_${FORMAT}
+		\cp -ar ${VAR_BINLOG_NAME_LONG[$[i]]} ${VAR_BINLOG_NAME_SHORT[${i}]}_${ENV}_${TYPE}_`${DATE_FILE}`
         fi
     done
 
@@ -4706,9 +4729,14 @@ else
     echo "Increment_Backup_Databases: Failure" >> $LOGFILE
 fi
 ----------------------------------------
+mysql配置调整
+#使mysql表名允许小写
+lower-case-table-names = 1  
+#跳过名称解析，可以解决navicat远程连接mysql慢问题
+skip-name-resolve
+#跳过授权表，通过此方式重置mysql root密码
+skip-grant-tables = 1
 
-
-
+----------------------------------------
 </pre>
-
 
