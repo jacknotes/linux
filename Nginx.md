@@ -1326,3 +1326,294 @@ kill -USR1 $(cat $nginx_pid)
 find $bkpath/ -atime +90 -exec rm -f {} \;
 
 </pre>
+
+<pre>
+#Tengine编译安装
+#CentOS-7
+[root@opsnginx download]# curl -OL http://tengine.taobao.org/download/tengine-2.3.2.tar.gz
+[root@opsnginx download]# curl -OL http://ftp.pcre.org/pub/pcre/pcre-8.44.tar.gz
+[root@opsnginx download]# ls
+pcre-8.44.tar.gz  tengine-2.3.2  tengine-2.3.2.tar.gz
+
+#install devlopment packages
+[root@opsnginx tengine-2.3.2]# yum groupinstall -y "Development Tools" "Development and Creative Workstation"
+
+#install pcre
+[root@opsnginx download]# tar xf pcre-8.44.tar.gz && cd pcre-8.44
+[root@opsnginx pcre-8.44]# ./configure --prefix=/usr/local/pcre
+[root@opsnginx pcre-8.44]# make && make install
+
+#install tengine
+[root@opsnginx download]# tar xf tengine-2.3.2.tar.gz 
+[root@opsnginx download]# cd tengine-2.3.2/
+[root@opsnginx tengine-2.3.2]# groupadd -g 1000 tengine
+[root@opsnginx tengine-2.3.2]# useradd -M -u 1000 -g 1000 -s /sbin/nologin tengine
+[root@opsnginx tengine-2.3.2]# ./configure --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --lock-path=/usr/local/tengine/lock/tengine.lock --user=tengine --group=tengine --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module
+[root@opsnginx tengine-2.3.2]# make -j 4 && make install
+
+#增加filter模块，平滑升级
+#说到 Nginx 的内容替换功能，大部分人应该都听说过 Nginx 内置的的 subs_filter 替换模块，但是这个模块有个缺憾，就是只能替换一次，而且还不支持正则表达式，这就有些鸡肋了。不过，我们可以集成一个第三方的替换模块：ngx_http_substitutions_filter_module，来实现我们的各种需求。经过测试，这个模块至少有如下实用功能：
+支持多次替换
+支持正则替换
+支持中文替换
+Ps：略有遗憾的是，这个替换不能使用到 if 判断模块内，否则就超神了。。。
+#github URL: https://github.com/yaoweibin/ngx_http_substitutions_filter_module/
+#编译集成,和所有 Nginx 非内置模块一样，添加模块需要在编译的时候指定模块源码包来集成。当然，Tengine 可以使用动态模块加载的功能，这里就不细说了。
+[root@opsnginx download]# curl -OL https://codeload.github.com/yaoweibin/ngx_http_substitutions_filter_module/zip/master
+[root@opsnginx download]# unzip master
+[root@opsnginx download]# cd ngx_http_substitutions_filter_module-master/
+[root@opsnginx ngx_http_substitutions_filter_module-master]# pwd
+/download/ngx_http_substitutions_filter_module-master
+[root@opsnginx ngx_http_substitutions_filter_module-master]# ls
+CHANGES  config  doc  ngx_http_subs_filter_module.c  README  test  util
+#在服务器上执行 nginx -V 查看当前  Nginx 编译参数
+[root@opsnginx ngx_http_substitutions_filter_module-master]# /usr/local/tengine/sbin/nginx -V
+Tengine version: Tengine/2.3.2
+nginx version: nginx/1.17.3
+built by gcc 4.8.5 20150623 (Red Hat 4.8.5-44) (GCC) 
+built with OpenSSL 1.0.2k-fips  26 Jan 2017
+TLS SNI support enabled
+configure arguments: --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --lock-path=/usr/local/tengine/lock/tengine.lock --user=tengine --group=tengine --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module
+#加上模块参数，重新编译 Nginx
+[root@opsnginx tengine-2.3.2]# ./configure --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --lock-path=/usr/local/tengine/lock/tengine.lock --user=tengine --group=tengine --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --add-module=/download/ngx_http_substitutions_filter_module-master
+#半自动平滑升级,所谓半自动，其实就是在最后迁移的时候使用源码自带的升级命令：make upgrade来自动完成。
+#常规编译新版本nginx，不过只要执行到make就打住，不要make install！
+[root@opsnginx tengine-2.3.2]# make 
+#重命名nginx旧版本二进制文件，即sbin目录下的nginx（期间nginx并不会停止服务！）
+[root@opsnginx tengine-2.3.2]# mv /usr/local/tengine/sbin/nginx{,.old}
+#然后拷贝一份新编译的二进制文件
+[root@opsnginx tengine-2.3.2]# cp objs/nginx /usr/local/tengine/sbin/
+[root@opsnginx tengine-2.3.2]# ls /usr/local/tengine/sbin/
+nginx  nginx.old
+#在源码目录执行make upgrade开始升级
+[root@opsnginx tengine-2.3.2]# make upgrade #因为nginx未启动，所以报错
+/usr/local/tengine/sbin/nginx -t
+nginx: the configuration file /usr/local/tengine/conf/nginx.conf syntax is ok
+nginx: configuration file /usr/local/tengine/conf/nginx.conf test is successful
+kill -USR2 `cat /usr/local/tengine/tengine.pid`
+kill: usage: kill [-s sigspec | -n signum | -sigspec] pid | jobspec ... or kill -l [sigspec]
+make: *** [upgrade] Error 1
+[root@opsnginx tengine-2.3.2]# make install #只能make install进行安装了
+#跳过平滑升级，直接安装
+[root@opsnginx tengine-2.3.2]# ./configure --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --lock-path=/usr/local/tengine/lock/tengine.lock --user=tengine --group=tengine --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --add-module=/download/ngx_http_substitutions_filter_module-master
+[root@opsnginx tengine-2.3.2]# make && make install && echo $?
+
+#tengine boo shell
+--------------------------
+[root@opsnginx tengine]# cat /etc/init.d/nginx 
+#!/bin/bash
+#
+# nginx - this script starts and stops the nginx daemon
+#
+# chkconfig: - 85 15
+# description: Nginx is an HTTP(S) server, HTTP(S) reverse
+# proxy and IMAP/POP3 proxy server
+# processname: nginx
+# config: /usr/local/tengine/conf/nginx.conf
+# config: /etc/sysconfig/nginx
+# pidfile: /usr/local/tengine/tengine.pid
+  
+# Source function library.
+. /etc/rc.d/init.d/functions
+  
+# Source networking configuration.
+. /etc/sysconfig/network
+  
+# Check that networking is up.
+[ "$NETWORKING" = "no" ] && exit 0
+  
+TENGINE_HOME="/usr/local/tengine/"
+nginx=$TENGINE_HOME"sbin/nginx"
+prog=$(basename $nginx)
+  
+NGINX_CONF_FILE=$TENGINE_HOME"conf/nginx.conf"
+  
+[ -f /etc/sysconfig/nginx ] && /etc/sysconfig/nginx
+  
+lockfile=/var/lock/subsys/nginx
+  
+start() {
+    [ -x $nginx ] || exit 5
+    [ -f $NGINX_CONF_FILE ] || exit 6
+    echo -n $"Starting $prog: "
+    daemon $nginx -c $NGINX_CONF_FILE
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && touch $lockfile
+    return $retval
+}
+  
+stop() {
+    echo -n $"Stopping $prog: "
+    killproc $prog -QUIT
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && rm -f $lockfile
+    return $retval
+    killall -9 nginx
+}
+  
+restart() {
+    configtest || return $?
+    stop
+    sleep 1
+    start
+}
+  
+reload() {
+    configtest || return $?
+    echo -n $"Reloading $prog: "
+    killproc $nginx -HUP
+    RETVAL=$?
+    echo
+}
+  
+force_reload() {
+    restart
+}
+  
+configtest() {
+    $nginx -t -c $NGINX_CONF_FILE
+}
+  
+rh_status() {
+    status $prog
+}
+  
+rh_status_q() {
+    rh_status >/dev/null 2>&1
+}
+  
+case "$1" in
+start)
+    rh_status_q && exit 0
+    $1
+;;
+stop)
+    rh_status_q || exit 0
+    $1
+;;
+restart|configtest)
+    $1
+;;
+reload)
+    rh_status_q || exit 7
+    $1
+;;
+force-reload)
+    force_reload
+;;
+status)
+    rh_status
+;;
+condrestart|try-restart)
+    rh_status_q || exit 0
+;;
+*)
+  
+echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force-reload|configtest}"
+exit 2
+esac
+--------------------------
+[root@opsnginx conf]# cat nginx.conf
+worker_processes  4;
+
+events {
+    use epoll;
+    worker_connections  1024;
+}
+
+
+http {
+	include       mime.types;
+	default_type  application/octet-stream;
+	log_format  dm  '"$request_body"';
+	log_format  main  '$remote_addr - $remote_user [$time_local] "$request"'
+                               '$status $body_bytes_sent "$http_referer"'
+                               '"$http_user_agent" "$http_x_forwarded_for"';
+	log_format log_json '{ "@timestamp": "$time_local", '
+        '"remote_addr": "$remote_addr", '
+        '"referer": "$http_referer", '
+        '"host": "$host", '
+        '"request": "$request", '
+        '"status": $status, '
+        '"bytes": $body_bytes_sent, '
+        '"agent": "$http_user_agent", '
+        '"x_forwarded": "$http_x_forwarded_for", '
+        '"up_addr": "$upstream_addr",'
+        '"up_host": "$upstream_http_host",'
+        '"up_resp_time": "$upstream_response_time",'
+        '"request_time": "$request_time"'
+        ' }';
+        access_log  log/access.log  log_json;
+	client_max_body_size 200m;
+	underscores_in_headers on;
+	sendfile        on;
+	keepalive_timeout  1024;
+
+	gzip on;
+	gzip_proxied any;
+	gzip_http_version 1.1;
+	gzip_min_length 1100;
+	gzip_comp_level 5;
+	gzip_buffers 8 16k;
+	gzip_types application/json text/json text/plain text/xml text/css application/x-javascript application/xml application/xml+rss text/javascript application/atom+xml image/gif image/jpeg image/png;
+	gzip_vary on;
+
+	server {
+		listen       80;
+		server_name  hoteles.hs.com;
+		location / {
+                        add_header backendIP $upstream_addr;
+                        proxy_redirect off;
+                        proxy_set_header Host $host;
+                        proxy_read_timeout 300s;
+                        proxy_buffer_size  128k;
+                        proxy_buffers   32 32k;
+                        proxy_busy_buffers_size 128k; 
+                        proxy_set_header X-Real-IP $remote_addr;
+                        proxy_set_header X-Real-Port $remote_port;
+                        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                        proxy_pass http://192.168.13.235:5601/;
+			auth_basic_user_file /usr/local/tengine/conf/htpasswd;
+                        auth_basic      "htpasswd" ;
+                }
+
+		error_page   500 502 503 504  /50x.html;
+		location = /50x.html {
+			root   html;
+		}
+	}
+
+	server {
+		listen       8088;
+		server_name  192.168.13.66;
+		location / {
+                        add_header backendIP $upstream_addr;
+                        proxy_redirect off;
+                        proxy_set_header Host $host;
+                        proxy_read_timeout 300s;
+                        proxy_buffer_size  128k;
+                        proxy_buffers   32 32k;
+                        proxy_busy_buffers_size 128k; 
+                        proxy_set_header X-Real-IP $remote_addr;
+                        proxy_set_header X-Real-Port $remote_port;
+                        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                }
+
+		error_page   500 502 503 504  /50x.html;
+		location = /50x.html {
+			root   html;
+		}
+
+		location /NginxStatus {
+			stub_status on;
+			auth_basic_user_file /usr/local/tengine/conf/nginx_htpasswd;
+                        auth_basic      "htpasswd" ;
+		}
+	}
+}
+--------------------------
+
+
+
