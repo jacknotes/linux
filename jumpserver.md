@@ -95,6 +95,9 @@ grant all on jumpserver.* to 'jumpserver'@'%' identified by 'weakPassword';
 [root@hohong-node2 ~]# docker run --name jms_all -d -v /opt/jumpserver:/opt/jumpserver/data/media  -p 80:80 -p 2222:2222 -e SECRET_KEY=$SECRET_KEY -e BOOTSTRAP_TOKEN=$BOOTSTRAP_TOKEN -e DB_HOST=192.168.230.80 -e DB_PORT=3306 -e DB_USER=jumpserver -e DB_PASSWORD=weakPassword -e DB_NAME=jumpserver -e REDIS_HOST=192.168.230.80 -e REDIS_PORT=6379 -e REDIS_PASSWORD=weakPassword jumpserver/jms_all:latest
 
 
+</pre>
+
+<pre>
 
 </pre>
 

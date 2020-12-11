@@ -1343,15 +1343,7 @@ pcre-8.44.tar.gz  tengine-2.3.2  tengine-2.3.2.tar.gz
 [root@opsnginx pcre-8.44]# ./configure --prefix=/usr/local/pcre
 [root@opsnginx pcre-8.44]# make && make install
 
-#install tengine
-[root@opsnginx download]# tar xf tengine-2.3.2.tar.gz 
-[root@opsnginx download]# cd tengine-2.3.2/
-[root@opsnginx tengine-2.3.2]# groupadd -g 1000 tengine
-[root@opsnginx tengine-2.3.2]# useradd -M -u 1000 -g 1000 -s /sbin/nologin tengine
-[root@opsnginx tengine-2.3.2]# ./configure --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --lock-path=/usr/local/tengine/lock/tengine.lock --user=tengine --group=tengine --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module
-[root@opsnginx tengine-2.3.2]# make -j 4 && make install
-
-#增加filter模块，平滑升级
+#install http_substitutions_filter_module
 #说到 Nginx 的内容替换功能，大部分人应该都听说过 Nginx 内置的的 subs_filter 替换模块，但是这个模块有个缺憾，就是只能替换一次，而且还不支持正则表达式，这就有些鸡肋了。不过，我们可以集成一个第三方的替换模块：ngx_http_substitutions_filter_module，来实现我们的各种需求。经过测试，这个模块至少有如下实用功能：
 支持多次替换
 支持正则替换
@@ -1366,6 +1358,16 @@ Ps：略有遗憾的是，这个替换不能使用到 if 判断模块内，否�
 /download/ngx_http_substitutions_filter_module-master
 [root@opsnginx ngx_http_substitutions_filter_module-master]# ls
 CHANGES  config  doc  ngx_http_subs_filter_module.c  README  test  util
+
+#install tengine
+[root@opsnginx download]# tar xf tengine-2.3.2.tar.gz 
+[root@opsnginx download]# cd tengine-2.3.2/
+[root@opsnginx tengine-2.3.2]# groupadd -g 1000 tengine
+[root@opsnginx tengine-2.3.2]# useradd -M -u 1000 -g 1000 -s /sbin/nologin tengine
+[root@opsnginx tengine-2.3.2]# ./configure --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --lock-path=/usr/local/tengine/lock/tengine.lock --user=tengine --group=tengine --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --add-module=/download/ngx_http_substitutions_filter_module-master
+[root@opsnginx tengine-2.3.2]# make -j 4 && make install && echo $?
+
+#增加--with-http_v2_module，删除--lock-path=/usr/local/tengine/lock/tengine.lock,平滑升级
 #在服务器上执行 nginx -V 查看当前  Nginx 编译参数
 [root@opsnginx ngx_http_substitutions_filter_module-master]# /usr/local/tengine/sbin/nginx -V
 Tengine version: Tengine/2.3.2
@@ -1373,10 +1375,10 @@ nginx version: nginx/1.17.3
 built by gcc 4.8.5 20150623 (Red Hat 4.8.5-44) (GCC) 
 built with OpenSSL 1.0.2k-fips  26 Jan 2017
 TLS SNI support enabled
-configure arguments: --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --lock-path=/usr/local/tengine/lock/tengine.lock --user=tengine --group=tengine --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module
+configure arguments: --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --lock-path=/usr/local/tengine/lock/tengine.lock --user=tengine --group=tengine --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --add-module=/download/ngx_http_substitutions_filter_module-master
 #加上模块参数，重新编译 Nginx
-[root@opsnginx tengine-2.3.2]# ./configure --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --lock-path=/usr/local/tengine/lock/tengine.lock --user=tengine --group=tengine --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --add-module=/download/ngx_http_substitutions_filter_module-master
 #半自动平滑升级,所谓半自动，其实就是在最后迁移的时候使用源码自带的升级命令：make upgrade来自动完成。
+[root@opsnginx tengine-2.3.2]# ./configure --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --user=tengine --group=tengine --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --add-module=/download/ngx_http_substitutions_filter_module-master --with-http_v2_module 
 #常规编译新版本nginx，不过只要执行到make就打住，不要make install！
 [root@opsnginx tengine-2.3.2]# make 
 #重命名nginx旧版本二进制文件，即sbin目录下的nginx（期间nginx并不会停止服务！）
@@ -1386,17 +1388,15 @@ configure arguments: --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/
 [root@opsnginx tengine-2.3.2]# ls /usr/local/tengine/sbin/
 nginx  nginx.old
 #在源码目录执行make upgrade开始升级
-[root@opsnginx tengine-2.3.2]# make upgrade #因为nginx未启动，所以报错
+[root@opsnginx tengine-2.3.2]# make upgrade
 /usr/local/tengine/sbin/nginx -t
 nginx: the configuration file /usr/local/tengine/conf/nginx.conf syntax is ok
 nginx: configuration file /usr/local/tengine/conf/nginx.conf test is successful
 kill -USR2 `cat /usr/local/tengine/tengine.pid`
-kill: usage: kill [-s sigspec | -n signum | -sigspec] pid | jobspec ... or kill -l [sigspec]
-make: *** [upgrade] Error 1
-[root@opsnginx tengine-2.3.2]# make install #只能make install进行安装了
-#跳过平滑升级，直接安装
-[root@opsnginx tengine-2.3.2]# ./configure --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --lock-path=/usr/local/tengine/lock/tengine.lock --user=tengine --group=tengine --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --add-module=/download/ngx_http_substitutions_filter_module-master
-[root@opsnginx tengine-2.3.2]# make && make install && echo $?
+sleep 1
+test -f /usr/local/tengine/tengine.pid.oldbin
+kill -QUIT `cat /usr/local/tengine/tengine.pid.oldbin`
+
 
 #tengine boo shell
 --------------------------
