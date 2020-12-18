@@ -1,5 +1,5 @@
 #ENV: CentOS6
-
+<pre>
 #install compile tools
 yum install -y zlib-devel openssl-devel gcc、gcc-c++ glibc make
 
@@ -36,3 +36,4 @@ service sshd status
 chkconfig --add sshd
 chkconfig --level 35 sshd on
 
+</pre>
