@@ -1,7 +1,7 @@
 #ENV: CentOS6
 <pre>
 #install compile tools
-yum install -y zlib-devel openssl-devel gcc、gcc-c++ glibc make
+yum install -y zlib-devel openssl-devel gcc gcc-c++ glibc make
 
 #uninstall old openssh software
 rpm -e `rpm -qa | grep openssh`
@@ -16,6 +16,10 @@ make && make install
 echo 'export PATH=${PATH}:/usr/local/openssh/bin' > /etc/profile.d/openssh.sh
 source /etc/profile
 cp contrib/redhat/sshd.init /etc/init.d/sshd
+sed -i 's#SSHD=/usr/sbin/sshd#SSHD=/usr/local/openssh/sbin/sshd#g' /etc/init.d/sshd
+sed -i 's#/usr/bin/ssh-keygen#/usr/local/openssh/bin/ssh-keygen#' /etc/init.d/sshd
+
+#edit sshd_config file
 vi /etc/ssh/sshd_config
 -----
 PermitRootLogin yes
@@ -25,8 +29,6 @@ AllowTcpForwarding yes
 X11Forwarding yes
 PidFile /run/sshd.pid
 -----
-sed -i 's#SSHD=/usr/sbin/sshd#SSHD=/usr/local/openssh/sbin/sshd#g' /etc/init.d/sshd
-sed -i 's#/usr/bin/ssh-keygen#/usr/local/openssh/bin/ssh-keygen#' /etc/init.d/sshd
 
 #start openssh
 service sshd start
