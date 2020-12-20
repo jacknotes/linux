@@ -942,8 +942,34 @@ COMMIT
 COMMIT
 # Completed on Mon Aug 10 17:25:08 2020
 
+#filter链最小默认规则
+:INPUT DROP [18:2143]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [86:9328]
+-A INPUT -s 192.168.13.0/24 -p tcp -m tcp --dport 22 -m state --state NEW -j ACCEPT
+-A INPUT -s 172.168.2.0/24 -p tcp -m tcp --dport 22 -m state --state NEW -j ACCEPT
+-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -i lo -j ACCEPT
+-A INPUT -p icmp -j ACCEPT
 
-
+#rsyslog
+基本语法格式
+类型.级别[;类型.级别]　　动作
+news.=crit　　/var/log/news.crit
+‘=’特殊符号，如果存在说明只有本Severity的消息才进行处理，如果不存在则处理本Severity及其以下级别的消息
+‘;‘表示&&、’!‘表示取反、’*’表示所有
+动作：表示信息发送的目的地
+　　可以是日记文件(绝对路径)，如果文件名前面加上减号表示不将日志信息同步刷新到磁盘上(使用写入缓存)，这样可以提高日志写入性能，但是增加了系统崩溃后丢失日志的风险
+　　可以是远程主机（@host，host可以是ip或域名,一个@表示UDP协议，两个@@表示TCP协议）
+　　可以是指定用户（user1,user2），如果指定用户已登入，那么他们将收到消息
+过滤指定内容日志：
+:msg,contains,"iptables:" 				/var/log/iptables.log
+systemctl restart rsyslog
+#iptables日志写入到文件
+iptables -N SILENCE_INPUT_LOG
+iptables -I INPUT 1 -j SILENCE_INPUT_LOG
+iptables -A SILENCE_INPUT_LOG -p icmp -j LOG --log-prefix "iptables:
+iptables -A SILENCE_INPUT_LOG -j RETURN
 
 
 #"$@"与"$*"的区别：
