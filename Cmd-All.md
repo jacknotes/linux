@@ -858,6 +858,7 @@ INPUT
 OUTPUT
 FORWARD
 iptables最大处理连接数：
+注：本机路由转发的时候，才配置FORWARD转发链
 [root@smb-server ~]# cat /proc/sys/net/nf_conntrack_max
 65536  #这个是nf_conntrack的最大选择连接数
 管理链：
@@ -968,9 +969,23 @@ systemctl restart rsyslog
 #iptables日志写入到文件
 iptables -N SILENCE_INPUT_LOG
 iptables -I INPUT 1 -j SILENCE_INPUT_LOG
-iptables -A SILENCE_INPUT_LOG -p icmp -j LOG --log-prefix "iptables:
+iptables -A SILENCE_INPUT_LOG -p icmp -j LOG --log-prefix "iptables:"
 iptables -A SILENCE_INPUT_LOG -j RETURN
 
+#docker run add iptables rules
+[root@linux01 shell]# cat iptables_mysql_rule.sh 
+-------
+#!/bin/sh
+export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:
+PORT='3306'
+
+for i in ${PORT};do
+	iptables -vnL INPUT | grep ${i} >& /dev/null
+	if [ $? != 0 ];then
+		iptables -I INPUT 1 -s 192.168.10.0/24 -p tcp --dport 3306 -j DROP >& /dev/null
+	fi
+done
+-------
 
 #"$@"与"$*"的区别：
 ------------
