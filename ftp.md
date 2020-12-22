@@ -369,7 +369,9 @@ chkconfig --level 35 nmb on;然后使用脚本设置linux帐户和smb帐户，�
 
 注意：使用smbpassword来更改smb帐户密码，使用pdbedit -a user --增加、pdbedit -x user --删除
 
-
+#windows for filezilla
+当用nginx或者iptable进行代理转发时，报错：425 Rejected data connection for transfer of "/", IP addresses of control and data connection do not match
+解决：在filezilla Server的设置中(Security settings)将安全级别设成宽松的，或者调成关闭IP检查即可解决，切记。
 
 
 </pre>
