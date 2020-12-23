@@ -1563,4 +1563,17 @@ https注意事项:
 test    ALL=(ALL)       NOPASSWD: ALL,/usr/bin/passwd [A-Za-z0-9]*,!/usr/bin/passwd root,!/usr/bin/passwd,!/bin/su - root,!/bin/su root,!/bin/su -,!/bin/su,!/usr/sbin/visudo,!/usr/bin/vim /etc/sudoers
 注：指令遵从'从广到细',后面会覆盖前面的指令。
 
+#yum命令
+--未安装过包命令，不安装只下载包到指定目录
+yum install -y openssh-server --downloadonly --downloaddir=/download
+--已安装过包命令，不安装只下载包到指定目录
+yum reinstall -y openssh-server --downloadonly --downloaddir=/download
+yum update openssh-server -y
+yum list all | grep openssh-server
+yum deplist openssh-server
+yum remove openssh-server
+--更新系统所有软件，也会更新系统
+yum update  
+
+
 </pre>
