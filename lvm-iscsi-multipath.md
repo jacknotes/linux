@@ -401,6 +401,7 @@ o- / ...........................................................................
 Created network portal 192.168.1.235:3206.
 /> /iscsi/iqn.2019-01.com.jack:disk2/tpg1/portals/ create 192.168.1.235 ip_port=3260
 Created network portal 192.168.1.235:3206.
+/> saveconfig
 22. 注：192.168.1.235是ISCSI服务端网卡IP
 23. 可以查看/etc/target/saveconfig.json配置文件，该配置文件保存着ISCSI的配置。/> exit
 Global pref auto_save_on_exit=true
@@ -1366,6 +1367,114 @@ devices节中每个device子节用于描述一个设备，其主要属性如下�
 16)delay_wait_checks    
 ---------------------------
 
+#iscsi生产应用
+[root@NFSServer ~]# lvcreate -l +100%FREE wsus01_disk -n wsus01_lv
+  Logical volume "wsus01_lv" created.
+[root@NFSServer ~]# lvcreate -l +100%FREE wsus02_disk -n wsus02_lv
+  Logical volume "wsus02_lv" created.
+
+
+[root@NFSServer ~]# targetcli
+targetcli shell version 2.1.53
+Copyright 2011-2013 by Datera, Inc and others.
+For help on commands, type 'help'.
+
+/> ls
+o- / ......................................................................................................................... [...]
+  o- backstores .............................................................................................................. [...]
+  | o- block .................................................................................................. [Storage Objects: 0]
+  | o- fileio ................................................................................................. [Storage Objects: 0]
+  | o- pscsi .................................................................................................. [Storage Objects: 0]
+  | o- ramdisk ................................................................................................ [Storage Objects: 0]
+  o- iscsi ............................................................................................................ [Targets: 0]
+  o- loopback ......................................................................................................... [Targets: 0]
+/> /backstores/block create wsus02 /dev/wsus02_disk/wsus02_lv 
+Created block storage object wsus02 using /dev/wsus02_disk/wsus02_lv.
+/> /backstores/block create wsus01 /dev/wsus01_disk/wsus01_lv 
+Created block storage object wsus01 using /dev/wsus01_disk/wsus01_lv.
+/> /iscsi create iqn.2020-12.hs.com:wsus02
+Created target iqn.2020-12.hs.com:wsus02.
+Created TPG 1.
+Global pref auto_add_default_portal=true
+Created default portal listening on all IPs (0.0.0.0), port 3260.
+/> /iscsi create iqn.2020-12.hs.com:wsus01
+Created target iqn.2020-12.hs.com:wsus01.
+Created TPG 1.
+Global pref auto_add_default_portal=true
+Created default portal listening on all IPs (0.0.0.0), port 3260.
+/> /iscsi/iqn.2020-12.hs.com:wsus02/tpg1/acls create iqn.2020-12.hs.com:wsus02
+Created Node ACL for iqn.2020-12.hs.com:wsus02
+/> /iscsi/iqn.2020-12.hs.com:wsus01/tpg1/acls create iqn.2020-12.hs.com:wsus01
+Created Node ACL for iqn.2020-12.hs.com:wsus01
+/> /iscsi/iqn.2020-12.hs.com:wsus02/tpg1/luns create /backstores/block/wsus02 
+Created LUN 0.
+Created LUN 0->0 mapping in node ACL iqn.2020-12.hs.com:wsus02
+/> /iscsi/iqn.2020-12.hs.com:wsus01/tpg1/luns create /backstores/block/wsus01 
+Created LUN 0.
+Created LUN 0->0 mapping in node ACL iqn.2020-12.hs.com:wsus01
+/> ls
+o- / ......................................................................................................................... [...]
+  o- backstores .............................................................................................................. [...]
+  | o- block .................................................................................................. [Storage Objects: 2]
+  | | o- wsus01 ...................................................... [/dev/wsus01_disk/wsus01_lv (1000.0GiB) write-thru activated]
+  | | | o- alua ................................................................................................... [ALUA Groups: 1]
+  | | |   o- default_tg_pt_gp ....................................................................... [ALUA state: Active/optimized]
+  | | o- wsus02 ...................................................... [/dev/wsus02_disk/wsus02_lv (1000.0GiB) write-thru activated]
+  | |   o- alua ................................................................................................... [ALUA Groups: 1]
+  | |     o- default_tg_pt_gp ....................................................................... [ALUA state: Active/optimized]
+  | o- fileio ................................................................................................. [Storage Objects: 0]
+  | o- pscsi .................................................................................................. [Storage Objects: 0]
+  | o- ramdisk ................................................................................................ [Storage Objects: 0]
+  o- iscsi ............................................................................................................ [Targets: 2]
+  | o- iqn.2020-12.hs.com:wsus01 ......................................................................................... [TPGs: 1]
+  | | o- tpg1 ............................................................................................... [no-gen-acls, no-auth]
+  | |   o- acls .......................................................................................................... [ACLs: 1]
+  | |   | o- iqn.2020-12.hs.com:wsus01 ............................................................................ [Mapped LUNs: 1]
+  | |   |   o- mapped_lun0 ................................................................................ [lun0 block/wsus01 (rw)]
+  | |   o- luns .......................................................................................................... [LUNs: 1]
+  | |   | o- lun0 ................................................... [block/wsus01 (/dev/wsus01_disk/wsus01_lv) (default_tg_pt_gp)]
+  | |   o- portals .................................................................................................... [Portals: 1]
+  | |     o- 0.0.0.0:3260 ..................................................................................................... [OK]
+  | o- iqn.2020-12.hs.com:wsus02 ......................................................................................... [TPGs: 1]
+  |   o- tpg1 ............................................................................................... [no-gen-acls, no-auth]
+  |     o- acls .......................................................................................................... [ACLs: 1]
+  |     | o- iqn.2020-12.hs.com:wsus02 ............................................................................ [Mapped LUNs: 1]
+  |     |   o- mapped_lun0 ................................................................................ [lun0 block/wsus02 (rw)]
+  |     o- luns .......................................................................................................... [LUNs: 1]
+  |     | o- lun0 ................................................... [block/wsus02 (/dev/wsus02_disk/wsus02_lv) (default_tg_pt_gp)]
+  |     o- portals .................................................................................................... [Portals: 1]
+  |       o- 0.0.0.0:3260 ..................................................................................................... [OK]
+  o- loopback ......................................................................................................... [Targets: 0]
+/> iscsi/iqn.2020-12.hs.com:wsus02/tpg1/portals/ delete 0.0.0.0 3260
+Deleted network portal 0.0.0.0:3260
+/> iscsi/iqn.2020-12.hs.com:wsus01/tpg1/portals/ delete 0.0.0.0 3260
+Deleted network portal 0.0.0.0:3260
+注：需要全部删除默认地址后才能新增
+/> iscsi/iqn.2020-12.hs.com:wsus02/tpg1/portals/ create 192.168.13.67 ip_port=3260
+Using default IP port 3260
+Created network portal 192.168.13.67:3260.
+/> iscsi/iqn.2020-12.hs.com:wsus01/tpg1/portals/ create 192.168.13.67 ip_port=3260
+Using default IP port 3260
+Created network portal 192.168.13.67:3260.
+/> saveconfig 
+Last 10 configs saved in /etc/target/backup/.
+Configuration saved to /etc/target/saveconfig.json
+
+#windows挂载iscsi
+iscsicpl.exe打开iscsi客户端
+在‘配置’中输入服务端设置的initialName，然后在‘目标’中输入服务端IP，然后进行连接即可使用块设备。
+
+#WSUS服务
+--安装wsus服务
+在服务器管理器中勾选wsus更新服务，并默认安装iis，并安装指定.netframwork版本，安装完后设置是做为主wsus，
+还是自治wsus或者副本wsus，要看更新报告，需要安装两个插件：1.ReportViewer.msi(可在wsus更新服务中点击
+查看更新报告时会弹出链接下载)，2.SQLSysClrTypes.msi(这个软件在安装ReportViewer.msi时提示依赖此软件，必须先安装，
+地址可google或百度出来下载)
+
+--更换存储位置
+PS C:\Program Files\Update Services\Tools> .\WsusUtil.exe movecontent D:\WSUSData d:\wsusMove.log
+正在移动内容位置。请不要终止该程序。
+已成功完成内容移动。
 
 
 </pre>
