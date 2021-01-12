@@ -1476,5 +1476,31 @@ PS C:\Program Files\Update Services\Tools> .\WsusUtil.exe movecontent D:\WSUSDat
 正在移动内容位置。请不要终止该程序。
 已成功完成内容移动。
 
+----2021-01-12
+Disk /dev/xvdj: 107.4 GB, 107374182400 bytes, 209715200 sectors  ok
+Disk /dev/xvdf: 107.4 GB, 107374182400 bytes, 209715200 sectors ok  Usage
+Disk /dev/xvdi: 107.4 GB, 107374182400 bytes, 209715200 sectors ok
+Disk /dev/xvdg: 107.4 GB, 107374182400 bytes, 209715200 sectors ok
+Disk /dev/xvdh: 107.4 GB, 107374182400 bytes, 209715200 sectors ok
+pvcreate /dev/xvdf1
+vgcreate iis13_72 /dev/xvdf1
+lvcreate -l +100%FREE -n iis_13_72_lv iis_13_72
+/backstores/block create iis_13_72 /dev/iis_13_72/iis_13_72_lv 
+/iscsi/ create iqn.2021-01.hs.com:ops-test002
+/iscsi/iqn.2021-01.hs.com:ops-test002/tpg1/acls create iqn.2021-01.hs.com:ops-test002
+/iscsi/iqn.2021-01.hs.com:ops-test002/tpg1/luns create /backstores/block/iis_13_72
+/iscsi/iqn.2021-01.hs.com:ops-test002/tpg1/portals create ip_address=192.168.13.67 ip_port=3260
+
+pvcreate /dev/xvdj1
+vgextend iis_13_72 /dev/xvdj1
+lvextend -l +100%FREE /dev/iis_13_72/iis_13_72_lv
+lvresize -L -100G /dev/iis_13_72/iis_13_72_lv
+注：当在iscsi的100G基础上扩展逻辑卷到200G，iscsi自己会增加，此时windows客户端需要打开磁盘管理工具----重新扫描磁盘，
+当磁盘扫描完会，磁盘大小加增加100G，为未分区，此时可以在同磁盘上选择扩展分区进行增加磁盘可使用是。
+注：当iscsi服务器lvm进行lvresize进行容量缩小100G时，iscsi容量会变成100G，windows客户端重新扫描，此时硬盘缩小成100G，
+windows客户端提示格式化硬盘方可使用，此时千万不能格式化，否则里面数据全部丢失，所以说lvm千万不能缩小，只能增大。
+经过后面的测试，将100G的iscsi通过lvm再次增大100G变成200G（之前可用容量），此会windows再次重新扫描磁盘后，硬盘
+变成可用了，不用格式化。在生产环境中千万不能缩小硬盘容量，切记。
+
 
 </pre>
