@@ -1502,5 +1502,38 @@ windows客户端提示格式化硬盘方可使用，此时千万不能格式化�
 经过后面的测试，将100G的iscsi通过lvm再次增大100G变成200G（之前可用容量），此会windows再次重新扫描磁盘后，硬盘
 变成可用了，不用格式化。在生产环境中千万不能缩小硬盘容量，切记。
 
+--移除PV
+注：vg使用空间一定要为0，如果不为0，需要移动数据到同一个vg中的其它PV
+例如：当/dev/xvdj1中Used为4.00m时，移动/dev/xvdj1中的数据到同一个vg中的其它PV，必须保证VG中可用空间大于移动PV的数据容量，否则不能减小
+#pvmove /dev/xvdj1
+注：当Used为0时才可减小
+[root@NFSServer ~]# pvs -o +used
+  PV         VG          Fmt  Attr PSize     PFree    Used     
+  /dev/xvda2 centos      lvm2 a--    <99.51g   64.00m   <99.45g
+  /dev/xvdb1 myvg        lvm2 a--  <1000.00g       0  <1000.00g
+  /dev/xvdc1 wsus02_disk lvm2 a--  <1000.00g       0  <1000.00g
+  /dev/xvde1 wsus01_disk lvm2 a--  <1000.00g       0  <1000.00g
+  /dev/xvdf1 iis_13_72   lvm2 a--   <100.00g    4.00m    99.99g
+  /dev/xvdj1 iis_13_72   lvm2 a--   <100.00g <100.00g        0 
+[root@NFSServer ~]# vgreduce iis_13_72 /dev/xvdj1
+  Removed "/dev/xvdj1" from volume group "iis_13_72"
+[root@NFSServer ~]# pvs -o +used
+  PV         VG          Fmt  Attr PSize     PFree    Used     
+  /dev/xvda2 centos      lvm2 a--    <99.51g   64.00m   <99.45g
+  /dev/xvdb1 myvg        lvm2 a--  <1000.00g       0  <1000.00g
+  /dev/xvdc1 wsus02_disk lvm2 a--  <1000.00g       0  <1000.00g
+  /dev/xvde1 wsus01_disk lvm2 a--  <1000.00g       0  <1000.00g
+  /dev/xvdf1 iis_13_72   lvm2 a--   <100.00g    4.00m    99.99g
+  /dev/xvdj1             lvm2 ---   <100.00g <100.00g        0 
+[root@NFSServer ~]# pvremove /dev/xvdj1
+  Labels on physical volume "/dev/xvdj1" successfully wiped.
+[root@NFSServer ~]# pvs -o +used
+  PV         VG          Fmt  Attr PSize     PFree  Used     
+  /dev/xvda2 centos      lvm2 a--    <99.51g 64.00m   <99.45g
+  /dev/xvdb1 myvg        lvm2 a--  <1000.00g     0  <1000.00g
+  /dev/xvdc1 wsus02_disk lvm2 a--  <1000.00g     0  <1000.00g
+  /dev/xvde1 wsus01_disk lvm2 a--  <1000.00g     0  <1000.00g
+  /dev/xvdf1 iis_13_72   lvm2 a--   <100.00g  4.00m    99.99g
+
 
 </pre>
