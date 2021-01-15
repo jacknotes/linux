@@ -2220,5 +2220,13 @@ docker run -d \
 redis:5.0.10 \
 redis-server /usr/local/etc/redis/redis_sentinel03.conf --sentinel
 
+#Redis内存驱逐策略
+有6种：
+volatile-lru:在设置过期时间的key集合中删除最少使用的key
+volatile-ttl:在设置过期时间的key集合中删除快要过期的key
+volatile-random:在设置过期时间的key集合中随机删除key，不管是使用最少与否还是快要过期与否，随机删除
+allkeys-lru:在所有key集合中（包括未设置过期时间和设置过期的key）删除最少使用的key
+allkeys-random:在所有key集合中（包括未设置过期时间和设置过期的key）随机删除key,不管是使用最少与否还是快要过期与否，随机删除
+noeviction:不驱逐任何key，当有新连接写入时会报错（主要是绝大多数的写指令，DEL 和 部分其他指令不包括）
 
 </pre>
