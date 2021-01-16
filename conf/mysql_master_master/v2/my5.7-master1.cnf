@@ -1,0 +1,54 @@
+[mysqld]
+skip-name-resolve=1
+datadir = /home/mysqldata
+basedir = /usr/local/mysql
+socket=/usr/local/mysql/mysql.sock
+pid-file=/home/mysqldata/mysql.pid
+gtid-mode=on
+enforce-gtid-consistency=true
+master-info-repository=TABLE 
+relay-log-info-repository=TABLE
+sync-master-info=1
+slave-parallel-workers=2
+binlog-checksum=CRC32 
+master-verify-checksum=1
+slave-sql-verify-checksum=1
+binlog_format = ROW
+log-bin=master-bin
+log-bin-index=master-bin.index
+character-set-server=utf8mb4
+relay-log=relay-master
+relay-log-index=relay-master.index
+slow_query_log_file = /home/mysqldata/mysql-slow.log
+slow_query_log = 1
+log_error = /home/mysqldata/mysql.err
+innodb_file_per_table=1
+auto-increment-increment = 2
+auto-increment-offset=2
+server-id = 20
+sql_mode=NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES 
+default-storage-engine = InnoDB
+default-tmp-storage-engine = InnoDB
+internal-tmp-disk-storage-engine = InnoDB
+innodb-buffer-pool-chunk-size = 134217728
+innodb-buffer-pool-instances = 8
+innodb-buffer-pool-size = 8589934592
+#innodb-buffer-pool-size = 8G * innodb-buffer-pool-chunk-size * innodb-buffer-pool-instances
+sync-binlog = 1
+log-slave-updates = 1  #multi level copy
+lower-case-table-names = 1
+innodb-flush-method=O_DIRECT
+max-connections=100
+wait-timeout=3600
+innodb-thread-concurrency=16
+innodb-log-buffer-size=100M
+innodb-log-file-size=300M
+innodb-log-files-in-group=3
+bind-address=0.0.0.0
+port=3306
+transaction-isolation=READ-COMMITTED
+
+[client]
+default-character-set = utf8mb4
+socket=/usr/local/mysql/mysql.sock
+

@@ -4738,5 +4738,121 @@ skip-name-resolve
 skip-grant-tables = 1
 
 ----------------------------------------
+
+#20210116mysql性能优化笔记
+MySQL内存消耗过高分析与处理
+   MySQL的内存消耗分为：
+       1.会话级别的内存消耗：如sort_buffer_size等，每个会话都会开辟一个sort_buffer_size来进行排序操作
+       2.全局的内存消耗：例如：innodb_buffer_pool_size等，全局共享的内存段
+   其中170的数据库的全局内存消耗很稳定，没有出现增加的现象，那么会话级的内存消耗可能是一个主因。
+
+关于会话级的内存消耗解释如下：
+read_buffer_size, sort_buffer_size, read_rnd_buffer_size, tmp_table_size这些参数在需要的时候才分配，操作后释放。
+这些会话级的内存，不管使用多少都分配该size的值，即使实际需要远远小于这些size。
+每个线程可能会不止一次需要分配buffer，例如子查询，每层都需要有自己的read_buffer,sort_buffer, tmp_table_size 等
+找到每次内存消耗峰值是不切实际的，因此我的这些建议可以用来衡量一下你实际修改一些变量值产生的反应,例如把 sort_buffer_size 从1MB增加到4MB并且在 max_connections 为 1000 的情况下，内存消耗增长峰值并不是你所计算的3000MB而是30MB。
+mysql内存计算器：
+http://www.mysqlcalculator.com/
+
+参数调优：
+1.max_connections=2000   ----最大并发连接数，自己一般最大3000，需要设置
+mysql> show global variables like "%max_connection%";
++-----------------+-------+
+| Variable_name   | Value |
++-----------------+-------+
+| max_connections | 2000  |
++-----------------+-------+
+mysql> show global status like "%max_used_conn%";   ----已经连接最大并发数量，可用于看是否要调整最大并发连接数
++---------------------------+---------------------+
+| Variable_name             | Value               |
++---------------------------+---------------------+
+| Max_used_connections      | 46                  |
+
+2.back_log=80  ----一般不设置
+mysql> show global variables like "%back_log%"; ----查看最大并发连接数连接满时，还可以有多少外连接放在堆栈中等待连接释放
++---------------+-------+
+| Variable_name | Value |
++---------------+-------+
+| back_log      | 80    |
+
+3.wait_timeout=3600  ----连接进来客户端空闲1小时后自动断开这个连接 
+
+4.interactive_timeout=28800   ----连接客户端不管是在活动还是在非活动，到达这个值后就会断开这个连接
+
+5.key_buffer_size=8388608
+mysql> show global variables like "%key_buffer_size%";  ----myisam表的索引缓冲区和临时表的缓冲区大小
++-----------------+---------+
+| Variable_name   | Value   |
++-----------------+---------+
+| key_buffer_size | 8388608 |
++-----------------+---------+
+mysql> show global status like "%created_tmp%";
++-------------------------+-----------+
+| Variable_name           | Value     |
++-------------------------+-----------+
+| Created_tmp_disk_tables | 20695306  |    ----Created_tmp_tables/(Created_tmp_tables+Created_tmp_disk_tables)=90%以上越好，代表90%以上在内存中
+| Created_tmp_tables      | 202292618 |       ----Created_tmp_disk_tables/(Created_tmp_tables+Created_tmp_disk_tables)=5%到10%以内越好，代表5%到10%以内在内存中
+
+6.max_allowed_packet=4194304  ---默认4M     
+mysql> show global variables like "%max_allow%";   ----server接收的数据包大小
++--------------------------+------------+
+| Variable_name            | Value      |
++--------------------------+------------+
+| max_allowed_packet       | 4194304    |
+
+7.thread_cache_size=9  ----服务器线程缓存大小，用内存空间换cpu的性能
+mysql> show global variables like "%thread_cache_size%";
++-------------------+-------+
+| Variable_name     | Value |
++-------------------+-------+
+| thread_cache_size | 9     |
+
+8.innodb_buffer_pool_size=2G  ----很重要
+mysql> show global variables like "%innodb_buffer_pool_size%";
++-------------------------+------------+
+| Variable_name           | Value      |
++-------------------------+------------+
+| innodb_buffer_pool_size | 2147483648 |
++-------------------------+------------+
+mysql> show engine innodb status\G
+----------------------
+BUFFER POOL AND MEMORY
+----------------------
+Total large memory allocated 2198863872
+Dictionary memory allocated 788831
+Buffer pool size   131056
+Free buffers       112340
+Database pages     18700   --pool size=18700*16k=292M
+
+9.innodb_flush_log_at_trx_commit=1  ----提交事务写入磁盘方式，每次提交事务就写入磁盘
+mysql> show global variables like "%commit%";
+| innodb_flush_log_at_trx_commit          | 1     |
+
+10.innodb-thread-concurrency=16  ----当用户连接大时，设定线程并发数，先设置cpu核心数，然后观察cpu使用情况平不平均，平均即可，如若不平均把此值增加一倍，如此规则调到最后使用情况平均即可。此值不是很重要
+mysql> show global variables like "%concurrency%";
+| innodb_thread_concurrency  | 16    |
+
+11.innodb_log_buffer_size=32M  ----redo log大小，从内存脏页写入到硬盘，事务量大的话则可以增大此区域内存大小，减小IO次数，此设置重要
+mysql> show global variables like "%innodb%log%size%";
+| innodb_log_buffer_size           | 16777216   |
+mysql> show global status like "%commit%"; ----如果事务量大，则可以增加
++----------------+-------+
+| Variable_name  | Value |
++----------------+-------+
+| Com_commit     | 1624  |
+
+12.innodb-log-file-size=100M  --设置事务日志文件大小，增加文件大小，减小IO次数
+
+13.innodb-log-files-in-group=3  --设置事务日志组数，增加文件大小，减小IO次数
+
+14.transaction-isolation=READ-COMMITTED   --不是要求很高的地方，可以调度事务策略，可以提升性能
+
+15.innodb-flush-method=O_DIRECT   --O_DIRECT则表示我们的write操作是从MySQL innodb buffer里直接向磁盘上写。
+
+16.innodb-buffer-pool-size = 2147483648   --用于缓存索引和数据的内存大小
+innodb-buffer-pool-chunk-size = 134217728
+innodb-buffer-pool-instances = 8
+#innodb-buffer-pool-size = 2G * innodb-buffer-pool-chunk-size * innodb-buffer-pool-instances
+
 </pre>
 
