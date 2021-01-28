@@ -4854,5 +4854,230 @@ innodb-buffer-pool-chunk-size = 134217728
 innodb-buffer-pool-instances = 8
 #innodb-buffer-pool-size = 2G * innodb-buffer-pool-chunk-size * innodb-buffer-pool-instances
 
+
+innoDB缓冲池预取（预读）
+线性预读： innodb_read_ahead_threshold  范围值：0-64，默认56
+随机预读：要启用此功能，将innodb_random_read_ahead设为 ON
+
+配置缓冲池刷新
+mysql> show global variables like "%innodb_max_dirty_pages_pct%";
++--------------------------------+-----------+
+| Variable_name                  | Value     |
++--------------------------------+-----------+
+| innodb_max_dirty_pages_pct     | 75.000000 |
+| innodb_max_dirty_pages_pct_lwm | 0.000000  |
++--------------------------------+-----------+
+innodb_flush_neighbors  范围值：0-2    (SSD)0:禁用innodb_flush_neighbors     (HDD)1:会以相同程度刷新连续的脏页    2:会以相同程度刷新脏页
+
+
+BLOG:
+报错：ERROR 3167 (HY000): The 'INFORMATION_SCHEMA.SESSION_VARIABLES' feature is disabled; see the documentation for 'show_compatibility_56'
+解决：set global show_compatibility_56=1;
+
+共享内存：
+mysql> select VARIABLE_NAME, VARIABLE_VALUE, concat(VARIABLE_VALUE/1024/1024,' MB') AS VARIABLE_VALUE_MB from information_schema.SESSION_VARIABLES where variable_name in ('innodb_buffer_pool_size','innodb_log_buffer_size','innodb_additional_mem_pool_size','key_buffer_size','query_cache_size');
++-------------------------+----------------+-------------------+
+| VARIABLE_NAME           | VARIABLE_VALUE | VARIABLE_VALUE_MB |
++-------------------------+----------------+-------------------+
+| KEY_BUFFER_SIZE         | 8388608        | 8 MB              |
+| QUERY_CACHE_SIZE        | 1048576        | 1 MB              |
+| INNODB_LOG_BUFFER_SIZE  | 33554432       | 32 MB             |
+| INNODB_BUFFER_POOL_SIZE | 1073741824     | 1024 MB           |
++-------------------------+----------------+-------------------+
+
+Session 私有内存
+mysql> select VARIABLE_NAME, VARIABLE_VALUE, concat(VARIABLE_VALUE/1024/1024,' MB') AS VARIABLE_VALUE_MB from information_schema.SESSION_VARIABLES where variable_name in ('read_buffer_size','read_rnd_buffer_size','sort_buffer_size','join_buffer_size','binlog_cache_size','tmp_table_size');
++----------------------+----------------+-------------------+
+| VARIABLE_NAME        | VARIABLE_VALUE | VARIABLE_VALUE_MB |
++----------------------+----------------+-------------------+
+| READ_RND_BUFFER_SIZE | 262144         | 0.25 MB           |
+| JOIN_BUFFER_SIZE     | 262144         | 0.25 MB           |
+| READ_BUFFER_SIZE     | 131072         | 0.125 MB          |
+| BINLOG_CACHE_SIZE    | 32768          | 0.03125 MB        |
+| TMP_TABLE_SIZE       | 16777216       | 16 MB             |
+| SORT_BUFFER_SIZE     | 262144         | 0.25 MB           |
++----------------------+----------------+-------------------+
+
+
+开启内存监控:
+mysql> update performance_schema.setup_instruments set enabled = 'yes' where name like 'memory%';
+Query OK, 307 rows affected (0.00 sec)
+Rows matched: 377  Changed: 307  Warnings: 0
+mysql>  select * from performance_schema.setup_instruments where name like 'memory%innodb%' limit 20;
++-------------------------------------------+---------+-------+
+| NAME                                      | ENABLED | TIMED |
++-------------------------------------------+---------+-------+
+| memory/innodb/adaptive hash index         | YES     | NO    |
+| memory/innodb/buf_buf_pool                | YES     | NO    |
+| memory/innodb/dict_stats_bg_recalc_pool_t | YES     | NO    |
+| memory/innodb/dict_stats_index_map_t      | YES     | NO    |
+| memory/innodb/dict_stats_n_diff_on_level  | YES     | NO    |
+| memory/innodb/other                       | YES     | NO    |
+| memory/innodb/row_log_buf                 | YES     | NO    |
+| memory/innodb/row_merge_sort              | YES     | NO    |
+| memory/innodb/std                         | YES     | NO    |
+| memory/innodb/trx_sys_t::rw_trx_ids       | YES     | NO    |
+| memory/innodb/partitioning                | YES     | NO    |
+| memory/innodb/api0api                     | YES     | NO    |
+| memory/innodb/btr0btr                     | YES     | NO    |
+| memory/innodb/btr0bulk                    | YES     | NO    |
+| memory/innodb/btr0cur                     | YES     | NO    |
+| memory/innodb/btr0pcur                    | YES     | NO    |
+| memory/innodb/btr0sea                     | YES     | NO    |
+| memory/innodb/buf0buf                     | YES     | NO    |
+| memory/innodb/buf0dblwr                   | YES     | NO    |
+| memory/innodb/buf0dump                    | YES     | NO    |
++-------------------------------------------+---------+-------+
+内存相关表：
+mysql> show tables like "%memory%";
++-----------------------------------------+
+| Tables_in_performance_schema (%memory%) |
++-----------------------------------------+
+| memory_summary_by_account_by_event_name |
+| memory_summary_by_host_by_event_name    |
+| memory_summary_by_thread_by_event_name  |
+| memory_summary_by_user_by_event_name    |
+| memory_summary_global_by_event_name     |
++-----------------------------------------+
+
+一、统计事件消耗内存：
+mysql>  select event_name, SUM_NUMBER_OF_BYTES_ALLOC  from performance_schema.memory_summary_global_by_event_name order by SUM_NUMBER_OF_BYTES_ALLOC desc LIMIT 10;
++----------------------------------------------------------------------+---------------------------+
+| event_name                                                           | SUM_NUMBER_OF_BYTES_ALLOC |
++----------------------------------------------------------------------+---------------------------+
+| memory/innodb/mem0mem                                                |                1995778712 |
+| memory/sql/get_all_tables                                            |                 412322432 |
+| memory/sql/TABLE                                                     |                 281189581 |
+| memory/memory/HP_PTRS                                                |                 192947480 |
+| memory/mysys/MY_DIR                                                  |                  33424056 |
+| memory/sql/sp_head::main_mem_root                                    |                  28100736 |
+| memory/performance_schema/events_statements_history_long             |                  14320000 |
+| memory/performance_schema/events_statements_history_long.tokens      |                  10240000 |
+| memory/performance_schema/events_statements_summary_by_digest.tokens |                  10240000 |
+| memory/performance_schema/events_statements_history_long.sqltext     |                  10240000 |
++----------------------------------------------------------------------+---------------------------+
+二、统计线程消耗内存
+mysql> select thread_id, event_name, SUM_NUMBER_OF_BYTES_ALLOC from performance_schema.memory_summary_by_thread_by_event_name order by SUM_NUMBER_OF_BYTES_ALLOC desc limit 10; 
++-----------+-----------------------+---------------------------+
+| thread_id | event_name            | SUM_NUMBER_OF_BYTES_ALLOC |
++-----------+-----------------------+---------------------------+
+|    371930 | memory/innodb/mem0mem |                1591929352 |
+|    373719 | memory/innodb/mem0mem |                1260471512 |
+|    369907 | memory/innodb/mem0mem |                 251307576 |
+|    369906 | memory/innodb/mem0mem |                 251061296 |
+|    371020 | memory/innodb/mem0mem |                 238006616 |
+|    370993 | memory/innodb/mem0mem |                 237003072 |
+|    374396 | memory/innodb/mem0mem |                 215111224 |
+|    374395 | memory/innodb/mem0mem |                 215105752 |
+|    372569 | memory/innodb/mem0mem |                 169878016 |
+|    374402 | memory/innodb/mem0mem |                  89511112 |
++-----------+-----------------------+---------------------------+
+三、统计账户消耗内存
+mysql> select USER, HOST, EVENT_NAME, SUM_NUMBER_OF_BYTES_ALLOC from performance_schema.memory_summary_by_account_by_event_name order by SUM_NUMBER_OF_BYTES_ALLOC desc limit 10; 
++------------+----------------+-----------------------------------+---------------------------+
+| USER       | HOST           | EVENT_NAME                        | SUM_NUMBER_OF_BYTES_ALLOC |
++------------+----------------+-----------------------------------+---------------------------+
+| exporter   | 192.168.13.116 | memory/innodb/mem0mem             |               65844650316 |
+| exporter   | 192.168.13.116 | memory/sql/get_all_tables         |               15545820992 |
+| exporter   | 192.168.13.116 | memory/memory/HP_PTRS             |                7245936688 |
+| commonuser | 192.168.13.223 | memory/innodb/mem0mem             |                4799390568 |
+| exporter   | 192.168.13.116 | memory/mysys/MY_DIR               |                1255560480 |
+| exporter   | 192.168.13.116 | memory/sql/sp_head::main_mem_root |                1059501824 |
+| commonuser | 172.168.2.215  | memory/innodb/mem0mem             |                 835759808 |
+| commonuser | 172.168.2.203  | memory/innodb/mem0mem             |                 293736656 |
+| exporter   | 192.168.13.116 | memory/sql/JOIN_CACHE             |                 266862592 |
+| exporter   | 192.168.13.116 | memory/sql/thd::main_mem_root     |                 132942912 |
++------------+----------------+-----------------------------------+---------------------------+
+四、统计主机消耗内存：
+mysql> select  HOST, EVENT_NAME, SUM_NUMBER_OF_BYTES_ALLOC from performance_schema.memory_summary_by_host_by_event_name order by SUM_NUMBER_OF_BYTES_ALLOC desc limit 10; 
++----------------+-----------------------------------+---------------------------+
+| HOST           | EVENT_NAME                        | SUM_NUMBER_OF_BYTES_ALLOC |
++----------------+-----------------------------------+---------------------------+
+| 192.168.13.116 | memory/innodb/mem0mem             |               66686415452 |
+| 192.168.13.116 | memory/sql/get_all_tables         |               15744343264 |
+| 192.168.13.116 | memory/memory/HP_PTRS             |                7338468296 |
+| 192.168.13.223 | memory/innodb/mem0mem             |                4873961080 |
+| 192.168.13.116 | memory/mysys/MY_DIR               |                1271594160 |
+| 192.168.13.116 | memory/sql/sp_head::main_mem_root |                1073031808 |
+| 172.168.2.215  | memory/innodb/mem0mem             |                 851695800 |
+| 172.168.2.203  | memory/innodb/mem0mem             |                 293736656 |
+| 192.168.13.116 | memory/sql/JOIN_CACHE             |                 270270464 |
+| 192.168.13.116 | memory/sql/thd::main_mem_root     |                 134640192 |
++----------------+-----------------------------------+---------------------------+
+五、统计用户消耗内存：
+mysql> select  USER, EVENT_NAME, SUM_NUMBER_OF_BYTES_ALLOC from performance_schema.memory_summary_by_user_by_event_name order by SUM_NUMBER_OF_BYTES_ALLOC desc limit 10; 
++------------+-----------------------------------+---------------------------+
+| USER       | EVENT_NAME                        | SUM_NUMBER_OF_BYTES_ALLOC |
++------------+-----------------------------------+---------------------------+
+| exporter   | memory/innodb/mem0mem             |               67139097900 |
+| exporter   | memory/sql/get_all_tables         |               15851239872 |
+| exporter   | memory/memory/HP_PTRS             |                7388293008 |
+| commonuser | memory/innodb/mem0mem             |                6035689696 |
+| exporter   | memory/mysys/MY_DIR               |                1280227680 |
+| exporter   | memory/sql/sp_head::main_mem_root |                1080317184 |
+| exporter   | memory/sql/JOIN_CACHE             |                 272105472 |
+| exporter   | memory/sql/thd::main_mem_root     |                 135554112 |
+| exporter   | memory/memory/HP_INFO             |                 120848112 |
+| exporter   | memory/memory/HP_SHARE            |                  88782226 |
++------------+-----------------------------------+---------------------------+
+
+mysql> select event_name,current_alloc from sys.memory_global_by_current_bytes where event_name like '%innodb%';
++-------------------------+---------------+
+| event_name              | current_alloc |
++-------------------------+---------------+
+| memory/innodb/mem0mem   | 1.56 MiB      |
+| memory/innodb/row0sel   | 71.01 KiB     |
+| memory/innodb/ha_innodb | 38.78 KiB     |
+| memory/innodb/trx0undo  | 11.34 KiB     |
+| memory/innodb/rem0rec   | 1.22 KiB      |
+| memory/innodb/btr0pcur  | 971 bytes     |
++-------------------------+---------------+
+
+mysql> SELECT SUBSTRING_INDEX(event_name,'/',2) AS   code_area, sys.format_bytes(SUM(current_alloc))   AS current_alloc   FROM sys.x$memory_global_by_current_bytes   GROUP BY SUBSTRING_INDEX(event_name,'/',2)   ORDER BY SUM(current_alloc) DESC;
++---------------------------+---------------+
+| code_area                 | current_alloc |
++---------------------------+---------------+
+| memory/performance_schema | 143.61 MiB    |
+| memory/sql                | 19.43 MiB     |
+| memory/innodb             | 1.55 MiB      |
+| memory/myisam             | 251.80 KiB    |
+| memory/mysys              | 194.53 KiB    |
+| memory/memory             | 174.01 KiB    |
++---------------------------+---------------+
+
+最大可用内存(M)
+mysql> SELECT  (  @@key_buffer_size + @@innodb_buffer_pool_size + @@query_cache_size + @@tmp_table_size + @@max_connections * (  @@read_buffer_size + @@read_rnd_buffer_size + @@sort_buffer_size + @@join_buffer_size + @@binlog_cache_size + @@thread_stack  )  ) / 1024 / 1024 AS result;
++---------------+
+| result        |
++---------------+
+| 1164.62500000 |
++---------------+
+单个连接最大可用内存(M)
+mysql> SELECT  (  @@read_buffer_size + @@read_rnd_buffer_size + @@sort_buffer_size + @@join_buffer_size + @@binlog_cache_size + @@thread_stack  ) / 1024 / 1024 AS result;
++------------+
+| result     |
++------------+
+| 1.15625000 |
++------------+
+最大可使用内存
+mysql> SELECT  (  @@key_buffer_size + @@innodb_buffer_pool_size + @@query_cache_size + @@tmp_table_size  ) / 1024 / 1024 AS result;
++---------------+
+| result        |
++---------------+
+| 1049.00000000 |
++---------------+
+
+mysql> show global variables like '%table%cache%';
++----------------------------+-------+
+| Variable_name              | Value |
++----------------------------+-------+
+| table_definition_cache     | 1400  |
+| table_open_cache           | 2000  |
+| table_open_cache_instances | 16    |
++----------------------------+-------+
+
+关闭SWAP（只支持cmake编译的mysql）：
+innodb_numa_interleave = 0;
+
 </pre>
 

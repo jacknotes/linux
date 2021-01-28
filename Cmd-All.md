@@ -1575,5 +1575,38 @@ yum remove openssh-server
 --更新系统所有软件，也会更新系统
 yum update  
 
+#dd命令
+1.1 dd测试DirectIO 
+注：count: 1M=1000k=1000*1000; bs=8k表示块大小
+iops——写测试 dd if=/dev/zero of=./a.dat bs=8k count=1M oflag=direct 
+iops——读测试 dd if=./a.dat of=/dev/null bs=8k count=1M iflag=direct
+bw——写测试 dd if=/dev/zero of=./a.dat bs=1M count=8k oflag=direct 
+bw——读测试 dd if=./a.dat of=/dev/null bs=1M count=8k iflag=direct
+
+[root@test ~]# dd if=/dev/zero of=./a.dat bs=8k count=1k oflag=direct
+1024+0 records in
+1024+0 records out
+8388608 bytes (8.4 MB) copied, 5.45422 s, 1.5 MB/s
+[root@test ~]# dd if=./a.dat of=/dev/null bs=8k count=1k iflag=direct
+1024+0 records in
+1024+0 records out
+8388608 bytes (8.4 MB) copied, 0.503745 s, 16.7 MB/s
+
+1.2 dd测试BufferIO
+BufferIO主要出现在一些大文件读写的场景，由于使用内存做Cache所以读写性能上和DirectIO相比，
+通常会高很多，尤其是读，所以这个场景下我们仅关心bw即可。
+用dd测试BufferIO的写时，需要增加一个conv=fdatasync，使用该参数，在完成所有读写后会调用
+一个sync确保数据全部刷到磁盘上（期间操作系统也有可能会主动flush），否则就是主要在测内存读写了；
+通常conv=fdatasync更符合大文件读写的场景，所以这里以其作为参数进行测试。
+另外还有一个参数是oflag=dsync，使用该参数也是走的BufferIO，但却是会在每次IO操作后都执行一个sync。
+
+#生成随机字符串
+[root@clog ~]# cat /dev/urandom | tr -dc a-zA-Z0-9 | head -c 16
+gJlKo0osrUEsUPAf
+#生成随机数字
+[root@clog ~]# cat /dev/urandom | tr -dc 0-9 | head -c 10
+8546054403
+echo $RANDOM
+20288
 
 </pre>
