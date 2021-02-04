@@ -1609,4 +1609,46 @@ gJlKo0osrUEsUPAf
 echo $RANDOM
 20288
 
+#netstat
+[root@hotel_es02 volumes]# netstat -ano | grep ESTABLISHED | wc -l
+1035
+[root@hotel_es02 volumes]# netstat -ano | grep ESTABLISHED  | awk '{print $4}' | awk -F ':' '{count[$1]++} END{for(i in count){if(count[i] > 10){printf "%-20s%d\r\n",i,count[i]}}}'
+192.168.13.239      518
+172.17.0.1          517
+[root@hotel_es02 volumes]# netstat -ano | grep ESTABLISHED  | awk '{print $4}' | awk -F ':' '{count[$2]++} END{for(i in count){if(count[i] > 10){printf "%-20s%d\r\n",i,count[i]}}}'
+9200                511
+[root@hotel_es02 volumes]# netstat -ano | egrep 'ESTABLISHED|9200' | awk '{print $5}' | awk -F ':' '{count[$1]++} END{for(i in count){if(count[i] > 10){printf "%-20s%d\r\n",i,count[i]}}}'
+172.17.0.15         522
+172.17.0.7          509
+
+#docker格式化输出
+#数据挂载信息
+[root@test ~]# docker inspect 7042bac0e964 -f '数据挂载信息:{{println}}{{range .Mounts}}{{.Source}}:{{.Destination}}{{println}}{{end}}'
+数据挂载信息:
+/data/elk/nginx/default.conf:/etc/nginx/conf.d/default.conf
+/data/elk/nginx/.login.txt:/etc/nginx/.login.txt
+#IP信息
+[root@test ~]#  docker inspect --format 'Hostname:{{ .Config.Hostname }}  Name:{{.Name}} IP:{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(docker ps -q)
+Hostname:7df8c82a78c7  Name:/jms_guacamole IP:172.17.0.9
+Hostname:271d08e644e8  Name:/redis IP:172.17.0.8
+Hostname:97e4df2044c1  Name:/test_rsyslog IP:172.17.0.10
+Hostname:d05623793685  Name:/rsyslog IP:172.17.0.3
+Hostname:nginx  Name:/nginx IP:172.18.0.2
+Hostname:711b171e4e93  Name:/es_admin IP:172.17.0.2
+Hostname:1ad4b5d17d1b  Name:/cadvisor IP:172.17.0.4
+Hostname:rabbit_test3  Name:/rabbit_test3 IP:172.17.0.7
+Hostname:rabbit_test2  Name:/rabbit_test2 IP:172.17.0.6
+Hostname:rabbit_test1  Name:/rabbit_test1 IP:172.17.0.5
+#端口信息
+[root@test ~]# docker inspect --format '{{/*通过变量组合展示容器绑定端口列表*/}}已绑定端口列表：{{println}}{{range $p,$conf := .NetworkSettings.Ports}}{{$p}} -> {{range $conf}}{{.HostIP}}:{{.HostPort}}{{end}}{{println}}{{end}}' 7042bac0e964
+已绑定端口列表：
+5601/tcp -> 0.0.0.0:5601
+80/tcp -> 
+9200/tcp -> 0.0.0.0:9200
+#总信息
+docker inspect --format '{{/*ContainerName,HostName,ip,DataMountFiles,Port*/}}ContainerName:{{.Name}}    Hostname:{{ .Config.Hostname }}    IP:{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}{{println}}DataMountFiles:{{println}}{{range .Mounts}}{{.Source}}:{{.Destination}}{{println}}{{end}}{{println}}Port: {{println}}{{range $p,$conf := .NetworkSettings.Ports}}{{$p}} -> {{range $conf}}{{.HostIP}}:{{.HostPort}}{{end}}{{println}}{{end}}' `docker ps -aq`
+
+
+
+
 </pre>
