@@ -879,6 +879,13 @@ OUTER APPLY(
 注：OUTER APPLY()工作原理是把左表当做目标表，把子集表当做源表，拿源表的每一行去>跟目标表的行去比较(字段必须相对应连接),当源表和目标表匹配到时则保留，如果未匹配到，则目标表显示，源表显示为NULL。子集表中ORDER BY比top优先级高。(类似LEFT JOIN，与LEFT JOIN不同的是外部连接是拿子集表的多行跟左表的一行去比较)
 
 
+#常用操作SQL
+select spid as ProcessID,db_name(dbid) as DBNAME,loginame as UserName,count(dbid) as Connection 
+from master.sys.sysprocesses 
+where dbid > 4
+group by spid,dbid,loginame
+
+kill 55
 
 
 </pre>
