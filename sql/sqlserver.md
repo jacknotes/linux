@@ -887,5 +887,21 @@ group by spid,dbid,loginame
 
 kill 55
 
+select session_id,login_time,login_name,host_name,
+host_process_id,status,memory_usage,reads,writes
+from sys.dm_exec_sessions 
+where group_id = 2
+order by reads desc
+
+
+select * 
+from [master].dbo.sysprocesses 
+where dbid in 
+(
+Select dbid from master.dbo.sysdatabases where name in ('homsomdb')
+)
+order by physical_io desc
+
+kill 122
 
 </pre>
