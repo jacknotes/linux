@@ -1,5 +1,5 @@
 ﻿k8s知识重点：
-
+<pre>
 ##k8s集群的管理方式：
 	1. 命令式：create,run,delete,expose,edit....
 	2. 命令式配置文件:create -f filename,delete -f ,replace -f
@@ -1672,7 +1672,6 @@ elasticsearch-discovery   ClusterIP   None            <none>        9300/TCP    
 kibana                    NodePort    10.106.59.188   <none>        443:32053/TCP    17m
 
 
-<pre>
 
 #动态PVC--NFS
 https://kubernetes.io/docs/concepts/storage/storage-classes/#glusterfs
