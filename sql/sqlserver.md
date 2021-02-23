@@ -904,4 +904,40 @@ order by physical_io desc
 
 kill 122
 
+
+#Step for 20210223
+
+select 
+	t1.session_id,
+	t1.client_net_address,
+	t1.client_tcp_port,
+	t1.local_net_address,
+	t1.local_tcp_port,
+	t1.connect_time,
+	t1.num_reads,
+	t1.num_writes,
+	t1.last_read,
+	t1.last_write,
+	t1.net_packet_size,
+	t2.login_time,
+	t2.login_name,
+	t2.host_name,
+	t2.program_name,
+	t2.host_process_id,
+	t2.status,
+	t2.cpu_time,
+	t2.memory_usage,
+	t2.total_scheduled_time,
+	t2.last_request_start_time,
+	t2.last_request_end_time,
+	t2.reads,
+	t2.writes,
+	t2.logical_reads
+from sys.dm_exec_sessions t2
+left join sys.dm_exec_connections t1 on t1.session_id=t2.session_id
+order by t2.logical_reads desc
+
+--kill 63 
+
+
 </pre>
