@@ -1610,16 +1610,27 @@ echo $RANDOM
 20288
 
 #netstat
-[root@hotel_es02 volumes]# netstat -ano | grep ESTABLISHED | wc -l
-1035
-[root@hotel_es02 volumes]# netstat -ano | grep ESTABLISHED  | awk '{print $4}' | awk -F ':' '{count[$1]++} END{for(i in count){if(count[i] > 10){printf "%-20s%d\r\n",i,count[i]}}}'
-192.168.13.239      518
-172.17.0.1          517
-[root@hotel_es02 volumes]# netstat -ano | grep ESTABLISHED  | awk '{print $4}' | awk -F ':' '{count[$2]++} END{for(i in count){if(count[i] > 10){printf "%-20s%d\r\n",i,count[i]}}}'
-9200                511
-[root@hotel_es02 volumes]# netstat -ano | egrep 'ESTABLISHED|9200' | awk '{print $5}' | awk -F ':' '{count[$1]++} END{for(i in count){if(count[i] > 10){printf "%-20s%d\r\n",i,count[i]}}}'
-172.17.0.15         522
-172.17.0.7          509
+#192.168.13.230
+#server or client
+[root@homsom-nginx-dev conf]# netstat -ano | grep ESTABLISHED | wc -l
+3677
+#server IP
+[root@homsom-nginx-dev conf]# netstat -ano | grep ESTABLISHED  | awk '{print $4}' | awk -F ':' '{count[$1]++} END{for(i in count){if(count[i] > 10){printf "%-20s%d\r\n",i,count[i]}}}'
+192.168.13.230      3845
+#server PORT
+[root@homsom-nginx-dev conf]# netstat -ano | grep ESTABLISHED  | awk '{print $4}' | awk -F ':' '{count[$2]++} END{for(i in count){if(count[i] > 10){printf "%-20s%d\r\n",i,count[i]}}}'
+80                  3108
+#server query which client
+[root@homsom-nginx-dev conf]# netstat -ano | egrep 'ESTABLISHED' | awk '{print $5}' | awk -F ':' '{count[$1]++} END{for(i in count){if(count[i] > 1500){printf "%-20s%d\r\n",i,count[i]}}}'
+192.168.13.223      3713
+#192.168.13.230
+#client port listen
+[root@homsom-nginx-dev conf]# netstat -ano | grep ESTABLISHED  | awk '{print $4}' | awk -F ':' '{count[$2]++} END{for(i in count){if(count[i] > 10){printf "%-20s%d\r\n",i,count[i]}}}'
+9200                1000 
+#client ip connection
+[root@homsom-nginx-dev conf]# netstat -ano | grep ESTABLISHED  | awk '{print $5}' | awk -F ':' '{count[$1]++} END{for(i in count){if(count[i] > 10){printf "%-20s%d\r\n",i,count[i]}}}'
+172.16.2.10                1000 
+
 
 #docker格式化输出
 #数据挂载信息
