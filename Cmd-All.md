@@ -1610,26 +1610,40 @@ echo $RANDOM
 20288
 
 #netstat
+#state status
+[root@homsom-nginx-dev conf]#  netstat -tan | awk '/^tcp/{count[$NF]++} END {for (i in count) {print i,count[i]}}'
+TIME_WAIT 726
+CLOSE_WAIT 1
+ESTABLISHED 4132
+SYN_RECV 10
+LISTEN 8
+
 #192.168.13.230
 #server or client
 [root@homsom-nginx-dev conf]# netstat -ano | grep ESTABLISHED | wc -l
-3677
+1364
 #server IP
 [root@homsom-nginx-dev conf]# netstat -ano | grep ESTABLISHED  | awk '{print $4}' | awk -F ':' '{count[$1]++} END{for(i in count){if(count[i] > 10){printf "%-20s%d\r\n",i,count[i]}}}'
-192.168.13.230      3845
+192.168.13.230      1597
 #server PORT
 [root@homsom-nginx-dev conf]# netstat -ano | grep ESTABLISHED  | awk '{print $4}' | awk -F ':' '{count[$2]++} END{for(i in count){if(count[i] > 10){printf "%-20s%d\r\n",i,count[i]}}}'
-80                  3108
+80                  1445
 #server query which client
 [root@homsom-nginx-dev conf]# netstat -ano | egrep 'ESTABLISHED' | awk '{print $5}' | awk -F ':' '{count[$1]++} END{for(i in count){if(count[i] > 1500){printf "%-20s%d\r\n",i,count[i]}}}'
-192.168.13.223      3713
+192.168.13.223      1649
+
 #192.168.13.230
 #client port listen
-[root@homsom-nginx-dev conf]# netstat -ano | grep ESTABLISHED  | awk '{print $4}' | awk -F ':' '{count[$2]++} END{for(i in count){if(count[i] > 10){printf "%-20s%d\r\n",i,count[i]}}}'
-9200                1000 
+[root@clog ~]# netstat -ano | grep ESTABLISHED  | awk '{print $4}' | awk -F ':' '{count[$2]++} END{for(i in count){if(count[i] > 10){printf "%-20s%d\r\n",i,count[i]}}}'
+6002                22
+9200                926
 #client ip connection
-[root@homsom-nginx-dev conf]# netstat -ano | grep ESTABLISHED  | awk '{print $5}' | awk -F ':' '{count[$1]++} END{for(i in count){if(count[i] > 10){printf "%-20s%d\r\n",i,count[i]}}}'
-172.16.2.10                1000 
+[root@clog ~]# netstat -ano | grep ESTABLISHED  | awk '{print $5}' | awk -F ':' '{count[$1]++} END{for(i in count){if(count[i] > 10){printf "%-20s%d\r\n",i,count[i]}}}'
+172.17.0.21         22
+172.17.0.23         1290
+172.20.0.2          1295
+
+
 
 
 #docker格式化输出
@@ -1639,25 +1653,353 @@ echo $RANDOM
 /data/elk/nginx/default.conf:/etc/nginx/conf.d/default.conf
 /data/elk/nginx/.login.txt:/etc/nginx/.login.txt
 #IP信息
-[root@test ~]#  docker inspect --format 'Hostname:{{ .Config.Hostname }}  Name:{{.Name}} IP:{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $(docker ps -q)
-Hostname:7df8c82a78c7  Name:/jms_guacamole IP:172.17.0.9
-Hostname:271d08e644e8  Name:/redis IP:172.17.0.8
-Hostname:97e4df2044c1  Name:/test_rsyslog IP:172.17.0.10
-Hostname:d05623793685  Name:/rsyslog IP:172.17.0.3
-Hostname:nginx  Name:/nginx IP:172.18.0.2
-Hostname:711b171e4e93  Name:/es_admin IP:172.17.0.2
-Hostname:1ad4b5d17d1b  Name:/cadvisor IP:172.17.0.4
-Hostname:rabbit_test3  Name:/rabbit_test3 IP:172.17.0.7
-Hostname:rabbit_test2  Name:/rabbit_test2 IP:172.17.0.6
-Hostname:rabbit_test1  Name:/rabbit_test1 IP:172.17.0.5
+[root@clog ~]# docker inspect --format 'Hostname:{{ .Config.Hostname }}  Name:{{.Name}} IP:{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' $(docker ps -q)
+Hostname:1e9276038de3  Name:/fat-hotelresourcemeituan IP:172.17.0.40 
+Hostname:196f64418ba7  Name:/fat-travelreportservice IP:172.17.0.31 
+Hostname:ac1f389b40e4  Name:/fat-hotelresourceyaduo IP:172.17.0.33 
+Hostname:0fccc8b7c265  Name:/fat-hotelresource IP:172.17.0.18 
+Hostname:148ac5a0544e  Name:/fat-dataconversionervice IP:172.17.0.38 
+Hostname:26948c784e68  Name:/fat_integrateapi IP:172.17.0.25 
+Hostname:6aa36fb42057  Name:/fat-hotelresourcehsziyou IP:172.17.0.35 
+Hostname:429ed931332a  Name:/uat_integrateapi IP:172.17.0.39 
+Hostname:fc7419447896  Name:/fat-hotelresourceyouyou IP:172.17.0.30 
+Hostname:d5b111e12462  Name:/fat_protocol IP:172.17.0.32 
+Hostname:fae784890f94  Name:/fat-hotelresourcemanager IP:172.17.0.36 
+Hostname:39c136d94c7a  Name:/fat-identitysource IP:172.17.0.5 
+Hostname:d8b4a4d8de6c  Name:/fat-hotelresourcetepai IP:172.17.0.34 
+Hostname:b96362855b5f  Name:/fat-homsompayapi IP:172.17.0.4 
+Hostname:7ed5bbd3924a  Name:/fat-bussinesslog IP:172.17.0.37 
+Hostname:42fde26b934f  Name:/fat_carbusinessapi IP:172.17.0.14 
+Hostname:ea3bfe17f21d  Name:/fat_carserviceapi IP:172.17.0.13 
+Hostname:420efe622a11  Name:/fat_carresourceapi IP:172.17.0.6 
+Hostname:a32f15a1199f  Name:/fat_domaineventserviceapi IP:172.17.0.24 
+Hostname:6f2ebfb72d1b  Name:/fat-systemintergrationmvc IP:172.17.0.26 
+Hostname:b187a406c68d  Name:/fat-systemintergration IP:172.17.0.8 
+Hostname:d6d6da9abe76  Name:/uat_carserviceapi IP:172.17.0.29 
+Hostname:91e5fe26a882  Name:/uat_carbusinessapi IP:172.17.0.28 
+Hostname:c67b32ac520a  Name:/uat_carresourceapi IP:172.17.0.27 
+Hostname:0463f78ec380  Name:/bill_api_13 IP:172.17.0.7 
+Hostname:00a9f787b151  Name:/uat_bill_api_12 IP:172.17.0.9 
+Hostname:fba471457747  Name:/uat-identitysource IP:172.17.0.10 
+Hostname:694d61d7d43d  Name:/fat_toc_service_15 IP:172.17.0.11 
+Hostname:05ca3772a667  Name:/fat_toc_api_15 IP:172.17.0.12 
+Hostname:ddb9a03a820e  Name:/fat_toc_login_12_1 IP:172.17.0.15 
+Hostname:c02428b8a187  Name:/cadvisor IP:172.17.0.16 
+Hostname:f998f7cfea6f  Name:/uat_flightmanagerapi_1_1 IP:172.17.0.17 
+Hostname:8ead940c014e  Name:/mysql IP:172.17.0.19 
+Hostname:763b77c5dd39  Name:/clever_poincare IP:172.17.0.20 
+Hostname:3adf239271c5  Name:/fat_rabbitmq IP:172.17.0.3 
+Hostname:5c8f211ba91f  Name:/uat_rabbitmq IP:172.17.0.2 
+Hostname:a2bd7e732bfc  Name:/fat-redis IP:172.17.0.21 172.18.0.2 
+Hostname:de656e916c5b  Name:/uat-redis IP:172.17.0.22 172.18.0.3 
+Hostname:b3ffa92cc37c  Name:/elk IP:172.17.0.23 172.20.0.3 
+
 #端口信息
-[root@test ~]# docker inspect --format '{{/*通过变量组合展示容器绑定端口列表*/}}已绑定端口列表：{{println}}{{range $p,$conf := .NetworkSettings.Ports}}{{$p}} -> {{range $conf}}{{.HostIP}}:{{.HostPort}}{{end}}{{println}}{{end}}' 7042bac0e964
-已绑定端口列表：
-5601/tcp -> 0.0.0.0:5601
-80/tcp -> 
+[root@clog ~]#  docker inspect --format '{{/*通过变量组合展示容器绑定端口列表*/}}已绑定端口列表：{{println}}{{range $p,$conf := .NetworkSettings.Ports}}{{$p}} -> {{range $conf}}{{.HostIP}}:{{.HostPort}}{{end}}{{println}}{{end}}' b3ffa92cc37c
+\已绑定端口列表：
+5044/tcp -> 0.0.0.0:5044
+5601/tcp -> 0.0.0.0:80
 9200/tcp -> 0.0.0.0:9200
+9300/tcp -> 0.0.0.0:9300
+
 #总信息
-docker inspect --format '{{/*ContainerName,HostName,ip,DataMountFiles,Port*/}}ContainerName:{{.Name}}    Hostname:{{ .Config.Hostname }}    IP:{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}{{println}}DataMountFiles:{{println}}{{range .Mounts}}{{.Source}}:{{.Destination}}{{println}}{{end}}{{println}}Port: {{println}}{{range $p,$conf := .NetworkSettings.Ports}}{{$p}} -> {{range $conf}}{{.HostIP}}:{{.HostPort}}{{end}}{{println}}{{end}}' `docker ps -aq`
+[root@clog ~]# docker inspect --format '{{/*ContainerName,HostName,ip,DataMountFiles,Port*/}}ContainerName:{{.Name}}    Hostname:{{ .Config.Hostname }}    IP:{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}{{println}}DataMountFiles:{{println}}{{range .Mounts}}{{.Source}}:{{.Destination}}{{println}}{{end}}{{println}}Port: {{println}}{{range $p,$conf := .NetworkSettings.Ports}}{{$p}} -> {{range $conf}}{{.HostIP}}:{{.HostPort}}{{end}}{{println}}{{end}}' `docker ps -aq`
+ContainerName:/fat-hotelresourcemeituan    Hostname:1e9276038de3    IP:172.17.0.40
+DataMountFiles:
+
+Port: 
+80/tcp -> 0.0.0.0:12180
+
+ContainerName:/fat-travelreportservice    Hostname:196f64418ba7    IP:172.17.0.31
+DataMountFiles:
+
+Port: 
+80/tcp -> 0.0.0.0:12150
+
+ContainerName:/fat-hotelresourceyaduo    Hostname:ac1f389b40e4    IP:172.17.0.33
+DataMountFiles:
+
+Port: 
+80/tcp -> 0.0.0.0:12140
+
+ContainerName:/fat-hotelresource    Hostname:0fccc8b7c265    IP:172.17.0.18
+DataMountFiles:
+
+Port: 
+80/tcp -> 0.0.0.0:12100
+
+ContainerName:/fat-dataconversionervice    Hostname:148ac5a0544e    IP:172.17.0.38
+DataMountFiles:
+
+Port: 
+80/tcp -> 0.0.0.0:12160
+
+ContainerName:/fat_integrateapi    Hostname:26948c784e68    IP:172.17.0.25
+DataMountFiles:
+
+Port: 
+80/tcp -> 0.0.0.0:12190
+
+ContainerName:/fat-hotelresourcehsziyou    Hostname:6aa36fb42057    IP:172.17.0.35
+DataMountFiles:
+
+Port: 
+80/tcp -> 0.0.0.0:12200
+
+ContainerName:/uat_integrateapi    Hostname:429ed931332a    IP:172.17.0.39
+DataMountFiles:
+
+Port: 
+80/tcp -> 0.0.0.0:12191
+
+ContainerName:/fat-hotelresourceyouyou    Hostname:fc7419447896    IP:172.17.0.30
+DataMountFiles:
+
+Port: 
+80/tcp -> 0.0.0.0:12120
+
+ContainerName:/fat_protocol    Hostname:d5b111e12462    IP:172.17.0.32
+DataMountFiles:
+
+Port: 
+80/tcp -> 0.0.0.0:12130
+
+ContainerName:/fat-hotelresourcemanager    Hostname:fae784890f94    IP:172.17.0.36
+DataMountFiles:
+
+Port: 
+443/tcp -> 
+80/tcp -> 0.0.0.0:12110
+
+ContainerName:/fat-identitysource    Hostname:39c136d94c7a    IP:172.17.0.5
+DataMountFiles:
+
+Port: 
+8083/tcp -> 0.0.0.0:11990
+
+ContainerName:/fat-hotelresourcetepai    Hostname:d8b4a4d8de6c    IP:172.17.0.34
+DataMountFiles:
+
+Port: 
+80/tcp -> 0.0.0.0:12170
+
+ContainerName:/fat-homsompayapi    Hostname:b96362855b5f    IP:172.17.0.4
+DataMountFiles:
+
+Port: 
+12000/tcp -> 0.0.0.0:12000
+
+ContainerName:/fat-bussinesslog    Hostname:7ed5bbd3924a    IP:172.17.0.37
+DataMountFiles:
+
+Port: 
+80/tcp -> 0.0.0.0:8091
+
+ContainerName:/fat_carbusinessapi    Hostname:42fde26b934f    IP:172.17.0.14
+DataMountFiles:
+
+Port: 
+443/tcp -> 
+80/tcp -> 0.0.0.0:12060
+
+ContainerName:/fat_carserviceapi    Hostname:ea3bfe17f21d    IP:172.17.0.13
+DataMountFiles:
+
+Port: 
+443/tcp -> 
+80/tcp -> 0.0.0.0:12050
+
+ContainerName:/fat_carresourceapi    Hostname:420efe622a11    IP:172.17.0.6
+DataMountFiles:
+
+Port: 
+443/tcp -> 
+80/tcp -> 0.0.0.0:12070
+
+ContainerName:/fat_domaineventserviceapi    Hostname:a32f15a1199f    IP:172.17.0.24
+DataMountFiles:
+
+Port: 
+80/tcp -> 0.0.0.0:12090
+
+ContainerName:/fat-systemintergrationmvc    Hostname:6f2ebfb72d1b    IP:172.17.0.26
+DataMountFiles:
+
+Port: 
+8989/tcp -> 0.0.0.0:8989
+
+ContainerName:/fat-systemintergration    Hostname:b187a406c68d    IP:172.17.0.8
+DataMountFiles:
+
+Port: 
+80/tcp -> 
+8999/tcp -> 0.0.0.0:8999
+
+ContainerName:/uat_carserviceapi    Hostname:d6d6da9abe76    IP:172.17.0.29
+DataMountFiles:
+
+Port: 
+443/tcp -> 
+80/tcp -> 0.0.0.0:12051
+
+ContainerName:/uat_carbusinessapi    Hostname:91e5fe26a882    IP:172.17.0.28
+DataMountFiles:
+
+Port: 
+443/tcp -> 
+80/tcp -> 0.0.0.0:12061
+
+ContainerName:/uat_carresourceapi    Hostname:c67b32ac520a    IP:172.17.0.27
+DataMountFiles:
+
+Port: 
+443/tcp -> 
+80/tcp -> 0.0.0.0:12071
+
+ContainerName:/bill_api_13    Hostname:0463f78ec380    IP:172.17.0.7
+DataMountFiles:
+/etc/localtime:/etc/localtime
+
+Port: 
+443/tcp -> 
+80/tcp -> 0.0.0.0:11980
+
+ContainerName:/uat_bill_api_12    Hostname:00a9f787b151    IP:172.17.0.9
+DataMountFiles:
+/etc/localtime:/etc/localtime
+
+Port: 
+443/tcp -> 
+80/tcp -> 0.0.0.0:11981
+
+ContainerName:/uat-identitysource    Hostname:fba471457747    IP:172.17.0.10
+DataMountFiles:
+
+Port: 
+8083/tcp -> 0.0.0.0:11991
+
+ContainerName:/fat_toc_service_15    Hostname:694d61d7d43d    IP:172.17.0.11
+DataMountFiles:
+/etc/localtime:/etc/localtime
+
+Port: 
+80/tcp -> 0.0.0.0:10880
+
+ContainerName:/fat_toc_api_15    Hostname:05ca3772a667    IP:172.17.0.12
+DataMountFiles:
+/etc/localtime:/etc/localtime
+
+Port: 
+80/tcp -> 0.0.0.0:10890
+
+ContainerName:/es_test01    Hostname:28cf2149b64a    IP:
+DataMountFiles:
+/home/docker/lib/volumes/497d03dba140237d49b43e0b28955053f218cc9524a00e5f72c5f7a493cf818b/_data:/var/lib/elasticsearch
+
+Port: 
+
+ContainerName:/es_test02    Hostname:95abf386d6c9    IP:
+DataMountFiles:
+/home/docker/lib/volumes/56e34dacab279356fdb4d9aedff406c9d966fbc15fd47be00a4b0536a5ccda49/_data:/var/lib/elasticsearch
+
+Port: 
+
+ContainerName:/fat_toc_login_12_1    Hostname:ddb9a03a820e    IP:172.17.0.15
+DataMountFiles:
+/etc/localtime:/etc/localtime
+
+Port: 
+80/tcp -> 0.0.0.0:10900
+
+ContainerName:/cadvisor    Hostname:c02428b8a187    IP:172.17.0.16
+DataMountFiles:
+/dev/disk:/dev/disk
+/:/rootfs
+/sys:/sys
+/var/lib/docker:/var/lib/docker
+/var/run:/var/run
+
+Port: 
+8080/tcp -> 0.0.0.0:8080
+
+ContainerName:/uat_flightmanagerapi_1_1    Hostname:f998f7cfea6f    IP:172.17.0.17
+DataMountFiles:
+/etc/localtime:/etc/localtime
+
+Port: 
+80/tcp -> 0.0.0.0:14334
+
+ContainerName:/mysql    Hostname:8ead940c014e    IP:172.17.0.19
+DataMountFiles:
+/home/docker/data:/var/lib/mysql
+
+Port: 
+3306/tcp -> 0.0.0.0:3306
+33060/tcp -> 
+
+ContainerName:/fat-systemlog    Hostname:42568a9e78ba    IP:
+DataMountFiles:
+/config/systemlog/fat/appsettings.json:/app/appsettings.json
+
+Port: 
+
+ContainerName:/clever_poincare    Hostname:763b77c5dd39    IP:172.17.0.20
+DataMountFiles:
+/home/docker/lib/volumes/fe863cbfa51d0bb9e9b805704fab20d1d25b81faa56843886e2cf3b65e262726/_data:/data
+
+Port: 
+6379/tcp -> 0.0.0.0:6009
+
+ContainerName:/fat_rabbitmq    Hostname:3adf239271c5    IP:172.17.0.3
+DataMountFiles:
+/usr/local/rabbitmq1:/var/lib/rabbitmq
+
+Port: 
+15671/tcp -> 
+15672/tcp -> 0.0.0.0:8002
+25672/tcp -> 0.0.0.0:25682
+4369/tcp -> 0.0.0.0:4379
+5671/tcp -> 
+5672/tcp -> 0.0.0.0:5682
+
+ContainerName:/uat_rabbitmq    Hostname:5c8f211ba91f    IP:172.17.0.2
+DataMountFiles:
+/usr/local/rabbitmq2:/var/lib/rabbitmq
+
+Port: 
+15671/tcp -> 
+15672/tcp -> 0.0.0.0:8001
+25672/tcp -> 0.0.0.0:25672
+4369/tcp -> 0.0.0.0:4369
+5671/tcp -> 
+5672/tcp -> 0.0.0.0:5672
+
+ContainerName:/fat-redis    Hostname:a2bd7e732bfc    IP:172.17.0.21172.18.0.2
+DataMountFiles:
+/home/redis/fat/conf:/etc/redis/redis.conf
+/home/redis/fat/data:/data
+
+Port: 
+6379/tcp -> 0.0.0.0:6002
+
+ContainerName:/uat-redis    Hostname:de656e916c5b    IP:172.17.0.22172.18.0.3
+DataMountFiles:
+/home/redis/uat/conf/uat/data:/data
+/home/redis/uat/conf/uat/conf:/etc/redis/redis.conf
+
+Port: 
+6379/tcp -> 0.0.0.0:6001
+
+ContainerName:/elk    Hostname:b3ffa92cc37c    IP:172.17.0.23172.20.0.3
+DataMountFiles:
+/home/docker_files:/home/docker_files
+/home/docker/lib/volumes/5909409d0f4b665015cc677ba2935a6ec1995c2edcce9359741912030ccf1ac1/_data:/var/lib/elasticsearch
+
+Port: 
+5044/tcp -> 0.0.0.0:5044
+5601/tcp -> 0.0.0.0:80
+9200/tcp -> 0.0.0.0:9200
+9300/tcp -> 0.0.0.0:9300
 
 
 
