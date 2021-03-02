@@ -1619,5 +1619,86 @@ http {
 
 #Confirm
 ./configure --prefix=/usr/local/nginx --sbin-path=/usr/local/nginx/sbin/nginx --conf-path=/usr/local/nginx/conf/nginx.conf --error-log-path=/usr/local/nginx/log/error.log --http-log-path=/usr/local/nginx/log/access.log --pid-path=/usr/local/nginx/tengine.pid --lock-path=/usr/local/nginx/lock/tengine.lock --user=nginx --group=nginx --with-pcre=/usr/local/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --with-stream --add-module=modules/ngx_http_upstream_session_sticky_module --add-module=/download/ngx_http_substitutions_filter_module-master --with-stream_ssl_module --add-module=modules/ngx_http_upstream_check_module --with-http_auth_request_module --with-http_gzip_static_module --with-http_random_index_module --with-http_sub_module
+
+
+#DATETIME: 20210302 
+#Nginx Server openssl openssl-1.0.1e版本升级OpenSSL 1.1.1f
+wget https://www.openssl.org/source/old/1.1.1/openssl-1.1.1f.tar.gz
+tar xf openssl-1.1.1f.tar.gz
+cd openssl-1.1.1f
+./config --prefix=/usr/local/openssl-1.1.1f/
+make -j4 && make install ;echo $?
+ln -sv /usr/local/openssl-1.1.1f/ /usr/local/openssl
+mv /usr/bin/openssl{,.bak}
+mv /usr/include/openssl{,.bak}
+
+ln -sv /usr/local/openssl/bin/openssl  /usr/bin/openssl
+ln -sv /usr/local/openssl/include/openssl/ /usr/include/openssl
+echo "/usr/local/openssl/lib/" > /etc/ld.so.conf.d/openssl.conf
+ldconfig -v | grep openssl
+[root@ha1 openssl]# openssl version
+OpenSSL 1.1.1f  31 Mar 2020
+[root@ha1 openssl]# openssl version -a
+OpenSSL 1.1.1f  31 Mar 2020
+built on: Mon Mar  1 07:22:12 2021 UTC
+platform: linux-x86_64
+options:  bn(64,64) rc4(16x,int) des(int) idea(int) blowfish(ptr) 
+compiler: gcc -fPIC -pthread -m64 -Wa,--noexecstack -Wall -O3 -DOPENSSL_USE_NODELETE -DL_ENDIAN -DOPENSSL_PIC -DOPENSSL_CPUID_OBJ -DOPENSSL_IA32_SSE2 -DOPENSSL_BN_ASM_MONT -DOPENSSL_BN_ASM_MONT5 -DOPENSSL_BN_ASM_GF2m -DSHA1_ASM -DSHA256_ASM -DSHA512_ASM -DKECCAK1600_ASM -DRC4_ASM -DMD5_ASM -DAESNI_ASM -DVPAES_ASM -DGHASH_ASM -DECP_NISTZ256_ASM -DX25519_ASM -DPOLY1305_ASM -DNDEBUG
+OPENSSLDIR: "/usr/local/openssl-1.1.1f/ssl"
+ENGINESDIR: "/usr/local/openssl-1.1.1f//lib/engines-1.1"
+Seeding source: os-specific
+
+
+#nginx
+[root@reverse02_pro openssl-1.1.1f]# /usr/local/nginx/sbin/nginx  -V
+nginx version: nginx/1.16.1
+built by gcc 4.4.7 20120313 (Red Hat 4.4.7-23) (GCC) 
+built with OpenSSL 1.0.1e-fips 11 Feb 2013
+TLS SNI support enabled
+configure arguments: --prefix=/usr/local/nginx --with-http_stub_status_module --with-http_ssl_module --with-http_sub_module --with-http_realip_module --add-module=/git/ngx_http_substitutions_filter_module --with-stream
+
+
+
+[root@ha1 openssl]# cd /download/nginx-1.16.1/auto/lib/openssl/
+[root@ha1 openssl]# cp conf{,.bak}
+[root@ha1 openssl]# vim conf
+将
+            CORE_INCS="$CORE_INCS $OPENSSL/.openssl/include"
+            CORE_DEPS="$CORE_DEPS $OPENSSL/.openssl/include/openssl/ssl.h"
+            CORE_LIBS="$CORE_LIBS $OPENSSL/.openssl/lib/libssl.a"
+            CORE_LIBS="$CORE_LIBS $OPENSSL/.openssl/lib/libcrypto.a"
+            CORE_LIBS="$CORE_LIBS $NGX_LIBDL"
+修改为
+            CORE_INCS="$CORE_INCS $OPENSSL/include"
+            CORE_DEPS="$CORE_DEPS $OPENSSL/include/openssl/ssl.h"
+            CORE_LIBS="$CORE_LIBS $OPENSSL/lib/libssl.a"
+            CORE_LIBS="$CORE_LIBS $OPENSSL/lib/libcrypto.a"
+            CORE_LIBS="$CORE_LIBS $NGX_LIBDL"
+[root@ha1 openssl]# cd /download/nginx-1.16.1
+[root@ha1 nginx-1.16.1]# make clean
+[root@ha1 nginx-1.16.1]# ./configure --prefix=/usr/local/nginx --with-http_stub_status_module --with-http_ssl_module --with-http_sub_module --with-http_realip_module --add-module=/git/ngx_http_substitutions_filter_module --with-stream --with-openssl=/usr/local/openssl
+[root@ha1 nginx-1.16.1]# make
+[root@ha1 nginx-1.16.1]# mv /usr/local/nginx/sbin/nginx{,.bak}
+[root@ha1 nginx-1.16.1]# cp  /download/nginx-1.16.1/objs/nginx /usr/local/nginx/sbin/
+[root@ha1 nginx-1.16.1]# make upgrade
+或者
+kill -USR2 `cat /var/run/nginx.pid`
+kill -QUIT `cat /var/run/nginx.pid.oldbin`
+或者  
+[root@ha1 nginx-1.16.1]# pkill -9 nginx   
+[root@ha1 nginx-1.16.1]# service nginx start
+Starting nginx:                                            [  OK  ]
+[root@ha1 nginx-1.16.1]# service nginx status
+nginx (pid  34427) is running...
+[root@ha1 nginx-1.16.1]# /usr/local/nginx/sbin/nginx -V
+nginx version: nginx/1.16.1
+built by gcc 4.4.7 20120313 (Red Hat 4.4.7-23) (GCC) 
+built with OpenSSL 1.1.1f  31 Mar 2020
+TLS SNI support enabled
+configure arguments: --prefix=/usr/local/nginx --user=www --group=www --with-pcre=/download/pcre-8.44/ --with-http_stub_status_module --with-http_ssl_module --with-http_sub_module --with-http_realip_module --add-module=/git/ngx_http_substitutions_filter_module --with-stream --with-openssl=/usr/local/openssl
+
+
+
+
 </pre>
 
