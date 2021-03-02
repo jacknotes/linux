@@ -940,4 +940,90 @@ order by t2.logical_reads desc
 --kill 63 
 
 
+---
+DATETIME: 20210302
+Description: 数据库镜像操作
+--删除镜像，并将原先正在还原的数据库设为可操作
+alter database test set partner off;
+restore database test with recovery;
+
+-- 主机备份
+USE master
+GO
+BACKUP DATABASE [test] TO DISK = N'D:\test.bak'
+WITH FORMAT, INIT, NAME = N'DBtestSync-Full Database Backup', SKIP, NOREWIND, NOUNLOAD, STATS = 10;
+GO
+BACKUP LOG [test] TO DISK = N'D:\test.bak'
+WITH NOFORMAT, NOINIT, NAME = N'DBtestSync-Transaction Log Backup', SKIP, NOREWIND, NOUNLOAD, STATS = 10;
+GO 
+
+-- 镜像还原并置为正在还原的状态
+USE master
+GO
+RESTORE DATABASE [test] FROM DISK = N'D:\test.bak'
+WITH FILE = 1,
+NORECOVERY, NOUNLOAD, REPLACE, STATS = 10
+GO
+RESTORE LOG [test] FROM DISK = N'D:\test.bak'
+WITH FILE = 2,
+NORECOVERY, NOUNLOAD, STATS = 10
+GO
+
+-- 注意
+主机和镜像服务器的数据库服务都需要使用域控的hs\administrator账户启用，在配置镜像时都使用hs\administrator
+
+
+--主备切换
+【1】.在高安全模式下：
+在主机执行:
+use master;
+alter database Demo1 set partner failover;
+即完成主备切换
+【2】.在高性能模式下，需要先切换到高安全模式下再执行切换
+在主机执行:
+use master;
+alter database Demo1 set partner safety full;
+alter database Demo1 set partner failover;
+【3】.在主机（SQLSVR1）宕机的情况下在备机（SQLSVR2）进行强制切换：
+use master;
+alter database Demo1 set partner FORCE_SERVICE_ALLOW_DATA_LOSS;
+当主机(SQLSVR1)重新开机后，在SQLSVR2机器上执行
+use master;
+alter database Demo1 set partner resume;
+此时SQLSVR1成为了备机，而SQLSVR2成为了主机。
+再到SQLSVR2机器上执行
+alter database Demo1 set partner failover;
+就成了SQLSVR1成为主机，SQLSVR2成为备机
+【4】切换镜像在高性能模式下(慎用，可能会丢失数据)
+use master;
+alter database Demo1 set partner safety off;
+【5】.关闭数据库镜像
+ALTER DATABASE Demo1 SET PARTNER OFF
+【6】.暂停与恢复数据库镜像
+　　在主体镜像服务器上，若是不小心日志过大，可以进行暂停来设置日志上限
+　　（1）暂停：ALTER DATABASE AdventureWorks2012 SET PARTNER SUSPEND;
+　　（2）恢复：ALTER DATABASE AdventureWorks2012 SET PARTNER RESUME;
+【7】移除见证服务器
+USE [master]
+GO
+ALTER DATABASE Demo1 SET WITNESS OFF
+GO
+--https://www.cnblogs.com/gered/p/10601202.html
+
+---
+DATETIME: 20210302
+Description: 数据库备份还原脚本 
+#Full Backup
+BACKUP DATABASE [test] TO  DISK =test_202102020200_diff.bak  WITH NOFORMAT  
+, NOINIT,  NAME = N'test-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
+
+#Different Backup
+BACKUP DATABASE [test] TO  DISK =test_202102020300_diff.bak  WITH  DIFFERENTIAL, NOFORMAT
+, NOINIT,  NAME = N'test-差异 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10
+
+#Transaction Log Backup
+BACKUP LOG test TO  DISK =test_202102022300_log.trn WITH NAME=N'ehomsom 日志'
+
+
+
 </pre>
