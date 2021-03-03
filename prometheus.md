@@ -1673,5 +1673,103 @@ curl -X PUT --data @consul-0.json http://192.168.13.236:8500/v1/agent/service/re
 
 
 
+#rabbitmq_exporter
+REFERENCE: https://github.com/kbudde/rabbitmq_exporter
+---
+[root@prometheus rabbitmq_exporter]# cat /usr/lib/systemd/system/rabbitmq_exporter.service 
+[Unit]
+Description=rabbitmq_exporter
+Documentation=https://prometheus.io/
+After=network.target
+
+[Service]
+Type=simple
+User=prometheus
+Group=prometheus
+EnvironmentFile=/usr/local/rabbitmq_exporter/rabbitmq_exporter_env.conf
+ExecStart=/usr/local/rabbitmq_exporter/rabbitmq_exporter
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+---
+[root@prometheus rabbitmq_exporter]# cat rabbitmq_exporter_env.conf 
+RABBIT_USER=rabbitmq_exporter
+RABBIT_PASSWORD=rabbitmq@exporter
+OUTPUT_FORMAT=JSON
+PUBLISH_PORT=9419
+RABBIT_URL=http://rabbitmq.hs.com
+---
+systemctl daemon-reload 
+systemctl start rabbitmq_exporter
+systemctl enable rabbitmq_exporter
+
+--prometheus.yml文件增加rabbitmq_exporter配置
+[root@prometheus rabbitmq_exporter]#vim /usr/local/prometheus/prometheus.yml
+  - job_name: 'consul-rabbitmq_exporter'
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*rabbitmq.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+---
+--注册consul
+[root@prometheus rabbitmq_exporter]# cat ~/work/consul/rabbitmq_exporter/consul-rabbitmq_exporter-rabbitmq.hs.com.json 
+{
+  "Name": "rabbitmq_exporter",
+  "ID": "rabbitmq_exporter-rabbitmq.hs.com",
+  "Tags": [
+    "rabbitmq_exporter"
+  ],
+  "Address": "192.168.13.235",
+  "Port": 9419,
+  "Meta": {
+    "app": "rabbitmq.hs.com",
+    "env": "pro",
+    "project": "services",
+    "team": "ops",
+    "cluster": "rabbitmq_cluster"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://192.168.13.235:9419/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}
+---
+--alertmanager增加rabbitmq_exporter报警
+[root@prometheus rules]# cat rabbitmq_exporter.rule 
+groups:
+- name: RabbitmqExporterAlert
+  rules:
+  - alert: RabbitmqClusterUpAlert
+    expr: rabbitmq_up != 1
+    for: 15s
+    labels:
+      severity: High
+    annotations:
+      summary: "rabbitmq cluster is down"
+      description: "team: {{ $labels.team }}, env: {{ $labels.env }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} rabbitmq cluster is down(current value: {{ $value }})"
+
+  - alert: RabbitmqNodeRunningAlert
+    expr: rabbitmq_running != 1
+    for: 15s
+    labels:
+      severity: High
+    annotations:
+      summary: "rabbitmq node is down"
+      description: "team: {{ $labels.team }}, env: {{ $labels.env }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }}, node: {{ $labels.node }} rabbitmq node is down(current value: {{ $value }})"
+---
+[root@prometheus rules]# curl -XPOST http://localhost:9090/-/reload
+
+
 </pre>
 
