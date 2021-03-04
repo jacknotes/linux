@@ -1025,5 +1025,98 @@ BACKUP DATABASE [test] TO  DISK =test_202102020300_diff.bak  WITH  DIFFERENTIAL,
 BACKUP LOG test TO  DISK =test_202102022300_log.trn WITH NAME=N'ehomsom 日志'
 
 
+---
+DATETIME: 20210304
+Description: 数据库还原脚本 
+----数据库还原1
+use master
+go
+
+create database FinanceDB20210304
+GO
+--还原完整备份
+RESTORE DATABASE FinanceDB20210304
+FROM
+DISK='K:\2020\11\FinanceDB_20201101020001_full.bak'
+WITH MOVE 'FinanceDB' TO 'F:\TmpDb\FinanceDB20210304.mdf',
+MOVE 'FinanceDB_log' TO 'F:\TmpDb\FinanceDB20210304_log.ldf',
+STATS = 10, REPLACE,NORECOVERY
+GO
+--还原差异备份
+RESTORE DATABASE FinanceDB20210304
+FROM
+DISK='K:\2020\11\FinanceDB_20201107030000_diff.bak'
+WITH STATS = 10,
+REPLACE,RECOVERY
+GO
+--还原事物日志备份
+RESTORE LOG sms2018
+FROM
+DISK = N'L:\2018\10\SMS20181022230000_log.trn'
+WITH STATS = 10, RECOVERY ,STOPAT='2018-10-22 14:30:00'
+GO
+
+
+----数据库还原2
+USE master
+GO
+
+CREATE DATABASE [topway20210303]
+--RESTORE FILELISTONLY FROM DISK = N'L:\2020\2021\02\topway_20210228020000_full.bak'
+RESTORE DATABASE [topway20210303] FROM DISK = N'L:\2020\2021\02\topway_20210228020000_full.bak'
+WITH MOVE 'topway_data' TO 'F:\TmpDb\topway20210303.mdf',
+MOVE 'ftrow_custphone' TO 'F:\TmpDb\topway20210303.ndf',
+MOVE 'topway_log' TO 'F:\TmpDb\topway20210303_log.ldf',
+FILE = 1,
+NORECOVERY, REPLACE, STATS = 10
+GO
+
+RESTORE DATABASE [topway20210303] FROM DISK = N'L:\2020\2021\03\topway_20210302030000_diff.bak'
+WITH REPLACE, STATS = 10,
+FILE = 1,
+--RECOVERY
+NORECOVERY
+GO
+
+RESTORE LOG [topway20210303] FROM DISK = N'L:\2020\2021\03\Topway20210302230000_log.trn'
+WITH FILE=1,NORECOVERY,REPLACE,STATS=10
+GO
+
+RESTORE LOG [topway20210303] FROM DISK = N'L:\2020\2021\03\Topway20210303230000_log.trn'
+WITH FILE=2,RECOVERY,REPLACE,STATS=10 --,STOPAT='2021-03-04 20:25:00' --时间不能大于事务日志时间，否则还原会处于还原状态
+GO
+
+
+---------------
+ 
+--参数说明：
+--WITH MOVE TO：重新指定文件的路径，WITH MOVE
+--TO数量取决于数据库文件数量
+--STATS = 10：没完成10%显示一条记录
+--REPLACE：覆盖现有数据库
+--NORECOVERY：不对数据库进行任何操作，不回滚未
+--提交的事务
+
+
+---------------
+----数据库备份
+--#Full Backup
+BACKUP DATABASE [FinanceDB20210304] TO  DISK ='I:\tmpBackupDB\FinanceDB_full.bak'  WITH NOFORMAT  
+, NOINIT,  NAME = N'[FinanceDB20210304]-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
+
+--#Different Backup
+BACKUP DATABASE [FinanceDB20210304] TO  DISK ='I:\tmpBackupDB\FinanceDB_diff.bak'  WITH  DIFFERENTIAL, NOFORMAT
+, NOINIT,  NAME = N'[FinanceDB20210304]-差异 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10
+
+--#Transaction Log Backup
+BACKUP LOG [FinanceDB20210304] TO  DISK ='I:\tmpBackupDB\FinanceDB_log.trn' WITH NAME=N'[FinanceDB20210304] 日志'
+
+
+
+
+ 
+
+
+
 
 </pre>

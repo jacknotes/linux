@@ -2427,7 +2427,7 @@ StatefulSet:有状态副本集
 3. 有序、平滑地部署和扩展;  
 4. 有序、平滑地终止和删除;
 5. 有序的流动更新;
-pod_name.service_name.namespace_name.cluster.local #集群解析名称格式 
+pod_name.service_name.namespace_name.svc.cluster.local #集群解析名称格式 
 #实例：
 #重新构建PV：
 [root@k8s-master volume]# vim pv-demo.yaml 
