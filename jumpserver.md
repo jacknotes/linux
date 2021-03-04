@@ -1119,6 +1119,17 @@ server {
 }
 --------------------------
 #经过测试在一个节点是停止了jms、koko、guacamole后，服务正常。
+
+--重置密码
+cd /opt/jumpserver/apps
+python manage.py shell
+
+from users.models import User
+u = User.objects.get(username='admin')
+u.reset_password('password')
+u.save()
+
+
 </pre>
 
 
