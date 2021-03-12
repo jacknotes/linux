@@ -5,7 +5,7 @@ global:
   smtp_hello: 'alertmanager'
   smtp_from: 'prometheus@homsom.com'
   smtp_auth_username: 'prometheus@homsom.com'
-  smtp_auth_password: 'Homsom@4006!@#'
+  smtp_auth_password: 'p@ssword'
 templates:
   - '/usr/local/alertmanager/email.tmpl'
 route:
@@ -36,9 +36,10 @@ receivers:
   - url: 'http://192.168.13.235:8060/dingtalk/webhook1/send'
     send_resolved: true
 inhibit_rules:
-  - source_match:
-      alertname: 'NodeDown'
-      severity: 'High'
-    target_match:
-      job: 'blackbox-tcp'
-    equal: ['instance']
+  - source_match_re:
+      alertname: .*Down.*
+    target_match_re:
+      job: .*blackbox.*
+    equal:
+      - ops
+

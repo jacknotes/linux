@@ -1278,14 +1278,14 @@ instance: localhost:9100
 Alertmanager提供了方式可以帮助用户控制告警通知的行为，包括预先定义的抑制机制和临时定义的静默规则。
 #----抑制机制
 Alertmanager的抑制机制可以避免当某种问题告警产生之后用户接收到大量由此问题导致的一系列的其它告警通知。例如当集群不可用时，用户可能只希望接收到一条告警，告诉他这时候集群出现了问题，而不是大量的如集群中的应用异常、中间件服务异常的告警通知。
-例如当集群中的某一个主机节点异常宕机导致告警NodeDown被触发，同时在告警规则中定义了告警级别severity=critical。由于主机异常宕机，该主机上部署的所有服务，中间件会不可用并触发报警。根据抑制规则的定义，如果有新的告警级别为severity=critical，并且告警中标签node的值与NodeDown告警的相同，则说明新的告警是由NodeDown导致的，则启动抑制机制停止向接收器发送通知。
-- source_match:
-    alertname: NodeDown
-    severity: critical
-  target_match:
-    severity: critical
-  equal:
-    - node
+例如当集群中的某一个主机节点宕机(NodeDown告警)被触发，由于该主机上部署有其它服务如：中间件等会不可用并触发报警。根据抑制规则的定义:当此主机的所有告警发来时，alertmanager会筛选source_match_re的告警，如果匹配到source_match_re告警条目，则再去找另外的告警标签为job=.*blackbox.*的，如果有多个匹配到，则还要比较ops这个标签是否相等，如果相等，则相等标签的警告将会被抑制不会被发送告警。否则告警将不会被抑制而正常发送。
+inhibit_rules:
+  - source_match_re:
+      alertname: .*Down.*
+    target_match_re:
+      job: .*blackbox.*
+    equal: 
+      - ops
 
 [root@node3 /usr/local/alertmanager]# cat alertmanager.yml 
 global:

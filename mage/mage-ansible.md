@@ -1450,9 +1450,265 @@ domainname=magedu.com
 #变量优先级： 命令行变量 > playbook变量 > /etc/ansible/hosts主机变量 > /etc/ansible/hosts主机组变量
 
 
+#jinja2模板和变量文件
+路径：/root/ansible/templates
+[root@salt ~/ansible]# grep -Ev '#|^$' /etc/ansible/hosts 
+[master]
+172.168.2.222 role=master
+[node]
+172.168.2.223 role=node
+[node:vars]
+service=jenkins
+[root@salt ~/ansible]# cat var.env
+nginx_port: 8080
+httpd_port: 8081
+[root@salt ~/ansible]# cat jinja2.yml 
+---
+- hosts: node
+  remote_user: root
+  vars_files:
+    - /root/ansible/var.env
+
+  tasks: 
+    - name: copy config
+      #jinja2 default template is /root/ansible/templates
+      template: src=httpd.conf.j2 dest=/usr/local/src/httpd.conf
+[root@salt ~/ansible]# cat templates/httpd.conf.j2 
+listen {{ httpd_port }}
+listen {{ nginx_port }}
+[root@salt ~/ansible]# ansible-playbook -C jinja2.yml 
+[root@salt ~/ansible]# ansible-playbook jinja2.yml 
+[root@salt ~/ansible]# ansible node -m shell -a 'cat /usr/local/src/httpd.conf'
+172.168.2.223 | CHANGED | rc=0 >>
+listen 8081
+listen 8080
+
+#when
+[root@salt ~/ansible]# cat when.yml 
+---
+- hosts: all
+  remote_user: root
+
+  tasks:
+    - name: copy conf
+      template: src=/etc/fstab dest=/usr/local/src/fstab
+      when: ansible_fqdn == "salt"
+[root@salt ~/ansible]# ansible-playbook when.yml 
+
+PLAY [all] ***********************************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************
+ok: [172.168.2.222]
+ok: [172.168.2.223]
+
+TASK [copy conf] *****************************************************************************************
+skipping: [172.168.2.223]
+changed: [172.168.2.222]
+
+PLAY RECAP ***********************************************************************************************
+172.168.2.222              : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+172.168.2.223              : ok=1    changed=0    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+
+[root@salt ~/ansible]# ansible all -m shell -a 'ls -l /usr/local/src/fstab'
+172.168.2.222 | CHANGED | rc=0 >>
+-rw-r--r-- 1 root root 436 Mar  9 16:01 /usr/local/src/fstab
+172.168.2.223 | FAILED | rc=2 >>
+ls: cannot access /usr/local/src/fstab: No such file or directorynon-zero return code
+
+#item迭代
+[root@salt ~/ansible]# cat item.yml 
+---
+- hosts: node
+  remote_user: root
+
+  tasks:
+    - name: create user
+      user: name={{ item.user }} state=present groups={{ item.group }} system=true shell=/sbin/nologin
+      with_items:
+        - { user: "test01", group: "bin" }
+        - { user: "test02", group: "bin" }
+        - { user: "test03", group: "bin" }
+[root@salt ~/ansible]# ansible-playbook -C item.yml 
+[root@salt ~/ansible]# ansible-playbook item.yml
+[root@salt ~/ansible]# ansible node -m shell -a 'tail /etc/passwd'
+172.168.2.223 | CHANGED | rc=0 >>
+www:x:1000:1000:www:/home/www:/sbin/bash
+zabbix:x:997:993:Zabbix Monitoring System:/var/lib/zabbix:/sbin/nologin
+jenkins:x:996:992:Jenkins Automation Server:/var/lib/jenkins:/bin/false
+mysql:x:3306:3306:mysql:/home/mysql:/sbin/nologin
+tinyproxy:x:995:991:tinyproxy user:/var/run/tinyproxy:/bin/false
+prometheus:x:3307:9090::/home/prometheus:/sbin/nologin
+grafana:x:994:990:grafana user:/usr/share/grafana:/sbin/nologin
+test01:x:993:989::/home/test01:/sbin/nologin
+test02:x:992:988::/home/test02:/sbin/nologin
+test03:x:991:987::/home/test03:/sbin/nologin
+[root@salt ~/ansible]# ansible node -m shell -a 'id test01 '
+172.168.2.223 | CHANGED | rc=0 >>
+uid=993(test01) gid=989(test01) groups=989(test01),1(bin)
+
+
+#for循环
+[root@salt ~/ansible/templates]# cat ../for.yml 
+---
+- hosts: node
+  remote_user: root
+  vars:
+    ports:
+      - listen_port: 81
+      - listen_port: 82
+      - listen_port: 83
+
+  tasks:
+    - name: copy conf
+      template: src=for.conf.j2 dest=/usr/local/src/nginx.conf
+[root@salt ~/ansible/templates]# cat for.conf.j2 
+{% for port in ports %}
+server{
+	listen {{ port.listen_port }}
+}
+{% endfor %}
+[root@salt ~/ansible/templates]# ansible-playbook ../for.yml 
+
+PLAY [node] **********************************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************
+ok: [172.168.2.223]
+
+TASK [copy conf] *****************************************************************************************
+changed: [172.168.2.223]
+
+PLAY RECAP ***********************************************************************************************
+172.168.2.223              : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+[root@salt ~/ansible/templates]# ansible node -m shell -a 'cat /usr/local/src/nginx.conf'
+172.168.2.223 | CHANGED | rc=0 >>
+server{
+	listen 81
+}
+server{
+	listen 82
+}
+server{
+	listen 83
+}
 
 
 
+--for example 2
+[root@salt ~/ansible/templates]# cat for2.conf.j2
+{% for p in ports %}
+server{
+	listen {{ p.port }}
+	hostname {{ p.name }}
+	root {{ p.rootdir }}
+}
+{% endfor %}
+[root@salt ~/ansible]# cat for2.yml 
+---
+- hosts: node
+  remote_user: root
+  vars:
+    ports:
+      - web1:
+        port: 81
+        name: web1.magedu.com
+        rootdir: /data/website1
+      - web2:
+        port: 82
+        name: web2.magedu.com
+        rootdir: /data/website2
+      - web3:
+        port: 83
+        name: web3.magedu.com
+        rootdir: /data/website3
+
+  tasks:
+    - name: copy conf
+      template: src=for2.conf.j2 dest=/usr/local/src/nginx2.conf
+[root@salt ~/ansible]# ansible-playbook -C for2.yml
+[root@salt ~/ansible]# ansible-playbook for2.yml
+
+PLAY [node] **********************************************************************************************
+
+TASK [Gathering Facts] ***********************************************************************************
+ok: [172.168.2.223]
+
+TASK [copy conf] *****************************************************************************************
+changed: [172.168.2.223]
+
+PLAY RECAP ***********************************************************************************************
+172.168.2.223              : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+[root@salt ~/ansible]# ansible node -m shell -a 'cat /usr/local/src/nginx2.conf'
+172.168.2.223 | CHANGED | rc=0 >>
+server{
+	listen 81
+	hostname web1.magedu.com
+	root /data/website1
+}
+server{
+	listen 82
+	hostname web2.magedu.com
+	root /data/website2
+}
+server{
+	listen 83
+	hostname web3.magedu.com
+	root /data/website3
+}
+
+#if statement
+[root@salt ~/ansible/templates]# cat ../if.yml 
+---
+- hosts: node
+  remote_user: root
+  vars:
+    ports:
+      - web1:
+        port: 81
+        #name: web1.magedu.com
+        rootdir: /data/website1
+      - web2:
+        port: 82
+        name: web2.magedu.com
+        rootdir: /data/website2
+      - web3:
+        port: 83
+        #name: web3.magedu.com
+        rootdir: /data/website3
+
+  tasks:
+    - name: copy conf
+      template: src=if.conf.j2 dest=/usr/local/src/nginx3.conf
+[root@salt ~/ansible/templates]# cat if.conf.j2 
+{% for p in ports %}
+server{
+	listen {{ p.port }}
+{% if p.name is defined %}
+	hostname {{ p.name }}
+{% endif %}
+	root {{ p.rootdir }}
+}
+{% endfor %}
+[root@salt ~/ansible]# ansible-playbook -C if.yml 
+[root@salt ~/ansible]# ansible-playbook if.yml 
+[root@salt ~/ansible]# ansible node -m shell -a 'cat /usr/local/src/nginx3.conf'
+172.168.2.223 | CHANGED | rc=0 >>
+server{
+	listen 81
+	root /data/website1
+}
+server{
+	listen 82
+	hostname web2.magedu.com
+	root /data/website2
+}
+server{
+	listen 83
+	root /data/website3
+}
+
+#roles角色
 
 
 
