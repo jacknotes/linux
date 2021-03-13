@@ -1709,6 +1709,116 @@ server{
 }
 
 #roles角色
+[root@salt /etc/ansible]# tree roles/
+roles/
+├── httpd
+├── memcached
+├── mysql
+└── nginx
+    ├── tasks
+    │   ├── group.yml
+    │   ├── main.yml
+    │   ├── restart.yml
+    │   ├── start.yml
+    │   ├── templ.yml
+    │   ├── user.yml
+    │   └── yum.yml
+    └── templates
+        └── nginx.conf.j2
+[root@salt /etc/ansible]# cat nginx-playbook.yml 
+---
+- hosts: node
+  remote_user: root
+
+  roles:
+    - role: nginx
+[root@salt /etc/ansible/roles/nginx]# for i in `ls`;do for j in `ls $i`;do echo "--> $i/$j";cat $i/$j ;done ;done
+--> tasks/group.yml
+- name: create nginx group
+  group: name=nginx system=yes gid=8080
+--> tasks/main.yml
+- include: group.yml
+- include: user.yml
+- include: yum.yml
+- include: templ.yml
+- include: start.yml
+--> tasks/restart.yml
+- name: restart nginx service
+  service: name=nginx state=restarted
+--> tasks/start.yml
+- name: start nginx service
+  service: name=nginx state=started enabled=yes
+--> tasks/templ.yml
+- name: copy template nginx.conf to remote client
+  template: src=nginx.conf.j2 dest=/etc/nginx/nginx.conf
+--> tasks/user.yml
+- name: create nginx user
+  user: name=nginx uid=8080 group=nginx system=yes shell=/sbin/nologin
+--> tasks/yum.yml
+- name: yum install nginx packages
+  yum: name=nginx state=present
+--> templates/nginx.conf.j2
+#user  nobody;
+worker_processes  {{ ansible_processor_vcpus }};
+[root@salt /etc/ansible]# ansible-playbook -C nginx-playbook.yml
+[root@salt /etc/ansible]# ansible-playbook nginx-playbook.yml
+[root@salt /etc/ansible]# ansible node -m shell -a 'ss -tnol'
+172.168.2.223 | CHANGED | rc=0 >>
+State      Recv-Q Send-Q Local Address:Port               Peer Address:Port              
+LISTEN     0      128          *:80                       *:*                  
+LISTEN     0      128          *:22                       *:*                  
+LISTEN     0      128       [::]:9090                  [::]:*                  
+LISTEN     0      128       [::]:9100                  [::]:*                  
+LISTEN     0      50        [::]:18477                 [::]:*                  
+LISTEN     0      50        [::]:8080                  [::]:*                  
+LISTEN     0      128       [::]:22                    [::]:*                  
+LISTEN     0      128       [::]:3000                  [::]:* 
+
+#跨role角色调用
+[root@salt /etc/ansible]# cat nginx-playbook.yml 
+---
+- hosts: node
+  remote_user: root
+
+  roles:
+    - role: nginx
+[root@salt /etc/ansible]# cat roles/nginx/tasks/main.yml
+- include: group.yml
+- include: user.yml
+- include: yum.yml
+- include: templ.yml
+- include: start.yml
+- include: roles/httpd/tasks/copyfile.yml
+[root@salt /etc/ansible]# cat roles/httpd/tasks/copyfile.yml 
+- name: copy apache config file
+  copy: src=/etc/ansible/roles/httpd/files/httpd.conf dest=/tmp owner=apache
+
+#role角色标签
+[root@salt /etc/ansible]# cat httpd-playbook.yml
+---
+- hosts: node
+  remote_user: root
+  roles:
+    - {role: httpd, tags: ['web','httpd'] }
+    - {role: nginx, tags: ['web','nginx'] }
+[root@salt /etc/ansible]# ansible-playbook -t nginx httpd-playbook.yml   --挑选剧本角色运行剧本
+[root@salt /etc/ansible]# cat some-playbook.yml 
+---
+- hosts: all
+  remote_user: root
+  roles:
+    - {role: httpd, tags: ['web','httpd'] }
+    - {role: nginx, tags: ['web','nginx'], when: ansible_distribution_major_version == '7'}
+注：在role中使用when语句
+--较完整剧本目录结构
+[root@salt /etc/ansible/roles/app]# tree .
+.
+├── files     --存放文件的地方，可用相对路径引用，不用加files文件夹
+├── handlers  --触发器处理的子剧本文件，由notify通知触发，这里必需有main.yml文件
+├── tasks     --日常处理的任务子剧本文件，必需有main.yml文件,里面有子剧本引用files和templates文件夹下的子剧本
+├── templates --jinja2模板存放的地方，里面引用了变量配置的文件，由tasks里面子剧本引用
+└── vars      --存放变量的文件，必需是main.yml，不需要在tasks引用
+注：剧本目录结构流程：files,templates,vars,handlers<----tasks
 
 
 
