@@ -79,14 +79,14 @@ cp /etc/openvpn/easy-rsa/easyrsa3/pki/private/server.key /etc/openvpn/ #把服�
 cp /etc/openvpn/easy-rsa/easyrsa3/pki/issued/server.crt /etc/openvpn/ #把服务器的证书放到/etc/openvpn/目录下
 cp /etc/openvpn/easy-rsa/easyrsa3/pki/dh.pem /etc/openvpn/ #把dh算法的密钥交换协议文件放到/etc/openvpn目录下
 
-6、把客户端必要文件放到root/openvpn/ 目录下
+6、把客户端必要文件放到root/openvpn/client/ 目录下
 客户端的证书、秘钥：
 cp /etc/openvpn/easy-rsa/easyrsa3/pki/ca.crt /etc/openvpn/client/ #把ca证书放到/root/client/ 目录下
 cp /etc/openvpn/easy-rsa/easyrsa3/pki/issued/along.crt /etc/openvpn/client/ #把客户端证书放到/root/client/ 目录下
 cp /etc/openvpn/client/easy-rsa/easyrsa3/pki/private/along.key /etc/openvpn/client/#把客户端秘钥放到/root/client/ 目录下
 
 7、为服务端编写配置文件
-（1）当你安装好了openvpn时候，他会提供一个server配置的文件例子，在cp /etc/openvpn/client/easy-rsa/easyrsa3/pki/private/along.key /etc/openvpn/client/ 下会有一个server.conf文件，我们将这个文件复制到/etc/openvpn：
+（1）当你安装好了openvpn时候，他会提供一个server配置的文件例子，在/usr/share/doc/openvpn-2.4.8/sample/sample-config-files/下会有一个server.conf文件，我们将这个文件复制到/etc/openvpn：
 rpm -ql openvpn |grep server.conf
 --------------
 /usr/share/doc/openvpn-2.4.8/sample/sample-config-files/roadwarrior-server.conf
@@ -275,5 +275,317 @@ cd /etc/openvpn/easy-rsa/easyrsa3/
 vim /etc/openvpn/crl.pem
 crl-verify crl.pem   #添加这行即可
 openvpn --config /etc/openvpn/server.conf  #重启openvpn
+
+</pre>
+
+
+<pre>
+#openvpn for CentOS-7.9      --20210318
+[root@iptables download]# yum install -y openvpn
+[root@iptables download]# wget https://github.com/OpenVPN/easy-rsa/releases/download/v3.0.8/EasyRSA-3.0.8.tgz
+--配置服务端证书
+[root@iptables /download]# tar xf EasyRSA-3.0.8.tgz
+[root@iptables /download]# cp EasyRSA-3.0.8 /etc/openvpn/server
+[root@iptables /download]# cd /etc/openvpn/server/EasyRSA-3.0.8/
+[root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# cp vars.example vars
+[root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# vim vars
+set_var EASYRSA_REQ_COUNTRY     "CN"
+set_var EASYRSA_REQ_PROVINCE    "Shanghai"
+set_var EASYRSA_REQ_CITY        "Shanghai"
+set_var EASYRSA_REQ_ORG         "ops"
+set_var EASYRSA_REQ_EMAIL       "jacknotes@163.com"
+set_var EASYRSA_REQ_OU          "homsom OpenVPN"
+set_var EASYRSA_CERT_EXPIRE     3650        --开启客户端证书有效期
+[root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# ./easyrsa init-pki   --输入yes初始化PKI
+[root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# ./easyrsa build-ca
+Enter New CA Key Passphrase:             --输入自定义密码homsom
+Re-Enter New CA Key Passphrase:         --输入自定义密码homsom
+Common Name (eg: your user, host, or server name) [Easy-RSA CA]:homsom.com       --通用名称
+CA creation complete and you may now import and sign cert requests.
+Your new CA certificate file for publishing is at:
+/etc/openvpn/server/EasyRSA-3.0.8/pki/ca.crt
+
+[root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# ./easyrsa gen-req server nopass    --创建服务器证书名称叫server
+Common Name (eg: your user, host, or server name) [server]:openvpn.homsom.com
+Keypair and certificate request completed. Your files are:
+req: /etc/openvpn/server/EasyRSA-3.0.8/pki/reqs/server.req
+key: /etc/openvpn/server/EasyRSA-3.0.8/pki/private/server.key
+
+[root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# ./easyrsa sign server server     --签署服务器证书类型，这个服务器证书名称为server
+Request subject, to be signed as a server certificate for 825 days:
+subject=
+    commonName                = openvpn.homsom.com
+Type the word 'yes' to continue, or any other input to abort.
+  Confirm request details: yes
+Enter pass phrase for /etc/openvpn/server/EasyRSA-3.0.8/pki/private/ca.key:      --输入ca的密码
+Certificate created at: /etc/openvpn/server/EasyRSA-3.0.8/pki/issued/server.crt
+
+[root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# ./easyrsa gen-dh   --生成DH密钥交换算法文件
+DH parameters of size 2048 created at /etc/openvpn/server/EasyRSA-3.0.8/pki/dh.pem
+
+
+--配置客户端证书
+[root@iptables /download]# cd /etc/openvpn/client/
+[root@iptables /etc/openvpn/client]# cp -ar /download/EasyRSA-3.0.8 .
+[root@iptables /etc/openvpn/client]# ll
+total 0
+drwxrwx--- 4 root openvpn 214 Sep 10  2020 EasyRSA-3.0.8
+[root@iptables /etc/openvpn/client]# cd /etc/openvpn/client/EasyRSA-3.0.8/
+[root@iptables /etc/openvpn/client/EasyRSA-3.0.8]# ./easyrsa init-pki
+[root@iptables /etc/openvpn/client/EasyRSA-3.0.8]# ./easyrsa gen-req client   --生成客户端证书及请求
+writing new private key to '/etc/openvpn/client/EasyRSA-3.0.8/pki/easy-rsa-18233.0QLwEq/tmp.N7mIEz'
+Enter PEM pass phrase:                     --输入自定义密码jackli
+Verifying - Enter PEM pass phrase:    --输入自定义密码jackli
+Common Name (eg: your user, host, or server name) [client]:     --输入通用名称，默认为证书名称
+Keypair and certificate request completed. Your files are:
+req: /etc/openvpn/client/EasyRSA-3.0.8/pki/reqs/client.req
+key: /etc/openvpn/client/EasyRSA-3.0.8/pki/private/client.key
+
+--服务端导入客户端的请求文件
+[root@iptables /etc/openvpn/client/EasyRSA-3.0.8]# cd /etc/openvpn/server/EasyRSA-3.0.8/
+[root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# ./easyrsa import-req /etc/openvpn/client/EasyRSA-3.0.8/pki/reqs/client.req client   --导入客户端表示文件并命名为client
+--签署客户端请求
+[root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# ./easyrsa sign client client   --签署类型为客户端类型，客户端请求名称为client
+Type the word 'yes' to continue, or any other input to abort.
+  Confirm request details: yes
+Enter pass phrase for /etc/openvpn/server/EasyRSA-3.0.8/pki/private/ca.key:     --输入ca密码
+Certificate created at: /etc/openvpn/server/EasyRSA-3.0.8/pki/issued/client.crt
+
+
+--把服务器端私钥、公钥、根证书、DH算法文件放到etc/openvpn/ 目录下   
+[root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# cp /etc/openvpn/server/EasyRSA-3.0.8/pki/ca.crt /etc/openvpn/
+[root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# cp /etc/openvpn/server/EasyRSA-3.0.8/pki/dh.pem /etc/openvpn/
+[root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# cp /etc/openvpn/server/EasyRSA-3.0.8/pki/private/server.key /etc/openvpn/
+[root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# cp /etc/openvpn/server/EasyRSA-3.0.8/pki/issued/server.crt /etc/openvpn/
+[root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# ll /etc/openvpn/
+total 20
+-rw------- 1 root root    1204 Mar 18 11:15 ca.crt
+drwxr-x--- 3 root openvpn   27 Mar 18 10:57 client
+-rw------- 1 root root     424 Mar 18 11:15 dh.pem
+drwxr-x--- 2 root openvpn    6 Dec 10 00:57 server
+-rw------- 1 root root    4644 Mar 18 11:15 server.crt
+-rw------- 1 root root    1704 Mar 18 11:15 server.key
+--把客户端私钥、公钥、根证书放到root/openvpn/client 目录下
+[root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# cp /etc/openvpn/client/EasyRSA-3.0.8/pki/private/client.key /etc/openvpn/client/
+[root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# cp /etc/openvpn/server/EasyRSA-3.0.8/pki/ca.crt /etc/openvpn/client/
+[root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# cp /etc/openvpn/server/EasyRSA-3.0.8/pki/issued/client.crt /etc/openvpn/client/
+[root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# ll /etc/openvpn/client/
+total 16
+-rw------- 1 root root    1204 Mar 18 11:17 ca.crt
+-rw------- 1 root root    4472 Mar 18 11:17 client.crt
+-rw------- 1 root root    1834 Mar 18 11:17 client.key
+drwxrwx--- 5 root openvpn  225 Mar 18 10:59 EasyRSA-3.0.8
+
+--在服务器端配置文件
+[root@iptables /etc/openvpn]# rpm -ql openvpn | grep server.conf
+/usr/share/doc/openvpn-2.4.10/sample/sample-config-files/roadwarrior-server.conf
+/usr/share/doc/openvpn-2.4.10/sample/sample-config-files/server.conf
+/usr/share/doc/openvpn-2.4.10/sample/sample-config-files/xinetd-server-config
+[root@iptables /etc/openvpn]# cp /usr/share/doc/openvpn-2.4.10/sample/sample-config-files/server.conf /etc/openvpn/
+[root@iptables /etc/openvpn]# mkdir -p /var/log/openvpn
+[root@iptables /etc/openvpn]# chown -R root.openvpn /etc/openvpn/
+[root@iptables /etc/openvpn]# chown -R root.openvpn /var/log/openvpn/
+[root@iptables /etc/openvpn]# chmod -R 770 /etc/openvpn/
+[root@iptables /etc/openvpn]# chmod -R 770 /var/log/openvpn/
+[root@iptables /etc/openvpn]# vim /etc/openvpn/server.conf 
+[root@iptables /etc/openvpn]# grep '^[^#|;]' /etc/openvpn/server.conf   
+--------此配置是证书认证---------
+local 0.0.0.0
+port 1194
+proto tcp
+dev tun
+ca /etc/openvpn/ca.crt
+cert /etc/openvpn/server.crt
+key /etc/openvpn/server.key  # This file should be kept secret
+dh /etc/openvpn/dh.pem
+server 192.168.177.0 255.255.255.0
+ifconfig-pool-persist ipp.txt
+push "redirect-gateway def1 bypass-dhcp"
+push "dhcp-option DNS 223.6.6.6"
+client-to-client
+keepalive 10 120
+comp-lzo
+max-clients 100
+user openvpn
+group openvpn
+persist-key
+persist-tun
+status /var/log/openvpn/openvpn-status.log
+log         /var/log/openvpn/openvpn.log
+verb 3
+-----------------------------
+-------此配置是密码认证-------
+local 0.0.0.0
+port 1194
+proto tcp
+dev tun
+ca /etc/openvpn/ca.crt
+cert /etc/openvpn/server.crt
+key /etc/openvpn/server.key  # This file should be kept secret
+dh /etc/openvpn/dh.pem
+server 192.168.177.0 255.255.255.0
+ifconfig-pool-persist ipp.txt
+push "redirect-gateway def1 bypass-dhcp"
+push "dhcp-option DNS 223.6.6.6"
+client-to-client
+keepalive 10 120
+comp-lzo
+max-clients 100
+user openvpn
+group openvpn
+persist-key
+persist-tun
+status /var/log/openvpn/openvpn-status.log
+log         /var/log/openvpn/openvpn.log
+verb 3
+auth-user-pass-verify /etc/openvpn/checkpsw.sh via-env
+client-cert-not-required
+script-security 3 
+-----------------------------
+----------or-证书和密码认证------------
+local 0.0.0.0
+port 1194
+proto tcp
+dev tun
+ca /etc/openvpn/ca.crt
+cert /etc/openvpn/server.crt
+key /etc/openvpn/server.key  # This file should be kept secret
+dh /etc/openvpn/dh.pem
+server 192.168.177.0 255.255.255.0
+ifconfig-pool-persist ipp.txt
+push "redirect-gateway def1 bypass-dhcp"
+push "dhcp-option DNS 223.6.6.6"
+client-to-client
+keepalive 10 120
+comp-lzo
+max-clients 100
+user openvpn
+group openvpn
+persist-key
+persist-tun
+status /var/log/openvpn/openvpn-status.log
+log         /var/log/openvpn/openvpn.log
+verb 3
+auth-user-pass-verify /etc/openvpn/checkpsw.sh via-env
+username-as-common-name
+script-security 3
+-------------------------------
+[root@iptables /etc/openvpn]# cat checkpsw.sh
+#!/bin/bash 
+########################################################### 
+# checkpsw.sh (C) 2004 Mathias Sundman <mathias@openvpn.se> 
+# 
+# This script will authenticate OpenVpn users against 
+# a plain text file. The passfile should simply contain 
+# one row per user with the username first followed by 
+# one or more space(s) or tab(s) and then the password.
+
+PASSFILE="/etc/openvpn/test.key"
+LOG_FILE="/var/log/openvpn/test.key.log"
+TIME_STAMP=`date "+%Y-%m-%d %T"`
+
+###########################################################
+
+if [ ! -r "${PASSFILE}" ]; then
+echo "${TIME_STAMP}: Could not open password file \"${PASSFILE}\" for reading." >> ${LOG_FILE}
+exit 1
+fi
+
+CORRECT_PASSWORD=`awk '!/^;/&&!/^#/&&$1=="'${username}'"{print $2;exit}' ${PASSFILE}`
+
+if [ "${CORRECT_PASSWORD}" = "" ]; then
+echo "${TIME_STAMP}: User does not exist: username=\"${username}\", password=\"${password}\"." >> ${LOG_FILE}
+exit 1
+fi
+
+if [ "${password}" = "${CORRECT_PASSWORD}" ]; then
+echo "${TIME_STAMP}: Successful authentication: username=\"${username}\"." >> ${LOG_FILE}
+exit 0
+fi
+
+echo "${TIME_STAMP}: Incorrect password: username=\"${username}\", password=\"${password}\"." >> ${LOG_FILE}
+exit 1
+####################################
+
+[root@iptables /etc/openvpn]# chmod 444 test.key
+[root@iptables /etc/openvpn]# cat test.key 
+---
+jack jackli
+---
+[root@iptables /etc/openvpn]# cat /usr/lib/systemd/system/openvpn-homsom.service 
+-------
+[Unit]
+Description=OpenVPN service
+After=network-online.target
+
+[Service]
+User=root
+Group=root
+Type=simple
+ExecStart=/usr/sbin/openvpn --config /etc/openvpn/server.conf
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+------
+[root@iptables /etc/openvpn]# systemctl daemon-reload
+[root@iptables /etc/openvpn]# systemctl start openvpn-homsom
+[root@iptables /etc/openvpn]# systemctl enable openvpn-homsom
+[root@iptables /etc/openvpn]# iptables -t nat -A POSTROUTING -s 192.168.177.0/24 -j MASQUERADE
+[root@iptables /etc/openvpn]# iptables -I INPUT 4 -p tcp --dport 1194 -j ACCEPT
+
+
+#客户端配置
+------客户端证书认证，如果证书未设密码则用户不用密码即可连接------
+client
+dev tun
+proto tcp
+remote 47.100.73.115 1194
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+ca ca.crt
+cert client.crt
+key client.key
+cipher AES-256-CBC
+comp-lzo
+verb 3
+----客户端密码认证，不需要客户端公私钥------
+client
+dev tun
+proto tcp
+remote 47.100.73.115 1194
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+ca ca.crt
+auth-user-pass
+cipher AES-256-CBC
+comp-lzo
+verb 3
+----客户端证书和密码认证，如果证书也设置密码，则需要输入两次密码，一次是证书密码，一次是密码认证的密码---
+client
+dev tun
+proto tcp
+remote 47.100.73.115 1194
+resolv-retry infinite
+nobind
+persist-key
+persist-tun
+ca ca.crt
+cert client.crt
+key client.key
+auth-user-pass
+cipher AES-256-CBC
+comp-lzo
+verb 3
+------------------------
+
+客户端看情况增加路由才能访问内部网络：
+route add 192.168.13.0 mask 255.255.255.0 172.168.2.254
+route add 192.168.10.0 mask 255.255.255.0 172.168.2.254
+
 
 </pre>
