@@ -1339,9 +1339,7 @@ pcre-8.44.tar.gz  tengine-2.3.2  tengine-2.3.2.tar.gz
 [root@opsnginx tengine-2.3.2]# yum groupinstall -y "Development Tools" "Development and Creative Workstation"
 
 #install pcre
-[root@opsnginx download]# tar xf pcre-8.44.tar.gz && cd pcre-8.44
-[root@opsnginx pcre-8.44]# ./configure --prefix=/usr/local/pcre
-[root@opsnginx pcre-8.44]# make && make install
+[root@opsnginx download]# tar xf pcre-8.44.tar.gz 
 
 #install http_substitutions_filter_module
 #说到 Nginx 的内容替换功能，大部分人应该都听说过 Nginx 内置的的 subs_filter 替换模块，但是这个模块有个缺憾，就是只能替换一次，而且还不支持正则表达式，这就有些鸡肋了。不过，我们可以集成一个第三方的替换模块：ngx_http_substitutions_filter_module，来实现我们的各种需求。经过测试，这个模块至少有如下实用功能：
