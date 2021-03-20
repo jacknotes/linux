@@ -1,7 +1,7 @@
 groups:
 - name: redis_exporter
   rules:
-  - alert: redis_exporterStatusAlert
+  - alert: redis_exporterDown
     expr: redis_up < 1
     for: 15s
     labels:

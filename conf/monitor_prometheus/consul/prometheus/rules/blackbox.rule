@@ -1,7 +1,7 @@
 groups:
 - name: blackboxServiceAlert
   rules:
-  - alert: blackboxServiceAlert
+  - alert: blackboxProbeFailure
     expr: probe_success < 1
     for: 15s
     labels:

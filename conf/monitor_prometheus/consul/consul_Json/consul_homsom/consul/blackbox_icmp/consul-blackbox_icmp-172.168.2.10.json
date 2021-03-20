@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_icmp",
+  "ID": "blackbox_icmp-172.168.2.10",
+  "Tags": [
+    "blackbox_icmp"
+  ],
+  "Address": "172.168.2.10",
+  "Meta": {
+    "app": "guancashi_power",
+    "env": "pro",
+    "project": "network",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

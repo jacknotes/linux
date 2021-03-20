@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_http",
+  "ID": "blackbox_http-rabbitmq.hs.com",
+  "Tags": [
+    "blackbox_http"
+  ],
+  "Address": "http://rabbitmq.hs.com/",
+  "Meta": {
+    "app": "rabbitmq.hs.com",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

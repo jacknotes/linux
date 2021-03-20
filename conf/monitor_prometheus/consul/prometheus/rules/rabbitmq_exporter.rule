@@ -1,0 +1,30 @@
+groups:
+- name: RabbitmqExporterAlert
+  rules:
+  - alert: RabbitmqClusterDown
+    expr: rabbitmq_up != 1
+    for: 15s
+    labels:
+      severity: High
+    annotations:
+      summary: "rabbitmq cluster is down"
+      description: "team: {{ $labels.team }}, env: {{ $labels.env }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} rabbitmq cluster is down(current value: {{ $value }})"
+
+  - alert: RabbitmqNodeRunningAlert
+    expr: rabbitmq_running != 1
+    for: 15s
+    labels:
+      severity: High
+    annotations:
+      summary: "rabbitmq node is down"
+      description: "team: {{ $labels.team }}, env: {{ $labels.env }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }}, node: {{ $labels.node }} rabbitmq node is down(current value: {{ $value }})"
+
+  - alert: RabbitmqNodeMemoryAlert
+    expr: rabbitmq_node_mem_used / rabbitmq_node_mem_limit * 100 > 50
+    for: 5m
+    labels:
+      severity: High
+    annotations:
+      summary: "rabbitmq node memory use too many"
+      description: "team: {{ $labels.team }}, env: {{ $labels.env }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }}, node: {{ $labels.node }} rabbitmq node use memory greater than 50%(current value: {{ $value }})"
+

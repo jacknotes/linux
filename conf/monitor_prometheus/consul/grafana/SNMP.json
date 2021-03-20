@@ -16,7 +16,7 @@
   "gnetId": 12489,
   "graphTooltip": 0,
   "id": 22,
-  "iteration": 1605422282321,
+  "iteration": 1616232129788,
   "links": [],
   "panels": [
     {
@@ -84,7 +84,7 @@
           "expr": "sysUpTime{instance=\"$instance\"}",
           "instant": true,
           "interval": "",
-          "legendFormat": "",
+          "legendFormat": "{{app}}",
           "refId": "A"
         }
       ],
@@ -541,7 +541,7 @@
       "type": "table-old"
     }
   ],
-  "refresh": "1m",
+  "refresh": "15s",
   "schemaVersion": 26,
   "style": "dark",
   "tags": [
@@ -628,5 +628,5 @@
   "timezone": "",
   "title": "SNMP",
   "uid": "TCde4Yemz",
-  "version": 12
+  "version": 14
 }

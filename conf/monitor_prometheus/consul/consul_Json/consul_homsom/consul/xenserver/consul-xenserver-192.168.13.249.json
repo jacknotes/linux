@@ -1,0 +1,24 @@
+{
+  "Name": "xenserver",
+  "ID": "xenserver-192.168.13.249",
+  "Tags": [
+    "xenserver"
+  ],
+  "Address": "192.168.13.249",
+  "Port": 9100,
+  "Meta": {
+    "app": "xen10",
+    "env": "pro",
+    "project": "Virtual",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://192.168.13.249:9100/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}

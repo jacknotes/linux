@@ -1,0 +1,25 @@
+{
+  "Name": "rabbitmq_exporter",
+  "ID": "rabbitmq_exporter-rabbitmq.hs.com",
+  "Tags": [
+    "rabbitmq_exporter"
+  ],
+  "Address": "192.168.13.235",
+  "Port": 9419,
+  "Meta": {
+    "app": "rabbitmq.hs.com",
+    "env": "pro",
+    "project": "services",
+    "team": "ops",
+    "cluster": "rabbitmq_cluster"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://192.168.13.235:9419/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}

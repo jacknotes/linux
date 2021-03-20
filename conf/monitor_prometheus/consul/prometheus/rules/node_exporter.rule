@@ -3,12 +3,12 @@ groups:
   rules:
   - alert: linuxNodeDown
     expr: up{job=~".*node_exporter.*"} == 0
-    for: 1m
+    for: 15s
     labels:
       severity: High
     annotations:
       summary: "node_exporter is Down"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{$labels.instance}} is Down,Server Machine can shutdown,time keep 1m(current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{$labels.instance}} is Down,Server Machine can shutdown,time keep 15s(current value: {{ $value }})"
 
   - alert: linuxHostCpuUsageAlert
     expr: (sum((avg(irate(node_cpu_seconds_total{job=~".*node_exporter.*",mode!="idle"}[5m]))  without(cpu)))  by(instance,team,project,job,app) ) * 100 >85
@@ -29,7 +29,7 @@ groups:
       description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} CPU Usage above equal 99% (current value: {{ $value }})"
 
   - alert: linuxHostMemUsageAlert
-    expr: (1 - ((node_memory_Buffers_bytes + node_memory_Cached_bytes + node_memory_MemFree_bytes) /node_memory_MemTotal_bytes)) * 100 > 85 
+    expr: (1 - ((node_memory_Buffers_bytes{job=~".*node_exporter.*"}+ node_memory_Cached_bytes{job=~".*node_exporter.*"} + node_memory_MemFree_bytes{job=~".*node_exporter.*"}) /node_memory_MemTotal_bytes{job=~".*node_exporter.*"})) * 100 > 85 
     for: 5m 
     labels:
       severity: warnning
@@ -38,7 +38,7 @@ groups:
       description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Memory Usage above 85% (current value: {{ $value }})"
 
   - alert: linuxHostMemUsage100%Alert
-    expr: (1 - ((node_memory_Buffers_bytes + node_memory_Cached_bytes + node_memory_MemFree_bytes) /node_memory_MemTotal_bytes)) * 100 >= 99
+    expr: (1 - ((node_memory_Buffers_bytes{job=~".*node_exporter.*"} + node_memory_Cached_bytes{job=~".*node_exporter.*"} + node_memory_MemFree_bytes{job=~".*node_exporter.*"}) /node_memory_MemTotal_bytes{job=~".*node_exporter.*"})) * 100 >= 99
     for: 1m 
     labels:
       severity: warnning
@@ -47,7 +47,7 @@ groups:
       description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Memory Usage above equal 99% (current value: {{ $value }})"
 
   - alert: linuxHostDiskUsageCapacityAlert
-    expr: (100-(node_filesystem_free_bytes{fstype=~"ext4|xfs"}/node_filesystem_size_bytes {fstype=~"ext4|xfs"}*100)) > 90
+    expr: (100-(node_filesystem_free_bytes{fstype=~"ext4|xfs",job=~".*node_exporter.*"}/node_filesystem_size_bytes {fstype=~"ext4|xfs",job=~".*node_exporter.*"}*100)) > 90
     for: 5m 
     labels:
       severity: warnning
@@ -56,7 +56,7 @@ groups:
       description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Host Disk Capacity Usage above 90% (path: {{ $labels.mountpoint }},value: {{ $value }})"
 
   - alert: linuxHostDiskAvailableCapacityAlert
-    expr: node_filesystem_free_bytes{fstype=~"ext4|xfs",mountpoint!="/boot"} / 1024 /1024 /1024 < 1
+    expr: node_filesystem_free_bytes{fstype=~"ext4|xfs",mountpoint!="/boot",job=~".*node_exporter.*"} / 1024 /1024 /1024 < 1
     for: 1m 
     labels:
       severity: High
@@ -64,44 +64,44 @@ groups:
       summary: "Host Disk Available Capacity Low"
       description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Host Disk Available Capacity under 1G (path: {{ $labels.mountpoint }},value: {{ $value }})"
 
-  - alert: linuxHostDiskReadCapacityAlert
-    expr: irate(node_disk_read_bytes_total[5m]) /1024 /1024 > 60
+  - alert: linuxHostDiskReadRateAlert
+    expr: irate(node_disk_read_bytes_total{job=~".*node_exporter.*"}[5m]) /1024 /1024 > 60
     for: 5m 
     labels:
       severity: warnning
     annotations:
-      summary: "Host Disk[5m] Read Capacity High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Read Capacity above 60M (device: {{ $labels.device }},value: {{ $value }})"
+      summary: "Host Disk[5m] Read Rate High"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Read Rate above 60M (device: {{ $labels.device }},value: {{ $value }})"
 
-  - alert: linuxHostDiskWriteCapacityAlert
-    expr: irate(node_disk_written_bytes_total[5m]) /1024 /1024 > 60
+  - alert: linuxHostDiskWriteRateAlert
+    expr: irate(node_disk_written_bytes_total{job=~".*node_exporter.*"}[5m]) /1024 /1024 > 60
     for: 5m 
     labels:
       severity: warnning
     annotations:
-      summary: "Host Disk[5m] Write Capacity High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Write Capacity above 60M (device: {{ $labels.device }},value: {{ $value }})"
+      summary: "Host Disk[5m] Write Rate High"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Write Rate above 60M (device: {{ $labels.device }},value: {{ $value }})"
 
   - alert: linuxHostDiskIOPSReadRateAlert
-    expr: irate(node_disk_reads_completed_total{job=~".*node_exporter.*"}[5m]) > 600
+    expr: topk(1,irate(node_disk_reads_completed_total{job=~".*node_exporter.*"}[5m])) > 1500
     for: 5m 
     labels:
       severity: warnning
     annotations:
       summary: "Host Disk[5m] IOPS Read Rate High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Read IOPS Rate above 600 (device: {{ $labels.device }},value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Read IOPS Rate above 1500 (device: {{ $labels.device }},value: {{ $value }})"
 
   - alert: linuxHostDiskIOPSWriteRateAlert
-    expr: irate(node_disk_writes_completed_total{job=~".*node_exporter.*"}[5m]) > 600
+    expr: topk(1,irate(node_disk_writes_completed_total{job=~".*node_exporter.*"}[5m])) > 1500
     for: 5m 
     labels:
       severity: warnning
     annotations:
       summary: "Host Disk[5m] IOPS Write Rate High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Write IOPS Rate above 600 (device: {{ $labels.device }},value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Write IOPS Rate above 1500 (device: {{ $labels.device }},value: {{ $value }})"
 
   - alert: linuxHostNetworkReceiveAlert
-    expr: irate(node_network_receive_bytes_total{device!~"tap.*|veth.*|br.*|docker.*|virbr*|lo*"}[5m]) * 8 / 1024 / 1024 > 80
+    expr: irate(node_network_receive_bytes_total{device!~"tap.*|veth.*|br.*|docker.*|virbr*|lo*",job=~".*node_exporter.*"}[5m]) * 8 / 1024 / 1024 > 80
     for: 5m 
     labels:
       severity: warnning
@@ -110,10 +110,19 @@ groups:
       description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Download rate above 80Mbps (current value: {{ $value }})"
 
   - alert: linuxHostNetworkSendAlert
-    expr: irate(node_network_transmit_bytes_total{device!~"tap.*|veth.*|br.*|docker.*|virbr*|lo*"}[5m]) * 8 / 1024 / 1024 > 80
+    expr: irate(node_network_transmit_bytes_total{device!~"tap.*|veth.*|br.*|docker.*|virbr*|lo*",job=~".*node_exporter.*"}[5m]) * 8 / 1024 / 1024 > 80
     for: 5m 
     labels:
       severity: warnning
     annotations:
       summary: "Host Network[5m] Send Rate High"
       description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Send rate above 80Mbps (current value: {{ $value }})"
+
+  - alert: linuxHostNetworkEstablishedConnectionAlert
+    expr: node_netstat_Tcp_CurrEstab  > 1500
+    for: 5m 
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Host Network[5m] Established Connection High"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Established Connection above 1500 (current value: {{ $value }})"

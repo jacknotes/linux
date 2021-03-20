@@ -23,8 +23,30 @@ scrape_configs:
     - server: '192.168.13.236:8500'
       services: []
     relabel_configs:
+      - source_labels: [__meta_consul_service]
+        regex: node.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+
+  - job_name: 'consul_aliyun-node_exporter'
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_service]
+        regex: aliyun_node.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+
+  - job_name: 'consul-xenserver'
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
       - source_labels: [__meta_consul_tags]
-        regex: .*node.*
+        regex: .*xenserver.*
         action: keep
       - regex: __meta_consul_service_metadata_(.+)
         action: labelmap
@@ -58,6 +80,17 @@ scrape_configs:
     relabel_configs:
       - source_labels: [__meta_consul_tags]
         regex: .*mysql.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+
+  - job_name: 'consul-elasticsearch_exporter'
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*elasticsearch.*
         action: keep
       - regex: __meta_consul_service_metadata_(.+)
         action: labelmap
@@ -176,6 +209,29 @@ scrape_configs:
       - target_label: __address__
         replacement: 192.168.13.236:9115
 
+  - job_name: 'consul-blackbox-http-services'
+    scrape_interval: 1m
+    metrics_path: /probe
+    params:
+      module: [http_custom_httpcode_200]
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*blackbox_http_services,
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - source_labels: [__address__]
+        regex: \[(.*)\]:(.*)
+        target_label: __param_target
+        replacement: ${1}
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.13.236:9115
+
   - job_name: 'consul-blackbox-tcp'
     scrape_interval: 5s
     metrics_path: /probe
@@ -226,4 +282,15 @@ scrape_configs:
         target_label: __param_module
       - target_label: __address__
         replacement: 192.168.13.236:9116
+
+  - job_name: 'consul-rabbitmq_exporter'
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*rabbitmq.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
 

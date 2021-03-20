@@ -4,6 +4,8 @@ curl -X PUT -d '{"id": "node-exporter","name": "node-exporter-192.168.13.50","ad
 --register
 curl -X PUT --data @consul-node_exporter.json http://192.168.13.236:8500/v1/agent/service/register?replace-existing-checks=1
 
+for i in 101 102 230 240 250;do curl -X PUT --data @consul_aliyun-node_exporter-10.10.10.$i.json http://localhost:8500/v1/agent/service/register;done
+
 --deregister
 curl -X PUT http://192.168.13.236:8500/v1/agent/service/deregister/node-exporter
 

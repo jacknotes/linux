@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_http_elasticsearch_health",
+  "ID": "blackbox_http_elasticsearch_health-blog.hs.com",
+  "Tags": [
+    "blackbox_http_elasticsearch_health"
+  ],
+  "Address": "http://192.168.13.239:9200/_cat/health?v",
+  "Meta": {
+    "app": "blog.hs.com",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

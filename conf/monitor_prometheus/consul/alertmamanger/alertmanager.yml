@@ -5,7 +5,7 @@ global:
   smtp_hello: 'alertmanager'
   smtp_from: 'prometheus@homsom.com'
   smtp_auth_username: 'prometheus@homsom.com'
-  smtp_auth_password: 'p@ssword'
+  smtp_auth_password: 'password'
 templates:
   - '/usr/local/alertmanager/email.tmpl'
 route:
@@ -40,6 +40,5 @@ inhibit_rules:
       alertname: .*Down.*
     target_match_re:
       job: .*blackbox.*
-    equal:
+    equal: 
       - ops
-

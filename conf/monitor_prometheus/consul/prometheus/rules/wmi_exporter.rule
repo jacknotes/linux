@@ -3,12 +3,12 @@ groups:
   rules:
   - alert: wmi_windows_NodeDown
     expr: up{job=~".*wmi_exporter"} == 0
-    for: 1m
+    for: 15s
     labels:
       severity: High
     annotations:
       summary: "wmi_windows is Down"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }},app: {{ $labels.app }}, instance: {{$labels.instance}} is Down,Server Machine can shutdown,time keep 1m(current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }},app: {{ $labels.app }}, instance: {{$labels.instance}} is Down,Server Machine can shutdown,time keep 15s(current value: {{ $value }})"
 
   - alert: wmi_windowsHostCpuUsageAlert
     expr: (100 - (avg(irate(wmi_cpu_time_total{job=~".*wmi_exporter",mode="idle"}[1m])) by(instance,team,project,job,app))*100)  > 85

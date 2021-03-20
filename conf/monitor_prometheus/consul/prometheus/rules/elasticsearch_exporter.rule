@@ -1,0 +1,101 @@
+groups:
+- name: elasticsearchStatsAlert
+  rules:
+  - alert: ElasticDown
+    expr: elasticsearch_node_stats_up == 0
+    for: 15s
+    labels:
+      severity: High
+    annotations:
+      summary: "Elasticsearch Is Down"
+      description: " Elasticsearch Instance {{ $labels.instance }} Is Down,App: {{ $labels.app }}(current value: {{ $value }})."
+
+  - alert: Elastic_Cluster_Health_RED
+    expr: elasticsearch_cluster_health_status{color="red"}==1 
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "not all primary and replica shards are allocated"
+      description: "Instance {{ $labels.instance }}: not all primary and replica shards are allocated in elasticsearch cluster {{ $labels.cluster }},state: {{ $labels.color }},(current value: {{ $value }})."
+
+  - alert: Elastic_Cluster_Health_Yellow 
+    expr: elasticsearch_cluster_health_status{color="yellow",cluster="dlog"} == 1
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "not part replica shards are allocated" 
+      description: "Instance {{ $labels.instance }}: not part replica shards are allocated in elasticsearch cluster {{ $labels.cluster }},state: {{ $labels.color }},(current value: {{ $value }})."
+
+  - alert: Elasticsearch_JVM_Heap_Too_High
+    expr: elasticsearch_jvm_memory_used_bytes{area="heap"} / elasticsearch_jvm_memory_max_bytes{area="heap"} > 0.8
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "heap usage is high "
+      description: "The heap in {{ $labels.instance }} is over 80% for 5m(current value: {{ $value }})."
+
+  - alert: Elasticsearch_health_up
+    expr: elasticsearch_cluster_health_up !=1
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "last scrape of the ElasticSearch cluster health failed"                               
+      description: "ElasticSearch node: {{ $labels.instance }} last scrape of the ElasticSearch cluster health failed,(current value: {{ $value }})"
+
+  - alert: Elasticsearch_Too_Few_Nodes_Running
+    expr: elasticsearch_cluster_health_number_of_nodes{cluster="dlog"} < 3
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "There are only {{$value}} < 3 ElasticSearch nodes running " 
+      description: "lasticSearch running on less than 3 nodes(total 3),(current value: {{ $value }})"
+
+  - alert: Elasticsearch_Count_of_JVM_GC_Runs
+    expr: avg(rate(elasticsearch_jvm_gc_collection_seconds_count{}[5m]))  without(instance) > 5
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Count of JVM GC runs > 5 per sec"
+      description: "ElasticSearch node {{ $labels.host }}: Count of JVM GC runs > 5 per sec and has a value of {{ $value }}"
+
+  - alert: Elasticsearch_GC_Run_Time
+    expr: avg(rate(elasticsearch_jvm_gc_collection_seconds_sum{}[5m]))  without(instance)  >0.3
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "GC run time in seconds > 0.3 sec"
+      description: "ElasticSearch node {{ $labels.host }}: GC run time in seconds > 0.3 sec and has a value of {{ $value }}"
+
+  - alert: Elasticsearch_json_parse_failures
+    expr: rate(elasticsearch_cluster_health_json_parse_failures[5m]) > 0
+    for: 5m
+    labels:
+      severity: critical
+    annotations:
+      summary: "json parse failures > 0"
+      description: "ElasticSearch node {{ $labels.instance }}: json parse failures > 0 and has a value of {{ $value }})"
+
+  - alert: Elasticsearch_breakers_tripped
+    expr: rate(elasticsearch_breakers_tripped{}[5m]) > 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "breakers tripped > 0"
+      description: "ElasticSearch node {{ $labels.instance }}: breakers tripped > 0 and has a value of {{ $value }}"
+
+  - alert: Elasticsearch_health_timed_out
+    expr: elasticsearch_cluster_health_timed_out > 0
+    for: 3m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Number of cluster health checks timed out > 0"
+      description: "ElasticSearch node {{ $labels.instance }}: Number of cluster health checks timed out > 0 and has a value of {{ $value }}"

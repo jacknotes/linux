@@ -17,7 +17,7 @@
   "gnetId": 10467,
   "graphTooltip": 1,
   "id": 3,
-  "iteration": 1605422241919,
+  "iteration": 1616232163519,
   "links": [
     {
       "asDropdown": true,
@@ -3215,7 +3215,7 @@
       }
     }
   ],
-  "refresh": false,
+  "refresh": "10s",
   "schemaVersion": 26,
   "style": "dark",
   "tags": [
@@ -3361,5 +3361,5 @@
   "timezone": "",
   "title": "Windows",
   "uid": "Kdh0OoSGz",
-  "version": 6
+  "version": 7
 }

@@ -17,7 +17,7 @@
   "gnetId": 9276,
   "graphTooltip": 0,
   "id": 2,
-  "iteration": 1605422117428,
+  "iteration": 1616232007623,
   "links": [],
   "panels": [
     {
@@ -2125,7 +2125,7 @@
           "value": "consul-node_exporter"
         },
         "datasource": "Prometheus",
-        "definition": "label_values(up{job=~\".*node_exporter.*\"},job)",
+        "definition": "label_values(up{job=~\".*consul-node_exporter.*\"},job)",
         "hide": 0,
         "includeAll": false,
         "label": "分组名称",
@@ -2133,7 +2133,7 @@
         "multiFormat": "regex values",
         "name": "job",
         "options": [],
-        "query": "label_values(up{job=~\".*node_exporter.*\"},job)",
+        "query": "label_values(up{job=~\".*consul-node_exporter.*\"},job)",
         "refresh": 1,
         "regex": "",
         "skipUrlSync": false,
@@ -2259,5 +2259,5 @@
   "timezone": "browser",
   "title": "Linux",
   "uid": "Bkl9bBYik",
-  "version": 53
+  "version": 57
 }

@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_http_services",
+  "ID": "blackbox_http_services-meikeapi.hs.com",
+  "Tags": [
+    "blackbox_http_services"
+  ],
+  "Address": "http://meikeapi.hs.com/swagger/ui/index",
+  "Meta": {
+    "app": "meikeapi.hs.com",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

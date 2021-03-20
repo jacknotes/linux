@@ -17,7 +17,7 @@
   "gnetId": 763,
   "graphTooltip": 0,
   "id": 8,
-  "iteration": 1605422222955,
+  "iteration": 1616232104045,
   "links": [],
   "panels": [
     {
@@ -1200,8 +1200,8 @@
   "schemaVersion": 26,
   "style": "dark",
   "tags": [
-    "prometheus",
-    "redis"
+    "redis",
+    "prometheus"
   ],
   "templating": {
     "list": [
@@ -1265,5 +1265,5 @@
   "timezone": "browser",
   "title": "Redis",
   "uid": "OY8i3bdMk",
-  "version": 19
+  "version": 20
 }

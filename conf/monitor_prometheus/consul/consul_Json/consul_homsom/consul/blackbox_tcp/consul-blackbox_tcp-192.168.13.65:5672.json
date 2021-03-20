@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_tcp",
+  "ID": "blackbox_tcp-192.168.13.65:5672",
+  "Tags": [
+    "blackbox_tcp"
+  ],
+  "Address": "192.168.13.65:5672",
+  "Meta": {
+    "app": "rabbitmq02",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

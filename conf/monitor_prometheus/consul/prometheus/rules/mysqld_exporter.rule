@@ -1,7 +1,7 @@
 groups:
 - name: mysqld_exporter
   rules:
-  - alert: mysqld_exporterStatusAlert
+  - alert: mysqld_exporterDown
     expr: mysql_up < 1
     for: 15s
     labels:
@@ -11,16 +11,16 @@ groups:
       description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} is down(current value: {{ $value }})"
 
   - alert: mysqlQPSAlert
-    expr: irate(mysql_global_status_queries[5m]) > 50
+    expr: irate(mysql_global_status_queries[5m]) > 1000
     for: 1m
     labels:
       severity: High
     annotations:
       summary: "Mysql QPS Is Many"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} QPS is greater 50(current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} QPS is greater 400(current value: {{ $value }})"
 
   - alert: mysqlConnectNumberAlert
-    expr: mysql_global_status_threads_connected > 50
+    expr: mysql_global_status_threads_connected > 100
     for: 1m
     labels:
       severity: High
@@ -38,13 +38,13 @@ groups:
       description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} mysql network traffic is greater 1mbps(current value: {{ $value }})"
 
   - alert: mysqlSelectNumberAlert
-    expr: irate(mysql_global_status_commands_total{command="select"}[5m]) >50
+    expr: irate(mysql_global_status_commands_total{command="select"}[5m]) >300
     for: 1m
     labels:
       severity: Warnning
     annotations:
       summary: "Mysql Select(DML) Number Is Many"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} select number is greater 50(current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} select number is greater 100(current value: {{ $value }})"
 
   - alert: mysqlDeleteNumberAlert
     expr: irate(mysql_global_status_commands_total{command="delete"}[5m]) > 10
@@ -72,4 +72,49 @@ groups:
     annotations:
       summary: "Mysql Table Locks Waited Trigger"
       description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Table Locks Waited is greater 1(current value: {{ $value }})"
+
+  - alert: mysqlSlaveIO_THREADRunningAlert
+    expr: mysql_slave_status_slave_io_running < 1
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "Mysql Slave IO_Thread Is Down"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Mysql Slave IO_Thread Is Down, value is lower 1(current value: {{ $value }})"
+
+  - alert: mysqlSlaveSQL_THREADRunningAlert
+    expr: mysql_slave_status_slave_sql_running < 1
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "Mysql Slave SQL_Thread Is Down"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Mysql Slave SQL_Thread Is Down, value is lower 1(current value: {{ $value }})"
+
+  - alert: mysqlSlaveLast_SQL_ErrorNumAlert
+    expr: mysql_slave_status_last_sql_errno > 0
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "Mysql Slave Last_SQL_ErrorNum Alert"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Mysql Slave Last_SQL_ErrorNum is above 0(current value: {{ $value }})"
+
+  - alert: mysqlSlaveLast_IO_ErrorNumAlert
+    expr: mysql_slave_status_last_io_errno > 0
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "Mysql Slave Last_IO_ErrorNum Alert"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Mysql Slave Last_IO_ErrorNum is above 0(current value: {{ $value }})"
+
+  - alert: mysqlSlaveLast_ErrorNumAlert
+    expr: mysql_slave_status_last_errno > 0
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "Mysql Slave Last_ErrorNum Alert"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Mysql Slave Last_ErrorNum is above 0(current value: {{ $value }})"
 

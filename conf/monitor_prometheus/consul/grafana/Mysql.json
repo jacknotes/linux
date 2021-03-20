@@ -22,7 +22,7 @@
   "gnetId": 7362,
   "graphTooltip": 1,
   "id": 20,
-  "iteration": 1605422195085,
+  "iteration": 1616232035211,
   "links": [],
   "panels": [
     {
@@ -33,6 +33,164 @@
         "w": 24,
         "x": 0,
         "y": 0
+      },
+      "id": 399,
+      "panels": [],
+      "repeat": "interval",
+      "scopedVars": {
+        "interval": {
+          "selected": true,
+          "text": "1m",
+          "value": "1m"
+        }
+      },
+      "title": "Mysql cluster Status",
+      "type": "row"
+    },
+    {
+      "aliasColors": {
+        "IO_Running": "green"
+      },
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": null,
+      "decimals": 0,
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 6,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "hiddenSeries": false,
+      "id": 397,
+      "legend": {
+        "alignAsTable": true,
+        "avg": false,
+        "current": true,
+        "hideEmpty": false,
+        "hideZero": false,
+        "max": true,
+        "min": true,
+        "rightSide": true,
+        "show": true,
+        "total": false,
+        "values": true
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "percentage": false,
+      "pluginVersion": "7.1.4",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "scopedVars": {
+        "interval": {
+          "selected": true,
+          "text": "1m",
+          "value": "1m"
+        }
+      },
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": true,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "mysql_slave_status_slave_io_running{instance=\"$host\"}",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "IO_Running",
+          "refId": "A"
+        },
+        {
+          "expr": "mysql_slave_status_slave_sql_running{instance=\"$host\"}",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "SQL_Running",
+          "refId": "B"
+        },
+        {
+          "expr": "mysql_slave_status_last_sql_errno{instance=\"$host\"}",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "Last_SQL_ErrorNum",
+          "refId": "C"
+        },
+        {
+          "expr": "mysql_slave_status_last_io_errno{instance=\"$host\"}",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "Last_IO_ErrorNum",
+          "refId": "D"
+        },
+        {
+          "expr": "mysql_slave_status_last_errno{instance=\"$host\"}",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "Last_ErrorNum",
+          "refId": "E"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Mysql_Cluster_Status",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "collapsed": false,
+      "datasource": null,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 7
       },
       "id": 382,
       "panels": [],
@@ -72,7 +230,7 @@
         "h": 4,
         "w": 6,
         "x": 0,
-        "y": 1
+        "y": 8
       },
       "height": "125px",
       "id": 12,
@@ -164,7 +322,7 @@
         "h": 4,
         "w": 6,
         "x": 6,
-        "y": 1
+        "y": 8
       },
       "height": "125px",
       "id": 13,
@@ -262,7 +420,7 @@
         "h": 4,
         "w": 6,
         "x": 12,
-        "y": 1
+        "y": 8
       },
       "height": "125px",
       "id": 51,
@@ -360,7 +518,7 @@
         "h": 4,
         "w": 6,
         "x": 18,
-        "y": 1
+        "y": 8
       },
       "height": "125px",
       "id": 52,
@@ -436,7 +594,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 5
+        "y": 12
       },
       "id": 383,
       "panels": [],
@@ -465,10 +623,10 @@
       "fillGradient": 0,
       "grid": {},
       "gridPos": {
-        "h": 7,
+        "h": 9,
         "w": 12,
         "x": 0,
-        "y": 6
+        "y": 13
       },
       "height": "250px",
       "hiddenSeries": false,
@@ -476,7 +634,7 @@
       "legend": {
         "alignAsTable": true,
         "avg": true,
-        "current": false,
+        "current": true,
         "max": true,
         "min": true,
         "show": true,
@@ -614,10 +772,10 @@
       "fillGradient": 0,
       "grid": {},
       "gridPos": {
-        "h": 7,
+        "h": 9,
         "w": 12,
         "x": 12,
-        "y": 6
+        "y": 13
       },
       "hiddenSeries": false,
       "id": 10,
@@ -751,7 +909,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 13
+        "y": 22
       },
       "id": 384,
       "panels": [],
@@ -779,10 +937,10 @@
       "fillGradient": 0,
       "grid": {},
       "gridPos": {
-        "h": 7,
+        "h": 9,
         "w": 12,
         "x": 0,
-        "y": 14
+        "y": 23
       },
       "hiddenSeries": false,
       "id": 53,
@@ -891,10 +1049,10 @@
       "fillGradient": 0,
       "grid": {},
       "gridPos": {
-        "h": 7,
+        "h": 9,
         "w": 12,
         "x": 12,
-        "y": 14
+        "y": 23
       },
       "hiddenSeries": false,
       "id": 11,
@@ -1022,7 +1180,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 21
+        "y": 32
       },
       "id": 385,
       "panels": [],
@@ -1049,10 +1207,10 @@
       "fillGradient": 0,
       "grid": {},
       "gridPos": {
-        "h": 7,
+        "h": 11,
         "w": 12,
         "x": 0,
-        "y": 22
+        "y": 33
       },
       "hiddenSeries": false,
       "id": 22,
@@ -1180,10 +1338,10 @@
       "fillGradient": 0,
       "grid": {},
       "gridPos": {
-        "h": 7,
+        "h": 11,
         "w": 12,
         "x": 12,
-        "y": 22
+        "y": 33
       },
       "height": "250px",
       "hiddenSeries": false,
@@ -1329,7 +1487,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 29
+        "y": 44
       },
       "id": 386,
       "panels": [],
@@ -1360,7 +1518,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 30
+        "y": 45
       },
       "hiddenSeries": false,
       "id": 30,
@@ -1508,7 +1666,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 30
+        "y": 45
       },
       "hiddenSeries": false,
       "id": 48,
@@ -1599,7 +1757,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 37
+        "y": 52
       },
       "id": 387,
       "panels": [],
@@ -1630,7 +1788,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 38
+        "y": 53
       },
       "hiddenSeries": false,
       "id": 47,
@@ -1753,7 +1911,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 38
+        "y": 53
       },
       "hiddenSeries": false,
       "id": 32,
@@ -1858,7 +2016,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 45
+        "y": 60
       },
       "id": 388,
       "panels": [],
@@ -1889,7 +2047,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 46
+        "y": 61
       },
       "hiddenSeries": false,
       "id": 9,
@@ -2010,7 +2168,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 46
+        "y": 61
       },
       "height": "250px",
       "hiddenSeries": false,
@@ -2116,7 +2274,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 53
+        "y": 68
       },
       "id": 389,
       "panels": [],
@@ -2130,7 +2288,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Prometheus",
-      "decimals": 0,
+      "decimals": 2,
       "description": "***System Memory***: Total Memory for the system.\\\n***InnoDB Buffer Pool Data***: InnoDB maintains a storage area called the buffer pool for caching data and indexes in memory.\\\n***TokuDB Cache Size***: Similar in function to the InnoDB Buffer Pool,  TokuDB will allocate 50% of the installed RAM for its own cache.\\\n***Key Buffer Size***: Index blocks for MYISAM tables are buffered and are shared by all threads. key_buffer_size is the size of the buffer used for index blocks.\\\n***Adaptive Hash Index Size***: When InnoDB notices that some index values are being accessed very frequently, it builds a hash index for them in memory on top of B-Tree indexes.\\\n ***Query Cache Size***: The query cache stores the text of a SELECT statement together with the corresponding result that was sent to the client. The query cache has huge scalability problems in that only one thread can do an operation in the query cache at the same time.\\\n***InnoDB Dictionary Size***: The data dictionary is InnoDB ‘s internal catalog of tables. InnoDB stores the data dictionary on disk, and loads entries into memory while the server is running.\\\n***InnoDB Log Buffer Size***: The MySQL InnoDB log buffer allows transactions to run without having to write the log to disk before the transactions commit.",
       "editable": true,
       "error": false,
@@ -2144,17 +2302,17 @@
       "fillGradient": 0,
       "grid": {},
       "gridPos": {
-        "h": 7,
+        "h": 8,
         "w": 24,
         "x": 0,
-        "y": 54
+        "y": 69
       },
       "hiddenSeries": false,
       "id": 50,
       "legend": {
         "alignAsTable": true,
         "avg": true,
-        "current": false,
+        "current": true,
         "hideEmpty": true,
         "hideZero": true,
         "max": true,
@@ -2192,8 +2350,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "node_memory_MemTotal_bytes{instance=\"$host\"}",
+          "expr": "node_memory_MemTotal_bytes{instance=\"$node_exporter\"}",
           "format": "time_series",
+          "hide": false,
+          "interval": "",
           "intervalFactor": 2,
           "legendFormat": "System Memory",
           "refId": "G",
@@ -2212,6 +2372,7 @@
         {
           "expr": "mysql_global_variables_innodb_log_buffer_size{instance=\"$host\"}",
           "format": "time_series",
+          "hide": false,
           "interval": "$interval",
           "intervalFactor": 1,
           "legendFormat": "InnoDB Log Buffer Size",
@@ -2221,6 +2382,7 @@
         {
           "expr": "mysql_global_variables_innodb_additional_mem_pool_size{instance=\"$host\"}",
           "format": "time_series",
+          "hide": false,
           "interval": "$interval",
           "intervalFactor": 2,
           "legendFormat": "InnoDB Additional Memory Pool Size",
@@ -2230,6 +2392,7 @@
         {
           "expr": "mysql_global_status_innodb_mem_dictionary{instance=\"$host\"}",
           "format": "time_series",
+          "hide": true,
           "interval": "$interval",
           "intervalFactor": 1,
           "legendFormat": "InnoDB Dictionary Size",
@@ -2239,6 +2402,7 @@
         {
           "expr": "mysql_global_variables_key_buffer_size{instance=\"$host\"}",
           "format": "time_series",
+          "hide": false,
           "interval": "$interval",
           "intervalFactor": 1,
           "legendFormat": "Key Buffer Size",
@@ -2248,6 +2412,7 @@
         {
           "expr": "mysql_global_variables_query_cache_size{instance=\"$host\"}",
           "format": "time_series",
+          "hide": false,
           "interval": "$interval",
           "intervalFactor": 1,
           "legendFormat": "Query Cache Size",
@@ -2257,6 +2422,7 @@
         {
           "expr": "mysql_global_status_innodb_mem_adaptive_hash{instance=\"$host\"}",
           "format": "time_series",
+          "hide": true,
           "interval": "$interval",
           "intervalFactor": 1,
           "legendFormat": "Adaptive Hash Index Size",
@@ -2266,11 +2432,42 @@
         {
           "expr": "mysql_global_variables_tokudb_cache_size{instance=\"$host\"}",
           "format": "time_series",
+          "hide": true,
           "interval": "$interval",
           "intervalFactor": 1,
           "legendFormat": "TokuDB Cache Size",
           "refId": "I",
           "step": 20
+        },
+        {
+          "expr": "mysql_global_variables_innodb_buffer_pool_size{instance=\"$host\"}",
+          "format": "time_series",
+          "hide": false,
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "Innodb Buffer Pool Size",
+          "refId": "J",
+          "step": 4
+        },
+        {
+          "expr": "mysql_global_variables_tmp_table_size{instance=\"$host\"}",
+          "format": "time_series",
+          "hide": false,
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "Tmp Table Size",
+          "refId": "K",
+          "step": 4
+        },
+        {
+          "expr": "mysql_global_variables_innodb_sort_buffer_size{instance=\"$host\"} + mysql_global_variables_read_buffer_size{instance=\"$host\"} + mysql_global_variables_read_rnd_buffer_size{instance=\"$host\"} + mysql_global_variables_join_buffer_size{instance=\"$host\"} + mysql_global_variables_thread_stack{instance=\"$host\"} ",
+          "format": "time_series",
+          "hide": false,
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "Session Size",
+          "refId": "L",
+          "step": 4
         }
       ],
       "thresholds": [],
@@ -2298,7 +2495,7 @@
           "label": "",
           "logBase": 1,
           "max": null,
-          "min": 0,
+          "min": "0",
           "show": true
         },
         {
@@ -2322,7 +2519,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 61
+        "y": 77
       },
       "id": 390,
       "panels": [],
@@ -2353,7 +2550,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 62
+        "y": 78
       },
       "hiddenSeries": false,
       "id": 14,
@@ -2469,7 +2666,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 69
+        "y": 85
       },
       "hiddenSeries": false,
       "id": 39,
@@ -2582,7 +2779,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 76
+        "y": 92
       },
       "hiddenSeries": false,
       "id": 8,
@@ -2690,7 +2887,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 83
+        "y": 99
       },
       "hiddenSeries": false,
       "id": 28,
@@ -2797,7 +2994,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 90
+        "y": 106
       },
       "hiddenSeries": false,
       "id": 40,
@@ -2904,7 +3101,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 97
+        "y": 113
       },
       "hiddenSeries": false,
       "id": 49,
@@ -2996,7 +3193,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 104
+        "y": 120
       },
       "id": 391,
       "panels": [],
@@ -3027,7 +3224,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 105
+        "y": 121
       },
       "hiddenSeries": false,
       "id": 46,
@@ -3148,7 +3345,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 105
+        "y": 121
       },
       "height": "",
       "hiddenSeries": false,
@@ -3293,7 +3490,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 112
+        "y": 128
       },
       "id": 392,
       "panels": [],
@@ -3323,7 +3520,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 113
+        "y": 129
       },
       "hiddenSeries": false,
       "id": 43,
@@ -3427,7 +3624,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 113
+        "y": 129
       },
       "hiddenSeries": false,
       "id": 41,
@@ -3537,7 +3734,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 120
+        "y": 136
       },
       "id": 393,
       "panels": [],
@@ -3568,7 +3765,7 @@
         "h": 7,
         "w": 12,
         "x": 0,
-        "y": 121
+        "y": 137
       },
       "hiddenSeries": false,
       "id": 44,
@@ -3722,7 +3919,7 @@
         "h": 7,
         "w": 12,
         "x": 12,
-        "y": 121
+        "y": 137
       },
       "hiddenSeries": false,
       "id": 42,
@@ -3832,7 +4029,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 128
+        "y": 144
       },
       "id": 394,
       "panels": [],
@@ -3863,7 +4060,7 @@
         "h": 7,
         "w": 24,
         "x": 0,
-        "y": 129
+        "y": 145
       },
       "hiddenSeries": false,
       "id": 54,
@@ -3987,7 +4184,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 136
+        "y": 152
       },
       "id": 395,
       "panels": [],
@@ -4017,7 +4214,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 137
+        "y": 153
       },
       "hiddenSeries": false,
       "id": 31,
@@ -4139,7 +4336,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 137
+        "y": 153
       },
       "height": "250px",
       "hiddenSeries": false,
@@ -4299,7 +4496,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 137
+        "y": 153
       },
       "height": "",
       "hiddenSeries": false,
@@ -4446,7 +4643,7 @@
         "h": 7,
         "w": 8,
         "x": 0,
-        "y": 144
+        "y": 160
       },
       "height": "250px",
       "hiddenSeries": false,
@@ -4604,7 +4801,7 @@
         "h": 7,
         "w": 8,
         "x": 8,
-        "y": 144
+        "y": 160
       },
       "height": "250px",
       "hiddenSeries": false,
@@ -4734,7 +4931,7 @@
         "h": 7,
         "w": 8,
         "x": 16,
-        "y": 144
+        "y": 160
       },
       "hiddenSeries": false,
       "id": 38,
@@ -4846,13 +5043,13 @@
     "list": [
       {
         "allFormat": "glob",
-        "auto": true,
+        "auto": false,
         "auto_count": 200,
         "auto_min": "1s",
         "current": {
           "selected": false,
-          "text": "5m",
-          "value": "5m"
+          "text": "1m",
+          "value": "1m"
         },
         "datasource": "Prometheus",
         "hide": 0,
@@ -4863,37 +5060,12 @@
         "name": "interval",
         "options": [
           {
-            "selected": false,
-            "text": "auto",
-            "value": "$__auto_interval_interval"
-          },
-          {
-            "selected": false,
+            "selected": true,
             "text": "1m",
             "value": "1m"
-          },
-          {
-            "selected": true,
-            "text": "5m",
-            "value": "5m"
-          },
-          {
-            "selected": false,
-            "text": "1h",
-            "value": "1h"
-          },
-          {
-            "selected": false,
-            "text": "6h",
-            "value": "6h"
-          },
-          {
-            "selected": false,
-            "text": "1d",
-            "value": "1d"
           }
         ],
-        "query": "1m,5m,1h,6h,1d",
+        "query": "1m",
         "queryValue": "",
         "refresh": 2,
         "skipUrlSync": false,
@@ -4995,5 +5167,5 @@
   "timezone": "browser",
   "title": "Mysql",
   "uid": "MQWgroiiz",
-  "version": 44
+  "version": 73
 }
