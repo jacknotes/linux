@@ -2003,5 +2003,29 @@ Port:
 
 
 
+#iperf3 ----测试客户端到服务端的网速
+#例子：测试sslvpn之间的网速是多少
+#工作在server模式
+[root@nginx ~]# iperf3 -s  
+#工作在client模式，连接服务器ip，间隔为1秒，持续时间哦10秒
+[root@prometheus ~]# iperf3 -c 10.10.10.240 -i 1 -t 10
+Connecting to host 10.10.10.240, port 5201
+[  4] local 192.168.177.178 port 31819 connected to 10.10.10.240 port 5201
+[ ID] Interval           Transfer     Bandwidth       Retr  Cwnd
+[  4]   0.00-1.00   sec  12.2 MBytes   102 Mbits/sec   26    161 KBytes       
+[  4]   1.00-2.00   sec  17.1 MBytes   143 Mbits/sec   34    174 KBytes       
+[  4]   2.00-3.00   sec  12.4 MBytes   104 Mbits/sec    0    220 KBytes       
+[  4]   3.00-4.00   sec  12.8 MBytes   107 Mbits/sec    0    258 KBytes       
+[  4]   4.00-5.00   sec  12.6 MBytes   106 Mbits/sec    0    291 KBytes       
+[  4]   5.00-6.00   sec  12.7 MBytes   106 Mbits/sec    0    320 KBytes       
+[  4]   6.00-7.00   sec  12.5 MBytes   105 Mbits/sec    0    348 KBytes       
+[  4]   7.00-8.00   sec  12.4 MBytes   104 Mbits/sec    0    372 KBytes       
+[  4]   8.00-9.00   sec  12.6 MBytes   106 Mbits/sec    0    396 KBytes       
+[  4]   9.00-10.00  sec  12.6 MBytes   106 Mbits/sec    0    418 KBytes       
+- - - - - - - - - - - - - - - - - - - - - - - - -
+[ ID] Interval           Transfer     Bandwidth       Retr
+[  4]   0.00-10.00  sec   130 MBytes   109 Mbits/sec   60             sender
+[  4]   0.00-10.00  sec   129 MBytes   108 Mbits/sec                  receiver
+
 
 </pre>
