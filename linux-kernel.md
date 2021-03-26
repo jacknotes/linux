@@ -110,3 +110,15 @@ LAST_ACK：等待所有分组死掉
 
 
 
+#CentOS6 | 7 TCP系统调优
+#通过以上修改，TIME_WAIT明显减少！
+# Decrease the time default value for tcp_fin_timeout connection
+net.ipv4.tcp_fin_timeout = 30
+# Decrease the time default value for tcp_keepalive_time connection
+net.ipv4.tcp_keepalive_time = 1800
+# Turn off tcp_window_scaling
+net.ipv4.tcp_window_scaling = 0
+# Turn off the tcp_sack
+net.ipv4.tcp_sack = 0
+#Turn off tcp_timestamps
+net.ipv4.tcp_timestamps = 0

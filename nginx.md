@@ -1696,6 +1696,25 @@ TLS SNI support enabled
 configure arguments: --prefix=/usr/local/nginx --user=www --group=www --with-pcre=/download/pcre-8.44/ --with-http_stub_status_module --with-http_ssl_module --with-http_sub_module --with-http_realip_module --add-module=/git/ngx_http_substitutions_filter_module --with-stream --with-openssl=/usr/local/openssl
 
 
+#nginx限制IP并发连接数，请求连接数，速率大小。 --202103261725
+1、在nginx.conf里的http{}里加上如下代码：
+#ip limit
+limit_conn_zone $binary_remote_addr zone=perip:10m;
+limit_conn_zone $server_name zone=perserver:10m;
+2、在需要限制并发数和下载带宽的网站配置server{}里加上如下代码：
+limit_conn perip 2;
+limit_conn perserver 20;
+limit_rate 100k;
+补充说明下参数：
+$binary_remote_addr是限制同一客户端ip地址；
+$server_name是限制同一server最大并发数；
+limit_conn为限制并发连接数；
+limit_rate为限制下载速度；
+#example for nginx
+limit_conn_zone $binary_remote_addr zone=connzone:10m;
+limit_req_zone $binary_remote_addr zone=one:10m rate=10r/s;      --每秒最大10个请求
+limit_conn connzone 20;
+limit_req zone=one burst=10 nodelay;    --超过最大请求数10则直接丢弃。
 
 
 </pre>
