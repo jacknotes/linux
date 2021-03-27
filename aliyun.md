@@ -617,8 +617,6 @@ server reload successful
 [root@jumpserver ansible]# ansible all -m shell -a 'ping -qA -s 500 -w 1000 -c 10 hs.com'
 
 
-
-
 #deploy jumpserver
 require: mysql>=5.7,redis>=5.0
 mysql: jumpserver
@@ -706,7 +704,6 @@ REDIS_DB_ROOM: 6
 (py3) [root@jumpserver /opt/koko]# netstat -tnlp | grep -E '2222|5000'
 tcp6       0      0 :::5000                 :::*                    LISTEN      26822/koko          
 tcp6       0      0 :::2222                 :::*                    LISTEN      26822/koko          
-注：当连接mysql时报“mysql 协议的数据库客户端未安装 ”，表示koko版本有问题，把此版本：koko-2.5.4回滚到2.5.3可以解决。
 --Docker 部署 Guacamole 组件
 docker run --name jms_guacamole -d \
   --restart=always \
@@ -735,12 +732,9 @@ Operations to perform:
 Running migrations:
   Applying assets.0063_auto_20210324_1925... OK
 
-
-
-
-
-
-
+注：koko组件相关连接mysql，当报mysql协议的客户端未安装时，因为jumpserver本机上未找到mysql，当是二进制安装时，
+jumpserver不会识别，此时需要yum安装mariadb才行，yum install mariadb mariadb-libs mariadb-devel即可解决。
+[root@jumpserver ~]# mv /etc/my.cnf.rpmsave /etc/my.cnf
 
 
 --部署tengine
@@ -993,8 +987,10 @@ echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force
 exit 2
 esac
 ---jumpserver boot shell
-[root@jumpserver ~]# cat /shell/jump_start.sh
+[root@jumpserver ~]# cat /etc/init.d/jumpserver 
 #!/bin/sh
+# chkconfig: 35 90 10
+
 
 # nodebook: manual kill beat
 # ps aux | grep 'celery beat' | grep -v grep | awk '{print $2}' | xargs -I {} kill -9 {}
@@ -1047,9 +1043,6 @@ case "$1" in
 		echo "Usage: $0 [ start | stop | status ]"
 	;;
 esac
-
-
-
 
 
 #iptables
