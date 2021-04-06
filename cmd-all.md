@@ -2445,4 +2445,27 @@ Getting CA Private Key
 test.crt: OK
 ------------------------------------
 
+#tftp
+[root@prometheus tftpboot]# cat /etc/xinetd.d/tftp 
+# default: off
+# description: The tftp server serves files using the trivial file transfer \
+#       protocol.  The tftp protocol is often used to boot diskless \
+#       workstations, download configuration files to network-aware printers, \
+#       and to start the installation process for some operating systems.
+service tftp
+{
+        disable                 = no
+        socket_type             = dgram
+        protocol                = udp
+        wait                    = yes
+        user                    = root
+        server                  = /usr/sbin/in.tftpd
+        server_args             = -B 1380 -v -s /var/lib/tftpboot -c
+        per_source              = 11
+        cps                     = 100 2
+        flags                   = IPv4
+}
+desctiption: -c参数表示启用tftp上传功能 
+
+
 </pre>
