@@ -1452,6 +1452,14 @@ find /data/nginx_logs/days/* -name "*.bz2" -mtime 7 -type f -exec rm -rf {} \;
 [root@autodep ~]# tcpdump -i eth0 src 192.168.1.234 and dst 192.168.1.232
 [root@autodep ~]# tcpdump -i eth0 src 192.168.1.234 and dst ! 192.168.1.232
 
+#tcpkill connection
+--test grab package
+tcpdump -i eth0 ip src 172.168.2.222 and src port 22 and dst 192.168.13.236 and dst port 43607
+--install tcpkill
+yum install dsniff -y
+--tcpkill connection session,match for tcpdump <expression>
+tcpkill -i eth0 ip src 172.168.2.222 and src port 22 and dst 192.168.13.236 and dst port 43607
+tcpkill -i eth1 ip src 4.10.7.11 and src port 1194 and dst 22.6.2.20 and dst port 53647
 
 ####Linux下用curl命令对API的使用
 测试get请求
