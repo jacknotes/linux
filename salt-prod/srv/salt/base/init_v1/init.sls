@@ -2,6 +2,7 @@ include:
   - init.dns
   - init.hosts
   - init.history
+  - init.audit
   - init.sysctl
   - init.firewall
   - init.ssh
@@ -10,8 +11,10 @@ include:
   - init.ntp-client
   - init.selinux
   - init.tty-style
+  - init.user-www
   - init.repo-clear
   - init.repo
   - init.basePkg
   - init.python-pip
   - init.axel
+  - init.k8s

@@ -1,6 +1,12 @@
 net.ipv4.ip_local_port_range:    #客户端打口随机端口范围
   sysctl.present:
     - value: 10000 65000
+net.bridge.bridge-nf-call-iptables:
+  sysctl.present:
+    - value: 1
+net.bridge.bridge-nf-call-ip6tables:
+  sysctl.present:
+    - value: 1
 net.ipv4.ip_forward: 
   sysctl.present:
     - value: 1
@@ -31,3 +37,6 @@ fs.nr_open:
 net.ipv6.conf.all.disable_ipv6:
   sysctl.present:
     - value: 1
+net.netfilter.nf_conntrack_max:
+  sysctl.present:
+    - value: 2310720

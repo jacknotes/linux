@@ -1,0 +1,5 @@
+#elasticsearch user read this file. UID:991
+node.name: TestHotelElasticsearch
+path.repo: /var/backups
+network.host: 0.0.0.0
+cluster.initial_master_nodes: ["TestHotelElasticsearch"]

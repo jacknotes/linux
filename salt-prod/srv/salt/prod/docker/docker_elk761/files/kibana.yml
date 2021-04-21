@@ -1,0 +1,3 @@
+server.name: testHotelkibana
+server.host: "0.0.0.0"
+i18n.locale: "zh-CN"
