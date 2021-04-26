@@ -1196,4 +1196,10 @@ POST _snapshot/aliyun_auto_snapshot/<snapshot>/_restore
 "rename_replacement": "restored_index_$1"
 }
 
+
+#SaaS
+#Redis
+程序读写除DB0以外的数据库时不成功，问题在哪？
+答：如果您的Redis实例为集群架构或读写分离架构，且需要执行切换或选择数据库的操作（即使用多数据库功能），您必须先将cluster_compat_enable参数设置为0（即关闭原生Redis Cluster语法兼容），然后重启客户端应用。
+
 </pre>
