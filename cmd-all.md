@@ -2039,6 +2039,29 @@ Connecting to host 10.10.10.240, port 5201
 #openssl--20210326
 ------------------------------------
 ###Openssl命令详解
+
+ot@salt ~/custom_pki]# echo hehe > 123.log
+[root@salt ~/custom_pki]# cat 123.log 
+hehe
+[root@salt ~/custom_pki]# openssl rsautl -encrypt -in 123.log -inkey jack.crt -pubin -out 123.en
+[root@salt ~/custom_pki]# file 123.en
+123.en: data
+[root@salt ~/custom_pki]# file 123.log
+123.log: ASCII text
+[root@salt ~/custom_pki]# openssl rsautl -decrypt -in 123.en -inkey jack.key -out hello.log
+[root@salt ~/custom_pki]# cat hello.log 
+hehe
+[root@salt ~/custom_pki]# file hello.log
+hello.log: ASCII text
+注：
+rsautl：加解密
+encrypt：加密
+decrypt：解密
+in：从文件输入
+out：输出到文件
+inkey：输入的密钥
+pubin：表名输入是公钥文件，对inkey参数的补充
+
 1、对称加密算法的应用
 1.1 加解密字符串
 [root@salt ~]# echo 'hehe' | openssl enc -e -aes128 -a -salt  --加密
