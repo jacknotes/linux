@@ -1770,6 +1770,156 @@ groups:
 ---
 [root@prometheus rules]# curl -XPOST http://localhost:9090/-/reload
 
+#202104301755
+#prometheus for nginx-vts-exporter 
+
+nginx-module-vts：Nginx virtual host traffic status module，
+# Nginx的监控模块，能够提供JSON格式的数据产出。
+nginx-vts-exporter：Simple server that scrapes Nginx vts stats and exports them via HTTP for Prometheus consumption。
+# 主要用于收集Nginx的监控数据，并给Prometheus提供监控接口，默认端口号9913。
+Prometheus：
+# 监控Nginx-vts-exporter提供的Nginx数据，并存储在时序数据库中，可以使用PromQL对时序数据进行查询和聚合。
+
+1. nginx 编译安装添加模块
+nginx_vts_exporter依赖nginx-module-vts模块，安装此模块无需任何其他依赖。模块与Nginx的版本兼容性如下：
+Nginx
+1.19.x (last tested: 1.19.6)
+1.18.x (last tested: 1.18.0)
+1.16.x (last tested: 1.15.1)
+1.15.x (last tested: 1.15.0)
+1.14.x (last tested: 1.14.0)
+1.13.x (last tested: 1.13.12)
+1.12.x (last tested: 1.12.2)
+1.11.x (last tested: 1.11.10)
+1.10.x (last tested: 1.10.3)
+1.8.x (last tested: 1.8.0)
+1.6.x (last tested: 1.6.3)
+1.4.x (last tested: 1.4.7)
+[root@tengine /download]# /usr/local/tengine/sbin/nginx -V
+Tengine version: Tengine/2.3.2
+nginx version: nginx/1.17.3
+built by gcc 4.8.5 20150623 (Red Hat 4.8.5-44) (GCC) 
+built with OpenSSL 1.0.2k-fips  26 Jan 2017
+TLS SNI support enabled
+configure arguments: --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --lock-path=/usr/local/tengine/lock/tengine.lock --user=nginx --group=nginx --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --with-stream --add-module=modules/ngx_http_upstream_session_sticky_module --with-stream_ssl_module --add-module=modules/ngx_http_upstream_check_module --with-http_auth_request_module --with-http_gzip_static_module --with-http_random_index_module --with-http_sub_module
+[root@tengine /download]# /usr/local/tengine/sbin/nginx -v
+Tengine version: Tengine/2.3.2
+nginx version: nginx/1.17.3
+[root@tengine /download]# curl -OL https://github.com/vozlt/nginx-module-vts/archive/refs/tags/v0.1.17.tar.gz
+[root@tengine /download]# tar -xf nginx-module-vts-0.1.17.tar.gz 
+[root@tengine /download]# cd tengine-2.3.2/
+[root@tengine /download/tengine-2.3.2]# ./configure --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --lock-path=/usr/local/tengine/lock/tengine.lock --user=nginx --group=nginx --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --with-stream --add-module=modules/ngx_http_upstream_session_sticky_module --with-stream_ssl_module --add-module=modules/ngx_http_upstream_check_module --with-http_auth_request_module --with-http_gzip_static_module --with-http_random_index_module --add-module=/download/nginx-module-vts-0.1.17
+[root@tengine /download/tengine-2.3.2]# mv /usr/local/tengine/sbin/nginx{,.old}
+[root@tengine /download/tengine-2.3.2]# cp objs/nginx /usr/local/tengine/sbin/
+[root@tengine /download/tengine-2.3.2]# ls /usr/local/tengine/sbin/
+nginx  nginx.old
+[root@tengine /download/tengine-2.3.2]# make upgrade
+/usr/local/tengine/sbin/nginx -t
+nginx: the configuration file /usr/local/tengine/conf/nginx.conf syntax is ok
+nginx: configuration file /usr/local/tengine/conf/nginx.conf test is successful
+kill -USR2 `cat /usr/local/tengine/tengine.pid`
+\sleep 1
+test -f /usr/local/tengine/tengine.pid.oldbin
+kill -QUIT `cat /usr/local/tengine/tengine.pid.oldbin`
+[root@tengine /download/tengine-2.3.2]# /usr/local/tengine/sbin/nginx -V
+Tengine version: Tengine/2.3.2
+nginx version: nginx/1.17.3
+built by gcc 4.8.5 20150623 (Red Hat 4.8.5-44) (GCC) 
+built with OpenSSL 1.0.2k-fips  26 Jan 2017
+TLS SNI support enabled
+configure arguments: --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --lock-path=/usr/local/tengine/lock/tengine.lock --user=nginx --group=nginx --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --with-stream --add-module=modules/ngx_http_upstream_session_sticky_module --with-stream_ssl_module --add-module=modules/ngx_http_upstream_check_module --with-http_auth_request_module --with-http_gzip_static_module --with-http_random_index_module --add-module=/download/nginx-module-vts-0.1.17
+2. 配置nginx
+http {
+    vhost_traffic_status_zone;
+    vhost_traffic_status_filter_by_host on;
+
+server{
+	listen 8089;
+	server_name 192.168.13.50;
+	#server_name 127.0.0.1;
+
+	location /status {
+		vhost_traffic_status_display;
+        	vhost_traffic_status_display_format html;
+    	}
+}
+}
+[root@tengine /usr/local/tengine/conf]# service tengine reload
+3. 配置nginx-vts-exporter
+[root@tengine /download]# curl -OL https://github.com/hnlq715/nginx-vts-exporter/releases/download/v0.10.3/nginx-vts-exporter-0.10.3.linux-amd64.tar.gz
+[root@tengine /download]# tar xf nginx-vts-exporter-0.10.3.linux-amd64.tar.gz -C /usr/local/
+[root@tengine /download]# cd /usr/local/nginx-vts-exporter-0.10.3.linux-amd64/
+[root@tengine /usr/local/nginx-vts-exporter-0.10.3.linux-amd64]# /usr/local/nginx-vts-exporter-0.10.3.linux-amd64/nginx-vts-exporter -nginx.scrape_timeout 10 -nginx.scrape_uri http://127.0.0.1:8089/status/format/json -telemetry.address 192.168.13.50:9913 -telemetry.endpoint '/metrics'
+[root@tengine /usr/local/nginx-vts-exporter-0.10.3.linux-amd64]# cat /usr/lib/systemd/system/nginx_exporter.service
+---
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/nginx-vts-exporter-0.10.3.linux-amd64/nginx-vts-exporter -nginx.scrape_timeout 10 -nginx.scrape_uri http://127.0.0.1:8089/status/format/json -telemetry.address 192.168.13.50:9913 -telemetry.endpoint '/metrics'
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+---
+4. 配置consul和prometheus
+consul:
+[root@prometheus nginx_exporter]# vim consul-nginx_exporter-192.168.13.50.json
+---
+[root@prometheus nginx_exporter]# cat consul-nginx_exporter-192.168.13.50.json 
+{
+  "Name": "nginx_exporter",
+  "ID": "nginx_exporter-192.168.13.50",
+  "Tags": [
+    "nginx_exporter"
+  ],
+  "Address": "192.168.13.50",
+  "Port": 9913,
+  "Meta": {
+    "app": "ops nginx",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://192.168.13.50:9913/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}
+---
+[root@prometheus nginx_exporter]# curl -X PUT --data @consul-nginx_exporter-192.168.13.50.json http://localhost:8500/v1/agent/service/register 
+prometheus:
+[root@prometheus prometheus]# vim prometheus.yml
+---
+  - job_name: 'consul-nginx_exporter'
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_service]
+        regex: nginx.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+---
+[root@prometheus prometheus]# curl -X POST http://localhost:9090/-/reload
+5. 最后在grafana上配置nginx_exporter，dashboard ID: 2949
+
+
+
+
+
+
+
 
 </pre>
 
