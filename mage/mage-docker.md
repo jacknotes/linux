@@ -331,4 +331,72 @@ docker-compose start/stop
 refrence:https://github.com/goharbor/harbor/blob/release-1.8.0/docs/migration_guide.md
 从1.8.0开始，harbor的配置文件由harbor.cfs变成harbor.yml，所以从1.8.0升级，只需要把原先的数据(/data目录)和配置文件备份(harbor.yml)先备份，然后把新版本的harbor解压到目的路径，然后把我们的数据和配置文件放到新版本的根目录下予以替换即可。然后执行./install.sh。当你执行完后在WEG-GUI接口上登录时可以会遇到登录密码出错，如果出错请先到新版本的根目录下执行docker-compose down.然后执行docker-compose up -d.再次运行即可。
 
+
+#20210604
+#harbor
+安装：
+wget https://storage.googleapis.com/harbor-releases/release-1.8.6/harbor-offline-installer-v1.8.6.tgz
+tar xf harbor-offline-installer-v1.8.6.tgz -C /usr/local/
+cd /usr/local/harbor
+docker load -i harbor.v1.8.6.tar.gz 
+mkdir cert 
+cp harborrepo.crt  harborrepo.key cert/
+vim harbor.yml
+[root@es01 /usr/local/harbor]# grep -Ev '#|^$' harbor.yml 
+-------
+hostname: harborrepo.hs.com
+http:
+  port: 80
+https:
+  port: 443
+  certificate: /usr/local/harbor/cert/harborrepo.crt
+  private_key: /usr/local/harbor/cert/harborrepo.key
+harbor_admin_password: Harbor12345
+database:
+  password: root123
+data_volume: /data/harbor
+clair: 
+  updaters_interval: 12
+  http_proxy:
+  https_proxy:
+  no_proxy: 127.0.0.1,localhost,core,registry
+jobservice:
+  max_job_workers: 10
+chart:
+  absolute_url: disabled
+log:
+  level: info
+  rotate_count: 50
+  rotate_size: 200M
+  location: /var/log/harbor
+_version: 1.8.0
+-------
+[root@es01 /usr/local/harbor]# ./prepare 
+
+#使客户端能够通过curl https://harborrepo.hs.com进行访问：
+将CA证书加入根证书版本机构，
+cp /etc/pki/tls/certs/ca-bundle.crt{,.bak}
+echo '' >> /etc/pki/tls/certs/ca-bundle.crt
+echo '# custom CA' >> /etc/pki/tls/certs/ca-bundle.crt
+cat cacert.pem >> /etc/pki/tls/certs/ca-bundle.crt
+#使客户端能够通过docker命令进行操作“
+[root@prometheus ~]# docker pull harborrepo.hs.com/ops/busybox:v1
+Error response from daemon: Get https://harborrepo.hs.com/v2/: x509: certificate signed by unknown authority
+解决：
+cd /etc/docker/
+mkdir certs.d/harborrepo.hs.com
+cp ~/cacert.pem certs.d/harborrepo.hs.com/ca.crt
+[root@prometheus harborrepo.hs.com]# docker pull harborrepo.hs.com/ops/busybox:v1
+v1: Pulling from ops/busybox
+61c5ed1cbdf8: Pull complete 
+Digest: sha256:400ee2ed939df769d4681023810d2e4fb9479b8401d97003c710d0e20f7c49c6
+Status: Downloaded newer image for harborrepo.hs.com/ops/busybox:v1
+harborrepo.hs.com/ops/busybox:v1
+
+#harbor UI添加邮箱重置功能
+输入smtp地址，端口，如若勾选了”邮件SSL“，则端口为465，否则为25
+验证证书必须不勾选，否则会错误。
+当用户登录时忘记密码后，可通过填写自己的邮件地址来重置密码即可。
+
+
 </pre>
