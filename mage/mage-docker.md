@@ -385,6 +385,7 @@ Error response from daemon: Get https://harborrepo.hs.com/v2/: x509: certificate
 解决：
 cd /etc/docker/
 mkdir certs.d/harborrepo.hs.com
+--证书最好是以ca.crt命名，格式必须是.crt结尾
 cp ~/cacert.pem certs.d/harborrepo.hs.com/ca.crt
 [root@prometheus harborrepo.hs.com]# docker pull harborrepo.hs.com/ops/busybox:v1
 v1: Pulling from ops/busybox
