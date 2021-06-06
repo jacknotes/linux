@@ -1,0 +1,7 @@
+spec:
+  replicas: 2
+  template:
+    spec:
+      containers:
+      - name: hotelresourcejinjiang
+        image: ikubernetes/myapp:v3

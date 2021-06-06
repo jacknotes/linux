@@ -1,0 +1,3 @@
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/canary-weight: "100"
