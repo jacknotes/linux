@@ -941,6 +941,113 @@ tcp        0      0 0.0.0.0:8090            0.0.0.0:*               LISTEN      
 
 
 
+#apolloConfigDB.ServerConfig
+#发布审核
+namespace.lock.switch - 一次发布只能有一个人修改开关，用于发布审核
+这是一个功能开关，如果配置为true的话，那么一次配置发布只能是一个人修改，另一个发布。
+#配置查看权限
+configView.memberOnly.envs
+只对项目成员显示配置信息的环境列表，多个env以英文逗号分隔。
+对设定了只对项目成员显示配置信息的环境，只有该项目的管理员或拥有该namespace的编辑或发布权限的用户才能看到该私有namespace的配置信息和发布历史。公共namespace始终对所有用户可见。
+#为apollo-adminservice开启访问控制
+admin-service.access.control.enabled - 配置apollo-adminservice是否开启访问控制
+默认为false，如果配置为true，那么apollo-portal就需要正确配置访问该环境的access token，否则访问会被拒绝
+#apolloConfigDB.ServerConfig
+#创建项目权限控制
+role.create-application.enabled - 是否开启创建项目权限控制
+默认为false，所有用户都可以创建项目
+如果设置为true，那么只有超级管理员和拥有创建项目权限的帐号可以创建项目，超级管理员可以通过管理员工具 - 系统权限管理给用户分配创建项目权限
+#允许访问apollo-adminservice的access token列表
+admin-service.access.tokens - 配置允许访问apollo-adminservice的access token列表
+如果该配置项为空，那么访问控制不会生效。如果允许多个token，token 之间以英文逗号分隔
+样例：
+admin-service.access.tokens=098f6bcd4621d373cade4e832627b4f6
+admin-service.access.tokens=098f6bcd4621d373cade4e832627b4f6,ad0234829205b9033196ba818f7a872b
+
+
+
+#配置访问密钥
+Apollo从1.6.0版本开始增加访问密钥机制，从而只有经过身份验证的客户端才能访问敏感配置。如果应用开启了访问密钥，客户端需要配置密钥，否则无法获取配置。
+为项目的每个环境生成访问密钥，注意默认是禁用的，建议在客户端都配置完成后再开启
+注：在porltal面板上配置
+
+
+#apolloConfigDB.ServerConfig
+#发布审核
+namespace.lock.switch - 一次发布只能有一个人修改开关，用于发布审核
+这是一个功能开关，如果配置为true的话，那么一次配置发布只能是一个人修改，另一个发布。
+#配置查看权限
+configView.memberOnly.envs
+只对项目成员显示配置信息的环境列表，多个env以英文逗号分隔。
+对设定了只对项目成员显示配置信息的环境，只有该项目的管理员或拥有该namespace的编辑或发布权限的用户才能看到该私有namespace的配置信息和发布历史。公共namespace始终对所有用户可见。
+#为apollo-adminservice开启访问控制
+admin-service.access.control.enabled - 配置apollo-adminservice是否开启访问控制
+默认为false，如果配置为true，那么apollo-portal就需要正确配置访问该环境的access token，否则访问会被拒绝
+#apolloConfigDB.ServerConfig
+#创建项目权限控制
+role.create-application.enabled - 是否开启创建项目权限控制
+默认为false，所有用户都可以创建项目
+如果设置为true，那么只有超级管理员和拥有创建项目权限的帐号可以创建项目，超级管理员可以通过管理员工具 - 系统权限管理给用户分配创建项目权限
+#允许访问apollo-adminservice的access token列表
+admin-service.access.tokens - 配置允许访问apollo-adminservice的access token列表
+如果该配置项为空，那么访问控制不会生效。如果允许多个token，token 之间以英文逗号分隔
+样例：
+admin-service.access.tokens=098f6bcd4621d373cade4e832627b4f6
+admin-service.access.tokens=098f6bcd4621d373cade4e832627b4f6,ad0234829205b9033196ba818f7a872b
+
+
+
+#配置访问密钥
+Apollo从1.6.0版本开始增加访问密钥机制，从而只有经过身份验证的客户端才能访问敏感配置。如果应用开启了访问密钥，客户端需要配置密钥，否则无法获取配置。
+为项目的每个环境生成访问密钥，注意默认是禁用的，建议在客户端都配置完成后再开启
+注：在porltal面板上配置
+
+注：经过测试未成功
+#配置邮件
+apolloPortalDB.ServerConfig表中更改或者在PortalUI的系统参数修改：
+email.enabled: true  									-----邮件开关
+email.config.host: smtp.qiye.163.com:465  				-----smtp主机地址
+email.config.user: opsemail@homsom.com					-----发件用户
+email.config.password: 123456							-----发件密码
+email.supported.envs: pro  								-----仅支持发送邮件的环境
+apollo.portal.address: http://apolloconf.hs.com/      -----邮件中链接的protal地址
+
+email.template.framework: <html><head><style type="text/css">.table{width:100%;max-width:100%;margin-bottom:20px;border-collapse:collapse;background-color:transparent}td{padding:8px;line-height:1.42857143;vertical-align:top;border:1px solid #ddd;border-top:1px solid #ddd}.table-bordered{border:1px solid #ddd}</style></head><body><h3>发布基本信息</h3><table class="table table-bordered"><tr><td width="10%"><b>AppId</b></td><td width="15%">#{appId}</td><td width="10%"><b>环境</b></td><td width="15%">#{env}</td><td width="10%"><b>集群</b></td><td width="15%">#{clusterName}</td><td width="10%"><b>Namespace</b></td><td width="15%">#{namespaceName}</td></tr><tr><td><b>发布者</b></td><td>#{operator}</td><td><b>发布时间</b></td><td>#{releaseTime}</td><td><b>发布标题</b></td><td>#{releaseTitle}</td><td><b>备注</b></td><td>#{releaseComment}</td></tr></table>#{diffModule}#{rulesModule}<br><a href="#{apollo.portal.address}/config/history.html?#/appid=#{appId}&env=#{env}&clusterName=#{clusterName}&namespaceName=#{namespaceName}&releaseHistoryId=#{releaseHistoryId}">点击查看详细的发布信息</a><br><br>如有Apollo使用问题请先查阅<a href="http://conf.ctripcorp.com/display/FRAM/Apollo">文档</a>，或直接回复本邮件咨询。</body></html>        ----------邮件内容模板框架
+
+email.template.release.module.diff: <h3>变更的配置</h3>
+<table class="table table-bordered">
+    <tr>
+        <td width="10%"><b>Type</b></td>
+        <td width="20%"><b>Key</b></td>
+        <td width="35%"><b>Old Value</b></td>
+        <td width="35%"><b>New Value</b></td>
+    </tr>
+    #{diffContent}
+</table>       ---------发布邮件的diff模块
+
+email.template.rollback.module.diff: <div>
+    <br><br>
+    <h3>变更的配置</h3>
+    <table class="table table-bordered">
+        <tr>
+            <td width="10%"><b>Type</b></td>
+            <td width="20%"><b>Key</b></td>
+            <td width="35%"><b>回滚前</b></td>
+            <td width="35%"><b>回滚后</b></td>
+        </tr>
+        #{diffContent}
+    </table>
+    <br>
+</div>      -----回滚邮件的diff模块
+
+
+email.template.release.module.rules: <div>
+    <br>
+    <h3>灰度规则</h3>
+    #{rulesContent}
+    <br>
+</div>     ------灰度发布的灰度规则模块
+
 
 
 </pre>
