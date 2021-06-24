@@ -1,4 +1,4 @@
-﻿#Redis
+#Redis
 <pre>
 #teacher:燕十八
 redis官方网站：www.redis.io
@@ -2228,5 +2228,55 @@ volatile-random:在设置过期时间的key集合中随机删除key，不管是�
 allkeys-lru:在所有key集合中（包括未设置过期时间和设置过期的key）删除最少使用的key
 allkeys-random:在所有key集合中（包括未设置过期时间和设置过期的key）随机删除key,不管是使用最少与否还是快要过期与否，随机删除
 noeviction:不驱逐任何key，当有新连接写入时会报错（主要是绝大多数的写指令，DEL 和 部分其他指令不包括）
+
+
+#redis排错----20210624
+redis服务器出口流量高的解决思路
+用iftop命令查看流量出入，发现主要是与Redis服务器通讯时出现的流量高
+
+安装：
+git clone https://github.com/sripathikrishnan/redis-rdb-tools.git
+python3 setup.py install
+或者
+pip install rdbtools python-lzf
+
+在目前流量高的情况下，在redis执行redis_cli的monitor保存当前命令执行情况
+redis-cli -a xxxxxxx monitor > /tmp/redis.rt
+
+然后用第三方工具redis-rdb-tools对Redis备份文件dump.rdb进行分析
+导出所有key信息到csv文件
+rdb -c memory ./dump_6369.rdb --bytes 128  -f ./memory.csv
+对csv文件分析导出key及大小排序
+awk -F',' '{print $4,$2,$3,$1}' memory.csv |sort -nr > memory.sort
+
+通过上面的方式找到最大的key，发现了最大的key将近7M
+[root@LocalServer /opt/redis-rdb-tools]# head memory.sort 
+7340104 string r1014_intlhotelcitylist:ctrip 1
+7340104 string r1014_intlhotelcitylist 1
+4194376 string r1014_cityairportlist:none 1
+3670096 string r1014_ticketcitylist:international 1
+3670096 string r1014_cityairportlist:international 1
+3670088 string r1014_ticketcitylist:none 1
+2621592 string r1073:Homsom_Operation_FlightListCache:945c3c764cc341fda149b287cb8d8b6b 4
+2621592 string r1073:Homsom_Operation_FlightListCache:6611127e454a4f18858b9a9e165e01f5 4
+1835160 string r1073:Homsom_Operation_FlightListCache:bdac86a423ab4733bc7d8d2c40240f70 4
+1835160 string r1073:Homsom_Operation_FlightListCache:b3e5fb53610442cfb3c52f4b5b9c3ca9 4
+
+此时，把之前一直在monitor的命令停掉，可以看到/tmp/redis.rt这个文件，我们通过下面命令查询所有执行最大的那个key的命令频率，发现最大每秒执行2次
+[root@linux01 tmp]# grep 'r1014_intlhotelcitylist:ctrip' redis.rt |awk -F'[ |.]' '{print $1,$9}'|sort|uniq -c|sort -nr | head -n 10
+      2 1624515061 "r1014_intlhotelcitylist:ctrip"
+      1 1624515109 "r1014_intlhotelcitylist:ctrip"
+      1 1624515108 "r1014_intlhotelcitylist:ctrip"
+      1 1624515098 "r1014_intlhotelcitylist:ctrip"
+      1 1624515097 "r1014_intlhotelcitylist:ctrip"
+      1 1624515096 "r1014_intlhotelcitylist:ctrip"
+      1 1624515092 "r1014_intlhotelcitylist:ctrip"
+      1 1624515085 "r1014_intlhotelcitylist:ctrip"
+      1 1624515084 "r1014_intlhotelcitylist:ctrip"
+      1 1624515082 "r1014_intlhotelcitylist:ctrip"
+
+
+
+
 
 </pre>

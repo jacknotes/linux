@@ -7,7 +7,7 @@ kubernetes v1.19.0
 
 kubenetes集群高可用：
 1. 一般来说，高可用控制平面至少3个master节点来承受最多1个master节点的丢失，才能保证处于等待状态的master节点保持半数以上，以满足节点选举时的法定票数。
-2. apiserver利用etcd进行数据在你，它自身是无状态应用，支持多副本同时工作，多副本间能无差别地服务客户端请求。
+2. apiserver利用etcd进行数据存储，它自身是无状态应用，支持多副本同时工作，多副本间能无差别地服务客户端请求。
 3. controller manager和scheduler都不支持多副本同时工作，它们各自需要选举出一个主节点作为活动实例，余下的实例在指定时间点监测不到主实例的“心跳”信息后，
 将启动新一轮的选举操作以表决出新的主实例。
 4. 一般来说对于etcd分布式存储集群来说，3节点可容错一个节点，5个节点可容错2个节点，7个节点可容错3个节点，依此类推，但通常多于7个节点的集群规模是不必要的，
@@ -168,9 +168,7 @@ node02.k8s.hs.com     Ready    <none>   42s    v1.19.0
 负载均衡器，以接收访问API Server的VIP。
 
 #增加两个控制平面节点
-1. 同一高可用控制平面集群中的各节点需要共享CA和front-proxy的数字证书和密钥，
-以及专用的ServiceAccount帐户的公钥和私钥，我们可以采用手动或者自动方式，这里
-采用自动的方式，因而首先需要在k8s-master01节点上运行如下命令上传证书及密钥数据：
+1. 同一高可用控制平面集群中的各节点需要共享CA和front-proxy的数字证书和密钥，以及专用的ServiceAccount帐户的公钥和私钥，我们可以采用手动或者自动方式，这里采用自动的方式，因而首先需要在k8s-master01节点上运行如下命令上传证书及密钥数据：
 [root@master01 ~]# kubeadm init phase upload-certs --upload-certs   --此命令可以多次执行
 I0411 19:24:28.467881   23419 version.go:252] remote version is much newer: v1.21.0; falling back to: stable-1.19
 W0411 19:24:29.109595   23419 configset.go:348] WARNING: kubeadm cannot validate component configs for API groups [kubelet.config.k8s.io kubeproxy.config.k8s.io]
@@ -247,6 +245,8 @@ controller-manager   Unhealthy   Get "http://127.0.0.1:10252/healthz": dial tcp 
 etcd-0               Healthy     {"health":"true"}                  
 [root@master02 ~]# vim /etc/kubernetes/manifests/kube-controller-manager.yaml
 #    - --port=0
+[root@master02 ~]# vim /etc/kubernetes/manifests/kube-scheduler.yaml
+#    - --port=0
 [root@master02 ~]# kubectl get cs
 Warning: v1 ComponentStatus is deprecated in v1.19+
 NAME                 STATUS    MESSAGE             ERROR
@@ -269,8 +269,8 @@ etcd 集群是一个 Raft Group，没有 shared。所以它的极限有两部分
 集群化的软件总会提到脑裂问题，如ElasticSearch、Zookeeper集群，脑裂就是同一个集群中的不同节点，对于集群的状态有了不一样的理解。
 4. etcd集群中有没有脑裂问题？答案是： 没有  （注：如果节点是偶数节点，那么还是有脑残的风险）
 以网络分区导致脑裂为例，一开始有5个节点, Node 5 为 Leader
-由于出现网络故障，124 成为一个分区，35 成为一个分区， Node 5 的 leader 任期还没结束的一段时间内，仍然认为自己是当前leader，但是此时另外一边的分区，因为124无法连接 5，于是选出了新的leader 1，网络分区形成。
-35分区是否可用？如果写入了1而读取了 5，是否会读取旧数据(stale read)?
+由于出现网络故障，124 成为一个分区，35 成为一个分区， Node 5的leader 任期还没结束的一段时间内，仍然认为自己是当前leader，但是此时另外一边的分区，因为124无法连接5，于是选出了新的leader 1，网络分区形成。
+35分区是否可用？如果写入了1而读取了5，是否会读取旧数据(stale read)?
 答：35分区属于少数派，被认为是异常节点，无法执行写操作。写入 1 的可以成功，并在网络分区恢复后，35 因为任期旧，会自动成为 follower，异常期间的新数据也会从 1 同步给 35。
 而 5 的读请求也会失败，etcd 通过ReadIndex、Lease read保证线性一致读，即节点5在处理读请求时，首先需要与集群多数节点确认自己依然是Leader并查询 commit index，5做不到多数节点确认，因此读失败。
 因此 etcd 不存在脑裂问题。
@@ -318,11 +318,7 @@ heapster用于提供核心指标API的功能也被采用聚合方式的指标API
           - --secure-port=4443
           - --kubelet-preferred-address-types=InternalIP
           - --kubelet-insecure-tls
-注：kubelet通常是在Bootstrap过程中生成自签证书，这类证书无法由Metrics server完成CA验证，因此需要
-使用--kubelet-insecure-tls选项来禁用这验证功能。另外 ，节点的DNS域（hs.com）与kubernetes集群使用
-的DNS域（cluster.local）不相同，则coreDNS通常无法解析各节点的主机名称，这类问题有两种，方案一是
-使用--kubelet-preferred-address-types=InternalIP来使用内部IP来与各节点通信。另外一种是为CoreDNS
-添加类似hosts解析的资源记录。推荐方案一。
+注：kubelet通常是在Bootstrap过程中生成自签证书，这类证书无法由Metrics server完成CA验证，因此需要使用--kubelet-insecure-tls选项来禁用这验证功能。另外 ，节点的DNS域（hs.com）与kubernetes集群使用的DNS域（cluster.local）不相同，则coreDNS通常无法解析各节点的主机名称，这类问题有两种，方案一是使用--kubelet-preferred-address-types=InternalIP来使用内部IP来与各节点通信。另外一种是为CoreDNS添加类似hosts解析的资源记录。推荐方案一。
 -----由于国内无法访问google镜像站，所以需要提前下载
 [root@node02 ~]# docker pull bitnami/metrics-server:0.3.7
 [root@node02 ~]# docker tag bitnami/metrics-server:0.3.7 k8s.gcr.io/metrics-server/metrics-server:v0.3.7
@@ -348,6 +344,15 @@ node02.k8s.hs.com     89m          2%     942Mi           29%
 
 ----自定义指标与prometheus
 promQL --> k8s-prometheus-adapter -->custom-metrics.k8s.io <-- client get
+
+#kube-state-metrics
+已经有了cadvisor、heapster、metric-server，几乎容器运行的所有指标都能拿到，但是下面这种情况却无能为力：
+我调度了多少个replicas？现在可用的有几个？
+多少个Pod是running/stopped/terminated状态？
+Pod重启了多少次？
+我有多少job在运行中
+而这些则是kube-state-metrics提供的内容，它基于client-go开发，轮询Kubernetes API，并将Kubernetes的结构化信息转换为metrics。
+
 
 
 
@@ -1123,5 +1128,2323 @@ kubeadm upgrade node 在其他控制平节点上执行以下操作：
 kubeadm upgrade node 在工作节点上完成以下工作：
 从集群取回 kubeadm ClusterConfiguration。
 为本节点升级 kubelet 配置
+
+
+
+#Prometheus Operator
+一、什么是Prometheus Operator
+1. Prometheus Operator的工作原理
+Prometheus的本职就是一组用户自定义的CRD资源以及Controller的实现，Prometheus Operator负责监听这些自定义资源的变化，并且根据这些资源的定义自动化的完成如Prometheus Server自身以及配置的自动化管理工作。
+要了解Prometheus Operator能做什么，其实就是要了解Prometheus Operator为我们提供了哪些自定义的Kubernetes资源，列出了Prometheus Operator目前提供的️4类资源：
+
+2. Prometheus Operator能做什么
+Prometheus：声明式创建和管理Prometheus Server实例；
+ServiceMonitor：负责声明式的管理监控配置；
+PrometheusRule：负责声明式的管理告警配置；
+Alertmanager：声明式的创建和管理Alertmanager实例。
+简言之，Prometheus Operator能够帮助用户自动化的创建以及管理Prometheus Server以及其相应的配置。
+
+3. 在Kubernetes集群中部署Prometheus Operator
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# curl -OL https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/release-0.47/bundle.yaml
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# sed -i 's/namespace: default/namespace: prometheus/g' bundle.yaml 
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# grep 'namespace: prometheus' bundle.yaml
+  namespace: prometheus
+  namespace: prometheus
+  namespace: prometheus
+  namespace: prometheus
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl create namespace prometheus
+namespace/prometheus created
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f bundle.yaml 
+customresourcedefinition.apiextensions.k8s.io/alertmanagerconfigs.monitoring.coreos.com created
+customresourcedefinition.apiextensions.k8s.io/alertmanagers.monitoring.coreos.com created
+customresourcedefinition.apiextensions.k8s.io/podmonitors.monitoring.coreos.com created
+customresourcedefinition.apiextensions.k8s.io/probes.monitoring.coreos.com created
+customresourcedefinition.apiextensions.k8s.io/prometheuses.monitoring.coreos.com created
+customresourcedefinition.apiextensions.k8s.io/prometheusrules.monitoring.coreos.com created
+customresourcedefinition.apiextensions.k8s.io/servicemonitors.monitoring.coreos.com created
+customresourcedefinition.apiextensions.k8s.io/thanosrulers.monitoring.coreos.com created
+clusterrolebinding.rbac.authorization.k8s.io/prometheus-operator created
+clusterrole.rbac.authorization.k8s.io/prometheus-operator created
+deployment.apps/prometheus-operator created
+serviceaccount/prometheus-operator created
+service/prometheus-operator created
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl get pods -n prometheus -o wide 
+NAME                                   READY   STATUS    RESTARTS   AGE   IP            NODE                NOMINATED NODE   READINESS GATES
+prometheus-operator-5f949c9f97-r75k8   1/1     Running   0          20s   10.244.3.25   node01.k8s.hs.com   <none>           <none>
+
+二、使用Operator管理Prometheus
+1. 当集群中已经安装Prometheus Operator之后，对于部署Prometheus Server实例就变成了声明一个Prometheus资源，如下所示，我们在Monitoring命名空间下创建一个Prometheus实例：
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# vim prometheus-inst.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: inst
+  namespace: prometheus
+spec:
+  resources:
+    requests:
+      memory: 400Mi
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f prometheus-inst.yaml
+prometheus.monitoring.coreos.com/inst created
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl get statefulsets -n prometheus -o wide 
+NAME              READY   AGE   CONTAINERS                   IMAGES
+prometheus-inst   1/1     79s   prometheus,config-reloader   quay.io/prometheus/prometheus,quay.io/prometheus-operator/prometheus-config-reloader:v0.47.1
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl get pods -n prometheus -o wide 
+NAME                                   READY   STATUS    RESTARTS   AGE     IP            NODE                NOMINATED NODE   READINESS GATES
+prometheus-inst-0                      2/2     Running   1          23s     10.244.3.26   node01.k8s.hs.com   <none>           <none>
+prometheus-operator-5f949c9f97-r75k8   1/1     Running   0          2m57s   10.244.3.25   node01.k8s.hs.com   <none>           <none>
+--通过端口转发进行查看
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl port-forward -n prometheus statefulsets/prometheus-inst --address 0.0.0.0 9090:9090
+Forwarding from 0.0.0.0:9090 -> 9090    --此端口代理是暂时的，因为代理会定时或超时关闭
+--此时通过浏览器访问http://192.168.13.52:9090/config 可以看到配置信息：
+global:
+  scrape_interval: 1m
+  scrape_timeout: 10s
+  evaluation_interval: 1m
+
+2. 使用ServiceMonitor管理监控配置
+修改监控配置项也是Prometheus下常用的运维操作之一，为了能够自动化的管理Prometheus的配置，Prometheus Operator使用了自定义资源类型ServiceMonitor来描述监控对象的信息。
+这里我们首先在集群中部署一个示例应用，将以下内容保存到example-app.yaml，并使用kubectl命令行工具创建：
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# cat example-app.yaml
+kind: Service
+apiVersion: v1
+metadata:
+  name: example-app
+  labels:
+    app: example-app
+spec:
+  selector:
+    app: example-app
+  ports:
+  - name: web
+    port: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: example-app
+  template:
+    metadata:
+      labels:
+        app: example-app
+    spec:
+      containers:
+      - name: example-app
+        image: fabxc/instrumented_app
+        ports:
+        - name: web
+          containerPort: 8080
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f example-app.yaml
+service/example-app created
+deployment.apps/example-app created
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl get pods -o wide  
+NAME                           READY   STATUS    RESTARTS   AGE     IP            NODE                NOMINATED NODE   READINESS GATES
+example-app-7d95cbf666-5wsl6   1/1     Running   0          2m17s   10.244.3.27   node01.k8s.hs.com   <none>           <none>
+example-app-7d95cbf666-9rlbj   1/1     Running   0          2m17s   10.244.4.20   node02.k8s.hs.com   <none>           <none>
+example-app-7d95cbf666-jhtdj   1/1     Running   0          2m17s   10.244.4.19   node02.k8s.hs.com   <none>           <none>
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl port-forward -n prometheus statefulsets/prometheus-inst --address 0.0.0.0 8080:8080
+Forwarding from 0.0.0.0:8080 -> 8080
+-此时通过浏览器访问http://192.168.13.52:8080/metrics可以看到许多metric指标
+
+为了能够让Prometheus能够采集部署在Kubernetes下应用的监控数据，在原生的Prometheus配置方式中，我们在Prometheus配置文件中定义单独的Job，同时使用kubernetes_sd定义整个服务发现过程。而在Prometheus Operator中，则可以直接声明一个ServiceMonitor对象，如下所示：
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# cat example-app-service-monitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: example-app
+  namespace: prometheus
+  labels:
+    team: frontend
+spec:
+  namespaceSelector:
+    matchNames:
+    - default
+  selector:
+    matchLabels:
+      app: example-app
+  endpoints:
+  - port: web     --此web表示service中名称是web是端口
+
+通过定义selector中的标签定义选择监控目标的Pod对象，同时在endpoints中指定port名称为web的端口。默认情况下ServiceMonitor和监控对象必须是在相同Namespace下的。在本示例中由于Prometheus是部署在prometheus命名空间下，因此为了能够关联default命名空间下的example对象，需要使用namespaceSelector定义让其可以跨命名空间关联ServiceMonitor资源。保存以上内容到example-app-service-monitor.yaml文件中，并通过kubectl创建：
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f example-app-service-monitor.yaml 
+servicemonitor.monitoring.coreos.com/example-app created
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl get ServiceMonitor -n prometheus
+NAME          AGE
+example-app   7s
+--如果希望ServiceMonitor可以关联任意命名空间下的标签，则通过以下方式定义：
+spec:
+  namespaceSelector:
+    any: true
+--如果监控的Target对象启用了BasicAuth认证，那在定义ServiceMonitor对象时，可以使用endpoints配置中定义basicAuth如下所示：
+  endpoints:
+  - basicAuth:
+      password:
+        name: basic-auth
+        key: password
+      username:
+        name: basic-auth
+        key: user
+    port: web
+--其中basicAuth中关联了名为basic-auth的Secret对象，用户需要手动将认证信息保存到Secret中:
+apiVersion: v1
+kind: Secret
+metadata:
+  name: basic-auth
+data:
+  password: dG9vcg== # base64编码后的密码
+  user: YWRtaW4= # base64编码后的用户名
+type: Opaque
+
+3. 关联Promethues与ServiceMonitor
+Prometheus与ServiceMonitor之间的关联关系使用serviceMonitorSelector定义，在Prometheus中通过标签选择当前需要监控的ServiceMonitor对象。修改prometheus-inst.yaml中Prometheus的定义如下所示： 为了能够让Prometheus关联到ServiceMonitor，需要在Pormtheus定义中使用serviceMonitorSelector，我们可以通过标签选择当前Prometheus需要监控的ServiceMonitor对象。修改prometheus-inst.yaml中Prometheus的定义如下所示：
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# cat prometheus-inst.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: inst
+  namespace: prometheus
+spec:
+  serviceMonitorSelector:
+    matchLabels:
+      team: frontend
+  resources:
+    requests:
+      memory: 400Mi
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f prometheus-inst.yaml
+prometheus.monitoring.coreos.com/inst configured
+--此时访问http://192.168.13.52:9090/config，如果查看Prometheus配置信息，我们会惊喜的发现Prometheus中配置文件自动包含了一条名为monitoring/example-app/0的Job配置
+4. 不过，如果细心的读者可能会发现，虽然Job配置有了，但是Prometheus的Target中并没包含任何的监控对象。查看Prometheus的Pod实例日志，可以看到如下信息：
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl logs prometheus-inst-0 prometheus -n prometheus| tail -n 2
+level=error ts=2021-05-07T08:38:53.378Z caller=klog.go:96 component=k8s_client_runtime func=ErrorDepth msg="pkg/mod/k8s.io/client-go@v0.20.5/tools/cache/reflector.go:167: Failed to watch *v1.Service: failed to list *v1.Service: services is forbidden: User \"system:serviceaccount:prometheus:default\" cannot list resource \"services\" in API group \"\" in the namespace \"default\""
+level=error ts=2021-05-07T08:39:07.824Z caller=klog.go:96 component=k8s_client_runtime func=ErrorDepth msg="pkg/mod/k8s.io/client-go@v0.20.5/tools/cache/reflector.go:167: Failed to watch *v1.Pod: failed to list *v1.Pod: pods is forbidden: User \"system:serviceaccount:prometheus:default\" cannot list resource \"pods\" in API group \"\" in the namespace \"default\""
+
+5. 自定义ServiceAccount
+由于默认创建的Prometheus实例使用的是monitoring命名空间下的default账号，该账号并没有权限能够获取default命名空间下的任何资源信息。
+为了修复这个问题，我们需要在Monitoring命名空间下为创建一个名为Prometheus的ServiceAccount，并且为该账号赋予相应的集群访问权限
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl get sa -n prometheus
+NAME                  SECRETS   AGE
+default               1         33m
+prometheus-operator   1         32m
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# cat prometheus-rbac.yaml]
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: prometheus
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: prometheus
+rules:
+- apiGroups: [""]
+  resources:
+  - nodes
+  - services
+  - endpoints
+  - pods
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources:
+  - configmaps
+  verbs: ["get"]
+- nonResourceURLs: ["/metrics"]
+  verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus
+subjects:
+- kind: ServiceAccount
+  name: prometheus
+  namespace: prometheus
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f prometheus-rbac.yaml]
+serviceaccount/prometheus created
+Warning: rbac.authorization.k8s.io/v1beta1 ClusterRole is deprecated in v1.17+, unavailable in v1.22+; use rbac.authorization.k8s.io/v1 ClusterRole
+clusterrole.rbac.authorization.k8s.io/prometheus created
+Warning: rbac.authorization.k8s.io/v1beta1 ClusterRoleBinding is deprecated in v1.17+, unavailable in v1.22+; use rbac.authorization.k8s.io/v1 ClusterRoleBinding
+clusterrolebinding.rbac.authorization.k8s.io/prometheus created
+在完成ServiceAccount创建后，修改prometheus-inst.yaml，并添加ServiceAccount如下所示：
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# cat prometheus-inst.yaml 
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: inst
+  namespace: prometheus
+spec:
+  serviceAccountName: prometheus
+  serviceMonitorSelector:
+    matchLabels:
+      team: frontend
+  resources:
+    requests:
+      memory: 400Mi
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f prometheus-inst.yaml
+prometheus.monitoring.coreos.com/inst configured
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl get pods -n prometheus 
+NAME                                   READY   STATUS    RESTARTS   AGE
+prometheus-inst-0                      2/2     Running   1          103s
+prometheus-operator-5f949c9f97-r75k8   1/1     Running   0          39m
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl logs prometheus-inst-0 prometheus -n prometheus| tail -n 2
+level=info ts=2021-05-07T08:45:26.151Z caller=kubernetes.go:266 component="discovery manager scrape" discovery=kubernetes msg="Using pod service account via in-cluster config"
+level=info ts=2021-05-07T08:45:26.154Z caller=main.go:975 msg="Completed loading of configuration file" filename=/etc/prometheus/config_out/prometheus.env.yaml totalDuration=5.666856ms remote_storage=6.136µs web_handler=2.884µs query_engine=3.729µs scrape=173.996µs scrape_sd=3.8158ms notify=0s notify_sd=0s rules=93.726µs
+--此时日志已经正常
+等待Prometheus Operator完成相关配置变更后，此时查看Prometheus，我们就能看到当前Prometheus已经能够正常的采集实例应用的相关监控数据了。
+
+三、使用Operator管理告警
+1. 使用PrometheusRule定义告警规则
+对于Prometheus而言，在原生的管理方式上，我们需要手动创建Prometheus的告警文件，并且通过在Prometheus配置中声明式的加载。而在Prometheus Operator模式中，告警规则也编程一个通过Kubernetes API 声明式创建的一个资源，如下所示：
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# cat example-rule.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    prometheus: example
+    role: alert-rules
+  name: prometheus-example-rules
+  namespace: prometheus
+spec:
+  groups:
+  - name: ./example.rules
+    rules:
+    - alert: ExampleAlert
+      expr: vector(1)
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f example-rule.yaml
+prometheusrule.monitoring.coreos.com/prometheus-example-rules created
+告警规则创建成功后，通过在Prometheus中使用ruleSelector通过选择需要关联的PrometheusRule即可：
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# cat prometheus-inst.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: inst
+  namespace: prometheus
+spec:
+  serviceAccountName: prometheus
+  ruleSelector:
+    matchLabels:
+      role: alert-rules
+      prometheus: example
+  serviceMonitorSelector:
+    matchLabels:
+      team: frontend
+  resources:
+    requests:
+      memory: 400Mi
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f prometheus-inst.yaml 
+prometheus.monitoring.coreos.com/inst configured
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl get pods -n prometheus
+NAME                                   READY   STATUS    RESTARTS   AGE
+prometheus-inst-0                      2/2     Running   1          6m18s
+prometheus-operator-5f949c9f97-r75k8   1/1     Running   0          43m
+Prometheus重新加载配置后，从UI中我们可以查看到通过PrometheusRule自动创建的告警规则配置：
+
+2. 使用Operator管理Alertmanager实例
+到目前为止，我们已经通过Prometheus Operator的自定义资源类型管理了Promtheus的实例，监控配置以及告警规则等资源。通过Prometheus Operator将原本手动管理的工作全部变成声明式的管理模式，大大简化了Kubernetes下的Prometheus运维管理的复杂度。 接下来，我们将继续使用Promtheus Operator定义和管理Alertmanager相关的内容。
+为了通过Prometheus Operator管理Alertmanager实例，用户可以通过自定义资源Alertmanager进行定义，通过replicas可以控制Alertmanager的实例数，当replicas大于1时，Prometheus Operator会自动通过集群的方式创建Alertmanager。将以上内容保存为文件alertmanager-inst.yaml，并通过以下命令创建：
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# cat alertmanager-inst.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: Alertmanager
+metadata:
+  name: inst
+  namespace: prometheus
+spec:
+  replicas: 3
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f alertmanager-inst.yaml
+alertmanager.monitoring.coreos.com/inst created
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl get pods -n prometheus -o wide 
+NAME                                   READY   STATUS    RESTARTS   AGE   IP            NODE                NOMINATED NODE   READINESS GATES
+alertmanager-inst-0                    2/2     Running   0          81s   10.244.4.21   node02.k8s.hs.com   <none>           <none>
+alertmanager-inst-1                    2/2     Running   0          81s   10.244.3.29   node01.k8s.hs.com   <none>           <none>
+alertmanager-inst-2                    2/2     Running   0          81s   10.244.4.22   node02.k8s.hs.com   <none>           <none>
+prometheus-inst-0                      2/2     Running   1          11m   10.244.3.28   node01.k8s.hs.com   <none>           <none>
+prometheus-operator-5f949c9f97-r75k8   1/1     Running   0          48m   10.244.3.25   node01.k8s.hs.com   <none>           <none>
+[root@master02 ~]# kubectl get pods -n prometheus
+NAME                                   READY   STATUS    RESTARTS   AGE
+alertmanager-inst-0                    2/2     Running   0          32m
+alertmanager-inst-1                    2/2     Running   0          32m
+alertmanager-inst-2                    2/2     Running   0          32m
+prometheus-inst-0                      2/2     Running   1          42m
+prometheus-operator-5f949c9f97-r75k8   1/1     Running   0          79m
+---------此信息为可选---------
+如果不是Running状态，通过kubectl describe命令查看该Alertmanager的Pod实例状态，如果可以看到类似于以下内容的告警信息：
+MountVolume.SetUp failed for volume "config-volume" : secrets "alertmanager-inst" not found
+这是由于Prometheus Operator通过Statefulset的方式创建的Alertmanager实例，在默认情况下，会通过alertmanager-{ALERTMANAGER_NAME}的命名规则去查找Secret配置并以文件挂载的方式，将Secret的内容作为配置文件挂载到Alertmanager实例当中。因此，这里还需要为Alertmanager创建相应的配置内容，如下所示，是Alertmanager的配置文件：
+global:
+  resolve_timeout: 5m
+route:
+  group_by: ['job']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 12h
+  receiver: 'webhook'
+receivers:
+- name: 'webhook'
+  webhook_configs:
+  - url: 'http://alertmanagerwh:30500/'
+将以上内容保存为文件alertmanager.yaml，并且通过以下命令创建名为alrtmanager-inst的Secret资源：
+$ kubectl -n prometheus create secret generic alertmanager-inst --from-file=alertmanager.yaml
+secret/alertmanager-inst created
+------------------
+接下来，我们只需要修改我们的Prometheus资源定义，通过alerting指定使用的Alertmanager资源即可：
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# cat prometheus-inst.yaml 
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: inst
+  namespace: prometheus
+spec:
+  serviceAccountName: prometheus
+  ruleSelector:
+    matchLabels:
+      role: alert-rules
+      prometheus: example
+  alerting:
+    alertmanagers:
+    - name: alertmanager-example
+      namespace: prometheus
+      port: web
+  serviceMonitorSelector:
+    matchLabels:
+      team: frontend
+  resources:
+    requests:
+      memory: 400Mi
+[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f prometheus-inst.yaml
+prometheus.monitoring.coreos.com/inst configured
+等待Prometheus重新加载后，我们可以看到Prometheus Operator在配置文件中添加了如下配置：
+  alertmanagers:
+  - follow_redirects: true
+    scheme: http
+    path_prefix: /
+    timeout: 10s
+    api_version: v2
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_service_name]
+      separator: ;
+      regex: alertmanager-example
+      replacement: $1
+      action: keep
+    - source_labels: [__meta_kubernetes_endpoint_port_name]
+      separator: ;
+      regex: web
+      replacement: $1
+      action: keep
+    kubernetes_sd_configs:
+    - role: endpoints
+      follow_redirects: true
+      namespaces:
+        names:
+        - prometheus
+
+3. 在Prometheus Operator中使用自定义配置
+在Prometheus Operator我们通过声明式的创建如Prometheus, ServiceMonitor这些自定义的资源类型来自动化部署和管理Prometheus的相关组件以及配置。而在一些特殊的情况下，对于用户而言，可能还是希望能够手动管理Prometheus配置文件，而非通过Prometheus Operator自动完成。 为什么？ 实际上Prometheus Operator对于Job的配置只适用于在Kubernetes中部署和管理的应用程序。如果你希望使用Prometheus监控一些其他的资源，例如AWS或者其他平台中的基础设施或者应用，这些并不在Prometheus Operator的能力范围之内。
+为了能够在通过Prometheus Operator创建的Prometheus实例中使用自定义配置文件，我们只能创建一个不包含任何与配置文件内容相关的Prometheus实例
+
+
+
+
+
+
+#ingress controller
+#nginx ingress controller
+1. 部署ingress Controller
+--下载
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# 
+curl -OL https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.46.0/deploy/static/provider/baremetal/deploy.yaml
+--更改镜像名称k8s.gcr.io/ingress-nginx/,并且容忍master上的污点controller:v0.46.0@sha256:52f0058bed0a17ab0fb35628ba97e8d52b5d32299fbc03cc0f6c7b9ff036b61a为k8s.gcr.io/ingress-nginx/controller:v0.46.0
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# vim deploy.yaml
+image: k8s.gcr.io/ingress-nginx/controller:v0.46.0
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+--部署
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl apply -f deploy.yaml
+namespace/ingress-nginx created
+serviceaccount/ingress-nginx created
+configmap/ingress-nginx-controller created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx created
+role.rbac.authorization.k8s.io/ingress-nginx created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx created
+service/ingress-nginx-controller-admission created
+service/ingress-nginx-controller created
+deployment.apps/ingress-nginx-controller created
+validatingwebhookconfiguration.admissionregistration.k8s.io/ingress-nginx-admission created
+serviceaccount/ingress-nginx-admission created
+clusterrole.rbac.authorization.k8s.io/ingress-nginx-admission created
+clusterrolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+role.rbac.authorization.k8s.io/ingress-nginx-admission created
+rolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
+job.batch/ingress-nginx-admission-create created
+job.batch/ingress-nginx-admission-patch created
+--镜像获取，由于防火墙原因：
+[root@salt /git/kubernetes/ingress-nginx/v0.46.0]# docker pull willdockerhub/ingress-nginx-controller:v0.46.0
+[root@salt /git/kubernetes/ingress-nginx/v0.46.0]# docker tag willdockerhub/ingress-nginx-controller:v0.46.0 k8s.gcr.io/ingress-nginx/controller:v0.46.0
+[root@salt /git/kubernetes/ingress-nginx/v0.46.0]# docker tag k8s.gcr.io/ingress-nginx/controller:v0.46.0 192.168.13.235:8000/k8s/k8s.gcr.io/ingress-nginx/controller:v0.46.0
+[root@salt /git/kubernetes/ingress-nginx/v0.46.0]# docker push 192.168.13.235:8000/k8s/k8s.gcr.io/ingress-nginx/controller:v0.46.0
+--从pod的描述信息中看到是被调试到node02了，此时需要在node02上获取镜像
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl describe pods ingress-nginx-controller-6748cc5bd5-r2rjg -n ingress-nginx
+[root@node02 ~]# docker pull 192.168.13.235:8000/k8s/k8s.gcr.io/ingress-nginx/controller:v0.46.0 
+[root@node02 ~]# docker tag 192.168.13.235:8000/k8s/k8s.gcr.io/ingress-nginx/controller:v0.46.0 k8s.gcr.io/ingress-nginx/controller:v0.46.0
+--查看ingress-nginx运行状态：（测试ingress controller是否正常运行(通过ingress controller前端的service的NodePort端口进行访问，返回404说明ingresscontroller成功安装并运行)）
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl get pods -n ingress-nginx
+NAME                                        READY   STATUS      RESTARTS   AGE
+ingress-nginx-admission-create-tw2t9        0/1     Completed   0          10m
+ingress-nginx-admission-patch-kxzb9         0/1     Completed   1          10m
+ingress-nginx-controller-6748cc5bd5-sw76x   1/1     Running     0          25s
+注：上面获取镜像或者直接使用hub.docker.com的镜像：willdockerhub/ingress-nginx-controller:v0.46.0
+2. 运行deployment类型的pod及clusterIP类型的service
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# cat deployment-ct.yaml 
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp
+  namespace: default
+spec:
+  selector:
+    app: myapp
+    release: canary
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80  
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp-deployment
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: myapp
+      release: canary
+  template:
+    metadata:
+      labels:
+        app: myapp
+        release: canary
+    spec:
+      containers:
+      - name: myapp-container
+        image: ikubernetes/myapp:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 80
+        livenessProbe:
+          httpGet:
+            port: http
+            path: /index.html
+          initialDelaySeconds: 1 
+          periodSeconds: 3 
+        readinessProbe:
+          httpGet:
+            port: http
+            path: /index.html
+          initialDelaySeconds: 1 
+          periodSeconds: 3 
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl get pods 
+NAME                               READY   STATUS    RESTARTS   AGE
+myapp-deployment-b6bbc4f78-764sp   1/1     Running   0          22h
+myapp-deployment-b6bbc4f78-9zhpt   1/1     Running   0          22h
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl get svc
+NAME         TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)   AGE
+kubernetes   ClusterIP   10.96.0.1        <none>        443/TCP   9d
+myapp        ClusterIP   10.107.161.244   <none>        80/TCP    22h
+3. 运行ingress进行关联ingress controller和后端pod
+--先把证书和私钥做成secret
+----------------
+--新建自签名证书
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# (umask 0077;openssl genrsa -out hs.com 3650)
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# openssl req -new -x509 -key hs.com -out hs.com.crt -subj /C=CN/ST=Shanghai/L=Shanghai/O=DevOps/CN=*.hs.com -days 3650
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# ls
+deployment-ct.yaml  deploy.yaml  hscert  hs.com  hs.com.crt  ingress-myapp.yaml
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl create secret tls tls-ingress-hs.com --cert=hs.com.crt --key=hs.com
+----------------
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl create secret tls tls-ingress-hs.com --cert=hscert/HSLocalhost.cer --key=hscert/HSLocalhost.pvk
+secret/tls-ingress-hs.com created
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl get secret
+NAME                  TYPE                                  DATA   AGE
+default-token-jxblm   kubernetes.io/service-account-token   3      9d
+tls-ingress-hs.com    kubernetes.io/tls                     2      4s
+--生成ingress规则
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# cat ingress-myapp.yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-myapp
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  rules:
+  - host: myapp.hs.com
+    http:
+      paths: 
+      - path: 
+        backend:
+          serviceName: myapp
+          servicePort: 80
+  tls:
+  - hosts: 
+    - myapp.hs.com
+    secretName: tls-ingress-hs.com
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl apply -f ingress-myapp.yaml 
+Warning: extensions/v1beta1 Ingress is deprecated in v1.14+, unavailable in v1.22+; use networking.k8s.io/v1 Ingress
+ingress.extensions/ingress-myapp created
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl get svc/ingress-nginx-controller -n ingress-nginx -o jsonpath="{.spec.ports[?(@.port==80)].nodePort}"
+31470
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl get svc/ingress-nginx-controller -n ingress-nginx -o jsonpath="{.spec.ports[?rt==443)].nodePort}"
+31174
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]#  curl -H 'host: myapp.hs.com' http://192.168.13.51:31470/  --因为没有在ingress资源清单中设置资源注解：nginx.ingress.kubernetes.io/ssl-redirect: "false"，所以会重定向到https。
+<html>
+<head><title>308 Permanent Redirect</title></head>
+<body>
+<center><h1>308 Permanent Redirect</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+/etc/nginx $  curl -k -H 'host: myapp.hs.com' https://192.168.13.51:31174/
+Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
+--这里为设置禁用重写向后的结果：
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# curl -H 'host: myapp.hs.com' http://192.168.13.51:31470/
+Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# curl -k -H 'host: myapp.hs.com' https://192.168.13.51:31174/
+Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
+注：当ingress中配置了tls,并且只标明多个主机中的一个主机使用https时，另外其它所有的主机也都可以使用https访问到，也就是说不受tls中的hosts限制。
+
+
+
+#配置ingress nginx
+除使用Ingress资源自定义流量路由相关的配置外，Ingress Nginx应用程序还存在许多其他配置需要，例如日志格式、CORS、URL重写、代理缓冲和SSL透传等。这类的配置通常有ConfigMap、Annotations和自定义模板3种实现方式。
+IngressNginx的ConfigMap和Annotations配置接口都支持使用大量的参数来定制所需要的功能，不同的是，前者通过在IngressNginx引用ConfigMap资源规范中data字段特定的键及可用取值进行定义，且多用于Nginx全局特性的定制，因而是集群级别的配置；而后者则于Ingress资源上使用资源注解配置，多用于虚拟主机级别，因而通常是服务级别的配置。
+--服务级别的配置
+1. 我们通过为虚拟主机myapp.hs.com添加Basic认证为例：
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# yum install -y httpd-tools
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# htpasswd  -c -b -m ./ngxpasswd ilinux ilinux
+Adding password for user ilinux
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# htpasswd -b -m ./ngxpasswd mageedu mageedu
+Adding password for user mageedu
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl create secret generic ilinux-passwd --from-file=auth=./ngxpasswd -n default 
+secret/ilinux-passwd created
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl get secret 
+NAME                  TYPE                                  DATA   AGE
+default-token-jxblm   kubernetes.io/service-account-token   3      9d
+ilinux-passwd         Opaque                                1      6s
+tls-ingress-hs-com    kubernetes.io/tls                     2      61m
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# cat ingress-myapp.yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-myapp
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: ilinux-passwd
+    nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
+spec:
+  rules:
+  - host: myapp.hs.com
+    http:
+      paths: 
+      - path: /
+        backend:
+          serviceName: myapp
+          servicePort: 80
+  - host: test.hs.com
+    http:
+      paths: 
+      - path: /
+        backend:
+          serviceName: test
+          servicePort: 80
+  tls:
+  - secretName: tls-ingress-hs-com
+    hosts: 
+    - myapp.hs.com
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl apply -f ingress-myapp.yaml
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# curl -k -H 'host: myapp.hs.com' https://192.168.13.51:31174/
+<html>
+<head><title>401 Authorization Required</title></head>
+<body>
+<center><h1>401 Authorization Required</h1></center>
+<hr><center>nginx</center>
+</body>
+</html>
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# curl -u "mageedu:mageedu" -k -H 'host: myapp.hs.com' https://192.168.13.51:31174/
+Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
+--全局级别的配置
+2. Ningx全局级别的配置通常由ConfigMap资源进行定义，默认部署的IngressNginx会引用ingress-nginx名称空间中的ConfigMap/ingress-nginx-controller资源，
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl get cm -n ingress-nginx
+NAME                              DATA   AGE
+ingress-controller-leader-nginx   0      171m
+ingress-nginx-controller          0      3h1m
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl describe cm ingress-nginx-controller -n ingress-nginx
+Name:         ingress-nginx-controller
+Namespace:    ingress-nginx
+Labels:       app.kubernetes.io/component=controller
+              app.kubernetes.io/instance=ingress-nginx
+              app.kubernetes.io/managed-by=Helm
+              app.kubernetes.io/name=ingress-nginx
+              app.kubernetes.io/version=0.46.0
+              helm.sh/chart=ingress-nginx-3.30.0
+Annotations:  <none>
+
+Data
+====
+Events:  <none>
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# INGRESS_POD=$(kubectl get pods -l app.kubernetes.io/component=controller -n ingress-nginx -o jsonpath="{.items[0].metadata.name}")
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl exec $INGRESS_POD -n ingress-nginx -- nginx -T 2> /dev/null| grep -E 'use_gzip|gzip_level|worker_processes'
+worker_processes 4;
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# cat cm-ingress-nginx-controller.yaml 
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+data:
+  use-gzip: "true"
+  gzip-level: "6"
+  worker-processes: "8"
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl apply -f cm-ingress-nginx-controller.yaml 
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl exec $INGRESS_POD -n ingress-nginx -- nginx -T 2> /dev/null| grep -E 'gzip_comp_level|worker_processes'
+worker_processes 8;
+	gzip_comp_level 6;
+
+--通过ingress发布Dashboard
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# cat ingress-kubernetes-dashboard.yaml 
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-dashboard
+  namespace: kubernetes-dashboard
+  annotations: 
+    kubernetes.io/ingress.class: "nginx"
+    ingress.kubernetes.io/ssl-passthrough: "true"  #ssl 透传
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"  #后端使用TLS协议
+    #nginx.ingress.kubernetes.io/rewrite-target: /$2   #URL重写向
+spec:
+  rules:
+  - host: dashboard.k8s.hs.com
+    http:   #未限定主机，表示可附着于任何主机之上进行访问
+      paths:
+      #- path: /dashboard(/|$)(.*)  #正则表达式格式的路径
+      - path: /  #正则表达式格式的路径
+        backend:
+          serviceName: kubernetes-dashboard
+          servicePort: 443
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl apply -f ingress-kubernetes-dashboard.yaml
+--此时可以通过https进行访问dashboard:
+[root@master02 ~/k8s-manifests/dashboard]# curl -kI -H 'Host: dashboard.k8s.hs.com' https://192.168.13.56
+HTTP/1.1 200 OK
+Date: Fri, 11 Jun 2021 01:35:22 GMT
+Content-Type: text/html; charset=utf-8
+Content-Length: 1250
+Connection: keep-alive
+Accept-Ranges: bytes
+Cache-Control: no-cache, no-store, must-revalidate
+Last-Modified: Thu, 18 Feb 2021 14:45:44 GMT
+Strict-Transport-Security: max-age=15724800; includeSubDomains
+
+#dashboard高可用--也可类似于ingress-nginx实现高可用
+当dashboard为Delpoyment控制器时，将dashboard副本数设为2，当pod所在节点Down机时，endpoints会有一分钟的时效检测后端pod状态，一分钟后会判断后端pod是否正常，所以pod节点Down机时，会有1分钟的服务中断。
+当知道当pod所在节点Down机时，可以驱逐Down机的节点以快速使endpoint对后端pod做出表决，判定是否健康。pod服务中断时间取决于驱逐的速度。
+#问题
+--查看指定名称空间下有没有资源未结束,原因是pod节点未开机
+[root@master02 ~/k8s-manifests/dashboard]# kubectl api-resources -o name --verbs=list --namespaced | xargs -n 1 kubectl get --show-kind --ignore-not-found -n kubernetes-dashboard
+NAME                                        READY   STATUS        RESTARTS   AGE
+pod/kubernetes-dashboard-6d87dc768b-9zkwg   1/1     Terminating   0          35m
+--强制删除pod
+[root@master02 ~/k8s-manifests/dashboard]# kubectl delete pods --force --grace-period=0 kubernetes-dashboard-6d87dc768b-9zkwg -n kubernetes-dashboard
+warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.
+pod "kubernetes-dashboard-6d87dc768b-9zkwg" force deleted
+--再次查看时没有pod未删除了，但是kubernetes-dashboard名称空间依旧是Terminating状态
+[root@master02 ~/k8s-manifests/dashboard]# kubectl api-resources -o name --verbs=list --namespaced | xargs -n 1 kubectl get --show-kind --ignore-not-found -n kubernetes-dashboard
+Warning: extensions/v1beta1 Ingress is deprecated in v1.14+, unavailable in v1.22+; use networking.k8s.io/v1 Ingress
+--等过了一会已经正常删除了
+[root@master02 ~/k8s-manifests/dashboard]# kubectl get ns
+NAME              STATUS   AGE
+default           Active   10d
+ingress-nginx     Active   4h28m
+kube-node-lease   Active   10d
+kube-public       Active   10d
+kube-system       Active   10d
+storage-nfs       Active   5d22h
+
+
+
+--认证、授权、准入控制
+#RBAC:
+集群自带角色：
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl get clusterrole | egrep "^(cluster-admin|admin|edit|view)"
+admin                                                                  2021-04-29T11:52:18Z       --用于名称空间级别管理员
+cluster-admin                                                          2021-04-29T11:52:18Z		  --用于整个集群级别管理员
+edit                                                                   2021-04-29T11:52:18Z		  --可写角色
+view                                                                   2021-04-29T11:52:18Z		  --可读角色
+
+一： 所有命令行进行管理的，需要用到基于证书的kubeconfig进行认证授权
+二： 所有dashboard进行登录的，都需要用到serviceaccount的token才能进行认证授权
+
+kubectl options --此命令可查看所有通用命令
+[root@master02 ~/k8s-manifests/dashboard]# kubectl options
+The following options can be passed to any command:
+      --add-dir-header=false: If true, adds the file directory to the header of the log messages
+      --alsologtostderr=false: log to standard error as well as files
+      --as='': Username to impersonate for the operation
+      --as-group=[]: Group to impersonate for the operation, this flag can be repeated to specify multiple groups.
+      --cache-dir='/root/.kube/cache': Default cache directory
+      --certificate-authority='': Path to a cert file for the certificate authority
+      --client-certificate='': Path to a client certificate file for TLS
+      --client-key='': Path to a client key file for TLS
+      --cluster='': The name of the kubeconfig cluster to use
+      --context='': The name of the kubeconfig context to use
+      --insecure-skip-tls-verify=false: If true, the server's certificate will not be checked for validity. This will
+make your HTTPS connections insecure
+      --kubeconfig='': Path to the kubeconfig file to use for CLI requests.
+      --log-backtrace-at=:0: when logging hits line file:N, emit a stack trace
+      --log-dir='': If non-empty, write log files in this directory
+      --log-file='': If non-empty, use this log file
+      --log-file-max-size=1800: Defines the maximum size a log file can grow to. Unit is megabytes. If the value is 0,
+the maximum file size is unlimited.
+      --log-flush-frequency=5s: Maximum number of seconds between log flushes
+      --logtostderr=true: log to standard error instead of files
+      --match-server-version=false: Require server version to match client version
+  -n, --namespace='': If present, the namespace scope for this CLI request
+      --password='': Password for basic authentication to the API server
+      --profile='none': Name of profile to capture. One of (none|cpu|heap|goroutine|threadcreate|block|mutex)
+      --profile-output='profile.pprof': Name of the file to write the profile to
+      --request-timeout='0': The length of time to wait before giving up on a single server request. Non-zero values
+should contain a corresponding time unit (e.g. 1s, 2m, 3h). A value of zero means don't timeout requests.
+  -s, --server='': The address and port of the Kubernetes API server
+      --skip-headers=false: If true, avoid header prefixes in the log messages
+      --skip-log-headers=false: If true, avoid headers when opening log files
+      --stderrthreshold=2: logs at or above this threshold go to stderr
+      --tls-server-name='': Server name to use for server certificate validation. If it is not provided, the hostname
+used to contact the server is used
+      --token='': Bearer token for authentication to the API server
+      --user='': The name of the kubeconfig user to use
+      --username='': Username for basic authentication to the API server
+  -v, --v=0: number for the log level verbosity
+      --vmodule=: comma-separated list of pattern=N settings for file-filtered logging
+      --warnings-as-errors=false: Treat warnings received from the server as errors and exit with a non-zero exit code
+#--新建配置kubeconfig文件,用于命令行身份认证，UA用户
+1. 生成用户证书信息
+[root@master02 ~/k8s-manifests/dashboard/rbac]# (umask 077; openssl genrsa -out homsom-admin.key 2048)
+[root@master02 ~/k8s-manifests/dashboard/rbac]# openssl req -new -key homsom-admin.key -out homsom-admin.csr -subj "/O=homsom/CN=homsom-admin" 
+[root@master02 ~/k8s-manifests/dashboard/rbac]# openssl x509 -req -in homsom-admin.csr -CA /etc/kubernetes/pki/ca.crt -CAkey /etc/kubernetes/pki/ca.key -CAcreateserial -out homsom-admin.crt -days 3650 
+Signature ok
+subject=/O=homsom/CN=homsom-admin
+Getting CA Private Key
+2. 配置集群信息
+[root@master02 ~/k8s-manifests/dashboard/rbac]# kubectl config set-cluster homsom-kubernetes --kubeconfig='/root/homsom-kubernetes.conf' --server=https://k8s-api.k8s.hs.com:6443 --certificate-authority=/etc/kubernetes/pki/ca.crt --embed-certs=true 
+3. 配置上下文信息
+[root@master02 ~/k8s-manifests/dashboard/rbac]# kubectl config set-context homsom-admin@homsom-kubernetes --cluster=homsom-kubernetes --user=homsom-admin --kubeconfig='/root/homsom-kubernetes.conf'
+4. 配置用户信息
+[root@master02 ~/k8s-manifests/dashboard/rbac]# kubectl config set-credentials homsom-admin --client-certificate=./homsom-admin.crt --client-key=./homsom-admin.key --embed-certs=true --kubeconfig='/root/homsom-kubernetes.conf'
+5. 切换上下文
+[root@master02 ~/k8s-manifests/dashboard/rbac]# kubectl config use-context homsom-admin@homsom-kubernetes --kubeconfig='/root/homsom-kubernetes.conf'
+[root@master02 ~/k8s-manifests/dashboard/rbac]# kubectl config view
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: DATA+OMITTED
+    server: https://k8s-api.k8s.hs.com:6443
+  name: kubernetes
+contexts:
+- context:
+    cluster: kubernetes
+    user: kubernetes-admin
+  name: kubernetes-admin@kubernetes
+current-context: kubernetes-admin@kubernetes
+kind: Config
+preferences: {}
+users:
+- name: kubernetes-admin
+  user:
+    client-certificate-data: REDACTED
+    client-key-data: REDACTED
+6. 此时使用配置文件时还是无权限，如下：
+[root@master02 ~/k8s-manifests/dashboard/rbac]# kubectl get pods --kubeconfig='/root/homsom-kubernetes.conf'
+Error from server (Forbidden): pods is forbidden: User "homsom-admin" cannot list resource "pods" in API group "" in the namespace "default"
+7. 授权GROUP: homsom权限 
+[root@master02 ~/k8s-manifests/dashboard/rbac]# kubectl create clusterrolebinding homsom-admin --clusterrole=cluster-admin --group=homsom  --dry-run -o yaml 
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  creationTimestamp: null
+  name: homsom-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: homsom
+[root@master02 ~/k8s-manifests/dashboard/rbac]# cat homsom-admin-clusterrolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  creationTimestamp: null
+  name: homsom-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: homsom
+[root@master02 ~/k8s-manifests/dashboard/rbac]# kubectl apply -f homsom-admin-clusterrolebinding.yaml
+[root@master02 ~/k8s-manifests/dashboard/rbac]# kubectl get clusterrolebinding | grep homsom-admin
+homsom-admin                                           ClusterRole/cluster-admin                                                          11s
+8. 此时查看权限
+[root@master02 ~/k8s-manifests/dashboard/rbac]#  kubectl get pods --kubeconfig='/root/homsom-kubernetes.conf'
+NAME                                    READY   STATUS    RESTARTS   AGE
+jack-base-795f8d97fc-xshwc              1/1     Running   0          5h42m
+jack-canary-weight-5d7d98c98b-bh5sw     1/1     Running   0          5h41m
+jack-canary-weight-5d7d98c98b-bk57p     1/1     Running   0          5h41m
+jack-canary-weight-5d7d98c98b-xqb7p     1/1     Running   0          5h41m
+jackli-base-5fddf784cd-xw28j            1/1     Running   0          5h41m
+jackli-canary-weight-6c47c6cd97-7md27   1/1     Running   0          5h41m
+jackli-canary-weight-6c47c6cd97-ghz5d   1/1     Running   0          5h41m
+jackli-canary-weight-6c47c6cd97-jz9p6   1/1     Running   0          5h41m
+[root@master02 ~/k8s-manifests/dashboard/rbac]#  kubectl get pods --kubeconfig='/root/homsom-kubernetes.conf' -n kube-system | wc -l    --kube-system名称空间也是有权限的
+26
+9.将基于证书的kubeconfig文件复制到其它服务器以便进行远程管理k8s集群：
+[root@salt ~]# mkdir .kube && cd .kube
+[root@salt ~/.kube]# chmod 600 homsom-kubernetes.conf 
+[root@salt ~/.kube]# mv homsom-kubernetes.conf config
+[root@salt ~/.kube]# kubectl get pods
+NAME                                    READY   STATUS    RESTARTS   AGE
+jack-base-795f8d97fc-xshwc              1/1     Running   0          5h58m
+jack-canary-weight-5d7d98c98b-bh5sw     1/1     Running   0          5h57m
+jack-canary-weight-5d7d98c98b-bk57p     1/1     Running   0          5h57m
+jack-canary-weight-5d7d98c98b-xqb7p     1/1     Running   0          5h57m
+jackli-base-5fddf784cd-xw28j            1/1     Running   0          5h58m
+jackli-canary-weight-6c47c6cd97-7md27   1/1     Running   0          5h57m
+jackli-canary-weight-6c47c6cd97-ghz5d   1/1     Running   0          5h57m
+jackli-canary-weight-6c47c6cd97-jz9p6   1/1     Running   0          5h57m
+注：
+----新建用户认证信息，默认到当前用户的家目录下，路径：~/.kube/config
+--------[root@master02 ~/k8s-manifests/dashboard/rbac]# kubectl config set-credentials homsom-admin --client-certificate=./homsom-admin.crt --client-key=./homsom-admin.key --embed-certs=true
+----撤销设置
+--------[root@master02 ~/k8s-manifests/dashboard/rbac]# kubectl config unset users.homsom-admin
+
+
+#--配置SA用户
+#----建立集群管理员
+[root@master02 ~/k8s-manifests/dashboard]# kubectl get sa -n kubernetes-dashboard
+NAME                   SECRETS   AGE
+default                1         31d
+kubernetes-dashboard   1         31d
+1. 新建serviceaccount以及绑定集群角色cluster-admin
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# cat ui-admin.yaml 
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ui-admin
+  namespace: kubernetes-dashboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ui-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: ui-admin
+  namespace: kubernetes-dashboard
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl apply -f ui-admin.yaml
+serviceaccount/ui-admin created
+clusterrolebinding.rbac.authorization.k8s.io/ui-admin created
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]#  kubectl describe sa/ui-admin -n kubernetes-dashboard | grep -i token
+Mountable secrets:   ui-admin-token-55z9q
+Tokens:              ui-admin-token-55z9q
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl describe secret/ui-admin-token-55z9q -n kubernetes-dashboard
+Name:         ui-admin-token-55z9q
+Namespace:    kubernetes-dashboard
+Labels:       <none>
+Annotations:  kubernetes.io/service-account.name: ui-admin
+              kubernetes.io/service-account.uid: a42e440d-0ffa-442f-8af0-3c08073fc77e
+
+Type:  kubernetes.io/service-account-token
+
+Data
+====
+ca.crt:     1066 bytes
+namespace:  20 bytes
+token:      eyJhbGciOiJSUzI1NiIsImtpZCI6IlZpNkVfREh1aGlLNXlZZkZaUzU1TXlrVjZUMzNrU3BTeFlwZnZ1YS05T3cifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlcm5ldGVzLWRhc2hib2FyZCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJ1aS1hZG1pbi10b2tlbi01NXo5cSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50Lm5hbWUiOiJ1aS1hZG1pbiIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6ImE0MmU0NDBkLTBmZmEtNDQyZi04YWYwLTNjMDgwNzNmYzc3ZSIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDprdWJlcm5ldGVzLWRhc2hib2FyZDp1aS1hZG1pbiJ9.koBp77SmKw5bxH-jN-ZGCsDGG3Mkfk3pxYNh_1A-Yr6R141CNwBSQNpFpszHPEJouwsyXQOt1wQqDpN-3K9pOn1VlQmIaE2LiTyPfLyW-P2-m_zPhVbEwBeAahrC_MaqKmJy6QyzqvGKxntbHGSukw-77IKOe6G5-Nqt3Bq5KU9IX6hpc8guWDYIkQ9am9dUYS1RXSrk_dfI37jQVtUi1C5x5s7RxIKhHmx9xM8ZWYuSfpmDIfQC11zEuJbFvyQNNJNpO9zpdu1qVdpxY6HGM4JVDqU_QT4rSDKwJZ952qKJClENHOyoCDgRtJS6JZ0RRwM6g8GwtxC54zZ3JFHQ7A
+注：带上这个token就可以去dashboard进行认证了
+
+----将token制作成kubeconfig文件
+1. 取出token
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl get secret/ui-admin-token-55z9q -n kubernetes-dashboard -o jsonpath='{.data.token}' | base64 -d ;echo
+eyJhbGciOiJSUzI1NiIsImtpZCI6IlZpNkVfREh1aGlLNXlZZkZaUzU1TXlrVjZUMzNrU3BTeFlwZnZ1YS05T3cifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlcm5ldGVzLWRhc2hib2FyZCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJ1aS1hZG1pbi10b2tlbi01NXo5cSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50Lm5hbWUiOiJ1aS1hZG1pbiIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6ImE0MmU0NDBkLTBmZmEtNDQyZi04YWYwLTNjMDgwNzNmYzc3ZSIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDprdWJlcm5ldGVzLWRhc2hib2FyZDp1aS1hZG1pbiJ9.koBp77SmKw5bxH-jN-ZGCsDGG3Mkfk3pxYNh_1A-Yr6R141CNwBSQNpFpszHPEJouwsyXQOt1wQqDpN-3K9pOn1VlQmIaE2LiTyPfLyW-P2-m_zPhVbEwBeAahrC_MaqKmJy6QyzqvGKxntbHGSukw-77IKOe6G5-Nqt3Bq5KU9IX6hpc8guWDYIkQ9am9dUYS1RXSrk_dfI37jQVtUi1C5x5s7RxIKhHmx9xM8ZWYuSfpmDIfQC11zEuJbFvyQNNJNpO9zpdu1qVdpxY6HGM4JVDqU_QT4rSDKwJZ952qKJClENHOyoCDgRtJS6JZ0RRwM6g8GwtxC54zZ3JFHQ7A
+2. 配置集群
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config set-cluster homsom-kubernetes --kubeconfig="./homsom-dashboard-ui_admin.conf" --server=https://k8s-api.k8s.hs.com:6443 --certificate-authority=/etc/kubernetes/pki/ca.crt --embed-certs=true
+3. 配置上下文
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config set-context ui-admin@homsom-kubernetes --cluster=homsom-kubernetes --user=ui-admin --kubeconfig="./homsom-dashboard-ui_admin.conf"
+4. 配置凭据
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config set-credentials ui-admin --token=`kubectl get secret/ui-admin-token-55z9q -n kubernetes-dashboard -o jsonpath='{.data.token}' | base64 -d` --kubeconfig="./homsom-dashboard-ui_admin.conf" 
+5. 使用上下文
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config use-context ui-admin@homsom-kubernetes --kubeconfig="./homsom-dashboard-ui_admin.conf"
+6. 查看kubeconfig文件配置
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config view --kubeconfig="./homsom-dashboard-ui_admin.conf"
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: DATA+OMITTED
+    server: https://k8s-api.k8s.hs.com:6443
+  name: homsom-kubernetes
+contexts:
+- context:
+    cluster: homsom-kubernetes
+    user: ui-admin
+  name: ui-admin@homsom-kubernetes
+current-context: ui-admin@homsom-kubernetes
+kind: Config
+preferences: {}
+users:
+- name: ui-admin
+  user:
+    token: REDACTED
+7. 基于sa的token生成的kubeconfig文件既可以用做ui，也可用作kubectl
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl get pod --kubeconfig="./homsom-dashboard-ui_admin.conf"
+NAME                                    READY   STATUS    RESTARTS   AGE
+jack-base-795f8d97fc-xshwc              1/1     Running   0          20h
+jack-canary-weight-5d7d98c98b-bh5sw     1/1     Running   0          20h
+jack-canary-weight-5d7d98c98b-bk57p     1/1     Running   0          20h
+jack-canary-weight-5d7d98c98b-xqb7p     1/1     Running   0          20h
+jackli-base-5fddf784cd-xw28j            1/1     Running   0          20h
+jackli-canary-weight-6c47c6cd97-7md27   1/1     Running   0          20h
+jackli-canary-weight-6c47c6cd97-ghz5d   1/1     Running   0          20h
+jackli-canary-weight-6c47c6cd97-jz9p6   1/1     Running   0          20h
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl get pod -n monitoring  --kubeconfig="./homsom-dashboard-ui_admin.conf"
+NAME                                           READY   STATUS    RESTARTS   AGE
+adapter-prometheus-adapter-7df9c4f77-wdfhg     1/1     Running   0          4d13h
+grafana-566fc59d75-d4hqz                       1/1     Running   0          42h
+prom-kube-state-metrics-649d77c759-zvwlv       1/1     Running   0          4d16h
+prom-prometheus-alertmanager-0                 2/2     Running   0          42h
+prom-prometheus-node-exporter-62mnz            1/1     Running   0          4d16h
+prom-prometheus-node-exporter-7mx4q            1/1     Running   0          4d16h
+prom-prometheus-node-exporter-b4z62            1/1     Running   0          4d16h
+prom-prometheus-node-exporter-bfnvr            1/1     Running   0          4d16h
+prom-prometheus-node-exporter-hvqm8            1/1     Running   0          4d16h
+prom-prometheus-pushgateway-79f585d544-4pg59   1/1     Running   0          42h
+prom-prometheus-server-0                       2/2     Running   0          42h
+
+
+#----建立名称空间级别管理员
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# cat clusterrolebinding-namespace-monitoring-uiadmin.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: namespace-monitoring-uiadmin
+  namespace: kubernetes-dashboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: namespace-monitoring-uiadmin
+  namespace: monitoring    #生效的名称空间在这,不是serviceaccount所在的名称空间，而是rolebinding所在的名称空间所决定的。
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: admin
+subjects:
+- kind: ServiceAccount
+  name: namespace-monitoring-uiadmin
+  namespace: kubernetes-dashboard
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl apply -f clusterrolebinding-namespace-monitoring-uiadmin.yaml
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl describe sa/namespace-monitoring-uiadmin -n kubernetes-dashboard | grep -i ^token
+Tokens:              namespace-monitoring-uiadmin-token-zj7fq
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config set-cluster homsom-kubernetes --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf" --server=https://k8s-api.k8s.hs.com:6443 --certificate-authority=/etc/kubernetes/pki/ca.crt --embed-certs=true
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config set-context monitoring-uiadmin@homsom-kubernetes --cluster=homsom-kubernetes --user=monitoring-uiadmin --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf"
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config set-credentials monitoring-uiadmin --token=`kubectl get secret/namespace-monitoring-uiadmin-token-zj7fq -n kubernetes-dashboard -o jsonpath='{.data.token}' | base64 -d` --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf"
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config use-context monitoring-uiadmin@homsom-kubernetes --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf"
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config view --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf"
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: DATA+OMITTED
+    server: https://k8s-api.k8s.hs.com:6443
+  name: homsom-kubernetes
+contexts:
+- context:
+    cluster: homsom-kubernetes
+    user: monitoring-uiadmin
+  name: monitoring-uiadmin@homsom-kubernetes
+current-context: monitoring-uiadmin@homsom-kubernetes
+kind: Config
+preferences: {}
+users:
+- name: monitoring-uiadmin
+  user:
+    token: REDACTED
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl get pod --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf"  --default名称空间无权限
+Error from server (Forbidden): pods is forbidden: User "system:serviceaccount:kubernetes-dashboard:namespace-monitoring-uiadmin" cannot list resource "pods" in API group "" in the namespace "default"
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl get pod -n monitoring --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf"   --monitoring名称空间有权限
+NAME                                           READY   STATUS    RESTARTS   AGE
+adapter-prometheus-adapter-7df9c4f77-wdfhg     1/1     Running   0          4d13h
+grafana-566fc59d75-d4hqz                       1/1     Running   0          43h
+prom-kube-state-metrics-649d77c759-zvwlv       1/1     Running   0          4d17h
+prom-prometheus-alertmanager-0                 2/2     Running   0          43h
+prom-prometheus-node-exporter-62mnz            1/1     Running   0          4d17h
+prom-prometheus-node-exporter-7mx4q            1/1     Running   0          4d17h
+prom-prometheus-node-exporter-b4z62            1/1     Running   0          4d17h
+prom-prometheus-node-exporter-bfnvr            1/1     Running   0          4d17h
+prom-prometheus-node-exporter-hvqm8            1/1     Running   0          4d17h
+prom-prometheus-pushgateway-79f585d544-4pg59   1/1     Running   0          43h
+prom-prometheus-server-0                       2/2     Running   0          42h
+注：最后可以将此文件发送给对应人员，进行dashboard认证，进入dashboard后需要手动输入dev名称空间进行，否则会报错
+
+#--建立整个集群可读用户
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# cat clusterrolebinding-readonly-admin.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: readonly-uiadmin
+  namespace: kubernetes-dashboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: readonly-uiadmin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+- kind: ServiceAccount
+  name: readonly-uiadmin
+  namespace: kubernetes-dashboard
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl apply -f clusterrolebinding-readonly-admin.yaml
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl describe sa/readonly-uiadmin -n kubernetes-dashboard | grep -i ^token
+Tokens:              readonly-uiadmin-token-kvgjb
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config set-context readonly-uiadmin@homsom-kubernetes --cluster=homsom-kubernetes --user=readonly-uiadmin --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config set-credentials readonly-uiadmin --token=`kubectl get secret/readonly-uiadmin-token-kvgjb -n kubernetes-dashboard -o jsonpath='{.data.token}' | base64 -d` --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config use-context readonly-uiadmin@homsom-kubernetes --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config view --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: DATA+OMITTED
+    server: https://k8s-api.k8s.hs.com:6443
+  name: homsom-kubernetes
+contexts:
+- context:
+    cluster: homsom-kubernetes
+    user: readonly-uiadmin
+  name: readonly-uiadmin@homsom-kubernetes
+current-context: readonly-uiadmin@homsom-kubernetes
+kind: Config
+preferences: {}
+users:
+- name: readonly-uiadmin
+  user:
+    token: REDACTED
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]#  kubectl get pod --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"  --可读集群所有对象
+NAME                                    READY   STATUS    RESTARTS   AGE
+jack-base-795f8d97fc-xshwc              1/1     Running   0          21h
+jack-canary-weight-5d7d98c98b-bh5sw     1/1     Running   0          21h
+jack-canary-weight-5d7d98c98b-bk57p     1/1     Running   0          21h
+jack-canary-weight-5d7d98c98b-xqb7p     1/1     Running   0          21h
+jackli-base-5fddf784cd-xw28j            1/1     Running   0          21h
+jackli-canary-weight-6c47c6cd97-7md27   1/1     Running   0          21h
+jackli-canary-weight-6c47c6cd97-ghz5d   1/1     Running   0          21h
+jackli-canary-weight-6c47c6cd97-jz9p6   1/1     Running   0          21h
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]#  kubectl get svc -n monitoring --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"  --可读集群所有对象
+NAME                                    TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+adapter-prometheus-adapter              ClusterIP   10.101.4.19      <none>        443/TCP    4d14h
+grafana                                 ClusterIP   10.106.137.45    <none>        80/TCP     4d17h
+prom-kube-state-metrics                 ClusterIP   10.105.48.195    <none>        8080/TCP   4d18h
+prom-prometheus-alertmanager            ClusterIP   10.106.173.231   <none>        80/TCP     4d18h
+prom-prometheus-alertmanager-headless   ClusterIP   None             <none>        80/TCP     4d18h
+prom-prometheus-node-exporter           ClusterIP   None             <none>        9100/TCP   4d18h
+prom-prometheus-pushgateway             ClusterIP   10.96.15.177     <none>        9091/TCP   4d18h
+prom-prometheus-server                  ClusterIP   10.109.107.120   <none>        80/TCP     4d18h
+prom-prometheus-server-headless         ClusterIP   None             <none>        80/TCP     4d18h
+[root@master02 ~/k8s-manifests/dashboard/rbac/sa]#  kubectl edit svc/grafana -n monitoring --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"   --不可编辑，没有写仅限
+error: services "grafana" could not be patched: services "grafana" is forbidden: User "system:serviceaccount:kubernetes-dashboard:readonly-uiadmin" cannot patch resource "services" in API group "" in the namespace "monitoring"
+You can run `kubectl replace -f /tmp/kubectl-edit-vl5kb.yaml` to try this update again.
+注：--edit角色如上，不做案例分享：
+
+#查看sa用户绑定的role权限
+[root@LocalServer ~]# kubectl describe sa/prometheus -n monitoring
+Name:                prometheus
+Namespace:           monitoring
+Labels:              app=prometheus
+                     app.kubernetes.io/managed-by=Helm
+                     chart=prometheus-11.12.1
+                     component=server
+                     heritage=Helm
+                     release=prom
+Annotations:         meta.helm.sh/release-name: prom
+                     meta.helm.sh/release-namespace: monitoring
+Image pull secrets:  <none>
+Mountable secrets:   prometheus-token-jdb7t
+Tokens:              prometheus-token-jdb7t
+Events:              <none>
+----查看rolebinding
+[root@LocalServer ~]# for i in `kubectl get rolebinding | awk '{print $1}' | grep -v NAME`;do kubectl get clusterrolebinding/$i -o jsonpath='{.metadata.name}: {.subjects},{.roleRef}';echo;done | grep '"monitoring"' | grep '"prometheus"'
+No resources found in default namespace.
+----查看clusterrolebinding，从下面可知是引用的哪个角色
+[root@LocalServer ~]# for i in `kubectl get clusterrolebinding | awk '{print $1}' | grep -v NAME`;do kubectl get clusterrolebinding/$i -o jsonpath='{.metadata.name}: {.subjects},{.roleRef}';echo;done | grep '"monitoring"' | grep '"prometheus"'
+prometheus: [{"kind":"ServiceAccount","name":"prometheus","namespace":"monitoring"}],{"apiGroup":"rbac.authorization.k8s.io","kind":"ClusterRole","name":"cluster-admin"}
+
+
+
+#helm
+#部署helm-v3.5.3
+1. 安装helm:  注意：helm 客户端需要下载到安装了 kubectl 并且能执行能正常通过 kubectl 操作 kubernetes 的服务器上，否则 helm 将不可用。
+[root@master02 ~/k8s-manifests/helm]# axel -n 60 https://get.helm.sh/helm-v3.5.3-linux-amd64.tar.gz
+[root@master02 ~/k8s-manifests/helm]# tar xf helm-v3.5.3-linux-amd64.tar.gz
+[root@master02 ~/k8s-manifests/helm]# cd linux-amd64/
+[root@master02 ~/k8s-manifests/helm/linux-amd64]# mv helm  /usr/local/bin/
+[root@master02 ~/k8s-manifests/helm/linux-amd64]# helm env
+HELM_BIN="helm"
+HELM_CACHE_HOME="/root/.cache/helm"
+HELM_CONFIG_HOME="/root/.config/helm"
+HELM_DATA_HOME="/root/.local/share/helm"
+HELM_DEBUG="false"
+HELM_KUBEAPISERVER=""
+HELM_KUBEASGROUPS=""
+HELM_KUBEASUSER=""
+HELM_KUBECAFILE=""
+HELM_KUBECONTEXT=""
+HELM_KUBETOKEN=""
+HELM_MAX_HISTORY="10"
+HELM_NAMESPACE="default"
+HELM_PLUGINS="/root/.local/share/helm/plugins"
+HELM_REGISTRY_CONFIG="/root/.config/helm/registry.json"
+HELM_REPOSITORY_CACHE="/root/.cache/helm/repository"
+HELM_REPOSITORY_CONFIG="/root/.config/helm/repositories.yaml"
+[root@master02 ~/k8s-manifests/helm/linux-amd64]# helm repo list 
+Error: no repositories to show
+2. 添加helm仓库
+[root@master02 ~/k8s-manifests/helm/linux-amd64]# helm repo add stable http://mirror.azure.cn/kubernetes/charts
+"stable" has been added to your repositories
+[root@master02 ~/k8s-manifests/helm/linux-amd64]# helm repo add aliyun https://kubernetes.oss-cn-hangzhou.aliyuncs.com/charts 
+"aliyun" has been added to your repositories
+[root@master02 ~/k8s-manifests/helm/linux-amd64]# helm repo list 
+NAME  	URL                                                   
+stable	https://charts.helm.sh/stable             
+aliyun	https://kubernetes.oss-cn-hangzhou.aliyuncs.com/charts
+[root@master02 ~/k8s-manifests/helm/linux-amd64]# helm repo update
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "aliyun" chart repository
+...Successfully got an update from the "stable" chart repository
+Update Complete. ⎈Happy Helming!⎈
+--其它repo
+helm repo add  elastic    https://helm.elastic.co
+helm repo add  gitlab     https://charts.gitlab.io
+helm repo add  harbor     https://helm.goharbor.io
+helm repo add  bitnami    https://charts.bitnami.com/bitnami
+helm repo add  incubator  https://kubernetes-charts-incubator.storage.googleapis.com
+[root@master02 ~/k8s-manifests/helm/linux-amd64]# helm repo list 
+NAME   	URL                                                   
+aliyun 	https://kubernetes.oss-cn-hangzhou.aliyuncs.com/charts
+elastic	https://helm.elastic.co                               
+gitlab 	https://charts.gitlab.io                              
+harbor 	https://helm.goharbor.io                              
+bitnami	https://charts.bitnami.com/bitnami                    
+stable 	http://mirror.azure.cn/kubernetes/charts      
+4. 指定对应的k8s集群
+这一步非常关键，它是helm与k8s通讯的保证，这一步就是把k8s环境变量KUBECONFIG进行配置
+[root@master02 ~/k8s-manifests/helm/linux-amd64]# echo 'export KUBECONFIG=/root/.kube/config' >> /etc/profile
+[root@master02 ~/k8s-manifests/helm/linux-amd64]# . /etc/profile
+5. helm应用：
+--安装
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# helm search repo nginx
+NAME                            	CHART VERSION	APP VERSION	DESCRIPTION                                       
+aliyun/nginx-ingress            	0.9.5        	0.10.2     	An nginx Ingress controller that uses ConfigMap...
+aliyun/nginx-lego               	0.3.1        	           	Chart for nginx-ingress-controller and kube-lego  
+bitnami/nginx                   	8.9.0        	1.19.10    	Chart for the nginx server                        
+bitnami/nginx-ingress-controller	7.6.6        	0.46.0     	Chart for the nginx Ingress controller            
+stable/nginx-ingress            	1.41.3       	v0.34.1    	DEPRECATED! An nginx Ingress controller that us...
+stable/nginx-ldapauth-proxy     	0.1.6        	1.13.5     	DEPRECATED - nginx proxy with ldapauth            
+stable/nginx-lego               	0.3.1        	           	Chart for nginx-ingress-controller and kube-lego  
+bitnami/kong                    	3.7.2        	2.4.0      	Kong is a scalable, open source API layer (aka ...
+aliyun/gcloud-endpoints         	0.1.0        	           	Develop, deploy, protect and monitor your APIs ...
+stable/gcloud-endpoints         	0.1.2        	1          	DEPRECATED Develop, deploy, protect and monitor...
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# helm install nginx bitnami/nginx -n web
+NAME: nginx
+LAST DEPLOYED: Sat May  8 17:44:41 2021
+NAMESPACE: web
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+** Please be patient while the chart is being deployed **
+
+NGINX can be accessed through the following DNS name from within your cluster:
+
+    nginx.web.svc.cluster.local (port 80)
+
+To access NGINX from outside the cluster, follow the steps below:
+
+1. Get the NGINX URL by running these commands:
+
+  NOTE: It may take a few minutes for the LoadBalancer IP to be available.
+        Watch the status with: 'kubectl get svc --namespace web -w nginx'
+
+    export SERVICE_PORT=$(kubectl get --namespace web -o jsonpath="{.spec.ports[0].port}" services nginx)
+    export SERVICE_IP=$(kubectl get svc --namespace web nginx -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+    echo "http://${SERVICE_IP}:${SERVICE_PORT}"
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# curl -I http://localhost:31905
+HTTP/1.1 200 OK
+--查看安装的应用
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# helm list -n web
+NAME 	NAMESPACE	REVISION	UPDATED                                	STATUS  	CHART      	APP VERSION
+nginx	web      	1       	2021-05-08 17:44:41.758624134 +0800 CST	deployed	nginx-8.9.0	1.19.10   
+--查看应用状态 
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# helm status nginx -n web
+NAME: nginx
+LAST DEPLOYED: Sat May  8 17:44:41 2021
+NAMESPACE: web
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+-------自定义参数安装应用
+--查看应用 chart 可配置参数
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]#  helm show values bitnami/nginx | grep -Ev '#|^$' 
+方式一：使用自定义 values.yaml 文件安装应用
+[root@master02 ~/k8s-manifests/helm]# cat values.yaml 
+image:
+  registry: docker.io
+  repository: bitnami/nginx
+resources:
+  limits: 
+     cpu: 1000m
+     memory: 1024Mi
+  requests: 
+     cpu: 1000m
+     memory: 1024Mi
+[root@master02 ~/k8s-manifests/helm]# helm install nginx -f values.yaml bitnami/nginx -n default
+方式二：使用 --set 配置参数进行安装
+--set 参数是在使用 helm 命令时候添加的参数，可以在执行 helm 安装与更新应用时使用，多个参数间用","隔开，使用如下：
+如果配置文件和 --set 同时使用，则 --set 设置的参数会覆盖配置文件中的参数配置
+helm install nginx --set 'registry.registry=docker.io,registry.repository=bitnami/nginx' bitnami/nginx -n default
+--卸载应用，不保留安装记录:
+[root@master02 ~/k8s-manifests/helm]# helm uninstall nginx
+release "nginx" uninstalled
+--卸载应用，并保留安装记录
+[root@master02 ~/k8s-manifests/helm]# helm uninstall nginx -n web --keep-history
+release "nginx" uninstalled
+--查看全部安装的应用
+[root@master02 ~/k8s-manifests/helm]# helm list --all-namespaces
+NAME	NAMESPACE	REVISION	UPDATED	STATUS	CHART	APP VERSION
+--查看全部应用（包含安装和卸载的应用）
+[root@master02 ~/k8s-manifests/helm]# helm list --all-namespaces --all
+NAME 	NAMESPACE	REVISION	UPDATED                                	STATUS     	CHART      	APP VERSION
+nginx	web      	1       	2021-05-08 17:44:41.758624134 +0800 CST	uninstalled	nginx-8.9.0	1.19.10    
+--卸载应用，不保留安装记录，也可仅删除安装记录
+[root@master02 ~/k8s-manifests/helm]# helm delete nginx -n web
+release "nginx" uninstalled
+--应用升级
+[root@master02 ~/k8s-manifests/helm]# cat values.yaml 
+service.type: NodePort
+service.nodePorts.http: 30002
+[root@master02 ~/k8s-manifests/helm]# kubectl get svc -n web 
+NAME    TYPE           CLUSTER-IP    EXTERNAL-IP   PORT(S)        AGE
+nginx   LoadBalancer   10.102.7.48   <pending>     80:32335/TCP   40s
+[root@master02 ~/k8s-manifests/helm]#  helm upgrade -f values.yaml nginx bitnami/nginx -n web
+[root@master02 ~/k8s-manifests/helm]# helm get values nginx -n web
+USER-SUPPLIED VALUES:
+service.nodePorts.http: 30002
+service.type: NodePort
+
+#ingress高可用
+1. 修改Deployment为DaemonSet，并注释掉副本数
+apiVersion: apps/v1
+#kind: Deployment
+kind: DaemonSet
+metadata:
+  labels:
+    helm.sh/chart: ingress-nginx-3.30.0
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 0.46.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: controller
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+spec:
+  #replicas: 2
+2. 启用hostNetwork网络
+spec:
+    spec:
+      hostNetwork: true
+      nodeSelector:
+        ingresscontroller: 'true'
+3. 修改镜像地址
+      containers:
+        - name: controller
+          image: k8s.gcr.io/ingress-nginx/controller:v0.46.0
+4. 修改容器端口定义并注释使用的协议，因为是http协议
+         ports:
+            - name: http
+              containerPort: 80
+              #protocol: TCP
+            - name: https
+              containerPort: 443
+              #protocol: TCP
+5. 增加master节点容忍并指定节点运行
+      nodeSelector:
+        ingresscontroller: 'true'
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+
+6. 给特定节点打要标签
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl label --overwrite node node01.k8s.hs.com ingresscontroller=true
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl label --overwrite node node02.k8s.hs.com ingresscontroller=true
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl get node -l ingresscontroller=true --show-labels
+NAME                STATUS     ROLES    AGE   VERSION    LABELS
+node01.k8s.hs.com   NotReady   <none>   10d   v1.19.10   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,ingresscontroller=true,kubernetes.io/arch=amd64,kubernetes.io/hostname=node01.k8s.hs.com,kubernetes.io/os=linux
+node02.k8s.hs.com   Ready      <none>   10d   v1.19.10   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,ingresscontroller=true,kubernetes.io/arch=amd64,kubernetes.io/hostname=node02.k8s.hs.com,kubernetes.io/os=linux
+7. ingress节点扩展
+-- 比如给master节点打上标签，此时master节点立马构建一个ingress controller pod
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl label node master01.k8s.hs.com ingresscontroller=true
+node/master01.k8s.hs.com labeled
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl get pods -n ingress-nginx -o wide 
+NAME                                   READY   STATUS              RESTARTS   AGE     IP              NODE                  NOMINATED NODE   READINESS GATES
+ingress-nginx-admission-create-rgvvz   0/1     Completed           0          4m25s   10.244.3.57     node01.k8s.hs.com     <none>           <none>
+ingress-nginx-admission-patch-rv8dn    0/1     Completed           1          4m25s   10.244.3.58     node01.k8s.hs.com     <none>           <none>
+ingress-nginx-controller-8qtjp         0/1     ContainerCreating   0          2s      192.168.13.51   master01.k8s.hs.com   <none>           <none>
+ingress-nginx-controller-rm8gk         1/1     Running             0          4m25s   192.168.13.57   node02.k8s.hs.com     <none>           <none>
+ingress-nginx-controller-z4hpx         1/1     Running             0          4m25s   192.168.13.56   node01.k8s.hs.com     <none>           <none>
+8. 删除多余ingress controller节点
+-- 删除标签
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl label node master01.k8s.hs.com ingresscontroller-
+node/master01.k8s.hs.com labeled
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl get pods -n ingress-nginx -o wide 
+NAME                                   READY   STATUS        RESTARTS   AGE     IP              NODE                  NOMINATED NODE   READINESS GATES
+ingress-nginx-admission-create-rgvvz   0/1     Completed     0          6m44s   10.244.3.57     node01.k8s.hs.com     <none>           <none>
+ingress-nginx-admission-patch-rv8dn    0/1     Completed     1          6m44s   10.244.3.58     node01.k8s.hs.com     <none>           <none>
+ingress-nginx-controller-8qtjp         1/1     Terminating   0          2m21s   192.168.13.51   master01.k8s.hs.com   <none>           <none>   --当去除标签时，master节点上的ingress controller pod立即被删除
+ingress-nginx-controller-rm8gk         1/1     Running       0          6m44s   192.168.13.57   node02.k8s.hs.com     <none>           <none>
+ingress-nginx-controller-z4hpx         1/1     Running       0          6m44s   192.168.13.56   node01.k8s.hs.com     <none>           <none>
+9. 此时在两个节点 node01.k8s.hs.com、node02.k8s.hs.com上有两个ingress controller pod，无论访问哪一个pod都可以访问后端的服务，实现了高可用，可以结合keepalived软件实现VIP
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+#ingress 使用
+#ingress nginx灰度发布
+---发布base容器
+[root@master02 ~/k8s-manifests/app]# cat hs-app-base.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: hotelresourcejinjiang-base
+  namespace: default
+spec:
+  selector:
+    app: hotelresourcejinjiang.hs.com
+    Language: netCore
+    env: test
+    team: ops
+    tag: base
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80  
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hotelresourcejinjiang-base
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hotelresourcejinjiang.hs.com
+      Language: netCore
+      env: test
+      team: ops
+      tag: base
+  template:
+    metadata:
+      labels:
+        app: hotelresourcejinjiang.hs.com
+        Language: netCore
+        env: test
+        team: ops
+        tag: base
+    spec:
+      containers:
+      - name: hotelresourcejinjiang
+        image: ikubernetes/myapp:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 80
+        livenessProbe:
+          httpGet:
+            port: http
+            path: /index.html
+          initialDelaySeconds: 1 
+          periodSeconds: 3 
+        readinessProbe:
+          httpGet:
+            port: http
+            path: /index.html
+          initialDelaySeconds: 1 
+          periodSeconds: 3 
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "640Mi"
+            cpu: "500m"
+[root@master02 ~/k8s-manifests/app]# kubectl apply -f hs-app-base.yaml
+---配置ingress 
+[root@master02 ~/k8s-manifests/app]# cat ingress-hotelresourcejinjiang-base.yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: hotelresourcejinjiang-base
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+spec:
+  rules:
+  - host: hotelresourcejinjiang.hs.com
+    http:
+      paths: 
+      - path: /
+        backend:
+          serviceName: hotelresourcejinjiang-base
+          servicePort: 80
+[root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-base.yaml
+---测试hotelresourcejinjiang.hs.com是否为v1
+[root@salt ~]# while true;do date;curl -H 'host: hotelresourcejinjiang.hs.com' http://192.168.13.57;sleep 0.5;done
+2021年 05月 12日 星期三 17:39:13 CST
+Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
+
+---升级v2版本，并且配置通过Header来判断访问后端Endpoints
+1. 先部署deployment
+[root@master02 ~/k8s-manifests/app]# cat hs-app-canary-header.yaml 
+apiVersion: v1
+kind: Service
+metadata:
+  name: hotelresourcejinjiang-canary-header
+  namespace: default
+spec:
+  selector:
+    app: hotelresourcejinjiang.hs.com
+    Language: netCore
+    env: test
+    team: ops
+    tag: canary-header
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80  
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hotelresourcejinjiang-canary-header
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hotelresourcejinjiang.hs.com
+      Language: netCore
+      env: test
+      team: ops
+      tag: canary-header
+  template:
+    metadata:
+      labels:
+        app: hotelresourcejinjiang.hs.com
+        Language: netCore
+        env: test
+        team: ops
+        tag: canary-header
+    spec:
+      containers:
+      - name: hotelresourcejinjiang
+        image: ikubernetes/myapp:v2
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 80
+        livenessProbe:
+          httpGet:
+            port: http
+            path: /index.html
+          initialDelaySeconds: 1 
+          periodSeconds: 3 
+        readinessProbe:
+          httpGet:
+            port: http
+            path: /index.html
+          initialDelaySeconds: 1 
+          periodSeconds: 3 
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "640Mi"
+            cpu: "500m"
+[root@master02 ~/k8s-manifests/app]# kubectl apply -f hs-app-canary-header.yaml
+2. 最后部署ingress
+[root@master02 ~/k8s-manifests/app]# cat ingress-hotelresourcejinjiang-canary-header.yaml 
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: hotelresourcejinjiang-canary-header
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-by-header: "x-app-canary"
+    nginx.ingress.kubernetes.io/canary-by-header-value: "true"
+spec:
+  rules:
+  - host: hotelresourcejinjiang.hs.com
+    http:
+      paths: 
+      - backend:
+          serviceName: hotelresourcejinjiang-canary-header
+          servicePort: 80
+[root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-canary-header.yaml
+3. 测试通过指定头部获取的结果是否为v2
+[root@salt ~]# while true;do date;curl -H 'x-app-canary: true' http://hotelresourcejinjiang.hs.com;sleep 1;done
+2021年 05月 12日 星期三 21:01:23 CST
+Hello MyApp | Version: v2 | <a href="hostname.html">Pod Name</a>
+----通过主机名访问依旧为v1
+[root@salt ~]# while true;do date;curl -H 'host: hotelresourcejinjiang.hs.com' http://192.168.13.57;sleep 1;done
+2021年 05月 13日 星期四 09:05:15 CST
+Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
+
+#通过权重值和通过head来发布时，只能生效一种，虽然两个ingress清单可以配置，但是实际生效的是其中一个
+1. 通过权重值进行灰度发布，先发布后端pod
+[root@master02 ~/k8s-manifests/app]# cat hs-app-canary-weight.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: hotelresourcejinjiang-canary-weight
+  namespace: default
+spec:
+  selector:
+    app: hotelresourcejinjiang.hs.com
+    Language: netCore
+    env: test
+    team: ops
+    tag: canary-weight
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80  
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hotelresourcejinjiang-canary-weight
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hotelresourcejinjiang.hs.com
+      Language: netCore
+      env: test
+      team: ops
+      tag: canary-weight
+  template:
+    metadata:
+      labels:
+        app: hotelresourcejinjiang.hs.com
+        Language: netCore
+        env: test
+        team: ops
+        tag: canary-weight
+    spec:
+      containers:
+      - name: hotelresourcejinjiang
+        image: ikubernetes/myapp:v3
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 80
+        livenessProbe:
+          httpGet:
+            port: http
+            path: /index.html
+          initialDelaySeconds: 1 
+          periodSeconds: 3 
+        readinessProbe:
+          httpGet:
+            port: http
+            path: /index.html
+          initialDelaySeconds: 1 
+          periodSeconds: 3 
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "640Mi"
+            cpu: "500m"
+[root@master02 ~/k8s-manifests/app]# kubectl apply -f hs-app-canary-weight.yaml
+[root@master02 ~/k8s-manifests/app]# kubectl get pods -o wide 
+NAME                                                   READY   STATUS    RESTARTS   AGE     IP             NODE                NOMINATED NODE   READINESS GATES
+hotelresourcejinjiang-base-c6dfd948c-clxtd             1/1     Running   0          4m24s   10.244.4.171   node02.k8s.hs.com   <none>           <none>
+hotelresourcejinjiang-base-c6dfd948c-sbjg5             1/1     Running   0          4m24s   10.244.3.252   node01.k8s.hs.com   <none>           <none>
+hotelresourcejinjiang-canary-header-88c79bb8f-bvfj6    1/1     Running   0          2m58s   10.244.4.172   node02.k8s.hs.com   <none>           <none>
+hotelresourcejinjiang-canary-header-88c79bb8f-gxcmf    1/1     Running   0          2m58s   10.244.3.253   node01.k8s.hs.com   <none>           <none>
+hotelresourcejinjiang-canary-weight-5c79dc4bb5-sft25   1/1     Running   0          38s     10.244.4.173   node02.k8s.hs.com   <none>           <none>
+hotelresourcejinjiang-canary-weight-5c79dc4bb5-sq99l   1/1     Running   0          38s     10.244.3.254   node01.k8s.hs.com   <none>           <none>
+[root@master02 ~/k8s-manifests/app]# kubectl get ingress 
+NAME                                  CLASS    HOSTS                          ADDRESS                       PORTS   AGE
+hotelresourcejinjiang-base            <none>   hotelresourcejinjiang.hs.com   192.168.13.56,192.168.13.57   80      3m59s
+hotelresourcejinjiang-canary-header   <none>   hotelresourcejinjiang.hs.com   192.168.13.56,192.168.13.57   80      2m4s
+2. 部署基于weight的ingress
+[root@master02 ~/k8s-manifests/app]# cat ingress-hotelresourcejinjiang-canary-weight.yaml
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: hotelresourcejinjiang-canary-weight
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "100"
+spec:
+  rules:
+  - host: hotelresourcejinjiang.hs.com
+    http:
+      paths: 
+      - path: /
+        backend:
+          serviceName: hotelresourcejinjiang-canary-weight
+          servicePort: 80
+[root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-canary-weight.yaml
+[root@master02 ~/k8s-manifests/app]# kubectl get ingress -o wide
+NAME                                  CLASS    HOSTS                          ADDRESS                       PORTS   AGE
+hotelresourcejinjiang-base            <none>   hotelresourcejinjiang.hs.com   192.168.13.56,192.168.13.57   80      6m16s
+hotelresourcejinjiang-canary-header   <none>   hotelresourcejinjiang.hs.com   192.168.13.56,192.168.13.57   80      4m21s
+hotelresourcejinjiang-canary-weight   <none>   hotelresourcejinjiang.hs.com   192.168.13.56,192.168.13.57   80      79s
+----此时，生效的还是v1和v2，而hotelresourcejinjiang-canary-weight没有生效，因为此域名基于权重值和header都已经发布ingress,所以只能生效其一
+[root@salt ~]# while true;do date;curl -H 'x-app-canary: true' http://hotelresourcejinjiang.hs.com;sleep 1;done
+2021年 05月 12日 星期三 21:01:23 CST
+Hello MyApp | Version: v2 | <a href="hostname.html">Pod Name</a>
+----通过主机名访问依旧为v1
+[root@salt ~]# while true;do date;curl -H 'host: hotelresourcejinjiang.hs.com' http://192.168.13.57;sleep 1;done
+2021年 05月 13日 星期四 09:05:15 CST
+Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
+3. 移除基于header的ingress、deployment及service，并且使基于权重值的canary生效，因为权重值是50，所以是灰度发布
+[root@master02 ~/k8s-manifests/app]# kubectl delete -f ingress-hotelresourcejinjiang-canary-header.yaml 
+[root@master02 ~/k8s-manifests/app]# kubectl delete -f hs-app-canary-header.yaml
+[root@master02 ~/k8s-manifests/app]# kubectl get ingress -o wide 
+NAME                                  CLASS    HOSTS                          ADDRESS                       PORTS   AGE
+hotelresourcejinjiang-base            <none>   hotelresourcejinjiang.hs.com   192.168.13.56,192.168.13.57   80      12h
+hotelresourcejinjiang-canary-weight   <none>   hotelresourcejinjiang.hs.com   192.168.13.56,192.168.13.57   80      3m5s
+4. 测试
+[root@salt ~]# while true;do date;curl -H 'host: hotelresourcejinjiang.hs.com' http://192.168.13.57;sleep 1;done
+2021年 05月 13日 星期四 09:33:31 CST
+Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
+2021年 05月 13日 星期四 09:33:32 CST
+Hello MyApp | Version: v3 | <a href="hostname.html">Pod Name</a>
+注：此时已经生效，因为权重值为50，所以一半是v1,一半是v3。权重值范围为0-100
+
+#进行真正的灰度发布
+1. 假如v3新版本没有问题，那么将权重值设为100，使所有请求都到新发布的pod上来，实现了滚动更新灰度发布新版本
+[root@master02 ~/k8s-manifests/app]# \cp -a ingress-hotelresourcejinjiang-canary-weight.yaml ingress-hotelresourcejinjiang-canary-weight.yaml.backup
+[root@master02 ~/k8s-manifests/app]# sed -i 's/canary-weight: "50"/canary-weight: "100"/g' ingress-hotelresourcejinjiang-canary-weight.yaml
+[root@master02 ~/k8s-manifests/app]# cat ingress-hotelresourcejinjiang-canary-weight.yaml 
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: hotelresourcejinjiang-canary-weight
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "100"
+spec:
+  rules:
+  - host: hotelresourcejinjiang.hs.com
+    http:
+      paths: 
+      - path: /
+        backend:
+          serviceName: hotelresourcejinjiang-canary-weight
+          servicePort: 80
+[root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-canary-weight.yaml
+2. 假如又发布了一个新版本为v4，此时需要进行直接蓝绿发布,需要在hotelresourcejinjiang-base的配置清单中更改service和deployment关联的后端pod版本
+[root@master02 ~/k8s-manifests/app]# \cp -a hs-app-base.yaml hs-app-base.yaml.backup
+[root@master02 ~/k8s-manifests/app]# sed -i 's#ikubernetes/myapp:v1#ikubernetes/myapp:v4#g' hs-app-base.yaml
+[root@master02 ~/k8s-manifests/app]# cat hs-app-base.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: hotelresourcejinjiang-base
+  namespace: default
+spec:
+  selector:
+    app: hotelresourcejinjiang.hs.com
+    Language: netCore
+    env: test
+    team: ops
+    tag: base
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80  
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hotelresourcejinjiang-base
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hotelresourcejinjiang.hs.com
+      Language: netCore
+      env: test
+      team: ops
+      tag: base
+  template:
+    metadata:
+      labels:
+        app: hotelresourcejinjiang.hs.com
+        Language: netCore
+        env: test
+        team: ops
+        tag: base
+    spec:
+      containers:
+      - name: hotelresourcejinjiang
+        image: ikubernetes/myapp:v4
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 80
+        livenessProbe:
+          httpGet:
+            port: http
+            path: /index.html
+          initialDelaySeconds: 1 
+          periodSeconds: 3 
+        readinessProbe:
+          httpGet:
+            port: http
+            path: /index.html
+          initialDelaySeconds: 1 
+          periodSeconds: 3 
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "640Mi"
+            cpu: "500m"
+[root@master02 ~/k8s-manifests/app]# kubectl apply -f hs-app-base.yaml
+3. 更改canary权重值从100为0，实行蓝绿部署
+[root@master02 ~/k8s-manifests/app]# \cp -a ingress-hotelresourcejinjiang-canary-weight.yaml ingress-hotelresourcejinjiang-canary-weight.yaml.backup
+[root@master02 ~/k8s-manifests/app]# sed -i 's/canary-weight: "100"/canary-weight: "0"/g' ingress-hotelresourcejinjiang-canary-weight.yaml 
+[root@master02 ~/k8s-manifests/app]# cat ingress-hotelresourcejinjiang-canary-weight.yaml  
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: hotelresourcejinjiang-canary-weight
+  namespace: default
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "0"
+spec:
+  rules:
+  - host: hotelresourcejinjiang.hs.com
+    http:
+      paths: 
+      - path: /
+        backend:
+          serviceName: hotelresourcejinjiang-canary-weight
+          servicePort: 80
+[root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-canary-weight.yaml
+4. 测试，已经到v4版本了
+[root@salt ~]# while true;do date;curl -H 'x-app-canary: true' http://hotelresourcejinjiang.hs.com;sleep 1;done   
+2021年 05月 13日 星期四 11:02:28 CST
+Hello MyApp | Version: v4 | <a href="hostname.html">Pod Name</a>
+
+#回滚
+1. 判断权重值是多少
+[root@master02 ~/k8s-manifests/app]# kubectl get ingress/hotelresourcejinjiang-canary-weight -o yaml 2>  /dev/null | grep 'canary-weight: "' | awk -F '"' '{print $2}'
+0
+2. 如果值是0则将值设置为100，如果值是100，则将值设为0，并重新应用基于权重的ingress
+[root@master02 ~/k8s-manifests/app]# sed -i 's/canary-weight: "0"/canary-weight: "100"/g' ingress-hotelresourcejinjiang-canary-weight.yaml 
+[root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-canary-weight.yaml
+--给ingress权重打补丁实现蓝绿部署、灰度发布、回滚到上一个版本
+kubectl patch ingress/hotelresourcejinjiang-canary-weight -p '{"metadata":{"annotations":{"nginx.ingress.kubernetes.io/canary-weight": "0"}}}'
+
+#回滚到指定版本/或者发布到指定版本
+1. 判断权重值是否为0
+[root@master02 ~/k8s-manifests/app]# kubectl get ingress/hotelresourcejinjiang-canary-weight -o yaml 2>  /dev/null | grep 'canary-weight: "' | awk -F '"' '{print $2}'
+0
+2. 如果为0，表示ingress-canary-weight未生效，生效的是ingress-base,此时应该更新ingress-canary-weight对应的service绑定后端的deployment的pod镜像版本，将镜像版本更改为目标版本，例如为v2：
+kubectl patch deployment/hotelresourcejinjiang-canary-weight -p '{"spec": {"template": {"spec": {"containers": [{"name": "hotelresourcejinjiang","image": "ikubernetes/myapp:v2"}]}}}}'
+当镜像版本变更后，需要配置权重值为100并应用
+kubectl patch ingress/hotelresourcejinjiang-canary-weight -p '{"metadata":{"annotations":{"nginx.ingress.kubernetes.io/canary-weight": "100"}}}'
+3. 如果为100，表示ngress-canary-weight已生效，未生产的是ingress-base，此时应该更新ingress-base对应的service绑定后端的deployment的pod镜像版本，将镜像版本更改为目标版本，例如为v5：
+kubectl patch deployment/hotelresourcejinjiang-base -p '{"spec": {"template": {"spec": {"containers": [{"name": "hotelresourcejinjiang","image": "ikubernetes/myapp:v5"}]}}}}'
+当镜像版本变更后，需要配置权重值为0并应用
+kubectl patch ingress/hotelresourcejinjiang-canary-weight -p '{"metadata":{"annotations":{"nginx.ingress.kubernetes.io/canary-weight": "0"}}}'
+
+#如何判断后端endpoints是否健康就绪
+DEPLOYMENT_NAME='hotelresourcejinjiang-base'
+POD_RESULT=`kubectl get pods | grep hotelresourcejinjiang-base* | awk '{print $1}'`
+POD_COUNT=`kubectl get pods | grep hotelresourcejinjiang-base* | wc -l`
+tmp_count=0
+while [ ! ${tmp_count} == ${POD_COUNT} ]; do for i in ${POD_RESULT};do kubectl get pods -n default | grep $i; [ $? == 0 ] && echo 'pod is live' || ((tmp_count++)) ;done ;sleep 1;done
+
+
+
+
+
+#prometheus serviceaccount定义
+[root@master02 ~/k8s-manifests/prometheus/prometheus-legecy]# cat prometheus-rbac-setup-monitoring.yml
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus
+rules:
+- apiGroups: ["*"]
+  resources:
+  - "*"
+  verbs: ["get","list","watch"]
+- nonResourceURLs: ["/metrics"]
+  verbs: ["get"]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus
+subjects:
+- kind: ServiceAccount
+  name: prometheus
+  namespace: monitoring
+---
+
+
+
+#promehteus 监控Ingress
+在部署ingerss清单中，对service名为ingress-nginx-controller的配置段进行添加资源注解，并且重新应用配置即可，此后就可在prometheus上的target中找到名为kubernetes-service-endpoints的job，就可看到ingress的endpoints:
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "10254"
+  labels:
+    helm.sh/chart: ingress-nginx-3.30.0
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 0.46.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: controller
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+spec:
+  type: NodePort
+---
+注：主要是在资源注解中注明prometheus抓取metric的端口以及开关。
+
+
+#prometheus rules定义：
+[root@LocalServer /shell]# kubectl edit cm/prom-prometheus-server -n monitoring
+-------------------
+    rule_files:
+    - /etc/config/kubernetes_pods.yml
+    - /etc/config/apiserver_rules.yml
+    - /etc/config/node-exporter_rules.yml
+    - /etc/config/KubernetesPods_rules.yml
+-------------------
+data:
+  KubernetesPods_rules.yml: |
+    groups:
+    - name: KubernetesIngressStatusAlert
+      rules:
+      - alert: KubernetesIngressRequestLatencyAlert
+        expr: histogram_quantile(0.90, sum(rate(nginx_ingress_controller_request_duration_seconds_bucket{ingress!="",controller_class=~"nginx"}[2m])) by (le, ingress, namespace, controller_namespace,controller_class, job, instance)) > 0.1
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Ingress Request Latency High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}}, controller_class: {{ $labels.controller_class }}, controller_namespace: {{$labels.controller_namespace}}, namespace: {{ $labels.namespace }}, ingress: {{$labels.ingress}} Kubernetes Ingress P90 Request Latency above 100ms/5m (current value: {{ $value }})"		  		  
+      - alert: KubernetesIngressConnectNumberAlert
+        expr: sum by(job, instance, controller_class, controller_namespace, controller_pod,) (avg_over_time((nginx_ingress_controller_nginx_process_connections[5m]))) > 100
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Ingress Connect Number Many"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}}, controller_class: {{ $labels.controller_class }}, controller_namespace: {{$labels.controller_namespace}}, controller_pod: {{$labels.controller_pod}} Kubernetes Ingress Connect Number above 100/5m (current value: {{ $value }})"		  		  
+  kubernetes_pods.yml: |		#custom kubernetes_pods rules
+    groups:
+    - name: KubernetesPodsStatusAlert
+      rules:
+      - alert: KubernetesAllPodsCPUUsageAlert
+        expr: sum by (instance,job) (irate(container_cpu_usage_seconds_total{image!="",name=~"^k8s_.*"}[5m])) / sum by (instance,job) (machine_cpu_cores) * 100 > 70 
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Node All Pods CPU Usage Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes Node All Pods CPU Usage Rate above 70%/5m (current value: {{ $value }})"
+      - alert: KubernetesAllPodsMemoryUsageAlert
+        expr: sum by (instance,job) (container_memory_working_set_bytes{image!="",name=~"^k8s_.*"}) / sum by (instance,job) (machine_memory_bytes) * 100 > 70
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Node All Pods Memory Usage Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes Node All Pods Memory Usage Rate above 70%/5m (current value: {{ $value }})"
+      - alert: KubernetesAllPodsNetworkSendAlert
+        expr: sum by(instance,job) (irate(container_network_transmit_bytes_total[5m])) /1024 /1024 > 50
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Node All Pods Network Send Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes Node All Pods Network Send Rate above 50M/5m (current value: {{ $value }})"  
+      - alert: KubernetesAllPodsNetworkReceivedAlert
+        expr: sum by(instance,job) (irate(container_network_receive_bytes_total[5m])) /1024 /1024 > 50
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Node All Pods Network Received Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes Node All Pods Network Received Rate above 50M/5m (current value: {{ $value }})"  		  
+      - alert: KubernetesSinglePodsCPUUsageAlert
+        expr: sum by(instance,job,namespace,pod) (irate(container_cpu_usage_seconds_total{image!="",name=~"^k8s_.*"}[5m])) * 1000 > 1000 
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Node Single Pods CPU Usage Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}}, namespace: {{$labels.namespace}}, pod: {{$labels.pod}} Kubernetes Node Single Pods CPU Usage Rate above 1000m(1000m=1core)/5m (current value: {{ $value }})"
+      - alert: KubernetesSinglePodsMemoryUsageAlert
+        expr: sum by(instance,job,namespace,pod) (container_memory_working_set_bytes{image!="",name=~"^k8s_.*"}) /1024 /1024 > 1024
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Node Single Pods Memory Usage Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}}, namespace: {{$labels.namespace}}, pod: {{$labels.pod}} Kubernetes Node Single Pods Memory Usage Rate above 1G/5m (current value: {{ $value }})"		  
+      - alert: KubernetesSinglePodsNetworkSenddAlert
+        expr: sum by(instance,job,namespace,pod) (irate(container_network_transmit_bytes_total{image!="",name=~"^k8s_.*"}[5m])) /1024 /1024 > 20
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Node Single Pods Network Send Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}}, namespace: {{$labels.namespace}}, pod: {{$labels.pod}} Kubernetes Node Single Pods Network Send Rate above 20M/5m (current value: {{ $value }})"			  
+      - alert: KubernetesSinglePodsNetworkReceivedAlert
+        expr: sum by(instance,job,namespace,pod) (irate(container_network_receive_bytes_total{image!="",name=~"^k8s_.*"}[5m])) /1024 /1024 > 20
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Node Single Pods Network Received Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}}, namespace: {{$labels.namespace}}, pod: {{$labels.pod}} Kubernetes Node Single Pods Network Received Rate above 20M/5m (current value: {{ $value }})"	
+  apiserver_rules.yml: |         #custom apiserver rules
+    groups:
+    - name: KubernetesAPIServerAlert
+      rules:
+      - alert: KubernetesAPIServerDown		
+        expr: up{instance=~".*:6443"} == 0
+        for: 15s
+        labels:
+          severity: High
+        annotations:
+          summary: "Kubernetes APIServer Down"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes APIServer is Down, time keep 15s (current value: {{ $value }})"  	  
+      - alert: KubernetesAPIServerRestfulCommandAlert		
+        expr: sum(rate(apiserver_request_total[5m])) by (verb)  > 100 
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes APIServer Restful Command Many"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes APIServer Restful Command above 100/5m (current value: {{ $value }})"     
+      - alert: KubernetesAPIServerWorkQueueAlert		
+        expr: histogram_quantile(0.90, sum(rate(workqueue_queue_duration_seconds_bucket[5m])) by (le)) > 0.01
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes APIServer Work Queue Wait Time Long"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes APIServer Work Queue Wait Time Long, P90 value above 10ms/5m (current value: {{ $value }})" 
+      - alert: KubernetesAPIServerWorkQueueAlert		
+        expr: histogram_quantile(0.90, sum(rate(workqueue_work_duration_seconds_bucket[5m])) by (le)) > 0.01
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes APIServer Work Queue Processing Time Long"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes APIServer Work Queue Processing Time Long, P90 value above 10ms/5m (current value: {{ $value }})"    		  
+      - alert: KubernetesAPIServerRequestLatencyAlert		
+        expr: histogram_quantile(0.90, sum(rate(apiserver_request_duration_seconds_bucket{verb!~"CONNECT|WATCH"}[5m])) by (le)) > 0.5 
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes APIServer Request Latency High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes APIServer Request Latency High, P90 value above 500ms/5m (current value: {{ $value }})"  
+      - alert: KubernetesAPIServerRequestLatencyAlert		
+        expr: histogram_quantile(0.90, sum(rate(etcd_request_duration_seconds_bucket[5m])) by (le)) > 0.05 
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Etcd Request Latency High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes APIServer Request Latency High, P90 value above 50ms/5m (current value: {{ $value }})" 
+  node-exporter_rules.yml: |    #custom node_exporter rules
+    groups:
+    - name: KubernetesHostStatusAlert
+      rules:
+      - alert: KubernetesNodeDown
+        expr: up{job=~"kubernetes-nodes"} == 0
+        for: 15s
+        labels:
+          severity: High
+        annotations:
+          summary: "Kubernetes Node is Down"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} is Down,Server Machine can shutdown,time keep 15s(current value: {{ $value }})"
+      - alert: KubernetesHostCpuUsageAlert
+        expr: sum by(job,instance) (avg without(cpu) (irate(node_cpu_seconds_total{job="kubernetes-service-endpoints",mode!="idle"}[5m]))) * 100 > 85
+        for: 5m
+        labels:
+          severity: High
+        annotations:
+          summary: "Host CPU[5m] usage High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} CPU Usage above 85%/5m (current value: {{ $value }})"
+      - alert: KubernetesHostCpuUsage100%Alert
+        expr: sum by(job,instance) (avg without(cpu) (irate(node_cpu_seconds_total{job="kubernetes-service-endpoints",mode!="idle"}[5m]))) * 100 >= 99
+        for: 5m
+        labels:
+          severity: High
+        annotations:
+          summary: "Host CPU[5m] usage High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} CPU Usage above equal 99%/5m (current value: {{ $value }})"
+      - alert: KubernetesHostMemUsageAlert
+        expr: (1 - ((node_memory_Buffers_bytes{job="kubernetes-service-endpoints"}+ node_memory_Cached_bytes{job="kubernetes-service-endpoints"} + node_memory_MemFree_bytes{job="kubernetes-service-endpoints"}) /node_memory_MemTotal_bytes{job="kubernetes-service-endpoints"})) * 100 > 85
+        for: 5m
+        labels:
+          severity: High
+        annotations:
+          summary: "Host Memory usage High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Memory Usage above 85% (current value: {{ $value }})"
+      - alert: KubernetesHostMemUsage100%Alert
+        expr: (1 - ((node_memory_Buffers_bytes{job="kubernetes-service-endpoints"}+ node_memory_Cached_bytes{job="kubernetes-service-endpoints"} + node_memory_MemFree_bytes{job="kubernetes-service-endpoints"}) /node_memory_MemTotal_bytes{job="kubernetes-service-endpoints"})) * 100 >= 99
+        for: 5m
+        labels:
+          severity: High
+        annotations:
+          summary: "Host Memory usage High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Memory Usage above equal 99% (current value: {{ $value }})"
+      - alert: KubernetesHostDiskUsageCapacityAlert
+        expr: (100-(node_filesystem_free_bytes{fstype=~"ext4|xfs",job="kubernetes-service-endpoints"}/node_filesystem_size_bytes {fstype=~"ext4|xfs",job="kubernetes-service-endpoints"}*100)) > 90
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Host Disk Usage Capacity High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Host Disk Capacity Usage above 90% (path: {{ $labels.mountpoint }},value: {{ $value }})"
+      - alert: KubernetesHostDiskAvailableCapacityAlert
+        expr: node_filesystem_free_bytes{fstype=~"ext4|xfs",mountpoint!="/boot",job="kubernetes-service-endpoints"} / 1024 /1024 /1024 < 1
+        for: 1m
+        labels:
+          severity: High
+        annotations:
+          summary: "Host Disk Available Capacity Low"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Host Disk Available Capacity under 1G (path: {{ $labels.mountpoint }},value: {{ $value }})"
+      - alert: KubernetesHostDiskReadRateAlert
+        expr: irate(node_disk_read_bytes_total{job="kubernetes-service-endpoints"}[5m]) /1024 /1024 > 60
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Host Disk Read Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Disk Read Rate above 60M/5m (device: {{ $labels.device }},value: {{ $value }})"
+      - alert: KubernetesHostDiskWriteRateAlert
+        expr: irate(node_disk_written_bytes_total{job="kubernetes-service-endpoints"}[5m]) /1024 /1024 > 60
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Host Disk Write Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Disk Write Rate above 60M/5m (device: {{ $labels.device }},value: {{ $value }})"
+      - alert: KubernetesHostDiskIOPSReadRateAlert
+        expr: topk(1,irate(node_disk_reads_completed_total{job="kubernetes-service-endpoints"}[5m])) > 1500
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Host Disk[5m] IOPS Read Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Disk Read IOPS Rate above 1500/5m (device: {{ $labels.device }},value: {{ $value }})"
+      - alert: KubernetesHostDiskIOPSWriteRateAlert
+        expr: topk(1,irate(node_disk_writes_completed_total{job="kubernetes-service-endpoints"}[5m])) > 1500
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Host Disk[5m] IOPS Write Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Disk Write IOPS Rate above 1500/5m (device: {{ $labels.device }},value: {{ $value }})"
+      - alert: KubernetesHostNetworkReceiveAlert
+        expr: irate(node_network_receive_bytes_total{device!~"tap.*|veth.*|br.*|docker.*|virbr*|lo*",job="kubernetes-service-endpoints"}[5m]) * 8 / 1024 / 1024 > 80
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Host Network[5m] Receive Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Network Download rate above 80Mbps/5m (current value: {{ $value }})"		  
+      - alert: KubernetesHostNetworkSendAlert
+        expr: irate(node_network_transmit_bytes_total{device!~"tap.*|veth.*|br.*|docker.*|virbr*|lo*",job="kubernetes-service-endpoints"}[5m]) * 8 / 1024 / 1024 > 80
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Host Network[5m] Send Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Network Send rate above 80Mbps/5m (current value: {{ $value }})" 
+      - alert: KubernetesHostNetworkEstablishedConnectionAlert
+        expr: node_netstat_Tcp_CurrEstab  > 1500
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Host Network[5m] Established Connection High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Network Established Connection above 1500 (current value: {{ $value }})"  
+-------------------
+#alertmanager告警定义
+1. [root@LocalServer ~]# kubectl edit cm/prom-prometheus-alertmanager -n monitoring
+-------------------
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+      smtp_require_tls: false
+      smtp_smarthost: 'smtp.qiye.163.com:465'
+      smtp_hello: 'alertmanager'
+      smtp_from: 'alert@hom.com'
+      smtp_auth_username: 'alert@hom.com'
+      smtp_auth_password: 'alert@46!@#'
+    templates:
+      - '/etc/config/email.tmpl'
+    route:
+      receiver: 'email'
+      group_by: ['alertname']
+      group_wait: 15s
+      group_interval: 15s
+      repeat_interval: 4h
+      routes:
+      - receiver: 'email'
+        group_wait: 10s
+        continue: true
+        match_re:
+          job: .*[a-z].*
+      - receiver: 'webhook'
+        group_wait: 10s
+        continue: true
+        match_re:
+          job: .*[a-z].*
+    receivers:
+    - name: 'email'
+      email_configs:
+      - to: '{{ template "email.to" . }}'
+        html: '{{ template "email.html" . }}'
+        send_resolved: true
+    - name: 'webhook'
+      webhook_configs:
+      - url: 'http://192.168.13.235:8060/dingtalk/webhook1/send'
+        send_resolved: true
+    inhibit_rules:
+    - source_match_re:
+        alertname: .*Down.*
+      target_match_re:
+        job: .*blackbox.*
+      equal: 
+      - ops   
+---------------------邮件模板-------------------
+  email.tmpl: |
+    {{ define "email.from" }}jack.li@homsom.com{{ end }}
+    {{ define "email.to" }}jack.li@homsom.com{{ end }}
+    {{ define "email.html" }}
+    {{ range .Alerts }}
+     <pre>
+    状态：{{   .Status }}
+    实例: {{ .Labels.instance }}
+    信息: {{ .Annotations.summary }}
+    详情: {{ .Annotations.description }}
+    时间: {{ (.StartsAt.Add 28800e9).Format "2006-01-02 15:04:05" }}
+     </pre>
+    {{ end }}
+    {{ end }}
+-------------------
 
 </pre>
