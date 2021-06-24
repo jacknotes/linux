@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: __Service_metadata_name__
+  namespace: __Service_metadata_namespace__
+spec:
+  selector:
+    app: __Service_spec_selector_app__
+    Language: netCore
+    env: test
+    team: ops
+    tag: __Service_spec_selector_tag__
+  ports:
+  - name: http
+    port: 80
+    targetPort: __Service_spec_ports_targetPort__
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: __Deployment_metadata_name__
+  namespace: __Deployment_metadata_namespace__
+spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: 
+      maxSurge: 1
+      maxUnavailable: 0
+  replicas: __Deployment_spec_replicas__
+  selector:
+    matchLabels:
+      app: __Deployment_spec_selector_matchLabels_app__
+      Language: netCore
+      env: test
+      team: ops
+      tag: __Deployment_spec_selector_matchLabels_tag__
+  template:
+    metadata:
+      labels:
+        app: __Deployment_spec_template_metadata_labels_app__
+        Language: netCore
+        env: test
+        team: ops
+        tag: __Deployment_spec_template_metadata_labels_tag__
+    spec:
+      containers:
+      - name: __Deployment_spec_template_spec_containers_name__
+        image: __Deployment_spec_template_spec_containers_image__
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 80
+        livenessProbe:
+          httpGet:
+            port: http
+            path: /index.html
+          initialDelaySeconds: 1 
+          periodSeconds: 3 
+        readinessProbe:
+          httpGet:
+            port: http
+            path: /index.html
+          initialDelaySeconds: 1 
+          periodSeconds: 3 
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "640Mi"
+            cpu: "500m"
