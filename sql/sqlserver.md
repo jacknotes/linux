@@ -1,4 +1,4 @@
-﻿#sql server
+#sql server
 <pre>
 数据存储结构：
 #数据库文件和事务文件组成：
@@ -1112,6 +1112,34 @@ BACKUP DATABASE [FinanceDB20210304] TO  DISK ='I:\tmpBackupDB\FinanceDB_diff.bak
 BACKUP LOG [FinanceDB20210304] TO  DISK ='I:\tmpBackupDB\FinanceDB_log.trn' WITH NAME=N'[FinanceDB20210304] 日志'
 
 
+
+#20210628
+--查询死锁
+select    
+    request_session_id spid,   
+    OBJECT_NAME(resource_associated_entity_id) tableName    
+from    
+    sys.dm_tran_locks   
+where    
+    resource_type='OBJECT' 
+
+--杀死死锁进程
+kill 354 
+
+--显示死锁相关信息
+exec sp_who2 354
+
+--SQLServer查看用户连接数
+SELECT login_name,  
+       Count(0) user_count  
+FROM   Sys.dm_exec_requests dr WITH(nolock)  
+       RIGHT OUTER JOIN Sys.dm_exec_sessions ds WITH(nolock)  
+                     ON dr.session_id = ds.session_id  
+       RIGHT OUTER JOIN Sys.dm_exec_connections dc WITH(nolock)  
+                     ON ds.session_id = dc.session_id  
+WHERE  ds.session_id > 50  
+GROUP  BY login_name  
+ORDER  BY user_count DESC 
 
 
  
