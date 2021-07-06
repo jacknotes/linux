@@ -1,4 +1,4 @@
-﻿#prometheus
+#prometheus
 <pre>
 #学习1
 #时间序列数据：
@@ -449,6 +449,9 @@ WantedBy=multi-user.target
 [root@prometheus snmp_exporter]# systemctl enable snmp_exporter
 [root@prometheus snmp_exporter]# netstat -tnlp | grep 9116
 tcp6       0      0 :::9116                 :::*                    LISTEN      19832/snmp_exporter 
+
+#MIB
+https://github.com/librenms/librenms/tree/master/mibs
 
 -----------------
 
@@ -1917,8 +1920,13 @@ prometheus:
 
 
 
-
-
+#grafana + zabbix 显示 
+1. grafana-cli plugins install alexanderzobnin-zabbix-app    --安装grafana zabbix插件
+2. vim /etc/grafana/grafana.ini    --添加允许未注册的插件装载
+allow_loading_unsigned_plugins = alexanderzobnin-zabbix-datasource
+3. systemctl restart grafana-server.service
+4. 在zabbix中新建只读用户组grafana，并新建用户grafana加入grafana组中
+5. 添加zabbix数据源，地址：http://zabbix.hs.com/api_jsonrpc.php 或 地址：http://zabbix.hs.com/zabbix/api_jsonrpc.php
 
 
 </pre>
