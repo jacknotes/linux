@@ -452,6 +452,28 @@ tcp6       0      0 :::9116                 :::*                    LISTEN      
 
 #MIB
 https://github.com/librenms/librenms/tree/master/mibs
+idracURL: https://github.com/librenms/librenms/blob/master/mibs/dell/DELL-RAC-MIB
+[root@prometheus generator]# cd /usr/local/generator/
+[root@prometheus generator]# tree .
+.
+└── mib
+    └── DELL-RAC-MIB
+[root@prometheus generator]# snmptranslate -Tz -m ~/.snmp/mibs/DELL-RAC-MIB | grep batteryState
+"batteryState"			"1.3.6.1.4.1.674.10892.2.6.1.20.130.15.1.4"
+[root@prometheus generator]# cat generator.yml
+---
+modules:  
+# we need to generate hwCpuDevTable metrics.
+# and the module name in the `snmp.yml` will be `dell`.
+  dell:
+    walk: 
+      - batteryState
+    version: 2 
+    timeout: 30s 
+    auth:
+      community: "public"
+---
+[root@prometheus mib]# docker run -it -v "${PWD}:/opt/" prom/snmp-generator:master generate
 
 -----------------
 
