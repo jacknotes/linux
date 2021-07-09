@@ -1,4 +1,4 @@
-﻿#linux内核调优
+#linux内核调优
 #常规优化
 linux系统调优包括两个文件，一个是limits.conf文件，一个是sysctl.conf文件，这两个文件分别在/etc/secriuty/limits.conf和/etc/sysctl.conf下，具体修改内容如下：
 vi /etc/security/limits.conf
@@ -107,6 +107,18 @@ ITMED_WAIT：等待所有分组死掉
 CLOSING：两边同时尝试关闭
 TIME_WAIT：另一边已初始化一个释放
 LAST_ACK：等待所有分组死掉
+
+#/etc/sysctl.conf
+---
+#network
+net.ipv4.tcp_syncookies = 1 
+net.ipv4.tcp_tw_reuse = 1 
+net.ipv4.tcp_tw_recycle = 1 
+net.ipv4.tcp_keepalive_time = 1200 
+net.ipv4.ip_local_port_range = 10000 65000 
+net.ipv4.tcp_max_syn_backlog = 8192 
+net.ipv4.tcp_max_tw_buckets = 5000
+---
 
 
 
