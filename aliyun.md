@@ -1202,4 +1202,36 @@ POST _snapshot/aliyun_auto_snapshot/<snapshot>/_restore
 程序读写除DB0以外的数据库时不成功，问题在哪？
 答：如果您的Redis实例为集群架构或读写分离架构，且需要执行切换或选择数据库的操作（即使用多数据库功能），您必须先将cluster_compat_enable参数设置为0（即关闭原生Redis Cluster语法兼容），然后重启客户端应用。
 
+
+
+
+
+
+
+#20210713
+--OSS帮助命令
+E:\Software\ossutil64>.\ossutil64.exe help cp
+--OSS配置
+E:\Software\ossutil64>.\ossutil64.exe config
+--OSS测试网络
+E:\Software\ossutil64>.\ossutil64.exe  probe --upload --bucketname dbs-backup-20159124-cn-shanghai --add aliyun.com
+--OSS新建目录
+E:\Software\ossutil64>.\ossutil64.exe mkdir oss://dbs-backup-20159124-cn-shanghai/test01
+--OSS上传文件不重命名
+E:\Software\ossutil64>.\ossutil64.exe cp e:\idrac_dashboard.json oss://dbs-backup-20159124-cn-shanghai/test01/
+--OSS上传文件不重命名
+E:\Software\ossutil64>.\ossutil64.exe cp e:\idrac_dashboard.json oss://dbs-backup-20159124-cn-shanghai/idrac.json 
+--OSS列出Bucket文件
+E:\Software\ossutil64>.\ossutil64.exe ls oss://dbs-backup-20159124-cn-shanghai
+LastModifiedTime                   Size(B)  StorageClass   ETAG                                  ObjectName
+2021-07-13 11:50:24 +0800 CST       444549      Standard   9540352DBC57D44FB6CC715153A599C0      oss://dbs-backup-20159124-cn-shanghai/test01
+2021-07-13 11:49:02 +0800 CST            0      Standard   D41D8CD98F00B204E9800998ECF8427E      oss://dbs-backup-20159124-cn-shanghai/test01/
+2021-07-13 11:51:10 +0800 CST       444549      Standard   9540352DBC57D44FB6CC715153A599C0      oss://dbs-backup-20159124-cn-shanghai/test01/idrac_dashboard.json
+Object Number is: 3
+--OSS删除一个对象
+E:\Software\ossutil64>.\ossutil64.exe rm  oss://dbs-backup-20159124-cn-shanghai/test01
+--OSS下载一个文件夹所有内容
+E:\Software\ossutil64>.\ossutil64.exe cp oss://dbs-backup-20159124-cn-shanghai/snapshot/ --recursive .\
+
+
 </pre>

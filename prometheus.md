@@ -474,6 +474,30 @@ modules:
       community: "public"
 ---
 [root@prometheus mib]# docker run -it -v "${PWD}:/opt/" prom/snmp-generator:master generate
+注：自己通过generator生成器生成snmp.yml文件总是失败。可以借助第三方生成好的文件进行运行
+
+#第三方snmp.yml文件下载
+https://raw.githubusercontent.com/zorrzoor/grafana-idrac-dashboard/main/snmp.yml
+#dashboard
+idrac snmp dashboard for granfana: 14395
+#多开一个snmp_exporter服务
+[root@prometheus snmp_exporter]# cat /usr/lib/systemd/system/snmp_exporter-two.service 
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/snmp_exporter-two/snmp_exporter \
+--config.file=/usr/local/snmp_exporter-two/snmp.yml \
+--web.listen-address=192.168.13.236:9117
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
 
 -----------------
 
