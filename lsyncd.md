@@ -48,3 +48,121 @@ sync {
         port  =  22
         }
     }
+
+
+<pre>
+#20210714
+[root@prometheus lsyncd]# cat /etc/lsyncd.conf
+----
+-- User configuration file for lsyncd.
+--
+-- Simple example for default rsync, but executing moves through on the target.
+--
+-- For more examples, see /usr/share/doc/lsyncd*/examples/
+-- 
+
+settings {
+    logfile ="/var/log/lsyncd/lsyncd.log",
+    statusFile ="/var/run/lsyncd/lsyncd.status",
+    inotifyMode = "CloseWrite or Modify",
+    maxProcesses = 1,
+}
+
+sync {
+    default.rsync,
+    source    = "/etc/grafana",
+    target    = "/backup/remoteLocal/grafana",
+    excludeFrom = "/etc/lsyncd/lsyncd_exclude.lst",
+    rsync     = {
+        binary = "/usr/bin/rsync",
+        archive = true,
+        compress = true
+    } 
+}
+
+sync {
+    default.rsync,
+    source    = "/usr/local/prometheus",
+    target    = "/backup/remoteLocal/prometheus",
+    excludeFrom = "/etc/lsyncd/lsyncd_exclude.lst",
+    rsync     = {
+        binary = "/usr/bin/rsync",
+        archive = true,
+        compress = true
+    } 
+}
+
+sync {
+    default.rsync,
+    source    = "/usr/local/alertmanager",
+    target    = "/backup/remoteLocal/alertmanager",
+    excludeFrom = "/etc/lsyncd/lsyncd_exclude.lst",
+    rsync     = {
+        binary = "/usr/bin/rsync",
+        archive = true,
+        compress = true
+    } 
+}
+
+sync {
+    default.rsync,
+    source    = "/usr/local/blackbox_exporter",
+    target    = "/backup/remoteLocal/blackbox_exporter",
+    excludeFrom = "/etc/lsyncd/lsyncd_exclude.lst",
+    rsync     = {
+        binary = "/usr/bin/rsync",
+        archive = true,
+        compress = true
+    } 
+}
+
+sync {
+    default.rsync,
+    source    = "/usr/local/consul",
+    target    = "/backup/remoteLocal/consul",
+    excludeFrom = "/etc/lsyncd/lsyncd_exclude.lst",
+    rsync     = {
+        binary = "/usr/bin/rsync",
+        archive = true,
+        compress = true
+    } 
+}
+
+sync {
+    default.rsync,
+    source    = "/usr/local/snmp_exporter",
+    target    = "/backup/remoteLocal/snmp_exporter",
+    excludeFrom = "/etc/lsyncd/lsyncd_exclude.lst",
+    rsync     = {
+        binary = "/usr/bin/rsync",
+        archive = true,
+        compress = true
+    } 
+}
+
+sync {
+    default.rsync,
+    source    = "/usr/local/snmp_exporter-two",
+    target    = "/backup/remoteLocal/snmp_exporter-two",
+    excludeFrom = "/etc/lsyncd/lsyncd_exclude.lst",
+    rsync     = {
+        binary = "/usr/bin/rsync",
+        archive = true,
+        compress = true
+    } 
+}
+
+--systemd service backup
+sync {
+    default.rsync,
+    source    = "/usr/lib/systemd/system",
+    target    = "/backup/remoteLocal/systemd-service",
+    excludeFrom = "/etc/lsyncd/lsyncd_exclude.lst",
+    rsync     = {
+        binary = "/usr/bin/rsync",
+        archive = true,
+        compress = true
+    } 
+}
+
+</pre>
