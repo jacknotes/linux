@@ -315,7 +315,7 @@ WantedBy=multi-user.target
 client
 dev tun
 proto tcp
-remote 47.100.73.115 1194
+remote 1.1.1.1 1194
 resolv-retry infinite
 nobind
 persist-key
@@ -330,7 +330,7 @@ verb 3
 client
 dev tun
 proto tcp
-remote 47.100.73.115 1194
+remote 1.1.1.1 1194
 resolv-retry infinite
 nobind
 persist-key
@@ -344,7 +344,7 @@ verb 3
 client
 dev tun
 proto tcp
-remote 47.100.73.115 1194
+remote 1.1.1.1 1194
 resolv-retry infinite
 nobind
 persist-key
@@ -655,14 +655,14 @@ DB_ENGINE: mysql
 DB_HOST: 127.0.0.1
 DB_PORT: 3306
 DB_USER: jumpserver_admin
-DB_PASSWORD: jumpserver
+DB_PASSWORD: jumpserver111
 DB_NAME: jumpserver
 HTTP_BIND_HOST: 0.0.0.0
 HTTP_LISTEN_PORT: 8080
 WS_LISTEN_PORT: 8070
 REDIS_HOST: 127.0.0.1
 REDIS_PORT: 6379
-REDIS_PASSWORD: kkD9g
+REDIS_PASSWORD: kkD9g123
 WINDOWS_SKIP_ALL_MANUAL_PASSWORD: true
 ----
 (py3) [root@jumpserver /opt/jumpserver]# /opt/jumpserver/jms start -d
@@ -698,7 +698,7 @@ CORE_HOST: http://127.0.0.1:8080
 BOOTSTRAP_TOKEN: UlxeRfB4P K
 REDIS_HOST: 127.0.0.1
 REDIS_PORT: 6379
-REDIS_PASSWORD: kkD9g 
+REDIS_PASSWORD: kkD9g132
 REDIS_DB_ROOM: 6
 (py3) [root@jumpserver /opt/koko]# /opt/koko/koko -s start -d 
 (py3) [root@jumpserver /opt/koko]# netstat -tnlp | grep -E '2222|5000'
