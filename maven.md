@@ -138,3 +138,20 @@ url：nexus仓库的地址
 
 
 </pre>
+
+<pre>
+#nuget推送包到nexus
+E:\tmp\nuget>nuget.exe push *.nupkg -source http://nugetv3.hs.com/repository/nuget-hosted/
+警告: No API Key was provided and no API Key could be found for 'http://nugetv3.hs.com/repository/nuget-hosted/'. To save an API Key for a source use the 'setApiKey' command.
+Pushing polly.7.1.1.nupkg to 'http://nugetv3.hs.com/repository/nuget-hosted/'...
+  PUT http://nugetv3.hs.com/repository/nuget-hosted/
+请提供以下人员的凭据: http://nugetv3.hs.com/repository/nuget-hosted/
+用户名: 0799
+密码: **********
+  Created http://nugetv3.hs.com/repository/nuget-hosted/ 7706ms
+Your package was pushed.
+Pushing polly.7.2.0.nupkg to 'http://nugetv3.hs.com/repository/nuget-hosted/'...
+  PUT http://nugetv3.hs.com/repository/nuget-hosted/
+  Created http://nugetv3.hs.com/repository/nuget-hosted/ 256ms
+Your package was pushed.
+</pre>
