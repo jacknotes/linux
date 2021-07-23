@@ -21,6 +21,17 @@ proxy 代理仓库：代理公共的远程仓库；
 virtual 虚拟仓库：用于适配 Maven 1；
 group 仓库组：Nexus 通过仓库组的概念统一管理多个仓库，这样我们在项目中直接请求仓库组即可请求到仓库组管理的多个仓库。
 
+#nexus安装 
+docker run -d -p 8010:8081 --name nexus-dotnet -v /data/nexus3:/nexus-data sonatype/nexus3:3.32.0
+
+#neuxs备份恢复
+--备份
+只需要备份nexus-data目录即可。
+--恢复
+chmod -R 777 /data/nexus-data
+docker run -d -p 8010:8081 --name nexus-dotnet -v /data/nexus-data:/nexus-data sonatype/nexus3:3.32.0
+
+
 #增加maven仓库
 现在默认是从中央仓库拉取jar,我们把他改为aliyun的，岂不是更快。
 增加一个maven仓库：maven-proxy,URL指向阿里云地址：http://maven.aliyun.com/nexus/content/groups/public

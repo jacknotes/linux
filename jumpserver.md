@@ -1129,6 +1129,16 @@ u = User.objects.get(username='admin')
 u.reset_password('password')
 u.save()
 
+--MFA密码忘记重置
+cd /opt/jumpserver/apps
+python manage.py shell
+
+from users.models import User
+u = User.objects.get(username='admin')
+u.mfa_level='0'
+u.otp_secret_key=''
+u.save()
+
 
 </pre>
 
