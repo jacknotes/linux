@@ -163,6 +163,208 @@ sudo apt-key list
 --删除apt-key 
 sudo apt-key del 59FE0256827269DC81578F928B57C5C2836F4BEB
 
+#关闭ubuntu防火墙
+[jack@ubuntu ~]$sudo systemctl stop ufw
+[jack@ubuntu ~]$sudo systemctl disable ufw
+
+
+#常用命令工具安装
+--安装 apt 依赖包，用于通过HTTPS来获取仓库，也是必要程序包:
+[jack@ubuntu ~]$sudo apt install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common
+[jack@ubuntu ~]$which -a vim 
+/usr/bin/vim
+/bin/vim
+[jack@ubuntu ~]$sudo apt-file search /bin/vim                 
+vim: /usr/bin/vim.basic
+--工具名称
+vim: vim
+net-tools: netstat,route
+iproute2: ip,ss
+netcat-openbsd: nc
+nmap: nmap
+glances: glances
+axel: axel
+lsof: lsof
+ifstat: ifstat
+tree: tree 
+unzip: unzip
+--安装常用命令
+sudo apt install -y vim net-tools iproute2 netcat-openbsd nmap glances axel tree unzip 
+--chrony是时间服务程序，有Daemon
+sudo apt install -y chrony   
+
+#设置ubuntu默认编辑器
+1. 查看所有对象，每个对象对应一个快捷方式
+[jack@ubuntu:~]$ ls /etc/alternatives/
+aclocal            ebtables-restore  fakeroot.fr.1.gz                 lzcmp         nawk.1.gz      rlogin.1.gz       view.da.1.gz
+aclocal.1.gz       ebtables-save     fakeroot.sv.1.gz                 lzcmp.1.gz    nc             rmt               view.de.1.gz
+arptables          editor            from                             lzdiff        nc.1.gz        rmt.8.gz          view.fr.1.gz
+arptables-restore  editor.1.gz       from.1.gz                        lzdiff.1.gz   netcat         rsh               view.it.1.gz
+arptables-save     ex                ftp                              lzegrep       netcat.1.gz    rsh.1.gz          view.ja.1.gz
+automake           ex.1.gz           ftp.1.gz                         lzegrep.1.gz  netrc.5.gz     rview             view.pl.1.gz
+automake.1.gz      ex.da.1.gz        futurize                         lzfgrep       newt-palette   rvim              view.ru.1.gz
+awk                ex.de.1.gz        infobrowser                      lzfgrep.1.gz  pager          telnet            vi.fr.1.gz
+awk.1.gz           ex.fr.1.gz        infobrowser.1.gz                 lzgrep        pager.1.gz     telnet.1.gz       vi.it.1.gz
+builtins.7.gz      ex.it.1.gz        ip6tables                        lzgrep.1.gz   pasteurize     text.plymouth     vi.ja.1.gz
+c++                ex.ja.1.gz        ip6tables-restore                lzless        pftp           traceroute6       vim
+c++.1.gz           ex.pl.1.gz        ip6tables-save                   lzless.1.gz   pftp.1.gz      traceroute6.8.gz  vimdiff
+c89                ex.ru.1.gz        iptables                         lzma          pico           unlzma            vi.pl.1.gz
+c89.1.gz           faked.1.gz        iptables-restore                 lzma.1.gz     pico.1.gz      unlzma.1.gz       vi.ru.1.gz
+c99                faked.es.1.gz     iptables-save                    lzmore        pinentry       vi                vtrgb
+c99.1.gz           faked.fr.1.gz     jsondiff                         lzmore.1.gz   pinentry.1.gz  vi.1.gz           w
+cc                 faked.sv.1.gz     libblas.so.3-x86_64-linux-gnu    mt            rcp            vi.da.1.gz        w.1.gz
+cc.1.gz            fakeroot          liblapack.so.3-x86_64-linux-gnu  mt.1.gz       rcp.1.gz       vi.de.1.gz        write
+cpp                fakeroot.1.gz     lzcat                            my.cnf        README         view              write.1.gz
+ebtables           fakeroot.es.1.gz  lzcat.1.gz                       nawk          rlogin         view.1.gz         wsdump
+2. 例如editor的默认方式是nano
+[jack@ubuntu:~]$ ls -ld /etc/alternatives/editor
+lrwxrwxrwx 1 root root 9 Feb  1 17:26 /etc/alternatives/editor -> /bin/nano
+3. 列出editor有哪些打开方式
+[jack@ubuntu:~]$ sudo update-alternatives --list editor
+/bin/ed
+/bin/nano
+/usr/bin/vim.basic
+/usr/bin/vim.tiny
+4. 更改默认方式
+[jack@ubuntu:~]$ sudo update-alternatives --config editor 
+There are 4 choices for the alternative editor (providing /usr/bin/editor).
+
+  Selection    Path                Priority   Status
+------------------------------------------------------------
+* 0            /bin/nano            40        auto mode
+  1            /bin/ed             -100       manual mode
+  2            /bin/nano            40        manual mode
+  3            /usr/bin/vim.basic   30        manual mode
+  4            /usr/bin/vim.tiny    15        manual mode
+
+Press <enter> to keep the current choice[*], or type selection number: 3
+update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/editor (editor) in manual mode
+5. 安装快捷方式
+sudo update-alternatives --install /etc/alternatives/editor editor /usr/bin/vim-4.6 20
+sudo update-alternatives --install /etc/alternatives/editor editor /usr/bin/vim-4.8 50
+
+#ubuntu20.04.2没有/var/log/messages文件
+[jack@ubuntu:/usr/local/nginx/html]$ sudo vim /etc/rsyslog.d/50-default.conf
+*.info;mail.none;authpriv.none;cron.none        /var/log/messages
+[jack@ubuntu:/usr/local/nginx/html]$ sudo systemctl restart rsyslog
+[jack@ubuntu:/usr/local/nginx/html]$ sudo ls /var/log/messages
+/var/log/messages
+注：/etc/rsyslog.d管理的自己会自动日志切割
+
+
+
+#ubuntu20.04.2开机启动脚本
+1. 查看
+[jack@ubuntu ~]$sudo cat /usr/lib/systemd/system/rc-local.service
+---
+[Unit]
+Description=/etc/rc.local Compatibility
+Documentation=man:systemd-rc-local-generator(8)
+ConditionFileIsExecutable=/etc/rc.local
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/etc/rc.local start
+TimeoutSec=0
+RemainAfterExit=yes
+GuessMainPID=no
+---
+一般正常的启动文件主要分成三部分
+[Unit] 段: 启动顺序与依赖关系
+[Service] 段: 启动行为,如何启动，启动类型
+[Install] 段: 定义如何安装这个配置文件，即怎样做到开机启动
+可以看出，/etc/rc.local 的启动顺序是在网络后面，但是显然它少了 Install 段，也就没有定义如何做到开机启动，所以显然这样配置是无效的。 因此我们就需要在后面帮他加上 [Install] 段:
+[Install]  
+WantedBy=multi-user.target  
+Alias=rc-local.service
+[jack@ubuntu ~]$sudo systemctl daemon-reload 
+自ubuntu-18.04以后 默认是没有 /etc/rc.local 这个文件的，需要自己创建
+[jack@ubuntu ~]$sudo touch /etc/rc.local 
+[jack@ubuntu ~]$sudo chmod +x /etc/rc.local
+[jack@ubuntu ~]$cat /etc/rc.local
+---
+#!/bin/sh
+echo "看到这行字，说明添加自启动脚本成功。" > /usr/local/test.log
+exit 0
+---
+[jack@ubuntu ~]$sudo systemctl start rc-local
+[jack@ubuntu ~]$sudo systemctl status rc-local
+sudo init 6
+[jack@ubuntu:~]$ cat /usr/local/test.log 
+看到这行字，说明添加自启动脚本成功。
+
+
+#编译安装nginx
+1. 安装编译需要用到的库和工具
+[jack@ubuntu:/download]$ sudo apt-get install -y build-essential libtool gcc automake autoconf make gcc g++
+2. 下载tengine和pcre,和第三方的替换模块：ngx_http_substitutions_filter_module
+[jack@ubuntu:~]$ sudo mkdir -p /download
+[jack@ubuntu:~]$ cd /download/
+[jack@ubuntu:/download]$ sudo curl -OL http://tengine.taobao.org/download/tengine-2.3.2.tar.gz
+[jack@ubuntu:/download]$ sudo curl -OL http://ftp.pcre.org/pub/pcre/pcre-8.44.tar.gz
+[jack@ubuntu:/download]$ sudo curl -OL https://codeload.github.com/yaoweibin/ngx_http_substitutions_filter_module/zip/master
+[jack@ubuntu:/download]$ sudo unzip master
+[jack@ubuntu:/download]$ ls
+master  ngx_http_substitutions_filter_module-master  pcre-8.44.tar.gz  tengine-2.3.2.tar.gz
+3. 配置pcre和安装tengine
+[jack@ubuntu:/download]$ sudo tar xfv pcre-8.44.tar.gz -C /usr/local/
+[jack@ubuntu:/download]$ ls -ld /usr/local/pcre*
+drwxr-xr-x 7 1169 1169 4096 Feb 12  2020 /usr/local/pcre-8.44
+--安装依赖软件
+[jack@ubuntu:/download]$ sudo apt install -y openssl libssl-dev libpcre3 libpcre3-dev zlib1g-dev
+--编译安装tengine 
+[jack@ubuntu:/download]$ sudo tar xvf tengine-2.3.2.tar.gz 
+[jack@ubuntu:/download]$ cd tengine-2.3.2/
+[jack@ubuntu:/download/tengine-2.3.2]$ sudo groupadd -r tengine
+[jack@ubuntu:/download/tengine-2.3.2]$ sudo useradd -r -s /sbin/nologin -M -g tengine tengine
+[jack@ubuntu:/download/tengine-2.3.2]$ sudo ./configure --prefix=/usr/local/nginx --sbin-path=/usr/local/nginx/sbin/nginx --conf-path=/usr/local/nginx/conf/nginx.conf --error-log-path=/usr/local/nginx/logs/error.log --http-log-path=/usr/local/nginx/logs/access.log --user=tengine --group=tengine --with-pcre=/usr/local/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --with-stream --add-module=modules/ngx_http_upstream_session_sticky_module --add-module=/download/ngx_http_substitutions_filter_module-master --with-stream_ssl_module --add-module=modules/ngx_http_upstream_check_module --with-http_auth_request_module --with-http_gzip_static_module --with-http_random_index_module --with-http_sub_module
+[jack@ubuntu:/download/tengine-2.3.2]$ sudo make -j 4 && sudo make install && echo $?
+[jack@ubuntu:/download/tengine-2.3.2]$ /usr/local/nginx/sbin/nginx -V
+Tengine version: Tengine/2.3.2
+nginx version: nginx/1.17.3
+built by gcc 9.3.0 (Ubuntu 9.3.0-17ubuntu1~20.04) 
+built with OpenSSL 1.1.1f  31 Mar 2020
+TLS SNI support enabled
+configure arguments: --prefix=/usr/local/nginx --sbin-path=/usr/local/nginx/sbin/nginx --conf-path=/usr/local/nginx/conf/nginx.conf --error-log-path=/usr/local/nginx/logs/error.log --http-log-path=/usr/local/nginx/logs/access.log --user=tengine --group=tengine --with-pcre=/usr/local/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --with-stream --add-module=modules/ngx_http_upstream_session_sticky_module --add-module=/download/ngx_http_substitutions_filter_module-master --with-stream_ssl_module --add-module=modules/ngx_http_upstream_check_module --with-http_auth_request_module --with-http_gzip_static_module --with-http_random_index_module --with-http_sub_module
+--配置tengine启动脚本
+[jack@ubuntu:/download/tengine-2.3.2]$ sudo vim /usr/lib/systemd/system/tengine.service
+---
+[Unit]
+Description=nginx - high performance web server
+After=network.target remote-fs.target nss-lookup.target
+[Service]
+Type=forking
+ExecStart=/usr/local/nginx/sbin/nginx -c /usr/local/nginx/conf/nginx.conf
+ExecReload=/usr/local/nginx/sbin/nginx -s reload
+ExecStop=/usr/local/nginx/sbin/nginx -s stop
+[Install]
+WantedBy=multi-user.target
+---
+[jack@ubuntu:/download/tengine-2.3.2]$ sudo systemctl daemon-reload 
+[jack@ubuntu:/download/tengine-2.3.2]$ sudo systemctl start tengine
+[jack@ubuntu:/download/tengine-2.3.2]$ sudo systemctl status tengine
+
+
+#docker部署
+# step 1: 安装必要的一些系统工具
+sudo apt-get update
+sudo apt-get -y install apt-transport-https ca-certificates curl software-properties-common
+# step 2: 安装GPG证书
+curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/ubuntu/gpg | sudo apt-key add -
+# Step 3: 写入软件源信息
+sudo add-apt-repository "deb [arch=amd64] https://mirrors.aliyun.com/docker-ce/linux/ubuntu $(lsb_release -cs) stable"
+# Step 4: 更新并安装Docker-CE
+sudo apt-get -y update
+sudo apt-get -y install docker-ce
+
+# 安装指定版本的Docker-CE:
+# Step 1: 查找Docker-CE的版本:
+# apt-cache madison docker-ce
+#   docker-ce | 17.03.1~ce-0~ubuntu-xenial | https://mirrors.aliyun.com/docker-ce/linux/ubuntu xenial/stable amd64 Packages
+#   docker-ce | 17.03.0~ce-0~ubuntu-xenial | https://mirrors.aliyun.com/docker-ce/linux/ubuntu xenial/stable amd64 Packages
+# Step 2: 安装指定版本的Docker-CE: (VERSION例如上面的17.03.1~ce-0~ubuntu-xenial)
+# sudo apt-get -y install docker-ce=[VERSION]
 
 
 </pre>
