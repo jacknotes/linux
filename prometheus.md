@@ -1975,5 +1975,141 @@ allow_loading_unsigned_plugins = alexanderzobnin-zabbix-datasource
 5. 添加zabbix数据源，地址：http://zabbix.hs.com/api_jsonrpc.php 或 地址：http://zabbix.hs.com/zabbix/api_jsonrpc.php
 
 
+#nginx反向代理prometheus+alertmanager+blackbox
+nginx中配置prometheus和alertmanager时需要注意：
+/prometheus 表示prometheus配置文件要设置子路径跟这代理一样，--web.external-url=prometheus 
+/grafana 表示grafana配置文件要设置子路径跟这代理一样，root_url = %(protocol)s://%(domain)s:%(http_port)s/grafana
+------------------
+[root@prometheus conf]# grep '^root_url' /etc/grafana/grafana.ini
+root_url = %(protocol)s://%(domain)s:%(http_port)s/grafana
+
+[root@prometheus conf]# cat /usr/lib/systemd/system/blackbox_exporter.service 
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/blackbox_exporter/blackbox_exporter \
+--config.file /usr/local/blackbox_exporter/blackbox.yml \
+--web.external-url=blackbox
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
+[root@prometheus conf]# cat /usr/lib/systemd/system/alertmanager.service 
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/alertmanager/alertmanager \
+--config.file=/usr/local/alertmanager/alertmanager.yml \
+--storage.path=/usr/local/alertmanager/data \
+--web.route-prefix=alertmanager
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
+[root@prometheus conf]# cat /usr/lib/systemd/system/prometheus.service 
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/prometheus/prometheus \
+--config.file /usr/local/prometheus/prometheus.yml \
+--storage.tsdb.path /var/lib/prometheus/ \
+--storage.tsdb.retention.time=60d \
+--web.external-url=prometheus \
+--web.enable-admin-api \
+--web.enable-lifecycle
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+------------------
+
+[root@prometheus conf]# cat /usr/local/nginx/conf/nginx.conf | grep -Ev '#|^$' 
+worker_processes  1;
+events {
+    worker_connections  1024;
+}
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile        on;
+    keepalive_timeout  65;
+    upstream grafana {
+	server 127.0.0.1:3000;
+    }
+    upstream prometheus {
+	server 127.0.0.1:9090;
+    }
+    upstream alertmanager {
+	server 127.0.0.1:9093;
+    }
+    upstream blackbox {
+	server 127.0.0.1:9115;
+    }
+    server {
+        listen       8088;
+        server_name  localhost;
+        location / {
+            root   html;
+            index  index.html index.htm;
+        }
+	location ^~ /grafana/ {
+	        proxy_set_header Host $proxy_host;
+	        proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Real-Port $remote_port;
+	        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_pass       http://grafana/;
+	}
+	location ^~ /prometheus/ {
+	        proxy_set_header Host $proxy_host;
+	        proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Real-Port $remote_port;
+	        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_pass       http://prometheus/prometheus/;
+		auth_basic_user_file /usr/local/nginx/conf/passwdfile;
+		auth_basic	"Prometheus";
+	}
+	location ^~ /alertmanager/ {
+	        proxy_set_header Host $proxy_host;
+	        proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Real-Port $remote_port;
+	        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_pass       http://alertmanager/alertmanager/;
+		auth_basic_user_file /usr/local/nginx/conf/passwdfile;
+		auth_basic	"Alertmanager";
+	}
+	location ^~ /blackbox/ {
+	        proxy_set_header Host $proxy_host;
+	        proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Real-Port $remote_port;
+	        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_pass       http://blackbox/blackbox/;
+		auth_basic_user_file /usr/local/nginx/conf/passwdfile;
+		auth_basic	"Blackbox";
+	}
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   html;
+        }
+    }
+}
+
+
 </pre>
 

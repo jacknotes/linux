@@ -354,6 +354,204 @@ Pod重启了多少次？
 而这些则是kube-state-metrics提供的内容，它基于client-go开发，轮询Kubernetes API，并将Kubernetes的结构化信息转换为metrics。
 
 
+#HPA-V2
+--基于CPU和内存进行压测--
+[root@master02 ~/manifests/hpa]# cat hpa-v2-deployment.yaml 
+apiVersion: v1
+kind: Service
+metadata:
+  name: daemonapp
+  namespace: fat
+spec:
+  selector:
+    app: demonapp
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80  
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demonapp
+  namespace: fat
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: demonapp
+  template:
+    metadata:
+      labels:
+        app: demonapp
+    spec:
+      containers:
+      - name: demonapp-container
+        image: ikubernetes/myapp:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 80
+        livenessProbe:
+          httpGet:
+            port: http
+            path: /index.html
+          initialDelaySeconds: 1 
+          periodSeconds: 3 
+        readinessProbe:
+          httpGet:
+            port: http
+            path: /index.html
+          initialDelaySeconds: 1 
+          periodSeconds: 3 
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "50m"
+[root@master02 ~/manifests/hpa]# cat hpa-v2.yaml 
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: demoapp
+spec:
+  scaleTargetRef: 
+    apiVersion: apps/v1
+    kind: Deployment
+    name: demoapp   
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 30
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: AverageValue
+        averageValue: 30Mi
+
+--基于web请求数进行压测(自定义指标)--
+#运行metrics-app
+-------
+[root@master02 ~/manifests/hpa]# cat hpa-v2-web-deployment.yaml 
+apiVersion: v1
+kind: Service
+metadata:
+  name: demonapp-web
+  namespace: fat
+spec:
+  selector:
+    app: demonapp-web
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80  
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demonapp-web
+  namespace: fat
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: demonapp-web
+  template:
+    metadata:
+      labels:
+        app: demonapp-web
+    spec:
+      containers:
+      - name: demonapp-web-container
+        image: ikubernetes/metrics-app
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 80
+        livenessProbe:
+          httpGet:
+            port: http
+            path: /index.html
+          initialDelaySeconds: 1 
+          periodSeconds: 3 
+        readinessProbe:
+          httpGet:
+            port: http
+            path: /index.html
+          initialDelaySeconds: 1 
+          periodSeconds: 3 
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "50m"
+-------
+
+[root@master02 ~]# kubectl run client --image="ikubernetes/admin-toolbox:v1.0" -it --rm --command /bin/sh 
+[root@client /]# curl demonapp-web.fat.svc.cluster.local/metrics
+# HELP http_requests_total The amount of requests in total
+# TYPE http_requests_total counter
+http_requests_total 161
+# HELP http_requests_per_second The amount of requests per second the latest ten seconds
+# TYPE http_requests_per_second gauge
+http_requests_per_second 0.7
+
+#运行hpa
+[root@master02 ~/manifests/hpa]# cat hpa-v2-web.yaml 
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: demoapp-web
+spec:
+  scaleTargetRef: 
+    apiVersion: apps/v1
+    kind: Deployment
+    name: demoapp-web 
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+  - type: Pods
+    pods:
+      metric: 
+        name: http_requests_per_second
+      target:
+        type: AverageValue
+        averageValue: 5
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 120
+[root@master02 ~/manifests/hpa]# kubectl apply -f hpa-v2-web.yaml
+
+#在k8s-prometheus-adapter上配置自定义规则进行暴露http_requests_per_second指标，默认不会进行公开。
+[root@master02 ~/manifests/hpa]# wget https://raw.githubusercontent.com/iKubernetes/Kubernetes_Advanced_Practical_2rd/main/chapter15/prometheus/prometheus-adapter-values-with-custom-rules.yaml
+[root@master02 ~/manifests/hpa]# helm list -n monitoring 
+NAME   	NAMESPACE 	REVISION	UPDATED                                	STATUS  	CHART                   	APP VERSION
+adapter	monitoring	2       	2021-06-06 21:41:13.268408214 +0800 CST	deployed	prometheus-adapter-2.5.1	v0.7.0     
+grafana	monitoring	1       	2021-06-06 18:29:08.869634606 +0800 CST	deployed	grafana-5.5.7           	7.1.1      
+prom   	monitoring	2       	2021-06-06 22:17:36.115755585 +0800 CST	deployed	prometheus-11.12.1      	2.20.1     
+[root@master02 ~/manifests/hpa]# helm upgrade adapter -f prometheus-adapter-values-with-custom-rules.yaml stable/prometheus-adapter -n monitoring 
+
+#请求压测
+[root@master02 ~]# kubectl get svc -n fat
+NAME           TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)   AGE
+daemonapp      ClusterIP   10.100.14.43    <none>        80/TCP    52m
+demonapp-web   ClusterIP   10.106.129.82   <none>        80/TCP    26m
+[root@master02 ~]# ab -c 100 -n 10000 http://10.106.129.82/
+
+
+
+
+
 
 
 #存储
@@ -3446,5 +3644,179 @@ data:
     {{ end }}
     {{ end }}
 -------------------
+
+
+
+
+#IngressController for Ingress规则
+##Canary
+在某些情况下，您可能希望通过向与生产服务不同的服务发送少量请求来“金丝雀”一组新的更改。金丝雀注解使 Ingress 规范能够根据应用的规则充当路由请求的替代服务。nginx.ingress.kubernetes.io/canary: "true"设置后可以启用以下用于配置金丝雀的注释：
+
+nginx.ingress.kubernetes.io/canary-by-header：用于通知 Ingress 将请求路由到 Canary Ingress 中指定的服务的标头。当请求头设置为 时always，它将被路由到金丝雀。当标头设置为 时never，它永远不会被路由到金丝雀。对于任何其他值，标头将被忽略，并按优先级将请求与其他金丝雀规则进行比较。
+
+nginx.ingress.kubernetes.io/canary-by-header-value：要匹配的标头值，用于通知 Ingress 将请求路由到 Canary Ingress 中指定的服务。当请求头设置为这个值时，它将被路由到金丝雀。对于任何其他标头值，标头将被忽略，并按优先级将请求与其他金丝雀规则进行比较。此注释必须与 一起使用。注释是 的扩展，nginx.ingress.kubernetes.io/canary-by-header允许自定义标头值而不是使用硬编码值。如果nginx.ingress.kubernetes.io/canary-by-header未定义注释，则没有任何影响。
+
+nginx.ingress.kubernetes.io/canary-by-header-pattern：这与canary-by-header-valuePCRE 正则表达式匹配的工作方式相同。请注意，canary-by-header-value设置此注释时将被忽略。当给定的 Regex 在请求处理过程中导致错误时，该请求将被视为不匹配。
+
+nginx.ingress.kubernetes.io/canary-by-cookie：用于通知 Ingress 将请求路由到 Canary Ingress 中指定的服务的 cookie。当 cookie 值设置为 时always，它将被路由到金丝雀。当 cookie 设置为 时never，它永远不会被路由到金丝雀。对于任何其他值，cookie 将被忽略，并按优先级将请求与其他金丝雀规则进行比较。
+
+nginx.ingress.kubernetes.io/canary-weight：应路由到 Canary Ingress 中指定的服务的基于整数 (0 - 100) 的随机请求百分比。权重为 0 意味着此金丝雀规则不会向 Canary 入口中的服务发送任何请求。权重为 100 意味着所有请求都将发送到 Ingress 中指定的替代服务。
+
+Canary 规则按优先顺序进行评估。优先级如下：canary-by-header -> canary-by-cookie -> canary-weight
+
+请注意： 当您将入口标记为 Canary 时，除nginx.ingress.kubernetes.io/load-balance and nginx.ingress.kubernetes.io/upstream-hash-by之外的所有其他非 Canary 注释都将被忽略（从相应的主入口继承）
+已知限制： 目前，每个 Ingress 规则最多可以应用一个 Canary Ingress。
+
+##Rewrite
+###Rewrite Target
+在某些情况下，后端服务中暴露的 URL 与 Ingress 规则中指定的路径不同。如果没有重写，任何请求都将返回 404。将注释设置nginx.ingress.kubernetes.io/rewrite-target为服务预期的路径。
+创建带有重写注释的 Ingress 规则：
+$ echo '
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+  name: rewrite
+  namespace: default
+spec:
+  rules:
+  - host: rewrite.bar.com
+    http:
+      paths:
+      - backend:
+          serviceName: http-svc
+          servicePort: 80
+        path: /something(/|$)(.*)
+' | kubectl create -f -
+在这个入口定义中，捕获的任何字符(.*)都将分配给占位符$2，然后将其用作rewrite-target注释中的参数。例如，上面的入口定义将导致以下重写：
+rewrite.bar.com/something 改写为 rewrite.bar.com/
+rewrite.bar.com/something/ 改写为 rewrite.bar.com/
+rewrite.bar.com/something/new 改写为 rewrite.bar.com/new
+注：此目的是将重定向的URL路径/something去掉，多余的URL参数将重写到后端的service中，例如：rewrite.bar.com/something/test  -->  rewrite.bar.com/test
+
+###App Root
+创建带有 app-root 注释的 Ingress 规则：
+$ echo "
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/app-root: /app1
+  name: approot
+  namespace: default
+spec:
+  rules:
+  - host: approot.bar.com
+    http:
+      paths:
+      - backend:
+          serviceName: http-svc
+          servicePort: 80
+        path: /
+" | kubectl create -f -
+检查重写是否有效
+$ curl -I -k http://approot.bar.com/
+HTTP/1.1 302 Moved Temporarily
+Server: nginx/1.11.10
+Date: Mon, 13 Mar 2017 14:57:15 GMT
+Content-Type: text/html
+Content-Length: 162
+Location: http://stickyingress.example.com/app1
+Connection: keep-alive
+注：此目的是将URL路径/app1作为根加入到访问的url路径中，前提访问的URL需要匹配到ingress路径，例如：approot.bar.com/  -->  approot.bar.com/app1
+
+####简写ingress规则 ，使用&符号进行变量设置，用*号引用变量
+spec:
+  rules:
+  - host: alertmanager.k8s.hs.com
+    http: &http_rules
+      paths:
+      - backend:
+          serviceName: prom-prometheus-alertmanager
+          servicePort: 80
+        path: /
+        pathType: ImplementationSpecific
+  - host: alert.k8s.hs.com
+    http: *http_rules
+注：当ingress(ingress-nginx)使用canary时,其它ingress再引用canary ingress所在的service时，将不会起作用，而引用base ingress所在的service时会起作用,并且canary ingress的weight权重值将影响其它ingress的引用，例如当weight=100，则引用base ingress所在的service不会生效。当weight=0，则引用base ingress所在的service会生效。
+
+###基本认证
+此示例说明如何使用身份验证htpasswd在 Ingress 规则中添加。重要的是生成的文件被命名auth（实际上 - 秘密有一个密钥data.auth），否则入口控制器返回 503。
+htpasswd -c auth foo
+kubectl create secret generic basic-auth --from-file=auth
+kubectl get secret basic-auth -o yaml
+curl -v http://10.2.29.4/ -H 'Host: foo.bar.com' -u 'foo:bar'
+
+###客户端证书认证
+如果它们是二进制 DER 格式，您可以按如下方式转换它们：
+openssl x509 -in certificate.der -inform der -out certificate.crt -outform pem
+然后，您可以将它们全部连接到一个名为“ca.crt”的文件中，如下所示：
+cat certificate1.crt certificate2.crt certificate3.crt >> ca.crt
+注意：对于生成的每个证书，请确保密钥大小大于 1024 并且哈希算法（摘要）比 md5 更好。否则，您将收到错误消息。
+
+###使用位于的外部服务（基本身份验证） https://httpbin.org
+$ kubectl get ing external-auth -o yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    nginx.ingress.kubernetes.io/auth-url: https://httpbin.org/basic-auth/user/passwd
+  name: external-auth
+  namespace: default
+spec:
+  rules:
+  - host: external-auth-01.sample.com
+    http:
+      paths:
+      - backend:
+          serviceName: http-svc
+          servicePort: 80
+        path: /
+
+###向 Nginx 配置添加了一个自定义标头，该标头仅适用于该特定 Ingress
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: nginx-configuration-snippet
+  annotations:
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "Request-Id: $req_id";
+spec:
+  rules:
+  - host: custom.configuration.com
+    http:
+      paths:
+      - backend:
+          serviceName: http-svc
+          servicePort: 80
+        path: /
+--测试：使用以下命令检查 nginx.conf 文件中是否存在注释的内容： kubectl exec ingress-nginx-controller-873061567-4n3k2 -n kube-system -- cat /etc/nginx/nginx.conf
+
+#自定义配置
+使用ConfigMap可以自定义 NGINX 配置，例如，如果我们想更改超时，我们需要创建一个 ConfigMap：
+$ cat configmap.yaml
+apiVersion: v1
+data:
+  proxy-connect-timeout: "10"
+  proxy-read-timeout: "120"
+  proxy-send-timeout: "120"
+kind: ConfigMap
+metadata:
+  name: ingress-nginx-controller
+--如果 Configmap 更新，NGINX 将使用新配置重新加载。
+
+###自定义错误
+1. 首先，创建自定义default-backend. 稍后将被 Ingress 控制器使用。
+$ kubectl create -f custom-default-backend.yaml
+service "nginx-errors" created
+deployment.apps "nginx-errors" created
+2. 入口控制器配置
+编辑ingress-nginx-controller deployment 并将--default-backend-service标志的值设置为新创建的错误后端的名称,例如：
+- --default-backend-service=fat/hsapp-errorpage
+编辑ingress-nginx-controllerConfigMap 并创建custom-http-errors值为的键404,503
+data: 
+  custom-http-errors: '404,503'
+
 
 </pre>
