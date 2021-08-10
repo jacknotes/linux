@@ -2139,6 +2139,17 @@ Port:
 9200/tcp -> 0.0.0.0:9200
 9300/tcp -> 0.0.0.0:9300
 
+#容器运行状态
+[root@uat-redis ~]# docker inspect --format '{{if ne 0 .State.ExitCode}}容器{{.Name}}是停止的{{else}}容器{{.Name}}是运行的{{end}}' `docker ps -qa`
+容器/fat_hotelresourcehuazhu是运行的
+容器/fat_abservice是运行的
+
+[root@harbor ~]#  docker inspect --format '{{if eq .HostConfig.RestartPolicy.Name "no"}}容器{{.Name}}没有重启策略{{else}}容器{{.Name}}有重启策略{{end}}' `docker ps -qa`
+容器/zabbix-web-nginx-mysql有重启策略
+容器/zabbix-server-mysql有重启策略
+容器/hsredis没有重启策略
+
+
 
 
 #iperf3 ----测试客户端到服务端的网速
