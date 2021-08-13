@@ -2639,5 +2639,90 @@ service tftp
 }
 desctiption: -c参数表示启用tftp上传功能 
 
+#jq
+安装：sudo yum install -y jq
+[jack@ubuntu:~]$ curl -s -X GET "http://192.168.13.50:9401/huazhuhotelpricebookinfo_db_pro-backup/_mapping" | jq '."huazhuhotelpricebookinfo_db_pro-backup".mappings'
+{
+  "properties": {
+    "acceptedCreditCards": {
+      "properties": {
+        "cardName": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "cardType": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        }
+      }
+    },
+    "updateTime": {
+      "type": "date"
+    }
+  }
+}
+--示例
+cat json.txt | jq '.'
+[
+  {
+    "name": "站长工具",
+    "url": "http://tool.chinaz.com",
+    "address": {
+      "city": "厦门",
+      "country": "中国"
+    },
+    "arrayBrowser": [
+      {
+        "name": "Google",
+        "url": "http://www.google.com"
+      },
+      {
+        "name": "Baidu",
+        "url": "http://www.baidu.com"
+      }
+    ]
+  },
+  {
+    "name": "站长之家",
+    "url": "http://tool.zzhome.com",
+    "address": {
+      "city": "大连",
+      "country": "中国"
+    },
+    "arrayBrowser": [
+      {
+        "name": "360",
+        "url": "http://www.so.com"
+      },
+      {
+        "name": "bing",
+        "url": "http://www.bing.com"
+      }
+    ]
+  }
+]
+cat json.txt | jq '.[0]'
+cat json.txt | jq '.[0] | {name:.name,city:.address.city}'
+cat json.txt | jq "[.[] | {name:.arrayBrowser[1].name,city:.address.city}]"
+[
+  {
+    "name": "Baidu",
+    "city": "厦门"
+  },
+  {
+    "name": "bing",
+    "city": "大连"
+  }
+]
 
 </pre>

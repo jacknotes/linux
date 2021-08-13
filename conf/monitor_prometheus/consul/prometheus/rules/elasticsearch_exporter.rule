@@ -3,7 +3,7 @@ groups:
   rules:
   - alert: ElasticDown
     expr: elasticsearch_node_stats_up == 0
-    for: 15s
+    for: 30s
     labels:
       severity: High
     annotations:
@@ -99,3 +99,49 @@ groups:
     annotations:
       summary: "Number of cluster health checks timed out > 0"
       description: "ElasticSearch node {{ $labels.instance }}: Number of cluster health checks timed out > 0 and has a value of {{ $value }}"
+
+  - alert: Elasticsearch_CPU_Usage_Alert
+    expr: elasticsearch_process_cpu_percent > 85
+    for: 3m
+    labels:
+      severity: critical
+    annotations:
+      summary: "elasticsearch node cpu usage rate > 85"
+      description: "ElasticSearch env: {{ $labels.env }}, instance: {{ $labels.instance }}, cluster: {{ $labels.cluster }} cpu usage rate > 85 and has a value of {{ $value }}"
+
+  - alert: Elasticsearch_Memory_Usage_Alert
+    expr: elasticsearch_jvm_memory_used_bytes/elasticsearch_jvm_memory_max_bytes * 100 > 80
+    for: 3m
+    labels:
+      severity: critical
+    annotations:
+      summary: "elasticsearch node memory usage rate > 85"
+      description: "ElasticSearch env: {{ $labels.env }}, instance: {{ $labels.instance }}, cluster: {{ $labels.cluster }} memory usage rate > 80 and has a value of {{ $value }}"
+
+  - alert: Elasticsearch_Disk_Usage_Alert
+    expr: (1- elasticsearch_filesystem_data_available_bytes/elasticsearch_filesystem_data_size_bytes) * 100 > 90
+    for: 3m
+    labels:
+      severity: critical
+    annotations:
+      summary: "elasticsearch node disk usage rate > 85"
+      description: "ElasticSearch env: {{ $labels.env }}, instance: {{ $labels.instance }}, cluster: {{ $labels.cluster }} disk usage rate > 90 and has a value of {{ $value }}"
+
+  - alert: Elasticsearch_Network_SendTraffic_Alert
+    expr: irate(elasticsearch_transport_tx_size_bytes_total[5m]) /1024 /1024 > 10
+    for: 3m
+    labels:
+      severity: critical
+    annotations:
+      summary: "elasticsearch network send traffic > 10"
+      description: "ElasticSearch env: {{ $labels.env }}, instance: {{ $labels.instance }}, cluster: {{ $labels.cluster }} network send traffic rate > 10 and has a value of {{ $value }}"
+
+  - alert: Elasticsearch_Network_RecivedTraffic_Alert
+    expr: irate(elasticsearch_transport_rx_size_bytes_total[5m]) /1024 /1024 > 10
+    for: 3m
+    labels:
+      severity: critical
+    annotations:
+      summary: "elasticsearch network received traffic > 10"
+      description: "ElasticSearch env: {{ $labels.env }}, instance: {{ $labels.instance }}, cluster: {{ $labels.cluster }} network received traffic rate > 10 and has a value of {{ $value }}"
+

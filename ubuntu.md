@@ -144,6 +144,7 @@ sudo apt-file update   --更新apt-file命令所需的信息
 sudo apt-file search /bin/netstat   --查看此文件属于哪个软件包
 #apt-cache 
 sudo apt-cache madison kubectl   --查看包历史版本
+sudo apt list kubectl --all-versions   --查看包历史版本
 sudo apt install kubectl=1.19.10-00  --安装指定版本包
 
 #--apt update报证书问题解决办法
@@ -243,13 +244,62 @@ update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/editor (editor
 sudo update-alternatives --install /etc/alternatives/editor editor /usr/bin/vim-4.6 20
 sudo update-alternatives --install /etc/alternatives/editor editor /usr/bin/vim-4.8 50
 
-#ubuntu20.04.2没有/var/log/messages文件
+#ubuntu20.04.2没有/var/log/messages文件，ubuntu默认日志文件是/var/log/syslog
 [jack@ubuntu:/usr/local/nginx/html]$ sudo vim /etc/rsyslog.d/50-default.conf
 *.info;mail.none;authpriv.none;cron.none        /var/log/messages
 [jack@ubuntu:/usr/local/nginx/html]$ sudo systemctl restart rsyslog
 [jack@ubuntu:/usr/local/nginx/html]$ sudo ls /var/log/messages
 /var/log/messages
-注：/etc/rsyslog.d管理的自己会自动日志切割
+注：/etc/rsyslog.d管理的自己会自动日志切割，因为默认有/var/log/messages纳管进行日志切割
+----
+[jack@ubuntu:~]$ cat /etc/logrotate.d/rsyslog 
+/var/log/syslog
+{
+	rotate 7
+	daily
+	missingok
+	notifempty
+	delaycompress
+	compress
+	postrotate
+		/usr/lib/rsyslog/rsyslog-rotate
+	endscript
+}
+
+/var/log/mail.info
+/var/log/mail.warn
+/var/log/mail.err
+/var/log/mail.log
+/var/log/daemon.log
+/var/log/kern.log
+/var/log/auth.log
+/var/log/user.log
+/var/log/lpr.log
+/var/log/cron.log
+/var/log/debug
+/var/log/messages    --这里就是被切割
+{
+	rotate 4
+	weekly
+	missingok
+	notifempty
+	compress
+	delaycompress
+	sharedscripts
+	postrotate
+		/usr/lib/rsyslog/rsyslog-rotate
+	endscript
+}
+----
+[jack@ubuntu:~]$ cat /usr/lib/rsyslog/rsyslog-rotate
+#!/bin/sh
+
+if [ -d /run/systemd/system ]; then
+    systemctl kill -s HUP rsyslog.service   --重启rsyslog服务
+else
+    invoke-rc.d rsyslog rotate > /dev/null
+fi
+
 
 
 
