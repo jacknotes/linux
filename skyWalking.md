@@ -82,7 +82,7 @@ ZooKeeper JMX enabled by default
 Using config: /usr/local/zookeeper02/bin/../conf/zoo.cfg
 Client port found: 2182. Client address: localhost. Client SSL: false.
 Mode: leader
-注：监听端口2288就是server.2开启的，因为zookeeper02是leader角色
+注：监听端口2288就是server.2开启的，因为zookeeper02是leader角色,zookeeper集群会启动2181，2287，3387，8080和一个随机端口，确保端口不被占用
 
 
 
@@ -162,6 +162,48 @@ storage:
   elasticsearch7:
     nameSpace: ${SW_NAMESPACE:""}
     clusterNodes: ${SW_STORAGE_ES_CLUSTER_NODES:192.168.13.50:9401}
+--------------------------
+注：Elasticsearch7存储优化
+  elasticsearch7:
+    nameSpace: ${SW_NAMESPACE:"skywalking"}  #索引前缀
+    clusterNodes: ${SW_STORAGE_ES_CLUSTER_NODES:192.168.13.160:9200,192.168.13.161:9200,192.168.13.197:9200}
+    protocol: ${SW_STORAGE_ES_HTTP_PROTOCOL:"http"}   #ES使用的是http协议
+    dayStep: ${SW_STORAGE_DAY_STEP:60} #索引保存多少天的数据，当天数到期时再新建一个索引
+    indexShardsNumber: ${SW_STORAGE_ES_INDEX_SHARDS_NUMBER:2} # 分片数量
+    indexReplicasNumber: ${SW_STORAGE_ES_INDEX_REPLICAS_NUMBER:1} # 副本分片数量
+    bulkActions: ${SW_STORAGE_ES_BULK_ACTIONS:5000} #每5000次请求时，执行异步大容量记录数据
+    bulkSize: ${SW_STORAGE_ES_BULK_SIZE:40} # 每40mb刷新一次大容量到磁盘
+    flushInterval: ${SW_STORAGE_ES_FLUSH_INTERVAL:60} #默认情况下索引的refresh_interval为1秒,这意味着数据写1秒后就可以被搜索到,每次索引的 refresh 会产生一个新的 lucene 段,这会导致频繁的 segment merge 行为,如果你不需要这么高的搜索实时性,应该降低索引refresh 周期
+    concurrentRequests: ${SW_STORAGE_ES_CONCURRENT_REQUESTS:2} #连接ES的并发请求数
+    resultWindowMaxSize: ${SW_STORAGE_ES_QUERY_MAX_WINDOW_SIZE:10000} #最大窗口大小
+    metadataQueryMaxSize: ${SW_STORAGE_ES_QUERY_MAX_SIZE:5000} #最大查询元数据大小
+    segmentQueryMaxSize: ${SW_STORAGE_ES_QUERY_SEGMENT_SIZE:200} #最大查询segment大小
+    profileTaskQueryMaxSize: ${SW_STORAGE_ES_QUERY_PROFILE_TASK_SIZE:200} #profile任务查询最大大小
+    advanced: ${SW_STORAGE_ES_ADVANCED:"{\"index.translog.durability\":\"async\",\"index.translog.sync_interval\":\"30s\",\"index.translog.flush_threshold_size\":\"512mb\"}"}  #针对skywalking创建的索引进行特定的配置，
+--------------------------
+"index.translog.durability" : "async",    --有request(在每次请求后提交)和async(结合sync_interval,每120s刷新一次到磁盘)
+"index.translog.flush_threshold_size" : "1024mb",    --默认512mb
+"index.translog.sync_interval" : "120s"        --默认为5s. 最小100ms
+-----设置skywalking默认分片和高级设置，在创建索引时会使用此模板----
+get /_template/custom_skywalking_template 
+PUT /_template/custom_skywalking_template
+{
+  "index_patterns": "skywalking*",
+  "order": 1,
+  "settings": {
+    "index": {
+      "refresh_interval": "60s",
+      "number_of_shards": "2",
+      "number_of_replicas": "1",
+      "translog": {
+        "flush_threshold_size": "512mb",
+        "sync_interval": "30s",
+        "durability": "async"
+      }
+    }
+  }
+}
+---------------------------------------
 
 #三个节点启动collector 集群
 注：节点启动时需要在一定时间内同时启动，例如在1分钟内三个节点都需要启动，这样才能进行组播交换数据，集群才可建立成功。
@@ -230,8 +272,11 @@ SkyWalking Web Application started successfully!
 /tmp/boss-caring-0.0.1-SNAPSHOT.jar
 --运行项目进行测试
 [root@test tmp]# nohup /usr/bin/java -javaagent:/usr/local/skywalking01/agent/skywalking-agent.jar -Dskywalking.agent.service_name=boss-caring -Dskywalking.collector.backend_service=192.168.13.76:11800,192.168.13.76:11800:11801,192.168.13.76:11802 -Xms256m -Xmx256m -XX:PermSize=128M -XX:MaxPermSize=256M -jar /tmp/boss-caring-0.0.1-SNAPSHOT.jar&
-
-
+正确例子：
+[root@test tmp]# java -javaagent:./agent/skywalking-agent.jar -Dskywalking.agent.service_name=UserApprove -Dskywalking.collector.backend_service=192.168.13.76:11800,192.168.13.76:11801,192.168.13.76:11802 -jar app.jar --spring.profiles.active=fat
+错误例子：
+[root@test tmp]# java -jar app.jar --spring.profiles.active=fat -javaagent:./agent/skywalking-agent.jar -Dskywalking.agent.service_name=UserApprove -Dskywalking.collector.backend_service=192.168.13.76:11800,192.168.13.76:11801,192.168.13.76:11802
+#原因：javaagent必须在命令java和参数jar之间。否则不会生效。
 
 #运维命令行工具
 [root@newgitlab download]# curl -OL https://mirrors.tuna.tsinghua.edu.cn/apache/skywalking/cli/0.7.0/skywalking-cli-0.7.0-bin.tgz
