@@ -1,4 +1,4 @@
-﻿#Nginx
+#Nginx
 Nginx:反向代理、负载均衡、动静分离、网页、图片缓存
 1. 反向代理：既然有反向，那肯定有正向，现有客户端x，代理服务器y，最终服务器z，现在x直接访问z：x->z，通过代理服务器y：x->y->z，无论正反代理服务器y都是位于x、z之间，正反是根据代理服务器代理的是谁来判断的
 正向：代理服务器y代理的是客户端，站在客户端的角度上是正向的，所以是正向代理
@@ -1715,6 +1715,51 @@ limit_conn_zone $binary_remote_addr zone=connzone:10m;
 limit_req_zone $binary_remote_addr zone=one:10m rate=10r/s;      --每秒最大10个请求
 limit_conn connzone 20;
 limit_req zone=one burst=10 nodelay;    --超过最大请求数10则直接丢弃。
+
+
+#nginx调优
+1. worker_connections的作用？
+worker_connections 20480
+worker_connections是每个worker进程允许的最多连接数，每台nginx 服务器的最大连接数为:worker_processes*worker_connections
+
+2. 系统的最大打开文件数
+系统的最大打开文件数>= worker_connections*worker_process
+worker_rlimit_nofile 65535;
+这个指令是指一个nginx worker进程打开的最多文件描述符数目，理论值应该是最多打开文件数（ulimit -n）与nginx进程数相除，因为nginx分配请求未必很均匀，所以最好与ulimit -n的值保持一致
+问题：socket() failed (24: Too many open files) while connecting to upstream，以上可解决
+
+
+3. ulimit的配置对于服务并不起作用，为什么?
+--用root用户查看ulimit -n
+[root@blog 1554]# ulimit -n
+65535
+[root@blog 1554]# cat /etc/security/limits.conf
+* soft nofile 65535
+* hard nofile 65535
+可以看到不管ulimit命令还是配置文件，都做了打开文件数量的配置
+--确认当前进程是否有打开文件数量的限制?用ps找到nginx的进程id:1554,查看master process进程的limits
+[root@blog ~]# more /proc/1554/limits | grep 'open files'
+Max open files            1024               4096                files
+----因为ulimit和limits.conf的配置只针对登录用户，而对systemd管理的服务不起作用，服务的limit要在service文件中单独指定。
+步骤：
+[root@blog ~]# vi /usr/lib/systemd/system/openresty.service
+在service段增加一行: LimitNOFILE=65535
+重启:
+[root@blog ~]# systemctl daemon-reload
+[root@blog ~]# systemctl stop openresty.service
+[root@blog ~]# systemctl start openresty.service
+--可以查看进程中限制信息看是否起作用:
+[root@blog ~]# ps auxfww | grep nginx
+root      1652  0.0  0.0  50412  3348 ?        Ss   14:36   0:00 nginx: master process /usr/local/openresty/nginx/sbin/nginx
+nginx     1653  0.0  0.0  81896  5908 ?        S    14:36   0:00  \_ nginx: worker process
+nginx     1654  0.0  0.0  81896  5908 ?        S    14:36   0:00  \_ nginx: worker process
+nginx     1655  0.0  0.0  81896  5908 ?        S    14:36   0:00  \_ nginx: worker process
+nginx     1656  0.0  0.0  81896  5908 ?        S    14:36   0:00  \_ nginx: worker process
+我们查看pid 1652的打开文件限制，可以看到修改已经生效:
+[root@blog ~]# more /proc/1652/limits | grep 'open files'
+Max open files            65535                65535                files
+
+
 
 
 </pre>

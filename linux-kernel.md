@@ -84,7 +84,7 @@ net.ipv4.tcp_syncookies = 1 表示开启SYN Cookies。当出现SYN等待队列�
 
 net.ipv4.tcp_tw_reuse = 1 表示开启重用。允许将TIME-WAIT sockets重新用于新的TCP连接，默认为0，表示关闭；
 
-net.ipv4.tcp_tw_recycle = 1 表示开启TCP连接中TIME-WAIT sockets的快速回收，默认为0，表示关闭。
+net.ipv4.tcp_tw_recycle = 1 表示开启TCP连接中TIME-WAIT sockets的快速回收，默认为0，表示关闭。这个甚用，在阿里云环境中开启至使端口被某些centos7访问拒绝。
 
 net.ipv4.tcp_fin_timeout = 30 表示如果套接字由本端要求关闭，这个参数决定了它保持在FIN-WAIT-2状态的时间。
 
@@ -113,7 +113,7 @@ LAST_ACK：等待所有分组死掉
 #network
 net.ipv4.tcp_syncookies = 1 
 net.ipv4.tcp_tw_reuse = 1 
-net.ipv4.tcp_tw_recycle = 1 
+net.ipv4.tcp_tw_recycle = 1    这个甚用，在阿里云环境中开启至使端口被某些centos7访问拒绝。
 net.ipv4.tcp_keepalive_time = 1200 
 net.ipv4.ip_local_port_range = 10000 65000 
 net.ipv4.tcp_max_syn_backlog = 8192 
