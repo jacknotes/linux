@@ -1140,6 +1140,12 @@ u.otp_secret_key=''
 u.save()
 
 
+#20210825--添加windows资产时注意情况
+1.Ansible 要求在 Windows 主机上安装 PowerShell 3.0 或更高版本以及至少 .NET 4.0
+2.如果在 Server 2008 上运行，则必须安装 SP2。如果在 Server 2008 R2 或 Windows 7 上运行，则必须安装 SP1
+3.Windows Server 2008 只能安装 PowerShell 3.0；指定较新的版本将导致脚本失败
+powershell2.0升级到powershell3.0需要安装升级补丁Windows6.1-KB2506143-x64
+
 </pre>
 
 
