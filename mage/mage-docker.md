@@ -399,5 +399,24 @@ harborrepo.hs.com/ops/busybox:v1
 验证证书必须不勾选，否则会错误。
 当用户登录时忘记密码后，可通过填写自己的邮件地址来重置密码即可。
 
+#docker for java内存限制----Dockerfile
+--------
+[root@tengine ~]# cat /shell/Dockerfile-java.template 
+FROM 192.168.13.235:8000/base/java/ops_java:8
+EXPOSE 80
+
+ENV TZ=Asia/Shanghai
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+WORKDIR / 
+ADD __SOURCE_JAR_PACKAGE__ app.jar
+CMD ["java","-Xmx100m","-Xss256k","-XX:+UseParallelGC","-XX:+UseParallelOldGC","__SKYWALKING_CONFIG_JAVAAGENT__","__SKYWALKING_CONFIG_AGENT_SERVICE__","__SKYWALKING_CONFIG_BACKEND_SERVICE__","-jar","app.jar","--spring.profiles.active=__JAVA_CONF_ENV__"]
+--------
+注: -Xmx100m: 表示内存限制最大100m
+-Xss256k: 表示每个线程最大大小256k,最小为256
+-XX:+UseParallelGC: 表示年轻代垃圾收集器为并行收集器
+-XX:+UseParallelOldGC: 表示年老代垃圾收集器为并行收集器
+
+
 
 </pre>
