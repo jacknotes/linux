@@ -1323,6 +1323,31 @@ Details:
 alertname: hostCpuUsagelert
 instance: localhost:9100
 
+
+#20210830--使用amtool进行命令行邮件告警
+例如：需要在"2021-08-30 11:28:01"进行邮件告警，则可以设置如下
+[root@prometheus alertmanager]# ./amtool --alertmanager.url=http://localhost:9093 alert add alertname=test team=ops instance='http://192.168.13.236:9093' --annotation=summary='summary of the alert' --annotation=description='description of the alert' --start="2021-08-30T03:28:01+08:00"
+[root@prometheus alertmanager]# ./amtool --alertmanager.url=http://localhost:9093 alert query
+Alertname  Starts At                Summary               
+test       2021-08-30 03:28:01 CST  summary of the alert  
+例如：需要对"2021-08-30 11:28:01"进行邮件恢复，则可以设置如下,结束时间不能大于当前时间，为了保险起见建议将恢复时间跟发送时间设成一样，在邮件中有resolved告知是恢复即可。
+[root@prometheus alertmanager]# ./amtool --alertmanager.url=http://localhost:9093 alert add alertname=test team=ops instance='http://192.168.13.236:9093' --annotation=summary='summary of the alert' --annotation=description='description of the alert' --end="2021-08-30T03:28:01+08:00"
+[root@prometheus alertmanager]# ./amtool --alertmanager.url=http://localhost:9093 alert query
+Alertname  Starts At  Summary  
+--查看接收告警方式
+[root@prometheus alertmanager]# ./amtool --alertmanager.url=http://localhost:9093 config routes 
+Routing tree:
+.
+└── default-route  receiver: email
+    ├── {job=~"^(?:.*[a-z].*)$"}  continue: true  receiver: email
+    └── {job=~"^(?:.*[a-z].*)$"}  continue: true  receiver: webhook
+--测试正则匹配走向哪个路由接收
+[root@prometheus alertmanager]# ./amtool --alertmanager.url=http://localhost:9093 config routes test job=service
+email,webhook
+
+
+
+
 #屏蔽告警通知
 Alertmanager提供了方式可以帮助用户控制告警通知的行为，包括预先定义的抑制机制和临时定义的静默规则。
 #----抑制机制
@@ -1581,6 +1606,20 @@ relabel_configs注解：
 5. target_label: __address__:表示将操作这个目标标签
 6. replacement: 172.168.2.222:9115:表示替换__address__这个标签的值为172.168.2.222:9115
 -----------------------
+
+#20210830--promtool工作使用
+--命令行查询表达式
+[root@prometheus prometheus]# ./promtool query instant http://localhost:9090 '(1 - ((node_memory_Buffers_bytes{job=~".*node_exporter.*"} + node_memory_Cached_bytes{job=~".*node_exporter.*"} + node_memory_MemFree_bytes{job=~".*node_exporter.*"}) / node_memory_MemTotal_bytes{job=~".*node_exporter.*"})) * 100 > 85'
+{app="mysql", env="test", instance="192.168.13.116:9100", job="consul-node_exporter", mysqld_exporter="192.168.13.116:9104", project="services", team="ops"} => 95.62319001386963 @[1630295649.293]
+--命令行查询标签
+[root@prometheus prometheus]# ./promtool query labels http://localhost:9090 team
+dba
+ops
+tiger
+
+
+
+
 
 #prometheus API
 --管理API
