@@ -75,7 +75,7 @@ xDS API常用术语
 8. 地域（Region）：区域所属地址位置；
 9. 区域（Zone）：AWS中的可用区（AZ）或GCP中的区域乖；
 10. 子区域（Subzone）：Envoy实例或端点运行的区域内的位置，用于支持区域内的多个负载均衡目标；
-11. xDS：CDS(Cluster Discovery Server),EDS(Endpoint Discovery Server),HDS,LDS(Listener Discovery Server),RLS(Rate Limit),RDS(Route Discovery Server),SDS,VHDS和RTDS等API的统称； 
+11. xDS：CDS(Cluster Discovery Server),EDS(Endpoint Discovery Server){在cluster中也可以使用DNS服务发现},HDS,LDS(Listener Discovery Server),RLS(Rate Limit),RDS(Route Discovery Server),SDS(Secret Discovery Server){如果集群使用TLS进行通信，则可以用SDS生成私钥和证书来进行通信},VHDS和RTDS等API的统称； 
 
 流程：
 Donwstream --> Listener --> Filter Chains(Route) --> Cluster --> Endpoint
@@ -85,7 +85,7 @@ Service to service、front proxy，and double proxy
 #Service to service:
 Engress: 正向代理
 Ingress：反向代理
-无论微服务是暴露给服务网格内部还是服务网格外部或者API Gateway时，都需要使用Listener侦听器暴躁给外部，Envoy无论后端endpoint是一个还是多个，都需要定义Cluster
+无论微服务是暴露给服务网格内部还是服务网格外部或者API Gateway时，都需要使用Listener侦听器暴露给外部，Envoy无论后端endpoint是一个还是多个，都需要定义Cluster
 #front proxy
 sidercar部署的代理只能支持东西向流量（网格内流量），如果需要支持南北向流量，需要使用边缘代理（类似nginx代理）
 #double proxy
@@ -103,6 +103,89 @@ External Cients --> Internet --> Front Envoy Proxy #1 --> HTTP/2,TLS,Client auth
 管理接口相关的线程（Admin）
 集群管理器、侦听器管理器、路由管理器线程
 xDS API线程
+
+
+#xDS之间的通信和配置管理
+Listener Discovery Server <----> xDS <----> Listener Manger -->动态生成配置侦听器配置文件
+Cluster Discovery Server <----> xDS <----> Cluster Manger -->动态生成配置侦听器配置文件
+...
+
+#配置方式
+1. 纯静态配置
+2. 仅使用EDS
+3. 使用EDS和CDS
+4. EDS,CDS和RDS
+5. EDS,CDS,RDS和LDS
+6. EDS,CDS,RDS,LDS和SDS
+
+如果CDS和EDS都是动态配置，其它都是静态配置，如果EDS配置先比CDS到达，那么集群配置就会出错，则需要ADS进行聚合，才能解决EDS配置比CDS到达的场景。
+
+#Envoy配置中的重要概念
+{
+  "node": "{...}",
+  "static_resources": "{...}",
+  "dynamic_resources": "{...}",
+  "cluster_manager": "{...}",
+  "hds_config": "{...}",
+  "flags_path": "...",
+  "stats_sinks": [],
+  "stats_config": "{...}",
+  "stats_flush_interval": "{...}",
+  "watchdog": "{...}",
+  "tracing": "{...}",
+  "runtime": "{...}",
+  "layered_runtime": "{...}",
+  "admin": "{...}",
+  "overload_manager": "{...}",
+  "enable_dispatcher_stats": "...",
+  "header_prefix": "...",
+  "stats_server_version_override": "{...}",
+  "use_tcp_for_dns_lookups": "..."
+}
+
+Bootstrap配置中几个重要的基础概念：
+	node: 节点标识，以呈现给管理服务器并且例如用于标识目的
+	static_resources: 静态配置资源，用于配置静态的listener、cluster和secret 
+	dynamic_resource: 动态配置的资源，用于配置基于xDS API获取listener,cluster和secret配置的lds_config,cds_config和ads_config
+	admin: Envoy内置的管理接口
+	tracing: 分布式跟踪
+	layered_runtime: 层级化的运行时，支持使用RTDS从管理服务器动态加载
+	hds_config: 使用HDS从管理服务器加载上游主机健康状态检测相关的配置
+	overload_manager: 过载管理器
+	stats_sinks: 统计信息接收器
+一般来说，侦听器和集群是最为常用基础配置，无论是以静态或者是动态方式提供；
+
+#Envoy配置概述
+启动时从Bootstarp配置文件中加载初始配置
+支持动态配置
+	xDS API
+		从配置文件加载配置
+		从管理服务器（Management Server）基于xds协议加载配置
+	runtime
+		某些关键特性（Feature flags）保存为Key/value数据
+		支持多层配置和覆盖机制
+启动全动态配置机制后，仅极少数场景需要重新启动进程
+	支持热重启
+注：envoy启动时需要一个Bootstarp配置文件中加载初始配置，无论是静态还是动态都从Bootstarp配置文件中加载
+
+Network(L3/L4) filters：
+	Envoy内置了许多L3/L4过滤器，例如：
+		代理类：TCP Proxy、HTTP connection manager、Thrift Proxy、Mongo proxy、Dubbo Proxy、ZooKeeper Proxy、MySQL Proxy和Redis Proxy等
+	其它：Client TLS authentication、Rate Limit、Role Based Access Control（RBAC）、Network Filter和Upstream Cluster from SNI等
+HTTP connection manager：
+	HTTP connection manager自身是L3/L4过滤器，它能够将原始字节转换为HTTP级别消息和事件（例如，headers和body等）；
+	它还处理所有HTTP连接和请求共有的功能，例如访问日志记录、请求ID生成和跟踪、请求/响应头操作、路由表管理和统计信息等；
+	与L3/L4过滤器堆栈相似，Envoy还支持在HTTP连接管理器中使用HTTP级过滤器堆栈；
+		HTTP过滤器在L7运行，它们访问和操作HTTP请求和响应；例如，gRPC-JSON Transcoder Filter为gRPC后端公开REST API，并将请求和响应转换为相应的格式；
+		常用的HTTP过滤器Router、Rate Limit、Health check、Gzip和Fault Injection等；
+
+
+
+#ceph
+x.0.z：开发版
+x.1.z：候选版
+x.2.z：稳定版
+
 
 
 
