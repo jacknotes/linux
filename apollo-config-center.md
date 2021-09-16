@@ -1002,7 +1002,7 @@ Apollo从1.6.0版本开始增加访问密钥机制，从而只有经过身份验
 为项目的每个环境生成访问密钥，注意默认是禁用的，建议在客户端都配置完成后再开启
 注：在porltal面板上配置
 
-注：经过测试未成功
+注：经过测试成功，只是对pro环境生效
 #配置邮件
 apolloPortalDB.ServerConfig表中更改或者在PortalUI的系统参数修改：
 email.enabled: true  									-----邮件开关
