@@ -1142,7 +1142,44 @@ GROUP  BY login_name
 ORDER  BY user_count DESC 
 
 
- 
+
+--202109161156 
+--新建用户
+create login WN010 with password='123456',check_policy=off,check_expiration=off
+create user WN010 for login WN010 with default_schema = dbo 
+--新建组
+EXEC sp_addrole 'updateroler10'
+GRANT UPDATE TO updateroler10
+go
+--授予组权限
+exec sp_addrolemember 'db_datareader','WN010'    --通过加入数据库角色，赋予数据库用户db_datareader权限
+exec sp_addrolemember 'updateroler10','WN010'    --再授予更新权限
+go 
+
+
+--1. 启用、禁用登录账户
+alter login WN010 disable
+alter login WN010 enable
+--2. 修改登录账户名称与密码
+alter login WN010 with name = WNCS
+alter login WN010 with password = '123456'
+--3.删除SQLServer登录账户
+select * from sys.sysprocesses where loginame='WN010'  
+kill 154       
+drop login WN010     
+--4. 修改数据库用户名、密码、数据库用户
+alter user WN010 with name = WNCS
+alter user WN010 with default_schema = sys
+--5.删除数据库用户  
+drop user WN010
+
+
+--批量周授予存储过程
+use homsomdb
+SELECT 'GRANT EXECUTE,VIEW DEFINITION ON[dbo].[' + name + ']TO [WN010]' AS t_sql FROM sys.procedures
+GRANT EXECUTE,VIEW DEFINITION  ON [dbo].[AutomaticTicketing_GetRecord]TO [WN010]
+-- revoke EXECUTE,VIEW DEFINITION on [dbo].[AutomaticTicketing_GetRecord] from [WN010]
+
 
 
 
