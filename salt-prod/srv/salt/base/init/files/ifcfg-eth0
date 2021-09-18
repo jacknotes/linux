@@ -1,0 +1,11 @@
+# Created by cloud-init on instance boot automatically, do not edit.
+# If you don't want cloud-init genrated automatically,you can disable it in /etc/cloud/cloud.cfg
+# For more information, please refer to: https://help.aliyun.com/document_detail/57803.html
+#
+BOOTPROTO=dhcp
+DEVICE=eth0
+ONBOOT=yes
+STARTMODE=auto
+TYPE=Ethernet
+USERCTL=no
+DNS1=10.10.10.240

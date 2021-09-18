@@ -1,14 +1,6 @@
 include:
   - tengine.install
 
-tengine-index:
-  file.managed:
-    - name: /usr/local/nginx/html/index.html
-    - source: salt://tengine/files/index.html
-    - user: www
-    - group: www
-    - mode: 775
-
 tengine-init:
   file.managed:
     - name: /etc/init.d/tengine
@@ -24,10 +16,13 @@ tengine-init:
 
 /usr/local/nginx/conf/nginx.conf:
   file.managed:
-    - source: salt://tengine/files/nginx.conf
-    - user: www
-    - group: www
+    - source: salt://tengine/files/nginx.conf.default
+    - user: tengine
+    - group: tengine
     - mode: 644 
+    - template: jinja
+    - defaults:
+      TengineWorkerCore: {{ grains['num_cpus'] }}
 
 tengine-service:
   service.running:
