@@ -146,6 +146,11 @@ sudo apt-file search /bin/netstat   --查看此文件属于哪个软件包
 sudo apt-cache madison kubectl   --查看包历史版本
 sudo apt list kubectl --all-versions   --查看包历史版本
 sudo apt install kubectl=1.19.10-00  --安装指定版本包
+#一组软件安装tasksel
+sudo tasksel --list-tasks  --列出组软件名称
+sudo tasksel install lamp-server  --安装一组软件
+sudo tasksel remove task_name    --卸载一组软件
+
 
 #--apt update报证书问题解决办法
 问题：
