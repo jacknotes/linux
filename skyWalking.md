@@ -108,12 +108,14 @@ core:
     restPort: ${SW_CORE_REST_PORT:12800}
     gRPCHost: ${SW_CORE_GRPC_HOST:192.168.13.76}
     gRPCPort: ${SW_CORE_GRPC_PORT:11800}
+	recordDataTTL: ${SW_CORE_RECORD_DATA_TTL:3} # Unit is day
+    metricsDataTTL: ${SW_CORE_METRICS_DATA_TTL:7} # Unit is day
 storage:
   selector: ${SW_STORAGE:elasticsearch7}   
   elasticsearch7:
     nameSpace: ${SW_NAMESPACE:""}
     clusterNodes: ${SW_STORAGE_ES_CLUSTER_NODES:192.168.13.50:9401}
-
+注：recordDataTTL表示记录数据存储时间，metricsDataTTL表示指标数据存储7天
 
 node02:
 [root@newgitlab bin]# yum install -y java-1.8.0-openjdk
@@ -133,6 +135,8 @@ core:
     restPort: ${SW_CORE_REST_PORT:12801}
     gRPCHost: ${SW_CORE_GRPC_HOST:192.168.13.76}
     gRPCPort: ${SW_CORE_GRPC_PORT:11801}
+	recordDataTTL: ${SW_CORE_RECORD_DATA_TTL:3} # Unit is day
+    metricsDataTTL: ${SW_CORE_METRICS_DATA_TTL:7} # Unit is day
 storage:
   selector: ${SW_STORAGE:elasticsearch7}   
   elasticsearch7:
@@ -157,6 +161,8 @@ core:
     restPort: ${SW_CORE_REST_PORT:12802}
     gRPCHost: ${SW_CORE_GRPC_HOST:192.168.13.76}
     gRPCPort: ${SW_CORE_GRPC_PORT:11802}
+	recordDataTTL: ${SW_CORE_RECORD_DATA_TTL:3} # Unit is day
+    metricsDataTTL: ${SW_CORE_METRICS_DATA_TTL:7} # Unit is day
 storage:
   selector: ${SW_STORAGE:elasticsearch7}   
   elasticsearch7:
