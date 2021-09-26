@@ -1,0 +1,36 @@
+
+basePackageInstall:
+  pkg.installed:
+    - pkgs:
+      - tree
+      - screen
+      - lrzsz
+      - tree
+      - openssl
+      - telnet
+      - iotop
+      - iftop
+      - sysstat
+      - wget
+      - dos2unix
+      - lsof
+      - net-tools
+      - mtr
+      - unzip
+      - zip
+      - bc
+      - bash-completion
+      - selinux-utils
+      - axel
+      - build-essential
+      - libtool
+      - libpcre3 
+      - libpcre3-dev
+      - zlib1g-dev
+      - openssl
+      - vim
+      - dnsutils
+      - bind9-host
+      - nmap
+      - netcat-openbsd
+      - iproute2

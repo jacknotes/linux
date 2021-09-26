@@ -1,0 +1,11 @@
+include:
+  - init.history
+  - init.sysctl
+  - init.ufw
+  - init.ssh
+  - init.postfix
+  - init.tty-timeout
+  - init.tty-style
+  - init.repo
+  - init.basePkg
+  - init.python-pip
