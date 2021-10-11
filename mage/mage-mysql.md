@@ -1,4 +1,4 @@
-﻿#Mysql数据库
+#Mysql数据库
 
 <pre>
 #第一节：关系型数据体系结构
@@ -5078,6 +5078,54 @@ mysql> show global variables like '%table%cache%';
 
 关闭SWAP（只支持cmake编译的mysql）：
 innodb_numa_interleave = 0;
+
+#参数对比
+local:
+@@key_buffer_size		8388608 
+@@query_cache_size	1048576 
+@@tmp_table_size		16777216 
+@@innodb_buffer_pool_size	2147483648 
+@@innodb_log_buffer_size	16777216 
+@@max_connections	500 
+@@sort_buffer_size		262144 
+@@read_buffer_size		131072 
+@@read_rnd_buffer_size	262144 	
+@@join_buffer_size		262144 
+@@thread_stack		262144 
+@@binlog_cache_size	32768 
+total: 2651.5 MB
+
+aliyun
+@@key_buffer_size		16777216 
+@@query_cache_size	0
+@@tmp_table_size		2097152 
+@@innodb_buffer_pool_size	12884901888 
+@@innodb_log_buffer_size	8388608 
+@@max_connections	4532 
+@@sort_buffer_size		868352 
+@@read_buffer_size		868352 
+@@read_rnd_buffer_size	442368 	
+@@join_buffer_size		442368 
+@@thread_stack		262144 
+@@binlog_cache_size	2097152 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 </pre>
 
