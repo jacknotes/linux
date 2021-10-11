@@ -527,6 +527,42 @@ print items | command
 例子：
 # awk -F: '{printf "%-15s %i\n",$1,$3 > "/dev/stderr" }' /etc/passwd
 
+#exec
+shell 中的 exec 两种用法：
+1.exec 命令 ;命令代替shell程序，命令退出，shell 退出；比如 exec ls
+2.exec 文件重定向，可以将文件的重定向就看为是shell程序的文件重定向 比如 exec 5</dev/null;exec 5<&-
+example:
+--新建一个文件描述符3，并连接172.168.2.222 22的端口信息返回给文件描述符3，再读取文件描述符3并标准输入到显示器，最后关闭新建的文件描述符。
+注：新建文件描述符时前面是数字，紧挨着的是输入或输出或输入输出(3< 3> 3<>),
+调用文件描述符时需要使用&符号进行调用，后面是文件描述符ID，调用是输入还是输出必需跟&符号紧挨着。
+关闭文件描述符时跟新建文件描述符类型，都是3<开关，结束符是&-，必须紧挨着
+exec 3</dev/tcp/172.168.2.222/22
+timeout 1 cat <&3
+exec 3<＆-
+
+exec 4<> /dev/tcp/172.168.2.222/22
+[root@salt ~]# ls -l /dev/fd/
+总用量 0
+lrwx------ 1 root root 64 9月  28 11:59 0 -> /dev/pts/0
+lrwx------ 1 root root 64 9月  28 11:59 1 -> /dev/pts/0
+lrwx------ 1 root root 64 9月  28 11:59 2 -> /dev/pts/0
+lr-x------ 1 root root 64 9月  28 11:59 3 -> /proc/126348/fd
+lrwx------ 1 root root 64 9月  28 11:59 4 -> socket:[3751876]
+[root@salt ~]# timeout 1 cat <&4
+SSH-2.0-OpenSSH_7.4
+[root@salt ~]# echo hehe >&4
+[root@salt ~]# timeout 1 cat <&4
+Protocol mismatch.
+[root@salt ~]# timeout 1 cat <&4
+exec 4<&-  或者  exec 4>&-   关闭描述符 
+ls -l /dev/fd/
+lrwx------ 1 root root 64 9月  28 12:01 0 -> /dev/pts/0
+lrwx------ 1 root root 64 9月  28 12:01 1 -> /dev/pts/0
+lrwx------ 1 root root 64 9月  28 12:01 2 -> /dev/pts/0
+lr-x------ 1 root root 64 9月  28 12:01 3 -> /proc/126652/fd
+
+
+
 六、awk的操作符：
 6.1 算术操作符：
 -x: 负值

@@ -1761,6 +1761,28 @@ Max open files            65535                65535                files
 
 
 
+#nginx stream模块，用户态四层代理--20210927
+stream{
+    upstream k8s-api {
+        server 192.168.13.51:6443 weight=5 max_fails=3 fail_timeout=30s; 
+        server 192.168.13.52:6443 max_fails=3 fail_timeout=30s;
+        server 192.168.13.53:6443 max_conns=3 ax_fails=3 fail_timeout=30s;
+    }
+
+    server {
+        listen 6443;
+        proxy_pass k8s-api;
+    }
+}
+注：Nginx的TCP负载均衡服务健壮性监控
+1. TCP负载均衡模块支持内置健壮性检测，一台上游服务器如果拒绝TCP连接超过proxy_connect_timeout配置的时间，将会被认为已经失效。在这种情况下，Nginx立刻尝试连接upstream组内的另一台正常的服务器。连接失败信息将会记录到Nginx的错误日志中。
+2. 如果一台服务器，反复失败（超过了max_fails或者fail_timeout配置的参数），Nginx也会踢掉这台服务器。服务器被踢掉60秒后，Nginx会偶尔尝试重连它，检测它是否恢复正常。如果服务器恢复正常，Nginx将它加回到upstream组内，缓慢加大连接请求的比例。
+之所"缓慢加大"，因为通常一个服务都有"热点数据"，也就是说，80%以上甚至更多的请求，实际都会被阻挡在"热点数据缓存"中，真正执行处理的请求只有很少的一部分。在机器刚刚启动的时候，"热点数据缓存"实际上还没有建立，这个时候爆发性地转发大量请求过来，很可能导致机器无法"承受"而再次挂掉。以mysql为例子，我们的mysql查询，通常95%以上都是落在了内存cache中，真正执行查询的并不多。
+3. TCP负载均衡原理上和LVS等是一致的，工作在更为底层，性能会高于原来HTTP负载均衡不少。但是，不会比LVS更为出色，LVS被置于内核模块，而Nginx工作在用户态，而且，Nginx相对比较重
+tail /usr/local/nginx/logs/error.log
+2021/09/27 16:07:11 [error] 3432#0: *17371333 connect() failed (113: No route to host) while connecting to upstream, client: 172.168.2.224, server: 0.0.0.0:6443, upstream: "192.168.13.51:6443", bytes from/to client:0/0, bytes from/to upstream:0/0
+2021/09/27 16:07:11 [warn] 3432#0: *17371333 upstream server temporarily disabled while connecting to upstream, client: 172.168.2.224, server: 0.0.0.0:6443, upstream: "192.168.13.51:6443", bytes from/to client:0/0, bytes from/to upstream:0/0
+
 
 </pre>
 
