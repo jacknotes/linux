@@ -478,6 +478,9 @@ modules:
 
 #第三方snmp.yml文件下载
 https://raw.githubusercontent.com/zorrzoor/grafana-idrac-dashboard/main/snmp.yml
+修改团体名称：  vim snmp.yml
+auth:
+    community: public
 #dashboard
 idrac snmp dashboard for granfana: 14395
 #多开一个snmp_exporter服务
