@@ -1,0 +1,8 @@
+[Unit]
+Description=Shadowsocks
+[Service]
+WorkingDirectory=/usr/local/shadowsocks
+TimeoutStartSec=0
+ExecStart=/root/.pyenv/shims/sslocal -c /etc/shadowsocks/shadowsocks.json
+[Install]
+WantedBy=multi-user.target

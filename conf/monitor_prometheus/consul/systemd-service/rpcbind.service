@@ -1,0 +1,17 @@
+[Unit]
+Description=RPC bind service
+DefaultDependencies=no
+
+# Make sure we use the IP addresses listed for
+# rpcbind.socket, no matter how this unit is started.
+Requires=rpcbind.socket
+Wants=rpcbind.target
+After=systemd-tmpfiles-setup.service
+
+[Service]
+Type=forking
+EnvironmentFile=/etc/sysconfig/rpcbind
+ExecStart=/sbin/rpcbind -w $RPCBIND_ARGS
+
+[Install]
+WantedBy=multi-user.target

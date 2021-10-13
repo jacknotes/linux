@@ -1,0 +1,24 @@
+{
+  "Name": "nginx_exporter",
+  "ID": "nginx_exporter-192.168.13.50",
+  "Tags": [
+    "nginx_exporter"
+  ],
+  "Address": "192.168.13.50",
+  "Port": 9913,
+  "Meta": {
+    "app": "ops nginx",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://192.168.13.50:9913/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}

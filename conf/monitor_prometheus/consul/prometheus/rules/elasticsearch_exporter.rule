@@ -37,7 +37,7 @@ groups:
       summary: "heap usage is high "
       description: "The heap in {{ $labels.instance }} is over 80% for 5m(current value: {{ $value }})."
 
-  - alert: Elasticsearch_health_up
+  - alert: Elasticsearch_health_check
     expr: elasticsearch_cluster_health_up !=1
     for: 1m
     labels:
@@ -61,7 +61,7 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: "Count of JVM GC runs > 5 per sec"
+      summary: "Count of JVM GC Run Alert"
       description: "ElasticSearch node {{ $labels.host }}: Count of JVM GC runs > 5 per sec and has a value of {{ $value }}"
 
   - alert: Elasticsearch_GC_Run_Time
@@ -70,7 +70,7 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: "GC run time in seconds > 0.3 sec"
+      summary: "GC run time Alert"
       description: "ElasticSearch node {{ $labels.host }}: GC run time in seconds > 0.3 sec and has a value of {{ $value }}"
 
   - alert: Elasticsearch_json_parse_failures
@@ -79,7 +79,7 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: "json parse failures > 0"
+      summary: "json parse failures Alert"
       description: "ElasticSearch node {{ $labels.instance }}: json parse failures > 0 and has a value of {{ $value }})"
 
   - alert: Elasticsearch_breakers_tripped
@@ -88,7 +88,7 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: "breakers tripped > 0"
+      summary: "breakers tripped Alert"
       description: "ElasticSearch node {{ $labels.instance }}: breakers tripped > 0 and has a value of {{ $value }}"
 
   - alert: Elasticsearch_health_timed_out
@@ -97,7 +97,7 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: "Number of cluster health checks timed out > 0"
+      summary: "Number of cluster health checks timed out Alert"
       description: "ElasticSearch node {{ $labels.instance }}: Number of cluster health checks timed out > 0 and has a value of {{ $value }}"
 
   - alert: Elasticsearch_CPU_Usage_Alert
@@ -106,7 +106,7 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: "elasticsearch node cpu usage rate > 85"
+      summary: "elasticsearch node cpu usage rate Alert"
       description: "ElasticSearch env: {{ $labels.env }}, instance: {{ $labels.instance }}, cluster: {{ $labels.cluster }} cpu usage rate > 85 and has a value of {{ $value }}"
 
   - alert: Elasticsearch_Memory_Usage_Alert
@@ -115,7 +115,7 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: "elasticsearch node memory usage rate > 85"
+      summary: "elasticsearch node memory usage rate Alert"
       description: "ElasticSearch env: {{ $labels.env }}, instance: {{ $labels.instance }}, cluster: {{ $labels.cluster }} memory usage rate > 80 and has a value of {{ $value }}"
 
   - alert: Elasticsearch_Disk_Usage_Alert
@@ -124,8 +124,8 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: "elasticsearch node disk usage rate > 85"
-      description: "ElasticSearch env: {{ $labels.env }}, instance: {{ $labels.instance }}, cluster: {{ $labels.cluster }} disk usage rate > 90 and has a value of {{ $value }}"
+      summary: "elasticsearch node disk usage rate Alert"
+      description: "ElasticSearch env: {{ $labels.env }}, instance: {{ $labels.instance }}, cluster: {{ $labels.cluster }} disk usage capcity > 90 and has a value of {{ $value }}"
 
   - alert: Elasticsearch_Network_SendTraffic_Alert
     expr: irate(elasticsearch_transport_tx_size_bytes_total[5m]) /1024 /1024 > 10
@@ -133,7 +133,7 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: "elasticsearch network send traffic > 10"
+      summary: "elasticsearch network send traffic Alert"
       description: "ElasticSearch env: {{ $labels.env }}, instance: {{ $labels.instance }}, cluster: {{ $labels.cluster }} network send traffic rate > 10 and has a value of {{ $value }}"
 
   - alert: Elasticsearch_Network_RecivedTraffic_Alert
@@ -142,6 +142,6 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: "elasticsearch network received traffic > 10"
+      summary: "elasticsearch network received traffic Alert"
       description: "ElasticSearch env: {{ $labels.env }}, instance: {{ $labels.instance }}, cluster: {{ $labels.cluster }} network received traffic rate > 10 and has a value of {{ $value }}"
 

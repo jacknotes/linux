@@ -1,0 +1,24 @@
+{
+  "Name": "mssql_exporter",
+  "ID": "mssql_exporter-192.168.13.200",
+  "Tags": [
+    "mssql_exporter"
+  ],
+  "Address": "192.168.13.200",
+  "Port": 9399,
+  "Meta": {
+    "app": "sqlserver",
+    "env": "fat",
+    "project": "database",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://192.168.13.236:9399/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}

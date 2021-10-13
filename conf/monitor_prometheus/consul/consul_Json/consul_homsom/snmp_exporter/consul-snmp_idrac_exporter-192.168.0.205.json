@@ -1,0 +1,16 @@
+{
+  "Name": "snmp_idrac_exporter",
+  "ID": "snmp_idrac_exporter-192.168.0.205",
+  "Tags": [
+    "snmp_idrac_exporter"
+  ],
+  "Address": "192.168.0.205",
+  "Meta": {
+    "ip": "192.168.13.245",
+    "name": "r720-xen06",
+    "env": "pro",
+    "project": "idrac",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

@@ -1,0 +1,12 @@
+[Unit]
+Description=Load CPU microcode update
+After=basic.target
+ConditionVirtualization=false
+ConditionPathExists=/sys/devices/system/cpu/microcode/reload
+
+[Service]
+Type=oneshot
+RemainAfterExit=no
+ExecStart=/usr/libexec/microcode_ctl/reload_microcode
+[Install]
+WantedBy=basic.target

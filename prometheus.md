@@ -2153,5 +2153,30 @@ http {
 }
 
 
+#ipmi_exporter
+axel -n 30 https://github.com/prometheus-community/ipmi_exporter/releases/download/v1.4.0/ipmi_exporter-1.4.0.linux-amd64.tar.gz
+tar xf ipmi_exporter-1.4.0.linux-amd64.tar.gz -C /usr/local/ && ln -sv /usr/local/ipmi_exporter-1.4.0.linux-amd64 /usr/local/ipmi
+cd /usr/local/ipmi && curl -OL https://raw.githubusercontent.com/prometheus-community/ipmi_exporter/master/ipmi_remote.yml
+vim ipmi_remote.yml --更改default下的用户名密码，用来抓取ipmi信息，帐户和密码是idrac的账户和密码
+                user: "root"
+                pass: "calvin"
+[root@prometheus ipmi_exporter]# cat /usr/lib/systemd/system/ipmi_exporter.service 
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/ipmi_exporter/ipmi_exporter \
+--config.file=/usr/local/ipmi_exporter/ipmi_remote.yml \
+--web.listen-address=192.168.13.236:9290
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
+systemctl start ipmi_exporter.service && systemctl enable ipmi_exporter.service
+
+
+
 </pre>
 

@@ -1,0 +1,24 @@
+{
+  "Name": "ipmi_exporter",
+  "ID": "ipmi_exporter-36.150.108.159",
+  "Tags": [
+    "ipmi_exporter"
+  ],
+  "Address": "36.150.108.159",
+  "Port": 623,
+  "Meta": {
+    "app": "ipmi_dell",
+    "env": "tiger",
+    "project": "server",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://192.168.13.236:9290/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}

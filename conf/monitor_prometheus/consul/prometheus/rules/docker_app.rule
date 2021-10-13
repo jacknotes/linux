@@ -1,0 +1,12 @@
+groups:
+- name: DockerApplicationAlert
+  rules:
+  - alert: DockerApplicationProbeFailure
+    expr: up{job="consul-docker_app"} !=1 
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "probe failure"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, env: {{ $labels.env }}, instance: {{ $labels.instance }} is probe fail (current value: {{ $value }})"
+

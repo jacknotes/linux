@@ -3,7 +3,7 @@ groups:
   rules:
   - alert: blackboxProbeFailure
     expr: probe_success < 1
-    for: 15s
+    for: 30s
     labels:
       severity: High
     annotations:

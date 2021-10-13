@@ -1,0 +1,129 @@
+groups:
+- name: DellSNMPHostAlert
+  rules:
+#  - alert: DellHostNoDataAlert
+#    expr: up{job="consul-snmp_idrac_exporter"} == 0
+#    for: 30s
+#    labels:
+#      severity: High
+#    annotations:
+#      summary: "Dell Host SNMP NoData Alert"
+#      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, ip: {{ $labels.ip }}, name: {{ $labels.name }}, instance: {{ $labels.instance }} Dell Host SNMP NoData Alert (current value: {{ $value }})"
+
+  - alert: DellHostLCDPanelAlert
+    expr: systemLCDStatus != 3
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "LCD Panel Alert"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, ip: {{ $labels.ip }}, name: {{ $labels.name }}, instance: {{ $labels.instance }} Dell Host LCD Panel Display Alert (current value: {{ $value }})"
+
+  - alert: DellHostStorageStatusAlert
+    expr: globalStorageStatus != 3
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "Storage Status Error"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, ip: {{ $labels.ip }}, name: {{ $labels.name }}, instance: {{ $labels.instance }} Dell Host Storage Status Alert (current value: {{ $value }})"
+
+  - alert: DellHostIntrusionStatusAlert
+    expr: (intrusionStatus/ ignoring(intrusionLocationName) group_right intrusionLocationName) != 3
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "Intrusion Status Alert"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, ip: {{ $labels.ip }}, name: {{ $labels.name }}, instance: {{ $labels.instance }} Dell Host Intrusion Status Alert (current value: {{ $value }})"
+
+  - alert: DellHostPowerStatusAlert
+    expr: systemPowerState != 4
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "Power Status Alert"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, ip: {{ $labels.ip }}, name: {{ $labels.name }}, instance: {{ $labels.instance }} Dell Host Power Status Alert (current value: {{ $value }})"
+
+  - alert: DellHostSystemStatusAlert
+    expr: globalSystemStatus != 3
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "System Status Alert"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, ip: {{ $labels.ip }}, name: {{ $labels.name }}, instance: {{ $labels.instance }} Dell Host System Status Alert (current value: {{ $value }})"
+
+  - alert: DellHostBIOSStatusAlert
+    expr: (systemBIOSStatus / ignoring(systemBIOSVersionName) group_right systemBIOSVersionName) != 3
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "BIOS Status Alert"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, ip: {{ $labels.ip }}, name: {{ $labels.name }}, instance: {{ $labels.instance }} Dell Host BIOS Status Alert (current value: {{ $value }})"
+
+  - alert: DellHostFanStatusAlert
+    expr: (coolingDeviceStatus / ignoring(coolingDeviceLocationName) group_right coolingDeviceLocationName) != 3
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "Fan Status Alert"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, ip: {{ $labels.ip }}, name: {{ $labels.name }}, instance: {{ $labels.instance }}, FAN: {{ $labels.coolingDeviceLocationName }} Dell Host Fan Status Alert (current value: {{ $value }})"
+
+  - alert: DellHostPCIboardCardStatusAlert
+    expr: (pCIDeviceStatus / ignoring(pCIDeviceDescriptionName) group_right pCIDeviceDescriptionName) != 3
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "PCIboardCard Status Alert"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, ip: {{ $labels.ip }}, name: {{ $labels.name }}, instance: {{ $labels.instance }}, PCIinfo: {{ $labels.pCIDeviceDescriptionName }} Dell Host PCIboardCard Status Alert (current value: {{ $value }})"
+
+  - alert: DellHostCPUTempStatusAlert
+    expr: (temperatureProbeReading/10 / ignoring(temperatureProbeLocationName) group_right temperatureProbeLocationName{temperatureProbeLocationName=~".*CPU.*"}) > 60
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "CPU Temp Status Alert"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, ip: {{ $labels.ip }}, name: {{ $labels.name }}, instance: {{ $labels.instance }}, CPU: {{ $labels.temperatureProbeLocationName }} Dell Host CPU Temp > 60oC (current value: {{ $value }})"
+
+  - alert: DellHostInletTempStatusAlert
+    expr: (temperatureProbeReading/10 / ignoring(temperatureProbeLocationName) group_right temperatureProbeLocationName{temperatureProbeLocationName=~".*Inlet.*"}) > 30
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "Inlet Temp Status Alert"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, ip: {{ $labels.ip }}, name: {{ $labels.name }}, instance: {{ $labels.instance }} Dell Host Inlet Temp > 30oC (current value: {{ $value }})"
+
+  - alert: DellHostDiskStatusAlert
+    expr: (physicalDiskComponentStatus / ignoring(physicalDiskName) group_right physicalDiskName) != 3
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "Disk Status Alert"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, ip: {{ $labels.ip }}, name: {{ $labels.name }}, instance: {{ $labels.instance }}, DiskName: {{ $labels.physicalDiskName }} Dell Host Disk Status Alert (current value: {{ $value }})"
+
+  - alert: DellHostMemoryStatusAlert
+    expr: (memoryDeviceStatus / ignoring(memoryDeviceLocationName) group_right memoryDeviceLocationName) != 3
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "Memory Status Alert"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, ip: {{ $labels.ip }}, name: {{ $labels.name }}, instance: {{ $labels.instance }}, memoryDeviceLocation: {{ $labels.memoryDeviceLocationName }} Dell Host Memory Status Alert (current value: {{ $value }})"
+
+  - alert: DellHostNetworkCardStatusAlert
+    expr: networkDeviceStatus != 3
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "NetworkCard Status Alert"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, ip: {{ $labels.ip }}, name: {{ $labels.name }}, instance: {{ $labels.instance }}, NetworkCard: {{ $labels.networkDeviceIndex }} Dell Host Memory Status Alert (current value: {{ $value }})"
+

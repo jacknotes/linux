@@ -1,0 +1,24 @@
+{
+  "Name": "docker_app",
+  "ID": "docker_app-hotelrm.fat.qa.hs.com",
+  "Tags": [
+    "docker_app"
+  ],
+  "Address": "hotelrm.fat.qa.hs.com",
+  "Port": 80,
+  "Meta": {
+    "app": "hotelrm.fat.qa.hs.com",
+    "env": "fat",
+    "project": "docker_app",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://hotelrm.fat.qa.hs.com/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}

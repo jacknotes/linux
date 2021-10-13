@@ -1,0 +1,10 @@
+[Unit]
+Description=IBM Power Raid dump daemon
+Before=iprinit.service iprupdate.service
+
+[Service]
+Type=forking
+ExecStart=/usr/sbin/iprdump --daemon
+
+[Install]
+WantedBy=iprutils.target

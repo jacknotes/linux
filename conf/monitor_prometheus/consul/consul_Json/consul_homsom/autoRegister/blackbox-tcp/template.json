@@ -1,0 +1,15 @@
+{
+  "Name": "blackbox_tcp",
+  "ID": "blackbox_tcp-ip:port",
+  "Tags": [
+    "blackbox_tcp"
+  ],
+  "Address": "ip:port",
+  "Meta": {
+    "app": "sshd",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false
+}

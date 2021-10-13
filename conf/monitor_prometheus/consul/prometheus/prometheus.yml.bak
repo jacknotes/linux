@@ -1,0 +1,421 @@
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - 'localhost:9093'
+
+rule_files:
+  - "/usr/local/prometheus/rules/*.rule"
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+    - targets: ['127.0.0.1:9090']
+  - job_name: 'node_exporter'
+    static_configs:
+    - targets: 
+      - '192.168.13.207:9100'
+      - '192.168.13.215:9100'
+      - '192.168.13.218:9100'
+      labels:
+        app: 'nginx server for productor'
+    - targets: 
+      - '127.0.0.1:9100'
+      labels:
+        app: 'Prometheus Server'
+    - targets: 
+      - '192.168.13.21:9100'
+      labels:
+        app: 'Nexus,Confluence,Zendao Server'
+    - targets: 
+      - '192.168.13.160:9100'
+      - '192.168.13.161:9100'
+      - '192.168.13.162:9100'
+      labels:
+        app: 'Redis,mysql,rabbitmq Server'
+    - targets: 
+      - '192.168.13.223:9100'
+      labels:
+        app: 'Clog,FAT,UAT Application Server'
+    - targets: 
+      - '192.168.13.235:9100'
+      labels:
+        app: 'Harbor Server'
+    - targets: 
+      - '192.168.13.237:9100'
+      labels:
+        app: 'Hlog Server'
+    - targets: 
+      - '192.168.13.238:9100'
+      - '192.168.13.239:9100'
+      labels:
+        app: 'Blog Server'
+    - targets: 
+      - '192.168.13.213:9100'
+      labels:
+        app: 'Gitlab Server'
+    - targets: 
+      - '192.168.13.206:9100'
+      labels:
+        app: 'Image Server'
+    - targets: 
+      - '192.168.13.212:9100'
+      labels:
+        app: 'Redmine Server'
+    - targets: 
+      - '192.168.13.214:9100'
+      labels:
+        app: 'NewJenkins Server'
+    - targets: 
+      - '192.168.13.230:9100'
+      labels:
+        app: 'Nginx Server for Test'
+    - targets: 
+      - '192.168.13.163:9100'
+      labels:
+        app: 'Mysql Cluster Node for productor'
+    - targets: 
+      - '192.168.13.116:9100'
+      labels:
+        app: 'Mysql for Test'
+    - targets: 
+      - '192.168.13.31:9100'
+      - '192.168.13.32:9100'
+      - '192.168.13.33:9100'
+      labels:
+        app: 'Other Test'
+  - job_name: 'blackbox-icmp'
+    scrape_interval: 5s
+    metrics_path: /probe
+    params:
+      module: [icmp]
+    static_configs:
+      - targets:
+        - '58.246.78.149'
+        labels:
+          group: 'ISP:unicom'
+          app: 'ISP Network'
+      - targets:
+        - '222.66.21.209'
+        labels:
+          group: 'ISP:telecom'
+          app: 'ISP Network'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+        replacement: ICMP:${1}
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+  - job_name: 'blackbox-http-elasticsearch-readonly'
+    metrics_path: /probe
+    params:
+      module: [http_es_onlyread_test]
+    static_configs:
+      - targets:
+        - http://hlog.hs.com:9200/clog/_settings?pretty=true
+        - http://clog.hs.com:9200/clog/_settings?pretty=true
+        - http://blog.hs.com:9200/homsom_log/_settings?pretty=true
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+      - source_labels: [__param_target]
+        replacement: HTTP:${1}
+        target_label: instance
+  - job_name: 'blackbox-http-elasticsearch-health'
+    metrics_path: /probe
+    params:
+      module: [http_es_health_test]
+    static_configs:
+      - targets:
+        - http://blog.hs.com:9200/_cat/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+      - source_labels: [__param_target]
+        replacement: HTTP:${1}
+        target_label: instance
+  - job_name: 'blackbox-http'
+    metrics_path: /probe
+    params:
+      module: [http_custom_httpcode]
+    static_configs:
+      - targets:
+        - http://nexus.hs.com/
+        - http://conf.hs.com
+        - http://clog.hs.com
+        - http://blog.hs.com
+        - http://hlog.hs.com
+        - http://jenkins.hs.com/login
+        - http://newjenkins.hs.com/login
+        - http://pm.hs.com/
+        - http://gitlab.hs.com/
+      - targets:
+        - http://172.168.2.174:55505/
+        labels:
+          description: 'callcenter_luyin'
+          app: 'callcenter_luyin'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+      - source_labels: [__param_target]
+        replacement: HTTP:${1}
+        target_label: instance
+  - job_name: 'blackbox-tcp'
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    static_configs:
+      - targets:
+        - 192.168.13.195:6379
+        labels:
+          description: 'pdredis1.hs.com,windows redis server'
+          app: 'pdredis1.hs.com'
+      - targets:
+        - 192.168.13.235:6379
+        labels:
+          description: 'pdredis2.hs.com,linux redis server'
+          app: 'pdredis2.hs.com'
+      - targets:
+        - 192.168.13.160:3306
+        - 192.168.13.163:3306
+        labels:
+          description: 'pro env mysql cluster'
+          app: 'mysql cluster node'
+      - targets:
+        - 192.168.13.160:6369
+        - 192.168.13.161:6369
+        - 192.168.13.162:6369
+        - 192.168.13.160:16369
+        - 192.168.13.161:16369
+        - 192.168.13.162:16369
+        labels:
+          description: 'pro env redis master slave cluster'
+          app: 'redis master slave'
+      - targets:
+        - 192.168.13.116:3306
+        labels:
+          description: 'fat,uat env mysql'
+          app: 'mysql'
+      - targets:
+        - 192.168.13.21:8081
+        - 192.168.13.21:8090
+        - 192.168.13.160:8081
+        - 192.168.13.162:8081
+        - 192.168.13.223:6002
+        - 192.168.13.223:6001
+        - 192.168.13.223:8002
+        - 192.168.13.223:8001
+        - 192.168.13.223:9200
+        - 192.168.13.235:8000
+        - 192.168.13.237:9200
+        - 192.168.13.238:80
+        - 192.168.13.238:8090
+        - 192.168.13.238:8999
+        - 192.168.13.238:8989
+        - 192.168.13.238:10890
+        - 192.168.13.238:10900
+        - 192.168.13.238:10880
+        - 192.168.13.238:11990
+        - 192.168.13.238:11980
+        - 192.168.13.238:8081
+        - 192.168.13.239:9800
+        - 192.168.13.239:11980
+        - 192.168.13.239:8081
+        - 192.168.13.239:8092
+        - 192.168.13.239:11990
+        - 192.168.13.239:8090
+        - 192.168.13.239:9000
+        - 192.168.13.239:10890
+        - 192.168.13.239:10900
+        - 192.168.13.239:10880
+        - 192.168.13.239:8080
+        - 192.168.13.239:80
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        replacement: TCP:${1}
+        target_label: instance
+      - target_label: __address__
+        replacement: 127.0.0.1:9115
+  - job_name: 'docker'
+    static_configs:
+    - targets: 
+      - '192.168.13.21:7070'
+      - '192.168.13.160:7070'
+      - '192.168.13.161:7070'
+      - '192.168.13.162:7070'
+      - '192.168.13.223:7070'
+      - '192.168.13.235:7070'
+      - '192.168.13.237:7070'
+      - '192.168.13.238:7070'
+      - '192.168.13.239:7070'
+      labels:
+        app: 'docker'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+  - job_name: 'redis_exporter_target'
+    static_configs:
+      - targets:
+        - 192.168.13.160:6369
+        - 192.168.13.161:6369
+        - 192.168.13.162:6369
+        labels:
+          app: 'redis master slave'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.13.236:9121
+  - job_name: 'redis_exporter'
+    static_configs:
+    - targets: 
+      - '192.168.13.236:9121'
+  - job_name: 'mysqld_exporter'
+    static_configs:
+    - labels:
+        instance: 192.168.13.160:3306
+        mysql_host: 192.168.13.160:9100
+        mysql_env: prod
+        app: 'mysql cluster node'
+      targets: 
+      - '192.168.13.236:9104'
+    - labels:
+        instance: 192.168.13.163:3306
+        mysql_host: 192.168.13.163:9100
+        mysql_env: prod
+        app: 'mysql cluster node'
+      targets: 
+      - '192.168.13.236:9105'
+    - labels:
+        instance: 192.168.13.116:3306
+        mysql_host: 192.168.13.116:9100
+        mysql_env: test
+        app: 'mysql'
+      targets: 
+      - '192.168.13.236:9106'
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: (.*)
+        target_label: __address__
+        replacement: $1
+  - job_name: 'windows'
+    static_configs:
+    - targets: 
+      - '192.168.13.112:9182'
+      - '192.168.13.111:9182'
+      - '192.168.13.108:9182'
+      - '192.168.13.107:9182'
+      - '192.168.13.115:9182'
+      labels:
+        app: 'SQLSERVER_Cluster'
+    - targets: 
+      - '192.168.10.250:9182'
+      - '192.168.10.110:9182'
+      - '192.168.13.251:9182'
+      labels:
+        app: 'Active Directory'
+    - targets: 
+      - '192.168.13.233:9182'
+      - '192.168.13.232:9182'
+      - '192.168.13.229:9182'
+      - '192.168.13.228:9182'
+      - '192.168.13.205:9182'
+      - '192.168.13.204:9182'
+      labels:
+        app: 'Web Sites for productor'
+    - targets: 
+      - '172.168.2.220:9182'
+      - '192.168.13.24:9182'
+      - '192.168.13.193:9182'
+      labels:
+        app: 'Travel Hotel Site Image Server'
+    - targets: 
+      - '192.168.13.200:9182'
+      - '192.168.13.211:9182'
+      - '192.168.13.103:9182'
+      labels:
+        app: 'Develop Test UAT Server'
+    - targets: 
+      - '192.168.13.222:9182'
+      labels:
+        app: 'DFS upload Server'
+    - targets: 
+      - '192.168.13.195:9182'
+      labels:
+        app: 'Ticketing Round Robin'
+    - targets: 
+      - '192.168.13.191:9182'
+      labels:
+        app: 'SVN Server'
+    - targets: 
+      - '192.168.13.190:9182'
+      labels:
+        app: 'Round Robin Server'
+    - targets: 
+      - '192.168.13.182:9182'
+      labels:
+        app: 'Backup Server'
+    - targets: 
+      - '192.168.13.180:9182'
+      labels:
+        app: 'Jenkins Server'
+    - targets: 
+      - '172.168.2.184:9182'
+      - '172.168.2.183:9182'
+      labels:
+        app: 'Eterm Server'
+    - targets: 
+      - '172.168.2.185:9182'
+      labels:
+        app: 'New Eterm Server'
+    - targets: 
+      - '192.168.13.114:9182'
+      labels:
+        app: 'CalcenterDB Backup Server'
+    - targets: 
+      - '172.168.2.129:9182'
+      - '172.168.2.10:9182'
+      labels:
+        app: 'GuanChaShi Machine'
+  - job_name: 'windows_server2003'
+    static_configs:
+    - targets: 
+      - '172.168.2.111:9182'
+      labels:
+        custom_disk: 'yes'
+        app: 'Callcenter'
+    - targets: 
+      - '172.168.2.110:9182'
+      - '172.168.2.172:9182'
+      - '172.168.2.173:9182'
+      - '172.168.2.174:9182'
+      labels:
+        app: 'Calccenter'
+    - targets: 
+      - '172.168.2.186:9182'
+      labels:
+        app: 'New Eterm Server'
+    - targets: 
+      - '192.168.10.187:9182'
+      labels:
+        app: 'Files Server'
+    - targets: 
+      - '192.168.10.161:9182'
+      labels:
+        app: 'Kingdee Server'

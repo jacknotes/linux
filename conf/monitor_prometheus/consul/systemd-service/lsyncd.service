@@ -1,0 +1,11 @@
+[Unit]
+Description=Live Syncing (Mirror) Daemon
+After=network.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/sysconfig/lsyncd
+ExecStart=/usr/bin/lsyncd -nodaemon $LSYNCD_OPTIONS
+
+[Install]
+WantedBy=multi-user.target

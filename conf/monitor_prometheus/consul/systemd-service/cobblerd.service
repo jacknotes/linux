@@ -1,0 +1,13 @@
+[Unit]
+Description=Cobbler Helper Daemon
+After=syslog.target network.target
+
+[Service]
+ExecStart=/usr/bin/cobblerd -F
+ExecStartPost=-/usr/bin/touch /usr/share/cobbler/web/cobbler.wsgi
+PrivateTmp=yes
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
+

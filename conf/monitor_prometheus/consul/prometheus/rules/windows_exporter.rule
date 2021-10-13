@@ -3,12 +3,12 @@ groups:
   rules:
   - alert: windowsNodeDown
     expr: up{job=~".*windows_exporter.*"} == 0
-    for: 15s
+    for: 30s
     labels:
       severity: High
     annotations:
       summary: "windows is Down"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{$labels.instance}} is Down,Server Machine can shutdown,time keep 15s(current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{$labels.instance}} is Down,Server Machine can shutdown,time keep 30s(current value: {{ $value }})"
 
   - alert: windowsHostCpuUsageAlert
     expr: (100 - (avg(irate(windows_cpu_time_total{job=~".*windows_exporter.*",mode="idle"}[1m])) by(instance,app,env,job,project,team))*100) > 85
@@ -17,7 +17,7 @@ groups:
       severity: warnning
     annotations:
       summary: "Host CPU usage High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} CPU Usage above 85% (current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} CPU Usage above 85%/1m (current value: {{ $value }})"
 
   - alert: windowsHostCpuUsage100%Alert
     expr: (100 - (avg(irate(windows_cpu_time_total{job=~".*windows_exporter.*",mode="idle"}[1m])) by(instance,app,env,job,project,team))*100) >= 99
@@ -26,7 +26,7 @@ groups:
       severity: warnning
     annotations:
       summary: "Host CPU usage High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} CPU Usage above equal 99% (current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} CPU Usage above equal 99%/1m (current value: {{ $value }})"
 
   - alert: windowsHostMemUsageAlert
     expr: (100 - (windows_os_physical_memory_free_bytes{job=~".*windows_exporter.*"} / windows_cs_physical_memory_bytes{job=~".*windows_exporter.*"}) * 100) > 85
@@ -71,7 +71,7 @@ groups:
       severity: warnning
     annotations:
       summary: "Host Disk[5m] IOPS Read Rate High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk IOPS Read Rate above 600 (volume: {{ $labels.volume }},value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk IOPS Read Rate above 600/5m (volume: {{ $labels.volume }},value: {{ $value }})"
 
   - alert: windowsHostDiskIOPSWriteRateAlert
     expr: irate(windows_logical_disk_writes_total{job=~".*windows_exporter.*",volume!~"HarddiskVolume.*"}[5m]) > 600
@@ -80,7 +80,7 @@ groups:
       severity: warnning
     annotations:
       summary: "Host Disk[5m] IOPS Write Rate High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk IOPS Write Rate above 600 (volume: {{ $labels.volume }},value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk IOPS Write Rate above 600/5m (volume: {{ $labels.volume }},value: {{ $value }})"
 
   - alert: windowsHostDiskReadRateAlert
     expr: irate(windows_logical_disk_read_bytes_total{job=~".*windows_exporter.*",volume!~"HarddiskVolume.*"}[5m]) / 1024 / 1024  > 60
@@ -89,7 +89,7 @@ groups:
       severity: warnning
     annotations:
       summary: "Host Disk[5m] Read Rate High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Read Rate above 60M (volume: {{ $labels.volume }},value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Read Rate above 60M/5m (volume: {{ $labels.volume }},value: {{ $value }})"
 
   - alert: windowsHostDiskWriteRateAlert
     expr: irate(windows_logical_disk_write_bytes_total{job=~".*windows_exporter.*",volume!~"HarddiskVolume.*"}[5m]) / 1024 / 1024  > 60
@@ -98,7 +98,7 @@ groups:
       severity: warnning
     annotations:
       summary: "Host Disk[5m] Write Rate High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Write Rate above 60M (volume: {{ $labels.volume }},value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Write Rate above 60M/5m (volume: {{ $labels.volume }},value: {{ $value }})"
 
   - alert: windowsHostNetworkReceiveAlert
     expr: irate(windows_net_bytes_received_total{job=~".*windows_exporter.*",nic!~'isatap.*|VPN.*'}[5m]) *8 /1024 /1024 > 80
@@ -107,7 +107,7 @@ groups:
       severity: warnning
     annotations:
       summary: "Host Network[5m] Receive Rate High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Download Rate above 80Mbps (nic: {{ $labels.nic }},value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Download Rate above 80Mbps/5m (nic: {{ $labels.nic }},value: {{ $value }})"
 
   - alert: windowsHostNetworkSendAlert
     expr: irate(windows_net_bytes_sent_total{job=~".*windows_exporter.*",nic!~'isatap.*|VPN.*'}[5m]) *8 /1024 /1024 > 80
@@ -116,4 +116,4 @@ groups:
       severity: warnning
     annotations:
       summary: "Host Network[5m] Send Rate High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Send Rate above 80Mbps (nic: {{ $labels.nic }},value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Send Rate above 80Mbps/5m (nic: {{ $labels.nic }},value: {{ $value }})"

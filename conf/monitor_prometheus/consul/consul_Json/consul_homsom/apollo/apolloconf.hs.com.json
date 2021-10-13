@@ -1,0 +1,24 @@
+{
+  "Name": "apollo",
+  "ID": "apollo-apolloconf.hs.com",
+  "Tags": [
+    "apollo"
+  ],
+  "Address": "apolloconf.hs.com",
+  "Port": 80,
+  "Meta": {
+    "app": "apolloconf.hs.com",
+    "env": "pro",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://apolloconf.hs.com/prometheus",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}

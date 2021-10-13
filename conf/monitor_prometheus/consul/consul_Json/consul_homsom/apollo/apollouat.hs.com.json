@@ -1,0 +1,24 @@
+{
+  "Name": "apollo",
+  "ID": "apollo-apollouat.hs.com",
+  "Tags": [
+    "apollo"
+  ],
+  "Address": "apollouat.hs.com",
+  "Port": 80,
+  "Meta": {
+    "app": "apollouat.hs.com",
+    "env": "dev",
+    "project": "services",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://apollouat.hs.com/prometheus",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}

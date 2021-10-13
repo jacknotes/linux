@@ -3,7 +3,7 @@ groups:
   rules:
   - alert: RabbitmqClusterDown
     expr: rabbitmq_up != 1
-    for: 15s
+    for: 30s
     labels:
       severity: High
     annotations:
@@ -12,7 +12,7 @@ groups:
 
   - alert: RabbitmqNodeRunningAlert
     expr: rabbitmq_running != 1
-    for: 15s
+    for: 30s
     labels:
       severity: High
     annotations:

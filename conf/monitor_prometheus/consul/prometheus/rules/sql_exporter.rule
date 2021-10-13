@@ -1,0 +1,30 @@
+groups:
+- name: sqlExporterAlert
+  rules:
+  - alert: sqlExporterDownAlert
+    expr: up{job=~"consul-mssql_exporter.*"} != 1
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "sqlserver is down"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }}, env: {{ $labels.env }} sqlserver service is down. (current value: {{ $value }})"
+
+  - alert: sqlExporterDeadLockAlert
+    expr: irate(mssql_deadlocks[5m]) > 0
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "Dead Lock"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }}, env: {{ $labels.env }} have dead lock. (current value: {{ $value }})"
+
+  - alert: sqlExporterConnectNumberAlert
+    expr: mssql_connections{job=~"consul-mssql_exporter.*"} > 100
+    for: 1m
+    labels:
+      severity: High
+    annotations:
+      summary: "connect number too many"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }}, env: {{ $labels.env }} connect number too manl. (current value: {{ $value }})"
+

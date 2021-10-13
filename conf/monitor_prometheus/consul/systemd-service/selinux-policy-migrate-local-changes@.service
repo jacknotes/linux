@@ -1,0 +1,17 @@
+[Unit]
+Description=Migrate local SELinux policy changes from the old store structure to the new structure
+DefaultDependencies=no
+Requires=local-fs.target
+Conflicts=shutdown.target
+After=local-fs.target
+Before=sysinit.target shutdown.target
+ConditionSecurity=selinux
+ConditionPathExists=/etc/selinux/%I/modules
+ConditionPathExists=!/etc/selinux/%I/modules/active/README.migrated
+
+[Service]
+ExecStart=/usr/libexec/selinux/selinux-policy-migrate-local-changes.sh %I
+Type=oneshot
+TimeoutSec=0
+RemainAfterExit=yes
+StandardInput=tty

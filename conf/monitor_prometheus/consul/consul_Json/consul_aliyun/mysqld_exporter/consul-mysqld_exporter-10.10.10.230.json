@@ -1,0 +1,24 @@
+{
+  "Name": "aliyun_mysql_exporter",
+  "ID": "aliyun_mysql_exporter-10.10.10.230",
+  "Tags": [
+    "aliyun_mysql_exporter"
+  ],
+  "Address": "10.10.10.230",
+  "Port": 9104,
+  "Meta": {
+    "app": "aliyun_rds_mysql",
+    "env": "aliyun",
+    "project": "database",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://10.10.10.230:9104/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}

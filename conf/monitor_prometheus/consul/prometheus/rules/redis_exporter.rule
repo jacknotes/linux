@@ -3,7 +3,7 @@ groups:
   rules:
   - alert: redis_exporterDown
     expr: redis_up < 1
-    for: 15s
+    for: 30s
     labels:
       severity: High
     annotations:
@@ -12,7 +12,7 @@ groups:
 
   - alert: redisLinkMasterStatusAlert
     expr: redis_master_link_up < 1
-    for: 15s
+    for: 30s
     labels:
       severity: High
     annotations:
@@ -38,20 +38,20 @@ groups:
       description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Client Connect Number Many, Value is Greater 200(current value: {{ $value }})"
 
   - alert: redisNetworkInputAlert
-    expr: rate(redis_net_input_bytes_total[5m]) /1024 /1024 > 2
+    expr: rate(redis_net_input_bytes_total[5m]) /1024 /1024 > 3
     for: 1m
     labels:
       severity: High
     annotations:
       summary: "Redis Network Input Flow Many"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Input Flow Many,Value Is Greater 2mbps(current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Input Flow Many,Value Is Greater 3mbps/5m(current value: {{ $value }})"
 
   - alert: redisNetworkOutputAlert
-    expr: rate(redis_net_output_bytes_total[5m]) /1024 /1024 > 2
+    expr: rate(redis_net_output_bytes_total[5m]) /1024 /1024 > 3
     for: 1m
     labels:
       severity: High
     annotations:
       summary: "Redis Network Output Flow Many"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Output Flow Many, Value Is Greater 2mbps(current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Output Flow Many, Value Is Greater 3mbps/5m(current value: {{ $value }})"
 

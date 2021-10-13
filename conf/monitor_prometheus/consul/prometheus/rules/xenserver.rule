@@ -1,25 +1,25 @@
 groups:
 - name: linuxHostStatusAlert
   rules:
-  - alert: linuxNodeDown
+  - alert: xenserverNodeDown
     expr: up{job=~".*xenserver.*"} == 0
-    for: 15s
+    for: 30s
     labels:
       severity: High
     annotations:
       summary: "xenserver is Down"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{$labels.instance}} is Down,Server Machine can shutdown,time keep 15s(current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{$labels.instance}} is Down,Server Machine can shutdown,time keep 30s(current value: {{ $value }})"
 
-  - alert: linuxHostCpuUsageAlert
+  - alert: xenserverHostCpuUsageAlert
     expr: (sum((avg(irate(node_cpu_seconds_total{job=~".*xenserver.*",mode!="idle"}[5m]))  without(cpu)))  by(instance,team,project,job,app) ) * 100 > 95
     for: 5m
     labels:
       severity: warnning
     annotations:
       summary: "Host CPU[5m] usage High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} CPU Usage above 95% (current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} CPU Usage above 95%/5m (current value: {{ $value }})"
 
-  - alert: linuxHostMemUsageAlert
+  - alert: xenserverHostMemUsageAlert
     expr: (1 -(node_filesystem_free_bytes{job=~".*xenserver.*",device!~".*192.168.10.187.*"}  / node_filesystem_size_bytes{job=~".*xenserver.*",device!~".*192.168.10.187.*"} )) * 100 > 95
     for: 5m 
     labels:
@@ -28,56 +28,65 @@ groups:
       summary: "Host Memory usage High"
       description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Memory Usage above 95% (current value: {{ $value }})"
 
-  - alert: linuxHostDiskReadRateAlert
+  - alert: xenserverHostDiskReadRateAlert
     expr: max(irate(node_disk_read_bytes_total{job=~".*xenserver.*"}[5m]) ) without(device) / 1024 / 1024 > 80
     for: 5m 
     labels:
       severity: warnning
     annotations:
       summary: "Host Disk[5m] Read Rate High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Max Read Rate above 80M (value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Max Read Rate above 80M/5m (value: {{ $value }})"
 
-  - alert: linuxHostDiskWriteRateAlert
+  - alert: xenserverHostDiskWriteRateAlert
     expr: max(irate(node_disk_written_bytes_total{job=~".*xenserver.*"}[5m]) ) without(device) / 1024 / 1024 > 80
     for: 5m 
     labels:
       severity: warnning
     annotations:
       summary: "Host Disk[5m] Write Rate High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Max Write Rate above 80M (value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Max Write Rate above 80M/5m (value: {{ $value }})"
 
-  - alert: linuxHostDiskIOPSReadRateAlert
+  - alert: xenserverHostDiskIOPSReadRateAlert
     expr: max(irate(node_disk_reads_completed_total{job=~".*xenserver.*"}[5m]) ) without(device) > 5000
     for: 5m 
     labels:
       severity: warnning
     annotations:
       summary: "Host Disk[5m] IOPS Read Rate High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Max Read IOPS Rate above 5000 (value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Max Read IOPS Rate above 5000/5m (value: {{ $value }})"
 
-  - alert: linuxHostDiskIOPSWriteRateAlert
+  - alert: xenserverHostDiskIOPSWriteRateAlert
     expr: max(irate(node_disk_writes_completed_total{job=~".*xenserver.*"}[5m]) ) without(device) > 5000
     for: 5m 
     labels:
       severity: warnning
     annotations:
       summary: "Host Disk[5m] IOPS Write Rate High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Max Write IOPS Rate above 5000 (value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Max Write IOPS Rate above 5000/5m (value: {{ $value }})"
 
-  - alert: linuxHostNetworkReceiveAlert
+  - alert: xenserverHostDiskUsageCapacityAlert
+    expr: (100 - (node_filesystem_free_bytes{fstype=~"ext.*|xfs",job=~".*xenserver.*"} / node_filesystem_size_bytes{fstype=~"ext.*|xfs",job=~".*xenserver.*"} * 100)) > 90
+    for: 5m
+    labels:
+      severity: warnning
+    annotations:
+      summary: "Host Disk Usage Capacity High"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Host Disk Capacity Usage above 90% (path: {{ $labels.mountpoint }},value: {{ $value }})"
+
+  - alert: xenserverHostNetworkReceiveAlert
     expr: max without(device)(irate(node_network_receive_bytes_total{device!~"tap.*|veth.*|br.*|docker.*|virbr*|lo*",job=~".*xenserver.*"}[5m])) * 8 / 1024 / 1024 > 80
     for: 5m 
     labels:
       severity: warnning
     annotations:
       summary: "Host Network[5m] Receive Rate High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Download rate above 80Mbps (current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Download rate above 80Mbps/5m (current value: {{ $value }})"
 
-  - alert: linuxHostNetworkSendAlert
+  - alert: xenserverHostNetworkSendAlert
     expr: max without(device)(irate(node_network_transmit_bytes_total{device!~"tap.*|veth.*|br.*|docker.*|virbr*|lo*",job=~".*xenserver.*"}[5m])) * 8 / 1024 / 1024 > 80
     for: 5m 
     labels:
       severity: warnning
     annotations:
       summary: "Host Network[5m] Send Rate High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Send rate above 80Mbps (current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Send rate above 80Mbps/5m (current value: {{ $value }})"

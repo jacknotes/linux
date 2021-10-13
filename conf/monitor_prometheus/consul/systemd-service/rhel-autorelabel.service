@@ -1,0 +1,20 @@
+[Unit]
+Description=Relabel all filesystems, if necessary
+DefaultDependencies=no
+Requires=local-fs.target
+Conflicts=shutdown.target
+After=local-fs.target
+Before=sysinit.target shutdown.target
+ConditionSecurity=selinux
+ConditionKernelCommandLine=|autorelabel
+ConditionPathExists=|/.autorelabel
+
+[Service]
+ExecStart=/usr/lib/systemd/rhel-autorelabel
+Type=oneshot
+TimeoutSec=0
+RemainAfterExit=yes
+StandardOutput=journal+console
+
+[Install]
+WantedBy=sysinit.target

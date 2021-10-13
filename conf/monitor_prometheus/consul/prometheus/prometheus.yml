@@ -1,6 +1,7 @@
 global:
-  scrape_interval:     15s
-  evaluation_interval: 15s
+  scrape_interval: 30s
+  evaluation_interval: 30s
+  scrape_timeout: 30s
 
 alerting:
   alertmanagers:
@@ -13,12 +14,26 @@ rule_files:
 
 scrape_configs:
   - job_name: 'prometheus'
+    scrape_interval: 15s
     static_configs:
     - targets: ['127.0.0.1:9090']
       labels:
         app: "prometheus server"
 
+  - job_name: 'consul-nginx_exporter'
+    scrape_interval: 15s
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_service]
+        regex: nginx.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+
   - job_name: 'consul-node_exporter'
+    scrape_interval: 15s
     consul_sd_configs:
     - server: '192.168.13.236:8500'
       services: []
@@ -30,6 +45,7 @@ scrape_configs:
         action: labelmap
 
   - job_name: 'consul_aliyun-node_exporter'
+    scrape_interval: 15s
     consul_sd_configs:
     - server: '192.168.13.236:8500'
       services: []
@@ -41,6 +57,7 @@ scrape_configs:
         action: labelmap
 
   - job_name: 'consul-xenserver'
+    scrape_interval: 15s
     consul_sd_configs:
     - server: '192.168.13.236:8500'
       services: []
@@ -52,50 +69,103 @@ scrape_configs:
         action: labelmap
 
   - job_name: 'consul-cadvisor_exporter'
+    scrape_interval: 15s
     consul_sd_configs:
     - server: '192.168.13.236:8500'
       services: []
     relabel_configs:
-      - source_labels: [__meta_consul_tags]
-        regex: .*cadvisor.*
+      - source_labels: [__meta_consul_service]
+        regex: cadvisor.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+
+  - job_name: 'consul_aliyun-cadvisor_exporter'
+    scrape_interval: 15s
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_service]
+        regex: aliyun_cadvisor.*
         action: keep
       - regex: __meta_consul_service_metadata_(.+)
         action: labelmap
 
   - job_name: 'consul-redis_exporter'
+    scrape_interval: 15s
     consul_sd_configs:
     - server: '192.168.13.236:8500'
       services: []
     relabel_configs:
-      - source_labels: [__meta_consul_tags]
-        regex: .*redis.*
-        action: keep
-      - regex: __meta_consul_service_metadata_(.+)
-        action: labelmap
+       - source_labels: [__meta_consul_service]
+         regex: redis.*
+         action: keep
+       - regex: __meta_consul_service_metadata_(.+)
+         action: labelmap
+
+  - job_name: 'consul_aliyun-redis_exporter'
+    scrape_interval: 15s
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+       - source_labels: [__meta_consul_service]
+         regex: aliyun_redis.*
+         action: keep
+       - regex: __meta_consul_service_metadata_(.+)
+         action: labelmap
 
   - job_name: 'consul-mysqld_exporter'
+    scrape_interval: 15s
     consul_sd_configs:
     - server: '192.168.13.236:8500'
       services: []
     relabel_configs:
-      - source_labels: [__meta_consul_tags]
-        regex: .*mysql.*
+       - source_labels: [__meta_consul_service]
+         regex: mysql.*
+         action: keep
+       - regex: __meta_consul_service_metadata_(.+)
+         action: labelmap
+
+  - job_name: 'consul_aliyun-mysqld_exporter'
+    scrape_interval: 15s
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+       - source_labels: [__meta_consul_service]
+         regex: aliyun_mysql.*
+         action: keep
+       - regex: __meta_consul_service_metadata_(.+)
+         action: labelmap
+
+  - job_name: 'consul-elasticsearch_exporter'
+    scrape_interval: 15s
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_service]
+        regex: elasticsearch.*
         action: keep
       - regex: __meta_consul_service_metadata_(.+)
         action: labelmap
 
-  - job_name: 'consul-elasticsearch_exporter'
+  - job_name: 'consul_aliyun-elasticsearch_exporter'
+    scrape_interval: 15s
     consul_sd_configs:
     - server: '192.168.13.236:8500'
       services: []
     relabel_configs:
-      - source_labels: [__meta_consul_tags]
-        regex: .*elasticsearch.*
+      - source_labels: [__meta_consul_service]
+        regex: aliyun_elasticsearch.*
         action: keep
       - regex: __meta_consul_service_metadata_(.+)
         action: labelmap
 
   - job_name: 'consul-windows_exporter'
+    scrape_interval: 15s
     consul_sd_configs:
     - server: '192.168.13.236:8500'
       services: []
@@ -107,6 +177,7 @@ scrape_configs:
         action: labelmap
 
   - job_name: 'consul-wmi_exporter'
+    scrape_interval: 15s
     consul_sd_configs:
     - server: '192.168.13.236:8500'
       services: []
@@ -256,7 +327,7 @@ scrape_configs:
         replacement: 192.168.13.236:9115
 
   - job_name: 'consul-snmp_exporter'
-    scrape_interval: 5s
+    scrape_interval: 30s
     metrics_path: /snmp
     params:
       module: [if_mib]
@@ -283,7 +354,69 @@ scrape_configs:
       - target_label: __address__
         replacement: 192.168.13.236:9116
 
+  - job_name: 'consul-snmp_idrac_exporter'
+    scrape_interval: 30s
+    scrape_timeout: 30s
+    metrics_path: /snmp
+    params:
+      module: [dell_idrac]
+      community: [public]
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*snmp_idrac_exporter.*
+        action: keep
+      - source_labels: [__meta_consul_service_id]
+        regex: .*192.168.50.50
+        action: drop
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - source_labels: [__address__]
+        regex: (.*):(.*)
+        target_label: __param_target
+        replacement: ${1}:161
+      - source_labels: [__param_target]
+        target_label: instance
+      - source_labels: [community]
+        target_label: __param_community
+      - source_labels: [module]
+        target_label: __param_module
+      - target_label: __address__
+        replacement: 192.168.13.236:9117
+
+  - job_name: 'consul-snmp_idrac_exporter_tiger'
+    scrape_interval: 30s
+    scrape_timeout: 30s
+    metrics_path: /snmp
+    params:
+      module: [dell_idrac]
+      community: [public]
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_service_id]
+        regex: snmp_idrac_exporter-192.168.50.50
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - source_labels: [__address__]
+        regex: (.*):(.*)
+        target_label: __param_target
+        replacement: ${1}:161
+      - source_labels: [__param_target]
+        target_label: instance
+      - source_labels: [community]
+        target_label: __param_community
+      - source_labels: [module]
+        target_label: __param_module
+      - target_label: __address__
+        replacement: 36.150.108.179:19116
+
   - job_name: 'consul-rabbitmq_exporter'
+    scrape_interval: 15s
     consul_sd_configs:
     - server: '192.168.13.236:8500'
       services: []
@@ -293,4 +426,97 @@ scrape_configs:
         action: keep
       - regex: __meta_consul_service_metadata_(.+)
         action: labelmap
+
+  - job_name: 'consul-apollo'
+    metrics_path: /prometheus
+    scrape_interval: 15s
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_service]
+        regex: apollo.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+
+  - job_name: 'consul-docker_app'
+    metrics_path: /metrics
+    scrape_interval: 15s
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_service]
+        regex: docker_app.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+
+  - job_name: 'consul-mssql_exporter_fat'
+    scrape_interval: 15s
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*mssql_exporter.*
+        action: keep
+      - source_labels: [__meta_consul_service_metadata_env]
+        regex: .*uat.*
+        action: drop
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - source_labels: [__address__]
+        regex: (.*):(.*)
+        target_label: __param_target
+        replacement: ${1}
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.13.236:9399
+
+  - job_name: 'consul-mssql_exporter_uat'
+    scrape_interval: 15s
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*mssql_exporter.*
+        action: keep
+      - source_labels: [__meta_consul_service_metadata_env]
+        regex: .*fat.*
+        action: drop
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - source_labels: [__address__]
+        regex: (.*):(.*)
+        target_label: __param_target
+        replacement: ${1}
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.13.236:9400
+
+  - job_name: 'consul-ipmi_exporter'
+    scrape_interval: 15s
+    metrics_path: /ipmi
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_service_id]
+        regex: ipmi_exporter-192.168.0.203
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - source_labels: [__address__]
+        regex: (.*):(.*)
+        target_label: __param_target
+        replacement: ${1}
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 192.168.13.236:9290
 
