@@ -3,6 +3,8 @@
 #数据库热度排行榜地址：
 https://db-engines.com/en/ranking
 https://hellogithub.com/report/db-engines/?url=/periodical/volume/66/
+#postgresql中文文档
+http://www.postgres.cn/docs/10/functions.html
 
 #postgresql安装
 sudo apt-get install -y postgresql

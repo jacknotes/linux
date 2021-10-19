@@ -767,7 +767,7 @@ i ：插入， i 的后面可以接字串，而这些字串会在新的一行出
 p ：列印，亦即将某个选择的数据印出。通常 p 会与参数 sed -n 一起运行～
 s ：取代，可以直接进行取代的工作哩！通常这个 s 的动作可以搭配正规表示法！例如 1,20s/old/new/g 就是啦！
 
-[root@master-nginx backup]# sed -n '1,3p' passwd  #-n为安装模式，打开1到3行
+[root@master-nginx backup]# sed -n '1,3p' passwd  #-n为安静模式，打开1到3行
 root:x:0:0:root:/root:/bin/bash
 bin:x:1:1:bin:/bin:/sbin/nologin
 daemon:x:2:2:daemon:/sbin:/sbin/nologin
@@ -829,6 +829,8 @@ nl /etc/passwd | sed -e '3,$d' -e 's/bash/blueshell/'
 1  root:x:0:0:root:/root:/bin/blueshell
 2  daemon:x:1:1:daemon:/usr/sbin:/bin/sh
 -e表示多点编辑，第一个编辑命令删除/etc/passwd第三行到末尾的数据，第二条命令搜索bash替换为blueshell。
+#更改匹配行
+sudo sed -i '/^TFTP_DIRECTORY/c TFTP_DIRECTORY="/var/lib/tftpboot"' /etc/default/tftpd-hpa
 
 #Linux三剑客命令之grep
 .  代表一定有一个任意字符
@@ -2760,5 +2762,15 @@ cat json.txt | jq "[.[] | {name:.arrayBrowser[1].name,city:.address.city}]"
     "city": "大连"
   }
 ]
+
+
+
+
+
+
+
+
+
+
 
 </pre>
