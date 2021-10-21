@@ -113,7 +113,7 @@ LAST_ACK：等待所有分组死掉
 #network
 net.ipv4.tcp_syncookies = 1 
 net.ipv4.tcp_tw_reuse = 1 
-net.ipv4.tcp_tw_recycle = 1    这个甚用，在阿里云环境中开启至使端口被某些centos7访问拒绝。
+net.ipv4.tcp_tw_recycle = 1    这个慎用，在阿里云环境中开启至使端口被某些centos7访问拒绝。
 net.ipv4.tcp_keepalive_time = 1200 
 net.ipv4.ip_local_port_range = 10000 65000 
 net.ipv4.tcp_max_syn_backlog = 8192 
