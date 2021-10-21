@@ -831,6 +831,68 @@ nl /etc/passwd | sed -e '3,$d' -e 's/bash/blueshell/'
 -e表示多点编辑，第一个编辑命令删除/etc/passwd第三行到末尾的数据，第二条命令搜索bash替换为blueshell。
 #更改匹配行
 sudo sed -i '/^TFTP_DIRECTORY/c TFTP_DIRECTORY="/var/lib/tftpboot"' /etc/default/tftpd-hpa
+#examples
+[root@ceph04 ~]# cat test.txt
+hehe
+test01
+test02
+
+ok
+[root@ceph04 ~]# sed -i '1i\\helloworld!' test.txt  --在第1行前面增加第一行，内容为'helloworld!'
+[root@ceph04 ~]# cat test.txt
+helloworld!
+hehe
+test01
+test02
+
+ok
+[root@ceph04 ~]# sed -i '2a\\xiaomi' test.txt  --在第2行后面增加第三行，内容为'xiaomi'
+[root@ceph04 ~]# cat test.txt
+helloworld!
+hehe
+xiaomi
+test01
+test02
+
+ok
+[root@ceph04 ~]# sed -i '2c replace' test.txt  --将第二行替换为'replace'
+[root@ceph04 ~]# cat test.txt
+helloworld!
+replace
+xiaomi
+test01
+test02
+
+ok
+[root@ceph04 ~]# sed -i 's/01/linux&/' test.txt  --在匹配02的前面增加'linux'
+[root@ceph04 ~]# cat test.txt
+helloworld!
+replace
+xiaomi
+testlinux01
+test02
+
+ok
+[root@ceph04 ~]# sed -i 's/02/&ubuntu/' test.txt  --在匹配02的后面增加'ubuntu'
+[root@ceph04 ~]# cat test.txt
+helloworld!
+replace
+xiaomi
+testlinux01
+test02ubuntu
+
+ok
+[root@ceph04 ~]# sed -i '/^$/d' test.txt   --删除空行
+[root@ceph04 ~]# cat test.txt
+helloworld!
+replace
+xiaomi
+testlinux01
+test02ubuntu
+ok
+
+
+
 
 #Linux三剑客命令之grep
 .  代表一定有一个任意字符
