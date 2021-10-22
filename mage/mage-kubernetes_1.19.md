@@ -3447,7 +3447,7 @@ data:
           summary: "Kubernetes APIServer Work Queue Processing Time Long"
           description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes APIServer Work Queue Processing Time Long, P90 value above 10ms/5m (current value: {{ $value }})"    		  
       - alert: KubernetesAPIServerRequestLatencyAlert		
-        expr: histogram_quantile(0.90, sum(rate(apiserver_request_duration_seconds_bucket{verb!~"CONNECT|WATCH"}[5m])) by (le)) > 0.5 
+        expr: histogram_quantile(0.90, sum(rate(apiserver_request_duration_seconds_bucket{verb!~"CONNECT|WATCH"}[5m])) by (le,job,instance)) > 0.5 
         for: 5m
         labels:
           severity: warnning
@@ -3455,7 +3455,7 @@ data:
           summary: "Kubernetes APIServer Request Latency High"
           description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes APIServer Request Latency High, P90 value above 500ms/5m (current value: {{ $value }})"  
       - alert: KubernetesAPIServerRequestLatencyAlert		
-        expr: histogram_quantile(0.90, sum(rate(etcd_request_duration_seconds_bucket[5m])) by (le)) > 0.05 
+        expr: histogram_quantile(0.90, sum(rate(etcd_request_duration_seconds_bucket[5m])) by (le,job,instance)) > 0.05 
         for: 5m
         labels:
           severity: warnning
