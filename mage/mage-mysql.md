@@ -5111,7 +5111,12 @@ aliyun
 
 
 
-
+#整个mysql数据实例迁移：
+旧192.168.13.116
+[root@devmysql ~]# mysqldump -uroot -p --all-databases --triggers --routines --events --set-gtid-purged=OFF --flush-logs --master-data=2  > alldatabases.sql
+[root@devmysql ~]# scp alldatabases.sql root@192.168.13.202:/root/
+新192.168.13.202
+[root@devmysql ~]# mysql -uroot -p < alldatabases.sql 
 
 
 
