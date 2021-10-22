@@ -1718,6 +1718,12 @@ limit_req zone=one burst=10 nodelay;    --超过最大请求数10则直接丢弃
 
 
 #nginx调优
+0. 绑定 Nginx 进程到不同的 CPU 上
+[root@localhost ~]# grep -c processor /proc/cpuinfo    # 查看CPU核数
+4
+worker_processes  4;         # 4核CPU的配置
+worker_cpu_affinity 0001 0010 0100 1000;   
+
 1. worker_connections的作用？
 worker_connections 20480
 worker_connections是每个worker进程允许的最多连接数，每台nginx 服务器的最大连接数为:worker_processes*worker_connections
@@ -1758,6 +1764,179 @@ nginx     1656  0.0  0.0  81896  5908 ?        S    14:36   0:00  \_ nginx: work
 我们查看pid 1652的打开文件限制，可以看到修改已经生效:
 [root@blog ~]# more /proc/1652/limits | grep 'open files'
 Max open files            65535                65535                files
+----在ubuntu20.04系统下，当你更改了"Max open files"后，需要重启tengine才可以使其生效，否则只能使用worker_rlimit_nofile 65535;
+[root@ubuntu /usr/local/nginx]# ulimit -n
+1024
+[root@ubuntu /usr/local/nginx]# ulimit -HSn 10000
+[root@ubuntu /usr/local/nginx]# ./sbin/nginx -s stop
+[root@ubuntu /usr/local/nginx]# ./sbin/nginx
+[root@ubuntu /usr/local/nginx]# ps aux | grep nginx
+root      250227  2.3  0.0   9736   880 ?        Ss   09:20   0:00 nginx: master process ./sbin/nginx
+root      250228  0.0  0.0   9884   880 ?        S    09:20   0:00 nginx: rollback logs/access_log interval=1d baknum=7 maxsize=2G
+tengine   250230  0.3  0.3  14308  7380 ?        S    09:20   0:00 nginx: worker process
+tengine   250232  0.0  0.3  14308  7380 ?        S    09:20   0:00 nginx: worker process
+root      250243  0.0  0.0   6300   672 pts/0    S+   09:20   0:00 grep --color=auto nginx
+[root@ubuntu /usr/local/nginx]# cat /proc/250230/limits | grep 'oopen files'
+Max open files            10000                10000                files
+
+4. 优化 Nginx worker 进程打开的最大文件数
+http {
+   include       mime.types;
+   default_type  application/octet-stream;
+   
+   sendfile      on;    # 开启文件的高效传输模式
+   tcp_nopush    on;    # 激活 TCP_CORK socket 选择
+   tcp_nodelay   on;    # 数据在传输的过程中不进缓存
+       
+   keepalive_timeout  65;
+   include vhosts/*.conf;
+}
+
+5. 优化 Nginx 连接的超时时间
+keepalive_timeout：用于设置客户端连接保持会话的超时时间，超过这个时间服务器会关闭该连接。
+client_header_timeout：用于设置读取客户端请求头数据的超时时间，如果超时客户端还没有发送完整的 header 数据，服务器将返回 "Request time out (408)" 错误。
+client_body_timeout：用于设置读取客户端请求主体数据的超时时间，如果超时客户端还没有发送完整的主体数据，服务器将返回 "Request time out (408)" 错误。
+send_timeout：用于指定响应客户端的超时时间，如果超过这个时间，客户端没有任何活动，Nginx 将会关闭连接。
+tcp_nodelay：默认情况下当数据发送时，内核并不会马上发送，可能会等待更多的字节组成一个数据包，这样可以提高 I/O 性能，但是，在每次只发送很少字节的业务场景中，使用 tcp_nodelay 功能，等待时间会比较长。
+http {
+    include       mime.types;
+    server_names_hash_bucket_size  512;   
+    
+    default_type  application/octet-stream;
+    sendfile        on;
+    tcp_nodelay     on;
+    
+    keepalive_timeout  65;
+    client_header_timeout 15;
+    client_body_timeout 15;
+    send_timeout 25;
+    
+    include vhosts/*.conf;
+}
+
+6. 限制上传文件的大小
+client_max_body_size 用于设置最大的允许客户端请求主体的大小。
+在请求头中有 "Content-Length" ，如果超过了此配置项，客户端会收到 413 错误，即请求的条目过大。
+http {
+    client_max_body_size 8m;    # 设置客户端最大的请求主体大小为 8 M
+}
+
+7. FastCGI 相关参数调优
+当 LNMP 组合工作时，用户通过浏览器输入域名请求 Nginx Web 服务：
+如果请求的是静态资源，则由 Nginx 解析后直接返回给用户；
+如果是动态请求（如 PHP），那么 Nginx 就会把它通过 FastCGI 接口发送给 PHP 引擎服务（即 php-fpm）进行解析，如果这个动态请求要读取数据库数据，那么 PHP 就会继续请求 MySQL 数据库，以读取需要的数据，并最终通过 Nginx 服务把获取的数据返回给用户。
+这就是 LNMP 环境的基本请求流程。
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile        on;
+    keepalive_timeout  65;
+    fastcgi_connect_timeout  240;    # Nginx服务器和后端FastCGI服务器连接的超时时间
+    fastcgi_send_timeout     240;    # Nginx允许FastCGI服务器返回数据的超时时间，即在规定时间内后端服务器必须传完所有的数据，否则Nginx将断开这个连接
+    fastcgi_read_timeout     240;    # Nginx从FastCGI服务器读取响应信息的超时时间，表示连接建立成功后，Nginx等待后端服务器的响应时间
+    fastcgi_buffer_size      64k;    # Nginx FastCGI 的缓冲区大小，用来读取从FastCGI服务器端收到的第一部分响应信息的缓冲区大小
+    fastcgi_buffers        4 64k;    # 设定用来读取从FastCGI服务器端收到的响应信息的缓冲区大小和缓冲区数量
+    fastcgi_busy_buffers_size    128k;    # 用于设置系统很忙时可以使用的 proxy_buffers 大小
+    fastcgi_temp_file_write_size 128k;    # FastCGI 临时文件的大小
+#   fastcti_temp_path            /data/ngx_fcgi_tmp;    # FastCGI 临时文件的存放路径
+    fastcgi_cache_path           /data/ngx_fcgi_cache  levels=2:2  keys_zone=ngx_fcgi_cache:512m  inactive=1d  max_size=40g;    # 缓存目录
+     
+    server {
+        listen       80;
+        server_name  www.abc.com;
+        location / {
+            root   html/www;
+            index  index.html index.htm;
+        }
+        location ~ .*\.(php|php5)?$ {
+            root            html/www;
+            fastcgi_pass    127.0.0.1:9000;
+            fastcgi_index   index.php;
+            include         fastcgi.conf;
+            fastcgi_cache   ngx_fcgi_cache;            # 缓存FastCGI生成的内容，比如PHP生成的动态内容
+            fastcgi_cache_valid      200  302  1h;     # 指定http状态码的缓存时间，这里表示将200和302缓存1小时
+            fastcgi_cache_valid      301  1d;          # 指定http状态码的缓存时间，这里表示将301缓存1天
+            fastcgi_cache_valid      any  1m;          # 指定http状态码的缓存时间，这里表示将其他状态码缓存1分钟
+            fastcgi_cache_min_uses   1;                # 设置请求几次之后响应被缓存，1表示一次即被缓存
+            fastcgi_cache_use_stale  error  timeout  invalid_header  http_500;    # 定义在哪些情况下使用过期缓存
+            fastcgi_cache_key        http://$host$request_uri;                    # 定义 fastcgi_cache 的 key
+        }
+    }
+}
+
+8. gzip 压缩
+Nginx gzip 压缩模块提供了压缩文件内容的功能，用户请求的内容在发送到客户端之前，Nginx 服务器会根据一些具体的策略实施压缩，以节约网站出口带宽，同时加快数据传输效率，来提升用户访问体验。
+需要压缩的对象有 html 、js 、css 、xml 、shtml ，图片和视频尽量不要压缩，因为这些文件大多都是已经压缩过的，如果再压缩可能反而变大。
+另外，压缩的对象必须大于 1KB，由于压缩算法的特殊原因，极小的文件压缩后可能反而变大。
+http {
+    gzip  on;                    # 开启压缩功能
+    gzip_min_length  1k;         # 允许压缩的对象的最小字节
+    gzip_buffers  4 32k;         # 压缩缓冲区大小，表示申请4个单位为32k的内存作为压缩结果的缓存
+    gzip_http_version  1.1;      # 压缩版本，用于设置识别HTTP协议版本
+    gzip_comp_level  9;          # 压缩级别，1级压缩比最小但处理速度最快，9级压缩比最高但处理速度最慢
+    gzip_types  text/plain application/x-javascript text/css application/xml;    # 允许压缩的媒体类型
+    gzip_vary  on;               # 该选项可以让前端的缓存服务器缓存经过gzip压缩的页面，例如用代理服务器缓存经过Nginx压缩的数据
+}
+
+9. 配置 expires 缓存期限 
+Nginx expires 的功能就是给用户访问的静态内容设定一个过期时间。
+当用户第一次访问这些内容时，会把这些内容存储在用户浏览器本地，这样用户第二次及以后继续访问该网站时，浏览器会检查加载已经缓存在用户浏览器本地的内容，就不会去服务器下载了，直到缓存的内容过期或被清除。
+不希望被缓存的内容：广告图片、网站流量统计工具、更新很频繁的文件。
+缓存期限参考：新浪缓存 15 天，京东缓存 25 年，淘宝缓存 10 年。
+server {
+    listen       80;
+    server_name  www.abc.com abc.com;
+    root    html/www;
+    location ~ .*\.(gif|jpg|jpeg|png|bmp|swf|js|css)$    # 缓存的对象
+    {
+        expires 3650d;     # 缓存期限为 10 年
+    }
+}
+
+10. 配置防盗链
+什么是防盗链？
+简单地说，就是其它网站未经许可，通过在其自身网站程序里非法调用其他网站的资源，然后在自己的网站上显示这些调用的资源，使得被盗链的那一端消耗带宽资源 。
+通过 HTTP referer 实现防盗链。
+#第一种,匹配后缀
+location ~ .*\.(gif|jpg|jpeg|png|bm|swf|flv|rar|zip|gz|bz2)$ {    # 指定需要使用防盗链的媒体资源
+    access_log  off;                                              # 不记录日志
+    expires  15d;                                                 # 设置缓存时间
+    valid_referers  none  blocked  *.test.com  *.abc.com;         # 表示仅允许这些域名访问上面的媒体资源
+    if ($invalid_referer) {                                       # 如果域名不是上面指定的地址就返回403
+        return 403
+    }
+#第二种,绑定目录
+location /images {  
+    root /web/www/img;
+    vaild_referers none blocked *.spdir.com *.spdir.top;
+    if ($invalid_referer) {
+        return 403;
+    }
+}
+
+11. 排除不需要的日志
+location ~ .*\.(js|jpg|JPG|jpeg|JPEG|css|bmp|gif|GIF)$ {
+    access_log off;
+}
+
+12. 日志切割：nginx日志默认不做处理，都会存放到access.log,error.log, 导致越积越多。 可写个定时脚本按天存储，每天凌晨00:00执行
+#!/bin/bash
+YESTERDAY=$(date -d "yesterday" +"%Y-%m-%d")
+LOGPATH=/usr/local/openresty/nginx/logs/
+PID=${LOGPATH}nginx.pid
+mv ${LOGPATH}access.log ${LOGPATH}access-${YESTERDAY}.log
+mv ${LOGPATH}error.log ${LOGPATH}error-${YESTERDAY}.log
+kill -USR1 `cat ${PID}` 
+
+13. 限制HTTP的请求方法
+HTTP1.1定义了八种主要的方法，其中OPTIONS、DELETE等方法在生产环境可以被认为是不安全的，因此需要配置Nginx实现限制指定某些HTTP请求的方法来达到提升服务器安全的目的。
+if ($request_method !~ ^(GET|HEAD|POST)$ ) {
+    return 501;
+}
+
+
+
+
 
 
 
