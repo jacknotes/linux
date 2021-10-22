@@ -5118,8 +5118,13 @@ aliyun
 新192.168.13.202
 [root@devmysql ~]# mysql -uroot -p < alldatabases.sql 
 
-
-
+#mysql.5.7跟5.6初始密码不同
+bin/mysqld --initialize --user=mysql --datadir=/usr/local/mysql/data --basedir=/usr/local/mysql
+/******* 
+注意：这步执行完成后会显示初始化的root用户密码
+2020-05-14T05:38:52.063819Z 1 [Note] A temporary password is generated for root@localhost: O(TsKbE/I9hw
+密码是：O(TsKbE/I9hw
+********/
 
 
 
