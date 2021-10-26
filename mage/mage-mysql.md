@@ -5112,11 +5112,54 @@ aliyun
 
 
 #整个mysql数据实例迁移：
-旧192.168.13.116
+旧192.168.13.116：
 [root@devmysql ~]# mysqldump -uroot -p --all-databases --triggers --routines --events --set-gtid-purged=OFF --flush-logs --master-data=2  > alldatabases.sql
 [root@devmysql ~]# scp alldatabases.sql root@192.168.13.202:/root/
-新192.168.13.202
+新192.168.13.202：
 [root@devmysql ~]# mysql -uroot -p < alldatabases.sql 
+#将新节点做为旧节点的从进行同步
+旧192.168.13.116：
+grant replication slave on *.* to 'dev-repluser'@'192.168.13.%' identified by 'homsom';
+show grants for 'dev-repluser'@'192.168.13.%';
+新192.168.13.202：
+change master to master_host='192.168.13.116',master_user='dev-repluser',master_password='homsom',master_log_file='master-bin.000057',MASTER_LOG_POS=194;
+(
+start slave io_thread;
+start slave sql_thread;
+或者
+start slave;
+)
+#同步状态：
+1. 开始slave线程后，同步状态显示如下
+Slave_IO_State: System lock
+表示从线程正在大量的复制的回话binlog.
+2. 等待一段时间后，如下：
+Slave_IO_State: Waiting for master to send event
+3. 如果同步慢可增加同步线程
+set global slave_parallel_workers=2
+#最后停止服务并更换IP地址
+1. 将旧192.168.13.116实例设置为只读
+set global read_only=1;
+2. 查看binlog是否还在增长，并记录position，稍后在从节点上看是否都已经同步完成。
+show binary logs;
+3. 在新节点上查看同步旧节点的文件及位置，确定是否都已经同步完成。
+show slave status\G
+4. 关闭旧节点的mysql服务，并将ip地址更换为其它空闲ip
+service mysqld stop
+systemctl stop network
+5. 如果确定同步完成，此时在新节点上重置slave和master状态
+reset slave all;
+reset master;
+6. 在新节点上先停止mysql服务，将更换ip地址为旧节点的IP地址：192.168.13.116，并启动服务检查数据库是否正常
+service mysqld stop
+-- change ip to : 192.168.13.116
+systemctl restart network
+service mysqld start
+7. 检查mysql服务
+
+
+
+
 
 #mysql.5.7跟5.6初始密码不同
 bin/mysqld --initialize --user=mysql --datadir=/usr/local/mysql/data --basedir=/usr/local/mysql

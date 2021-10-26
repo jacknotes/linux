@@ -457,7 +457,7 @@ jackDB=# create database zabbix owner zabbix;
 jackDB=# alter user zabbix with password 'zabbix';
 jackDB=# grant all on database zabbix to zabbix;    --授予zabbix有create,connect,temporary权限
 -- zabbix=# revoke all on database zabbix from zabbix;
-[postgres@ceph02 ~]$ psql -U zabbix -W -h 192.168.13.32
+[postgres@ceph02 ~]$ psql -U zabbix -W -h 192.168.13.32 -d zabbix
 zabbix=> \dp
                              Access privileges
  Schema |  Name  | Type  | Access privileges | Column privileges | Policies 
