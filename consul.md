@@ -76,7 +76,7 @@ Sidecar Proxy Max：包含的最大端口号，用于自动分配的sidecar服�
 注：对于HTTPS和gRPC，上面指定的端口为推荐值。
 
 #consul架构图
-![avatar](image/consul-cluster.png)
+![image consul架构图](https://raw.githubusercontent.com/jacknotes/linux/master/image/consul-cluster.png)
 
 
 #环境准备
@@ -471,6 +471,10 @@ udp6       0      0 :::8600                 :::*                                
 
 
 
+
+
+»问：是否删除了失败或遗留的节点？
+为了防止死节点（处于失败或离开 状态的节点）的积累，Consul 会自动将死节点从目录中删除。这个过程称为收割。这是目前在 72 小时的可配置间隔内完成的。Reaping 类似于离开，导致所有相关服务被注销。不建议出于美学原因更改收割间隔以减少失败或左节点的数量（处于失败或左状态的节点不会对 Consul 造成任何额外负担
 
 
 
