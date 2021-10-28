@@ -135,7 +135,7 @@ core:
     restPort: ${SW_CORE_REST_PORT:12801}
     gRPCHost: ${SW_CORE_GRPC_HOST:192.168.13.76}
     gRPCPort: ${SW_CORE_GRPC_PORT:11801}
-	recordDataTTL: ${SW_CORE_RECORD_DATA_TTL:3} # Unit is day
+	recordDataTTL: ${SW_CORE_RECORD_DATA_TTL:7} # Unit is day
     metricsDataTTL: ${SW_CORE_METRICS_DATA_TTL:7} # Unit is day
 storage:
   selector: ${SW_STORAGE:elasticsearch7}   
