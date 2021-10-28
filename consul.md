@@ -76,7 +76,7 @@ Sidecar Proxy Max：包含的最大端口号，用于自动分配的sidecar服�
 注：对于HTTPS和gRPC，上面指定的端口为推荐值。
 
 #consul架构图
-![image consul架构图](https://raw.githubusercontent.com/jacknotes/linux/master/image/consul-cluster.png)
+![Aaron Swartz](https://raw.githubusercontent.com/jacknotes/linux/master/image/consul-cluster.png)
 
 
 #环境准备
