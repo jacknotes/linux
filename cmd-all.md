@@ -1678,6 +1678,9 @@ find /data/nginx_logs/days/* -name "*.bz2" -mtime 7 -type f -exec rm -rf {} \;
 [root@autodep ~]# tcpdump -i eth0 ip host 192.168.1.234 and tcp port 22  #在eth0接口上，ip协议，抓取关于主机是192.168.1.254并且端口是22的
 [root@autodep ~]# tcpdump -i eth0 src 192.168.1.234 and dst 192.168.1.232
 [root@autodep ~]# tcpdump -i eth0 src 192.168.1.234 and dst ! 192.168.1.232
+[root@docker02 download]# tcpdump -vvvnnn -i eth0 ip src 192.168.13.218 and tcp dst port 9000
+
+
 
 #tcpkill connection
 --test grab package
@@ -1880,7 +1883,54 @@ LISTEN 8
 172.17.0.21         22
 172.17.0.23         1290
 172.20.0.2          1295
+#new
+#从nginx服务器获取各种状态连接数
+[root@reverse02_pro conf]# while true;do sleep 5;date;sudo netstat -tan | awk '/^tcp/{count[$NF]++} END {for (i in count) {print i,count[i]}}';echo;done
+Fri Oct 29 11:28:53 CST 2021
+TIME_WAIT 1338
+CLOSE_WAIT 14
+FIN_WAIT1 3
+SYN_SENT 496
+FIN_WAIT2 43
+ESTABLISHED 4399
+LAST_ACK 6
+LISTEN 5
+#从nginx服务器获取对外服务的ip:port的总连接数
+[root@reverse02_pro ~]# while true;do sleep 5;date;sudo netstat -ano  | grep ESTABLISHED  | awk '{print $4}' | awk -F ':' '{count[$1,":",$2]++} END{for(i in count){if(count[i] > 2){printf "%-40s%d\r\n",i,count[i]}}}';echo;done
+Fri Oct 29 11:28:53 CST 2021
+192.168.13.207:80                     1643
+192.168.13.207:443                    1241
+#从nginx服务器获取连接外部服务的ip:port的总连接数
+[root@reverse02_pro ~]# while true;do sleep 5;date;sudo netstat -ano  | grep ESTABLISHED  | awk '{print $5}' | awk -F ':' '{count[$1,":",$2]++} END{for(i in count){if(count[i] > 2){printf "%-40s%d\r\n",i,count[i]}}}';echo;done
+Fri Oct 29 11:28:57 CST 2021
+192.168.13.238:9000                   14
+192.168.13.239:12270                  581
+192.168.13.239:9000                   510
+192.168.13.238:12270                  579
+#从nginx服务器获取跟外部服务主动建立的ip:port的总排队数
+[root@reverse02_pro ~]# while true;do sleep 5;date;sudo netstat -ano  | grep SYN_SENT | awk '{print $5}' | awk -F ':' '{count[$1,":",$2]++} END{for(i in count){if(count[i] > 10){printf "%-40s%d\r\n",i,count[i]}}}';echo;done
 
+#问题：在nginx服务器上看到目标地址是192.168.13.239:9000(容器宿主机)，为什么在192.168.13.239docker宿主机上看不到ESTABLISHED状态连接？
+因为目标端口是通过iptables规则重定向到容器端口，所以ESTABLISHED状态连接应该建立在容器上，应该去容器上看，但大部分容器是精简版，所以无法查看，只能通过其它方式佐证，如tcpdump。
+#目标服务器上抓包看是否有真实连接
+[root@docker02 download]# tcpdump -vvvnnn -i eth0 ip src 192.168.13.218 and tcp dst port 9000
+#使用名称空间程序进行查看
+----
+#! /bin/bash
+echo $1
+PID=$(docker inspect -f '{{.State.Pid}}' $1)
+nsenter -t $PID -n netstat -ano |grep ESTABLISHED
+-----
+[ops0799@docker01 ~]$ sudo docker inspect -f '{{.State.Pid}}' pro-hotelresourcemeituan
+10285
+[ops0799@docker01 ~]$ sudo nsenter -t 10285  -n netstat -ano | grep ESTABLISHEDS
+注：指令注解
+nsenter：命令(namespace enter)
+-t: 从目标进程获取名称空间
+-n: 进入网络名称空间
+netstat -ano | grep ESTABLISHEDS：表示执行的网络命令
+#批量获取容器网络连接状态
+for i in `docker ps -a | awk '{print $NF}' | grep -v NAMES`;do ./nsenter.sh $i ESTABLISHED >> ./nsenter-docker.log;done
 
 
 

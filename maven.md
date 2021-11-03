@@ -165,4 +165,32 @@ Pushing polly.7.2.0.nupkg to 'http://nugetv3.hs.com/repository/nuget-hosted/'...
   PUT http://nugetv3.hs.com/repository/nuget-hosted/
   Created http://nugetv3.hs.com/repository/nuget-hosted/ 256ms
 Your package was pushed.
+
+
+
+#npm配置:
+npm config list
+npm config ls -l   --查看详细设置
+[root@tengine /tmp/node/Homsom.Tool.RegionalSource.Client]# npm config get registry
+https://registry.npmjs.org/
+[root@tengine /tmp/node/Homsom.Tool.RegionalSource.Client]# npm config set registry https://registry.npm.taobao.org
+[root@tengine /tmp/node/Homsom.Tool.RegionalSource.Client]# npm config get registry
+https://registry.npm.taobao.org/
+npm config set proxy="http://192.168.111.111:1111"   --设置网络代理用于快速连接国外网站
+npm config delete proxy
+npm config delete registry 
+npm config set registry http://nugetv3.hs.com/repository/npm-proxy/    --设置nuget代理
+npm update   --用新源更新一波package
+vim /root/.npmrc   --可手工删除配置的信息
+#npm编译安装
+npm install
+npm run build
+#npm重新编译
+rm -rf node_modules/
+npm cache clean
+npm install
+npm run build
+
+
+
 </pre>
