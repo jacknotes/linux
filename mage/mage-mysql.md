@@ -1721,6 +1721,10 @@ mysqldump备份：
 --events #备份事件
 --routines #备份存储过程和存储函数
 --triggers #备份触发器
+--set-gtid-purged=OFF #禁用备份gtid信息
+
+#备份所有数据库信息 mysqldump -uroot -p --all-databases --set-gtid-purged=OFF --triggers --routines --events > /root/all-databases.sql
+# mysqldump -uroot -p --databases ApolloConfigDB --no-create-db --set-gtid-purged=OFF --single-transaction > /root/ApolloConfigDB.sql
 
 mysqldump --lock-all-tables --master-data=2 --flush-logs students > /root/stu-`date +%Y-%m-%d-%H:%M:%S`.sql
 
@@ -1985,7 +1989,7 @@ Starting MySQL SUCCESS!
 |  4 | aa    | NULL |
 +----+-------+------+
 18. mysql> set sql_log_bin=0; #临时关闭二进制写入功能
-19. [root@lnmp ~]# mysql < a.sql  #还原增量文件
+	mysql> source a.sql  #还原增量文件
 19. mysql> select * from stu;
 +----+-------+------+
 | ID | Name  | Age  |
@@ -5170,15 +5174,24 @@ bin/mysqld --initialize --user=mysql --datadir=/usr/local/mysql/data --basedir=/
 ********/
 
 
+#问题：
+1. mysqlbinlog提取日志出错
+[root@tengine /tmp/mysqltmp/Pro_Increment_20211107_030001]# mysqlbinlog --no-defaults --start-po176406467 master-bin.000403_Pro_Increment_20211107_030002 > user-approve
+ERROR: Error in Log_event::read_log_event(): 'Found invalid event in binary log', data_len: 65, ype: 33
+ERROR: Could not read entry at offset 176406467: Error in log format or read error.
+原因：当前的mysqlbinlog版本跟导出binlog日志的mysqlbinlog版本不一致
+[root@tengine /tmp/mysqltmp/Pro_Increment_20211107_030001]# /usr/local/mysql/bin/mysqlbinlog --no-defaults --start-position=176406467 master-bin.000403_Pro_Increment_20211107_030002 > user-approve.sql
 
+2. mysql二进制文件恢复时更改数据库名称进行恢复，先要对二进制进行解码以显示数据库名称和表名，再进行对提取后的sql文件进行替换数据库名称。
+[root@tengine /tmp/mysqltmp/Pro_Increment_20211107_030001]# /usr/local/mysql/bin/mysqlbinlog --no-defaults --base64-output=decode-rows -v --start-position=176406467 master-bin.000403_Pro_Increment_20211107_030002 > user.sql
+[root@tengine /tmp/mysqltmp/Pro_Increment_20211107_030001]# sed -i 's/`zabbix`/`zabbix2021`/g' user.sql 
+注：但此方便会增加提取后的文件大小，以及替换数据库名称时花费大量时间，此方法不推荐在大量数据还原时使用，建议不进行解码sql文件不替换数据库名称，在使用全备+增量恢复后将数据库名称进行变更即可。
 
-
-
-
-
-
-
-
+3. 从开启GTID的库中导出数据到未开启GTID的库中，需要注意，在导出的文件中去掉相应的gtid内容--set-gtid-purged=OFF，否则导入时会报错如下：
+ERROR 1839 (HY000) at line 24 in file: '/root/db_hdf_bqjfl_xxxx_xx_xx.sql': @@GLOBAL.GTID_PURGED can only be set when @@GLOBAL.GTID_MODE = ON.
+如果恢复数据库二进制文件时报错，设置gtid_mode为OFF_PERMISSIVEL：
+MySQL [(none)]> set @@GLOBAL.GTID_MODE = OFF_PERMISSIVE;
+| gtid_mode     | OFF_PERMISSIVE |
 
 </pre>
 

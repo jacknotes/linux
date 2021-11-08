@@ -1049,6 +1049,15 @@ email.template.release.module.rules: <div>
 </div>     ------灰度发布的灰度规则模块
 
 
+#问题
+1. mysql5.7调整配置后，apollo-config和apollo-admin无法连接，当启动apollo的服务时报错如下：
+com.mysql.cj.jdbc.exceptions.CommunicationsException: Communications link failure
+mysql错误日志报错如下：
+2021-11-08T05:20:42.490275Z 21 [Note] Bad handshake
+原因是apollo-config和apollo-admin配置文件中config/application-github.properties中没有使用useSSL=false参数，最初apollo也没有配置是否使用ssl连接也可以连接，而经过mysql5.7的配置更改后无法连接，最后mysql5.7配置回滚也无法连接，最终是找到是此参数导致的。
+正确参数：spring.datasource.url = jdbc:mysql://192.168.13.214:3306/ApolloConfigDB?useSSL=false&characterEncoding=utf8
+
+
 
 </pre>
 

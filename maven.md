@@ -187,7 +187,7 @@ npm install
 npm run build
 #npm重新编译
 rm -rf node_modules/
-npm cache clean
+npm cache clean -f
 npm install
 npm run build
 
