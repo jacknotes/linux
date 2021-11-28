@@ -6,6 +6,9 @@ Linux ubuntu 5.4.0-80-generic #90-Ubuntu SMP Fri Jul 9 22:49:44 UTC 2021 x86_64 
 jack@ubuntu:/etc/apt$ cat /etc/issue
 Ubuntu 20.04.2 LTS \n \l
 
+#ubuntu默认shell dash更改为改为bash
+将由dash更改默认为bash：sudo dpkg-reconfigure dash  弹出来的框中选no即可
+
 #ubuntu网络
 从ubuntu17.10开始，网络默认由netplan进行管理，yaml格式，文档见/usr/share/doc/netplan/netplan.html
 配置好/etc/netplan/00-installer-config.yaml后执行sudo netplan apply 进行应用，实际操作的是由systemd-networkd.service和systemd-resolved.service进行管理，此两个服务也必须开机自启才行，也可以由NetworkManager.service这一个服务统一管理。

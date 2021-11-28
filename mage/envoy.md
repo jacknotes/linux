@@ -181,57 +181,6 @@ HTTP connection manager：
 
 
 
-#ceph
-版本区分，生产环境一定要使用小版本号为2的版本安装 
-x.0.z：开发版
-x.1.z：候选版
-x.2.z：稳定版
-
-3节点ceph集群：
-一主两备，3副本
-一块盘一个OSD进程，每个OSD ID都是唯一的
-没有选举概念
-系统盘做RAID1，每个系统数据盘做RAID0，可以节省磁盘空间，统一SSD硬盘（统一规格大小）。
-客户端挂载使用的是Ceph协议，也可以通过NFS转Ceph协议进行挂载，但是有损耗
-
-#一个ceph集群的组成部分：
-若干的Ceph OSD(对象存储守护程序)
-至少需要一个Ceph Monitors监视器（1，3，5，7...）
-两个或以上的Ceph管理器managers,运行Ceph文件系统客户端时还需要高可用的Ceph Metadata Server（文件系统元数据服务器）
-RADOS cluster: 由多台host存储服务器组成的ceph集群
-OSD(Object Storage Daemon): 每台存储服务器的磁盘组成的存储空间
-Mon（Monitor）：ceph的监视器，维护OSD和PG的集群状态，一个ceph集群至少要有一个mon,可以是一三五七等等这样的奇数个。
-Mgr(Manager): 负责跟踪运行时指标和Ceph集群的当前状态，包括存储利用率，当前性能指标和系统负载等。
-
-
-ceph中的pg，是把一组比较大的数据进行拆分，几个pg就拆分为几份，然后每个pg中都是3副本（一主两备）
-
-file_name(oid) --> object -->　pg --> （Crush算法）写入数据到pg所关联的主OSD中
-
-
-ceph将一个对象映射到RADOS集群的时候分为两步走：
-	1. 首先使用一致性hash算法将对象名称映射到PG2.7(例如，pool为2，PG为7)
-	2. 然后将PG ID 基于CRUSH算法映射到OSD即可查到对象
-以上两个过程都是以“实时计算”的方式完成，而没有使用传统的查询数据与块设备的对应表的方式，这样有效避免了组件的“中心化”问题，也解决了查询 性能和冗余问题，使得ceph集群扩展不再受查询的性能限制。
-
-这个实时计算操作使用的就是CRUSH算法：
-	Controllers replication under scalable hashing #可控的、可复制的、可伸缩的一致性hash算法
-	CRUSH是一种分布式算法，类似于一致性hash算法，用于为RADOS存储集群控制数据的分配。
-
-
-
-#部署ceph集群：
-硬件规划：
-元数据服务器对CPU敏感：大于4核CPU
-元数据服务器和监视器必须可以尽快地提供它们的数据 ，所以他们应该有足够的内存，至少每进程1G
-
-16C32G
-
-
-mon: 16c 16g 200g
-mgr(manager): 16c 16g 200g
-存储服务器osd：企业级SSD
-网卡：万兆网卡，或者PCIE万兆网卡
 
 
 
