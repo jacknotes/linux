@@ -1399,10 +1399,204 @@ $CEPH_CONF环境变量
 ~/.ceph/ceph.conf
 ./ceph.conf
 
-4.6 存储池、PG与CRUSH
+#4.6 存储池、PG与CRUSH
+4.6.1 存储池
 $ ceph osd pool create --help
 osd pool create <pool> [<pg_num:int>] [<pgp_num:int>] [replicated|erasure]  
 副本池：replicated，定义每个对象在集群中保存为多少个副本，默认为三个副本，一主两备，实现高可用，副本池是ceph默认的存储池类型。用得最多
 纠删码池(erasure code):把各对象存储为N=K+M个块，其中K为数据块数量，M为编码块数量，因此存储池的尺寸为K+M。即数据保存在K个数据块，并提供M个冗余块提供数据高可用，那么最多能故障的块就是M个，实际的磁盘占用就是K+M块，因此相比副本池机制比较节省存储资源，一般采用8+4机制，即8个数据块+4个冗余 块，那么也就是12个数据块有8个数据块保存数据，有4个实现数据冗余，即1/3的磁盘空间用于数据冗余，比默认副本池的三倍冗余节省空间，但是不能出现大于一定数据块故障，但是不是所有的应用都支持纠删码池，RBD只支持副本池面radosgw则可以支持纠删码池。类似RAID，但用得不多
+但是不是所有的应用都支持纠删码池，RBD只支持副本池而RADOSGW则可以支持纠删码池，ceph默认是副本池。
+
+4.6.2--创建纠删删码池
+$ ceph osd pool create erasure-testpool 32 32 erasure
+$ ceph osd erasure-code-profile get default
+k=2		--k为数据块的数量，即要将原始对象分割成的块数量，例如，如果k=2，则会将一个10kb对象分割成各为5kb的k个对象
+m=2		--编码块(chunk)的数量，即编码函数计算的额外块的数量，如果有2个编码块，则表示有两个额外的备份，最多可以从当前pg中宕机2个OSD，而不会丢失数据
+plugin=jerasure		--默认的纠删码池插件，是一种纠删码池算法
+technique=reed_sol_van
+--验证当前pg状态
+$ ceph pg ls-by-pool erasure-testpool | awk '{print $1,$2,$15}'
+PG OBJECTS ACTING
+10.0 0 [6,12,2,NONE]p6
+10.1 0 [14,8,3,NONE]p14
+10.2 0 [1,8,NONE,10]p1
+10.3 0 [10,8,1,NONE]p10
+10.4 0 [12,3,8,NONE]p12
+10.5 0 [2,NONE,11,6]p2
+10.6 0 [8,NONE,4,10]p8
+10.7 0 [6,3,NONE,13]p6
+10.8 0 [0,10,7,NONE]p0
+10.9 0 [5,3,NONE,10]p5
+10.a 0 [6,13,NONE,3]p6
+10.b 0 [6,0,13,NONE]p6
+10.c 0 [7,NONE,10,0]p7
+10.d 0 [9,13,NONE,2]p9
+10.e 0 [8,14,NONE,3]p8
+10.f 0 [13,NONE,8,2]p13
+10.10 0 [12,6,NONE,4]p12
+10.11 0 [12,1,6,NONE]p12
+10.12 0 [10,3,7,NONE]p10
+10.13 0 [1,13,NONE,9]p1
+10.14 0 [1,14,NONE,5]p1
+10.15 0 [4,5,14,NONE]p4
+10.16 0 [6,NONE,4,13]p6
+10.17 0 [6,12,2,NONE]p6
+10.18 0 [4,5,NONE,10]p4
+10.19 0 [1,7,NONE,13]p1
+10.1a 0 [6,3,11,NONE]p6
+10.1b 0 [3,7,13,NONE]p3
+10.1c 0 [6,4,NONE,12]p6
+10.1d 0 [7,3,12,NONE]p7
+10.1e 0 [12,0,NONE,6]p12
+10.1f 0 [7,2,13,NONE]p7
+--在纠删码池pool中写入数据
+$ sudo rados put -p erasure-testpool testfile1 /var/log/syslog
+--验证写入的数据 
+$ ceph osd map erasure-testpool testfile1
+osdmap e2467 pool 'erasure-testpool' (10) object 'testfile1' -> pg 10.3a643fcb (10.b) -> up ([6,0,13,NONE], p6) acting ([6,0,13,NONE], p6)
+$ ceph pg ls-by-pool erasure-testpool | awk '{print $1,$2,$15}'
+PG OBJECTS ACTING
+10.0 0 [6,12,2,NONE]p6			#为什么有NONE，因为我这里只有3个OSD节点，因为数据和纠删码是2+2，会分布在不同的节点，所以有一个纠删码会不可用，2个纠删码等于1个纠删码
+10.1 0 [14,8,3,NONE]p14
+10.2 0 [1,8,NONE,10]p1
+10.3 0 [10,8,1,NONE]p10
+10.4 0 [12,3,8,NONE]p12
+10.5 0 [2,NONE,11,6]p2
+10.6 0 [8,NONE,4,10]p8
+10.7 0 [6,3,NONE,13]p6
+10.8 0 [0,10,7,NONE]p0
+10.9 0 [5,3,NONE,10]p5
+10.a 0 [6,13,NONE,3]p6
+10.b 1 [6,0,13,NONE]p6
+10.c 0 [7,NONE,10,0]p7
+10.d 0 [9,13,NONE,2]p9
+10.e 0 [8,14,NONE,3]p8
+10.f 0 [13,NONE,8,2]p13
+10.10 0 [12,6,NONE,4]p12
+10.11 0 [12,1,6,NONE]p12
+10.12 0 [10,3,7,NONE]p10
+10.13 0 [1,13,NONE,9]p1
+10.14 0 [1,14,NONE,5]p1
+10.15 0 [4,5,14,NONE]p4
+10.16 0 [6,NONE,4,13]p6
+10.17 0 [6,12,2,NONE]p6
+10.18 0 [4,5,NONE,10]p4
+10.19 0 [1,7,NONE,13]p1
+10.1a 0 [6,3,11,NONE]p6
+10.1b 0 [3,7,13,NONE]p3
+10.1c 0 [6,4,NONE,12]p6
+10.1d 0 [7,3,12,NONE]p7
+10.1e 0 [12,0,NONE,6]p12
+10.1f 0 [7,2,13,NONE]p7
+--测试获取数据
+$ sudo rados --pool erasure-testpool get testfile1 /opt/1.log
+$ tail /opt/1.log
+
+4.6.3 PG与PGP
+PG=Placement Group	--归置组
+PGP=Placement Group for Placement Purpose	--归置组的组合，PGP相当于是PG对应osd的一种排列组合关系。官方推荐PGP和PG数量一样。
+归置组(Placement group)是用于跨越多OSD将数据存储在每个存储池中的内部数据结构，归置组在OSD守护进程和ceph客户端之间生成了一个中间层，CRUSH算法负责将每个对象动态映射到一个归置组，然后再将每个归置组动态映射到一个或多个OSD守护进程，从而能够支持在新的OSD设备上线时进行数据重新平衡。
+
+相对于存储池来说，PG是一个虚拟组件，它是对象映射到存储池时使用的虚拟层。
+可以自定义存储池中的归置组数量。
+ceph出于规模伸缩及性能方面的考虑，ceph将存储池细分为多个归置组，把每个单独的对象映射到归置组，并为归置组分配一个主OSD。
+存储池由一系列的归置组组成，而CRUSH算法则根据集群运行图和集群状态，将各PG均匀、伪随机(基于hash映射，每次的计算结果都一样)的分布到集群中的OSD之止。
+如果某个OSD失败奥需要对集群进行重新平衡，ceph则移动或复制整个归置组而不需要单独对每个镜像进行寻址。
+
+4.6.4 PG与OSD的关系
+ceph基于crush算法将归置组PG分配至OSD，当一个客户端存储对象的时候，CRUSH算法映射每一个对象至归置组(PG)
+
+4.6.5 PG分配计算
+归置组(PG)的数量 是由管理员在创建存储池的时候指定的，然后由CRUSH负责创建和使用，PG的数量是2的N次方的倍数，每个OSD的PG不要超出250个PG，官方建议是每个OSD的PG是100个左右
+--计算PG
+1. 先计算磁盘数量是多少块，官方推荐每个OSD是100个PG
+例如：10块磁盘需要创建20个存储池
+总PG： 10*100=1000个PG
+20个存储池中有些数据量大，有些数据量小，根据情况来分，
+平均PG：1000/20=50，但是PG取2的N次方，否则在创建的时候Ceph会警告，所以这里向上取整为64或者向下取整32，一般是向上取整。
+如果pool的大小只有几个G，则可以分配4个或8个PG就可以了
+
+2. 通常，PG的数量应该是数据的合理力度的子集。
+例如：一个包含256个PG的存储池，每个PG中包含大约1/256的存储池数据
+3. 当需要将PG从一个OSD移动到另一个OSD的时候，PG的数量会对性能产生影响：
+	1. PG的数量过少，一个OSD上保存的数据会相对增多，那么ceph同步数据的时候产生的网络负载将对集群的性能输出产生一定影响。
+	2. PG过多的时候，ceph将会占用过多的CPU和内存资源用于记录PG的状态信息
+4. PG的数量在集群分发数据和重新平衡时扮演者重要的角色作用
+	1. 在所有OSD之间进行数据持久存储以及完成数据分布会需要较多的归置组，但是他们的数量应该减少到实现ceph最大性能所需的最小PG数量值，以节省CPU和内存资源。
+	2. 一般来说，对于有着超过50个OSD的RADOS集群，建议每个OSD大约有50-100个PG以平衡资源使用及取得更好的数据持久性和数据分布，而在更大的集群中，每个OSD可以有100-200个PG
+	3. 至于一个pool应该使用多少个PG，可以通过下面的公式计算后，将pool的PG值四舍五入到最近的2的N次幂，如下先计算出ceph集群的PG数：
+		1. 磁盘总数 X 每个磁盘PG数 / 副本数 ==> ceph集群总PG数
+		2. 例如：单个pool的PG计算：
+			1. 有100个osd，3副本，5个pool
+			2. Total PG=100*100/3=333
+			3. 每个pool的PG=3333/5=512，那么创建pool的时候就指定pg为512
+		3. 需要结合数据数量，磁盘数量及磁盘空间计算出PG数量 ，8、16、32、64、128、256、512、1024等2的N次方
+5. 测试创建 17个PG,17个PGP的情况
+$ ceph osd pool create testpool01 17 17
+$ ceph -s
+  cluster:
+    id:     4d5745dd-5f75-485d-af3f-eeaad0c51648
+    health: HEALTH_WARN
+            Degraded data redundancy: 1/892 objects degraded (0.112%), 1 pg degraded, 32 pgs undersized
+            1 pool(s) do not have an application enabled
+            1 pool(s) have non-power-of-two pg_num
+6. 删除pool
+$ ceph osd pool delete testpool01 testpool01 --yes-i-really-really-mean-it
+Error EPERM: pool deletion is disabled; you must first set the mon_allow_pool_delete config option to true before you can destroy a pool
+--设置ceph集群允许删除pool
+$ ceph tell mon.* injectargs --mon-allow-pool-delete=true
+mon.ceph01: {}
+mon.ceph01: mon_allow_pool_delete = 'true'
+mon.ceph02: {}
+mon.ceph02: mon_allow_pool_delete = 'true'
+mon.ceph03: {}
+mon.ceph03: mon_allow_pool_delete = 'true'
+--删除pool,需要输入两次pool名称
+$ ceph osd pool delete testpool01 testpool01 --yes-i-really-really-mean-it
+pool 'testpool01' removed	
+--然后设置回来，不允许删除pool
+$ ceph tell mon.* injectargs --mon-allow-pool-delete=false
+mon.ceph01: {}
+mon.ceph01: mon_allow_pool_delete = 'false'
+mon.ceph02: {}
+mon.ceph02: mon_allow_pool_delete = 'false'
+mon.ceph03: {}
+mon.ceph03: mon_allow_pool_delete = 'false'
+
+
+4.7 PG的状态
+URL：https://www.jianshu.com/p/36c2d5682d87
+PG状态表
+正常的PG状态是 100%的active + clean， 这表示所有的PG是可访问的，所有副本都对全部PG都可用。
+如果Ceph也报告PG的其他的警告或者错误状态。PG状态表：
+状态		描述
+Activating	Peering已经完成，PG正在等待所有PG实例同步并固化Peering的结果(Info、Log等)
+Active	活跃态。PG可以正常处理来自客户端的读写请求
+Backfilling	正在后台填充态。 backfill是recovery的一种特殊场景，指peering完成后，如果基于当前权威日志无法对Up Set当中的某些PG实例实施增量同步(例如承载这些PG实例的OSD离线太久，或者是新的OSD加入集群导致的PG实例整体迁移) 则通过完全拷贝当前Primary所有对象的方式进行全量同步
+Backfill-toofull	某个需要被Backfill的PG实例，其所在的OSD可用空间不足，Backfill流程当前被挂起
+Backfill-wait	等待Backfill 资源预留
+Clean	干净态。PG当前不存在待修复的对象， Acting Set和Up Set内容一致，并且大小等于存储池的副本数
+Creating	PG正在被创建
+Deep	PG正在或者即将进行对象一致性扫描清洗
+Degraded	降级状态。Peering完成后，PG检测到任意一个PG实例存在不一致(需要被同步/修复)的对象，或者当前ActingSet 小于存储池副本数
+Down	Peering过程中，PG检测到某个不能被跳过的Interval中(例如该Interval期间，PG完成了Peering，并且成功切换至Active状态，从而有可能正常处理了来自客户端的读写请求),当前剩余在线的OSD不足以完成数据修复
+Incomplete	Peering过程中， 由于 a. 无非选出权威日志 b. 通过choose_acting选出的Acting Set后续不足以完成数据修复，导致Peering无非正常完成
+Inconsistent	不一致态。集群清理和深度清理后检测到PG中的对象在副本存在不一致，例如对象的文件大小不一致或Recovery结束后一个对象的副本丢失
+Peered	Peering已经完成，但是PG当前ActingSet规模小于存储池规定的最小副本数(min_size)
+Peering	正在同步态。PG正在执行同步处理
+Recovering	正在恢复态。集群正在执行迁移或同步对象和他们的副本
+Recovering-wait	等待Recovery资源预留
+Remapped	重新映射态。PG活动集任何的一个改变，数据发生从老活动集到新活动集的迁移。在迁移期间还是用老的活动集中的主OSD处理客户端请求，一旦迁移完成新活动集中的主OSD开始处理
+Repair	PG在执行Scrub过程中，如果发现存在不一致的对象，并且能够修复，则自动进行修复状态
+Scrubbing	PG正在或者即将进行对象一致性扫描
+Unactive	非活跃态。PG不能处理读写请求
+Unclean	非干净态。PG不能从上一个失败中恢复
+Stale	未刷新态。PG状态没有被任何OSD更新，这说明所有存储这个PG的OSD可能挂掉, 或者Mon没有检测到Primary统计信息(网络抖动)
+Undersized	PG当前Acting Set小于存储池副本数
+
+
+
+
+
 
 </pre>
