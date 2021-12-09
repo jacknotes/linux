@@ -1,4 +1,4 @@
-﻿#harpoxy
+#harpoxy
 <pre>
 nginx优势之一，代理至后端服务器是异步的，可以减少后端服务器的压力
 haproxy:工作在四层和七层的反向代理服务器，可以对http和tcp进行反向代理
@@ -771,7 +771,7 @@ notification_email {
          linuxedu@foxmail.com
          mageedu@126.com  
 }
-表示keepalived在发生诸如切换操作时需要发送email通知，以及email发送给哪些邮件地址，邮件地址可以多个，每行一个
+表示keepalived在发生诸如切换操作时需要发送email通知，以及email发送给哪些邮件地址，邮件地址可以多个，每行一个，这里的只能发送到本机用户
 notification_email_from kanotify@magedu.com 
 表示发送通知邮件时邮件源地址是谁
 smtp_server 127.0.0.1
@@ -1103,5 +1103,204 @@ fi
 timeout 1（当达到1秒时为失败一次），此配置开启了多播，多播在多个Keepalived节点上，
 有时随机有两个虚拟IP在线
 -----------------------------------------------------------
+
+
+#keepalived配置邮件告警
+1. 邮件脚本
+[root@reverse02 /etc/keepalived]# cat notify.sh
+#!/bin/bash
+#
+contact='test@baidu.com'
+notify() {
+local mailsubject="$(hostname) to be $1, vip floating"
+local mailbody="$(date +'%F %T'): vrrp transition, $(hostname) changed to be $1"
+echo "$mailbody" | mail -s "$mailsubject" $contact
+}
+  
+case $1 in
+master)
+        notify master
+        ;;
+backup)
+        notify backup
+        ;;
+fault)
+        notify fault
+        ;;
+*)
+        echo "Usage: $(basename $0) {master|backup|fault}"
+        exit 1
+        ;;
+esac
+
+2. 服务器上配置邮件通知帐户及邮件服务器配置
+2.1 yum install mailx	--安装包
+2.2 vim /etc/mail.rc	--配置互联网邮件信息
+--------------
+set from=email@domaim.com
+set smtp=smtp.qiye.163.com
+set smtp-auth=login
+set smtp-auth-user=user@domain.com
+set smtp-auth-password=password
+set ssl-verify=ignore
+--------------
+
+3. 配置keepalived
+[root@reverse02 /etc/keepalived]# cat keepalived.conf
+----------------------
+! Configuration File for keepalived
+! 这里面的邮箱配置只对本机用户有效
+global_defs {
+	notification_email {
+     		root@localhost
+   	}
+   	notification_email_from root@localhost
+   	smtp_server 127.0.0.1
+   	smtp_connect_timeout 30
+   	router_id reverse02
+}
+
+vrrp_instance nginx_ha {
+	state BACKUP
+	interface eth0
+	virtual_router_id 51
+	priority 100
+	advert_int 1
+
+	authentication {
+		auth_type PASS
+       		auth_pass 1111
+	}
+
+	virtual_ipaddress {
+		192.168.13.207
+	}
+
+	notify_master "/etc/keepalived/notify.sh master"  
+	notify_backup "/etc/keepalived/notify.sh backup"  
+	notify_fault "/etc/keepalived/notify.sh fault"  
+	smtp alter
+}
+----------------------
+
+附keepalived启动脚本
+[root@reverse02 /etc/keepalived]# cat /etc/init.d/keepalived 
+-------------------------
+#!/bin/sh
+#
+# keepalived   High Availability monitor built upon LVS and VRRP
+#
+# chkconfig:   - 86 14
+# description: Robust keepalive facility to the Linux Virtual Server project \
+#              with multilayer TCP/IP stack checks.
+
+### BEGIN INIT INFO
+# Provides: keepalived
+# Required-Start: $local_fs $network $named $syslog
+# Required-Stop: $local_fs $network $named $syslog
+# Should-Start: smtpdaemon httpd
+# Should-Stop: smtpdaemon httpd
+# Default-Start: 
+# Default-Stop: 0 1 2 3 4 5 6
+# Short-Description: High Availability monitor built upon LVS and VRRP
+# Description:       Robust keepalive facility to the Linux Virtual Server
+#                    project with multilayer TCP/IP stack checks.
+### END INIT INFO
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+exec="/usr/local/keepalived/sbin/keepalived"
+prog="keepalived"
+config="/etc/keepalived/keepalived.conf"
+
+[ -e /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
+
+lockfile=/var/lock/subsys/keepalived
+
+start() {
+    [ -x $exec ] || exit 5
+    [ -e $config ] || exit 6
+    echo -n $"Starting $prog: "
+    daemon $exec $KEEPALIVED_OPTIONS
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && touch $lockfile
+    return $retval
+}
+
+stop() {
+    echo -n $"Stopping $prog: "
+    killproc $prog
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && rm -f $lockfile
+    return $retval
+}
+
+restart() {
+    stop
+    start
+}
+
+reload() {
+    echo -n $"Reloading $prog: "
+    killproc $prog -1
+    retval=$?
+    echo
+    return $retval
+}
+
+force_reload() {
+    restart
+}
+
+rh_status() {
+    status $prog
+}
+
+rh_status_q() {
+    rh_status &>/dev/null
+}
+
+
+case "$1" in
+    start)
+        rh_status_q && exit 0
+        $1
+        ;;
+    stop)
+        rh_status_q || exit 0
+        $1
+        ;;
+    restart)
+        $1
+        ;;
+    reload)
+        rh_status_q || exit 7
+        $1
+        ;;
+    force-reload)
+        force_reload
+        ;;
+    status)
+        rh_status
+        ;;
+    condrestart|try-restart)
+        rh_status_q || exit 0
+        restart
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force-reload}"
+        exit 2
+esac
+exit $?
+-------------------------
+
+
+
+
+
+
 
 </pre>

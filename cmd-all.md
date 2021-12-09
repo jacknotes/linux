@@ -1931,6 +1931,8 @@ nsenter：命令(namespace enter)
 netstat -ano | grep ESTABLISHEDS：表示执行的网络命令
 #批量获取容器网络连接状态
 for i in `docker ps -a | awk '{print $NF}' | grep -v NAMES`;do ./nsenter.sh $i ESTABLISHED >> ./nsenter-docker.log;done
+#获取pid的容器名称
+[root@fatserver ~]# for i in `docker ps -a | grep -v CONTAINER | awk '{print $NF}'`;do a=`docker inspect -f {{.State.Pid}} $i`; if [ $a == 16861 ];then echo $i;else continue;fi ;done
 
 
 
@@ -2876,8 +2878,20 @@ cat json.txt | jq "[.[] | {name:.arrayBrowser[1].name,city:.address.city}]"
 ]
 
 
-
-
+#数组
+[root@docker02 ~]# a=(1 2 3)
+[root@docker02 ~]# echo ${#a[@]}
+3
+[root@docker02 ~]# echo ${a[1]}
+2
+#自增
+[root@docker02 ~]# i=0
+[root@docker02 ~]# ((i++))
+[root@docker02 ~]# echo $i
+2
+[root@docker02 ~]# let i+=1
+[root@docker02 ~]# echo $i
+3
 
 
 
