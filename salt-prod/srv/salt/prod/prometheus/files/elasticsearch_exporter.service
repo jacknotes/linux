@@ -6,8 +6,13 @@ After=network-online.target
 User=prometheus
 Group=prometheus
 Type=simple
-ExecStart=/usr/local/node_exporter/node_exporter
+ExecStart=/usr/local/elasticsearch_exporter/elasticsearch_exporter \
+--web.listen-address=0.0.0.0:9108 \
+--es.uri=http://127.0.0.1:9200 \
+--es.all \
+--es.indices
 Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
+

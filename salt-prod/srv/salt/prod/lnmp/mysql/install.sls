@@ -17,13 +17,13 @@ data-mysql:
 
 mysql-source-install:
   file.managed:
-    - name: /usr/local/src/mysql-5.6.48-linux-glibc2.12-x86_64.tar.gz
-    - source: salt://lnmp/mysql/files/mysql-5.6.48-linux-glibc2.12-x86_64.tar.gz
+    - name: /usr/local/src/mysql-5.7.33-linux-glibc2.12-x86_64.tar.gz
+    - source: salt://lnmp/mysql/files/mysql-5.7.33-linux-glibc2.12-x86_64.tar.gz
     - user: root
     - group: root
     - mode: 755
   cmd.run:
-    - name: cd /usr/local/src && tar zxf mysql-5.6.48-linux-glibc2.12-x86_64.tar.gz -C /usr/local && chmod -R 775 /usr/local/mysql-5.6.48-linux-glibc2.12-x86_64 && chown -R root:mysql /usr/local/mysql-5.6.48-linux-glibc2.12-x86_64 && chown -R mysql:mysql /data/mysql && cd /usr/local/mysql-5.6.48-linux-glibc2.12-x86_64 && ./scripts/mysql_install_db --user=mysql --datadir=/data/mysql && ln -sv /usr/local/mysql-5.6.48-linux-glibc2.12-x86_64 /usr/local/mysql && echo /usr/local/mysql/lib/ >> /etc/ld.so.conf.d/mysqld.conf && ldconfig && ln -sv /usr/local/mysql/include /usr/include/mysql && echo PATH=$PATH:/usr/local/mysql/bin/ > /etc/profile.d/mysqld.sh 
+    - name: cd /usr/local/src && tar zxf mysql-5.7.33-linux-glibc2.12-x86_64.tar.gz -C /usr/local && chmod -R 775 /usr/local/mysql-5.7.33-linux-glibc2.12-x86_64 && chown -R root:mysql /usr/local/mysql-5.7.33-linux-glibc2.12-x86_64 && chown -R mysql:mysql /data/mysql && cd /usr/local/mysql-5.7.33-linux-glibc2.12-x86_64 && ./bin/mysql_install_db --user=mysql --datadir=/data/mysql >& ./mysqltmp.log && ln -sv /usr/local/mysql-5.7.33-linux-glibc2.12-x86_64 /usr/local/mysql && echo /usr/local/mysql/lib/ >> /etc/ld.so.conf.d/mysqld.conf && ldconfig && ln -sv /usr/local/mysql/include /usr/include/mysql && echo 'export PATH=$PATH:/usr/local/mysql/bin/' > /etc/profile.d/mysqld.sh 
     - unless: test -f /etc/profile.d/mysqld.sh
     - require:
       - user: mysql-user-group
