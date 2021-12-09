@@ -158,6 +158,7 @@ Writing superblocks and filesystem accounting information: done
   Logical volume myvg/mylv successfully resized.
 
 12.写入文件系统，使扩容生效
+##重置xfs文件系统大小：xfs_growfs /dev/vg1/lv1增加文件系统的容量
 [root@salt-server ~]# resize2fs /dev/myvg/mylv
 resize2fs 1.42.9 (28-Dec-2013)
 Filesystem at /dev/myvg/mylv is mounted on /lvm; on-line resizing required
@@ -310,6 +311,15 @@ Do you really want to reduce myvg/mylv? [y/n]: y
   Alloc PE / Size       5116 / <79.94 GiB
   Free  PE / Size       4480 / 70.00 GiB
   VG UUID               SuxdA7-l9lO-oO8n-QinG-ogil-fxzL-8dlJPP
+
+注：
+lvresize -size +40G /dev/vg0/foo
+要么：
+lvresize -size 120G /dev/vg0/foo
+区别在于lvextend只能增加一个体积的大小，而lvresize可以增加或减小它的大小。这使lvresize功能更强大但更危险。
+如果不经意地减小卷的大小而没有先减小其中包含的文件系统的大小，则该文件系统很可能会受到不可挽回的损害。
+对于与此处描述的情况类似的情况，lvextend建议使用此方法，因为这样就不可能出现这种类型的错误。
+lvresize -l	--指定逻辑卷的大小（lv的LE数=vg的PE数）
 
 </pre>
 
