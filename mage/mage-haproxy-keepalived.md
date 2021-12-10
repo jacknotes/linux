@@ -1299,6 +1299,114 @@ exit $?
 
 
 
+#问题：两台机器上面都有VIP的情况
+排查：
+1.检查防火墙，发现已经是关闭状态。
+2. keepalived.conf配置问题。
+3.可能是上联交换机禁用了arp的广播限制，造成keepalive无法通过广播通信，两台服务器抢占vip，出现同时都有vip的情况。
+  tcpdump -i eth0 vrrp -n   检查发现160和163都在对224.0.0.18发送消息。但是在正常情况下，备节点如果收到主节点的心跳消息时，优先级高于自己，就不会主动对外发送消息。
+
+#keepalived两台机器同时出现vip问题，使用单播进行解决
+-----------------------------
+[root@linux04 keepalived]# cat /etc/keepalived/keepalived.conf   --node163
+! Configuration File for keepalived
+global_defs {
+	notification_email {
+     		root@localhost
+   	}
+   	notification_email_from root@localhost
+   	smtp_server 127.0.0.1
+   	smtp_connect_timeout 30
+   	router_id mysql_ha02
+}
+
+vrrp_script chk_mysql {              
+    	script "/etc/keepalived/chk_mysql.sh"
+    	interval 1
+    	weight 10 
+}
+
+vrrp_instance mysql_ha {
+	state BACKUP
+	interface eth0
+	virtual_router_id 80
+	priority 100
+	advert_int 1
+! 使用单播解决多台机器同时出现VIP问题
+   	unicast_src_ip  192.168.13.163
+	unicast_peer {              
+        	192.168.13.160
+    	}
+
+	authentication {
+		auth_type PASS
+       		auth_pass 8486c8cdb3 
+	}
+
+	virtual_ipaddress {
+		192.168.13.117
+	}
+
+	track_script {
+        	chk_mysql
+    	}
+	
+	notify_master "/etc/keepalived/notify.sh master"  
+	notify_backup "/etc/keepalived/notify.sh backup"  
+	notify_fault "/etc/keepalived/notify.sh fault"  
+	smtp alter
+}
+-----------------------------
+[root@linux01 keepalived]# cat /etc/keepalived/keepalived.conf   --node160
+! Configuration File for keepalived
+global_defs {
+	notification_email {
+     		root@localhost
+   	}
+   	notification_email_from root@localhost
+   	smtp_server 127.0.0.1
+   	smtp_connect_timeout 30
+   	router_id mysql_ha01
+}
+
+vrrp_script chk_mysql {              
+    	script "/etc/keepalived/chk_mysql.sh"
+    	interval 1
+    	weight 10 
+}
+
+vrrp_instance mysql_ha {
+	state MASTER
+	interface em1
+	virtual_router_id 80
+	priority 150
+	advert_int 1
+
+   	unicast_src_ip  192.168.13.160
+	unicast_peer {              
+        	192.168.13.163
+    	}
+
+	authentication {
+		auth_type PASS
+       		auth_pass 8486c8cdb3 
+	}
+
+	virtual_ipaddress {
+		192.168.13.117
+	}
+
+	track_script {
+        	chk_mysql
+    	}
+
+	notify_master "/etc/keepalived/notify.sh master"  
+	notify_backup "/etc/keepalived/notify.sh backup"  
+	notify_fault "/etc/keepalived/notify.sh fault"  
+	smtp alter
+}
+-----------------------------
+
 
 
 
