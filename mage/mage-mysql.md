@@ -5152,8 +5152,15 @@ show slave status\G
 service mysqld stop
 systemctl stop network
 5. 如果确定同步完成，此时在新节点上重置slave和master状态
+stop slave ;
 reset slave all;
 reset master;
+mysql> show master logs;
++-------------------+-----------+
+| Log_name          | File_size |
++-------------------+-----------+
+| master-bin.000001 |       154 |
++-------------------+-----------+
 6. 在新节点上先停止mysql服务，将更换ip地址为旧节点的IP地址：192.168.13.116，并启动服务检查数据库是否正常
 service mysqld stop
 -- change ip to : 192.168.13.116
