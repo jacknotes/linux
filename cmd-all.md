@@ -2748,6 +2748,7 @@ y6HPMjY=
 [root@salt ~]# file 123.pem
 123.pem: PEM certificate
 #导入根证书到linux证书分发机构
+方式1:
 [root@salt ~]# scp /etc/pki/CA/cacert.pem root@192.168.13.50:/root/
 root@192.168.13.50's password: 
 cacert.pem         
@@ -2755,6 +2756,24 @@ cacert.pem
 [root@tengine /etc/pki/tls/certs]# !curl  
 curl -I https://jumpserver.hs.com   ----此时curl会直接成功访问
 HTTP/1.1 200 OK
+方式2:
+[root@prometheus python_shell]# cp harbor_ca.cer /etc/pki/ca-trust/source/anchors/
+[root@prometheus python_shell]# ln -sv /etc/pki/ca-trust/source/anchors/harbor_ca.cer /etc/ssl/certs/ca-harborrepo.trust.cer
+‘/etc/ssl/certs/ca-harborrepo.trust.cer’ -> ‘/etc/pki/ca-trust/source/anchors/harbor_ca.cer’
+[root@prometheus python_shell]# ll /etc/ssl/certs/
+lrwxrwxrwx 1 root root     49 Aug 25  2020 ca-bundle.crt -> /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+-r--r--r-- 1 root root 306406 Jun  4  2021 ca-bundle.crt.bak
+lrwxrwxrwx 1 root root     55 Aug 25  2020 ca-bundle.trust.crt -> /etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt
+lrwxrwxrwx 1 root root     46 Dec 30 11:22 ca-harborrepo.trust.cer -> /etc/pki/ca-trust/source/anchors/harbor_ca.cer
+-rw------- 1 root root   1407 Sep  3  2020 localhost.crt
+-rwxr-xr-x 1 root root    610 Aug  9  2019 make-dummy-cert
+-rw-r--r-- 1 root root   2516 Aug  9  2019 Makefile
+-rwxr-xr-x 1 root root    829 Aug  9  2019 renew-dummy-cert
+[root@prometheus python_shell]# update-ca-trust 
+此命令一般centos7自带，如果没有则需要安装
+yum install ca-certificates
+update-ca-trust force-enable
+
 
 #一条命令生成CAkey和CAcrt
 [root@tengine ~/custom_cert]# openssl req -new -x509 -keyout root.key -out origroot.pem -days 3650 -nodes
