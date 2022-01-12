@@ -1,0 +1,34 @@
+---
+- name: install required packge for centos
+  yum: name={{item}} state=latest update_cache=true
+  with_items:
+  - make
+  - autoconf
+  - gcc
+  - glibc
+  - gcc-c++
+  - pcre-devel
+  - openssl
+  - openssl-devel
+  - tree
+  - iproute
+  - nmap-ncat
+  - screen
+  - lrzsz
+  - tree
+  - telnet
+  - iotop
+  - iftop
+  - sysstat
+  - wget
+  - dos2unix
+  - lsof
+  - net-tools
+  - mtr
+  - unzip
+  - zip
+  - vim-enhanced
+  - bind-utils
+  - bc
+  - bash-completion
+

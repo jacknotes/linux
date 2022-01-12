@@ -1,0 +1,14 @@
+---
+- name: stop firewall service for centos
+  service: 
+    name: firewalld.service 
+    state: stopped
+    enabled: false
+  when: ansible_os_family == 'RedHat'
+
+- name: stop ufw service for ubuntu
+  service: 
+    name: ufw.service
+    state: stopped
+    enabled: false
+  when: ansible_os_family == 'Debian'

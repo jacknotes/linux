@@ -1,0 +1,23 @@
+---
+- name: node time area config for centos
+  timezone: name=Asia/Shanghai
+
+- name: node ntp client software install for centos
+  yum: name={{ item }} state=present update_cache=true
+  with_items:
+    - ntpdate
+  when: ansible_os_family == 'RedHat'
+
+
+- name: node ntp client software install for ubuntu
+  apt: name={{ item }} state=present update_cache=true
+  with_items:
+    - ntpdate
+  when: ansible_os_family == 'Debian'
+
+- name: node config timing sync ntp time
+  cron:
+    name: timing sync ntp time
+    job: ntpdate time.hs.com
+    minute: '*/5'
+

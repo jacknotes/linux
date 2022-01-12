@@ -1,0 +1,4 @@
+---
+- name: restart nginx service
+  shell: ps aux | grep nginx && service nginx reload || service nginx restart
+  tags: restartNginxService

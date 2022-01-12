@@ -1,0 +1,29 @@
+---
+- name: install required packge for ubuntu
+  apt: name={{item}} state=latest update_cache=true
+  with_items:
+  - build-essential
+  - libtool
+  - libpcre3
+  - libpcre3-dev
+  - zlib1g-dev
+  - openssl
+  - libssl-dev
+  - iproute2
+  - tree
+  - screen
+  - telnet
+  - iotop
+  - iftop
+  - sysstat
+  - wget
+  - dos2unix
+  - lsof
+  - net-tools
+  - mtr
+  - unzip
+  - zip
+  - vim
+  - bind9-host
+  - bc
+  - bash-completion

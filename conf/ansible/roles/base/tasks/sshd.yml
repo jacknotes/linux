@@ -1,0 +1,10 @@
+---
+- name: node sshd_config file config for centos
+  template: src=sshd_config-centos.j2 dest=/etc/ssh/sshd_config backup=yes mode=0600 owner=root group=root
+  notify: restart sshd service
+  when: ansible_os_family == 'RedHat'
+
+- name: node sshd_config file config for ubuntu
+  template: src=sshd_config-ubuntu.j2 dest=/etc/ssh/sshd_config backup=yes mode=0600 owner=root group=root
+  notify: restart sshd service
+  when: ansible_os_family == 'Debian'

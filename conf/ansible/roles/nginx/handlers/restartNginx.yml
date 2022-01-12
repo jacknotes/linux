@@ -1,0 +1,9 @@
+---
+- name: restart nginx service for centos
+  shell: ps aux | grep nginx && service nginx reload || service nginx restart
+  tags: restartNginxService
+
+- name: restart nginx service for ubuntu
+  shell: ps aux | grep nginx &&  systemctl reload nginx || systemctl restart nginx
+  tags: restartNginxService
+

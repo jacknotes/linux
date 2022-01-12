@@ -1,0 +1,10 @@
+#user info
+web_user:
+  groupname: wwwweb
+  groupname_id: 8090
+  username: wwwweb
+  username_id: 8090
+
+
+nginx_port: 8090
+

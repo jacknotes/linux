@@ -1,0 +1,10 @@
+---
+- name: copy nginx init shell
+  copy: src=nginx/nginx.service dest=/lib/systemd/system/nginx.service backup=yes mode=644
+
+- name: set nginx auto boot
+  shell: systemctl daemon-reload && systemctl enable nginx
+
+- name: copy nginx config to remote host
+  template: src=nginx.conf dest=/usr/local/nginx/conf/nginx.conf backup=yes mode=644 
+  notify: restart nginx service

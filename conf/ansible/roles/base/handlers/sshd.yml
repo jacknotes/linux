@@ -1,0 +1,6 @@
+---
+- name: restart sshd service
+  service: 
+    name: sshd.service
+    enabled: true
+    state: restarted

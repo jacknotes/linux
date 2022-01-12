@@ -1,0 +1,12 @@
+---
+- name: install yum repo centos7 for centos
+  copy: src=yum/centos-7.repo dest=/etc/yum.repos.d/ backup=yes mode=644
+  when: ansible_os_family == 'RedHat'
+
+- name: install yum repo epel for centos
+  copy: src=yum/epel-7.repo dest=/etc/yum.repos.d/ backup=yes mode=644
+  when: ansible_os_family == 'RedHat'
+
+- name: install apt repo for ubuntu
+  copy: src=apt/sources-18.list dest=/etc/apt/sources.list.d/ backup=yes mode=644
+  when: ansible_os_family == 'Debian'

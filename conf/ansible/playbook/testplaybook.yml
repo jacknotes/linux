@@ -1,0 +1,13 @@
+---
+- hosts: all
+  gather_facts: no
+  tasks:
+    - name: register vars
+      shell: hostname
+      register: info
+    - name: display vars
+      debug: msg="{{info.stdout}}"
+
+    - name: test hosts var
+      debug: msg="role {{ role }}, author {{ author }}"
+

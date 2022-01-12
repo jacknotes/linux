@@ -1,0 +1,14 @@
+- include: history.yml
+- include: audit.yml
+- include: firewall.yml
+- include: dns.yml
+- include: repo.yml
+- include: package-centos.yml
+  when: ansible_os_family == 'RedHat'
+- include: package-ubuntu.yml
+  when: ansible_os_family == 'Debian'
+- include: hosts.yml
+- include: ntpdate.yml
+- include: postfix.yml
+- include: selinux.yml
+- include: sshd.yml

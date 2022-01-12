@@ -1,0 +1,4 @@
+---
+- name: node stop postfix service
+  service: name=postfix state=stopped enabled=false
+  when: ansible_os_family == 'RedHat'

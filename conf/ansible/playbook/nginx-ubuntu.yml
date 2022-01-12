@@ -1,0 +1,5 @@
+---
+- hosts: 172.168.2.12
+  remote_user: root
+  roles:
+  - nginx-ubuntu

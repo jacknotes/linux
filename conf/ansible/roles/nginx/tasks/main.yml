@@ -1,0 +1,4 @@
+- include: group.yml
+- include: user.yml
+- include: installPackage.yml
+- include: service.yml

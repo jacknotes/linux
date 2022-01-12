@@ -1,0 +1,7 @@
+---
+- hosts: 172.168.2.13
+  remote_user: root
+  become: yes
+  gather_facts: true
+  roles:
+  - nginx-centos
