@@ -80,6 +80,7 @@ bluestore比filestore新，在filestore时候元数据写在管理服务器某�
 
 
 #部署ceph集群：
+注：以下在配置ceph集群时默认都是在ceph-deploy节点进行操作
 硬件规划：
 元数据服务器对CPU敏感：大于4核CPU
 元数据服务器和监视器必须可以尽快地提供它们的数据 ，所以他们应该有足够的内存，至少每进程1G
@@ -1372,7 +1373,7 @@ $ ceph -s
 	sudo ceph-deploy osd create ceph-node04 --data /dev/sdb
 
 4.4.2.4 删除服务器
-停止服务器之前要把服务器的OSD先停止然后从ceph集群删除
+删除服务器之前要把服务器的OSD先停止然后从ceph集群删除
 1. 把osd跳出集群     ---相反把OSD加入集群， ceph osd in 1
 	ceph osd out 1
 2. 等一段时间
@@ -1593,6 +1594,930 @@ Unactive	非活跃态。PG不能处理读写请求
 Unclean	非干净态。PG不能从上一个失败中恢复
 Stale	未刷新态。PG状态没有被任何OSD更新，这说明所有存储这个PG的OSD可能挂掉, 或者Mon没有检测到Primary统计信息(网络抖动)
 Undersized	PG当前Acting Set小于存储池副本数
+
+
+4.9.1 常用命令
+4.9.1.1 列出存储池
+$ ceph osd pool ls
+device_health_metrics
+mypool
+myrbd1
+.rgw.root
+default.rgw.log
+default.rgw.control
+default.rgw.meta
+cephfs-metadata
+cephfs-data
+
+$ ceph osd pool ls detail
+pool 1 'device_health_metrics' replicated size 3 min_size 2 crush_rule 0 object_hash rjenkins pg_num 32 pgp_num 32 autoscale_mode on last_change 3048 lfor 0/3012/3010 flags hashpspool stripe_width 0 pg_num_min 1 application mgr_devicehealth
+pool 2 'mypool' replicated size 3 min_size 2 crush_rule 0 object_hash rjenkins pg_num 64 pgp_num 64 autoscale_mode on last_change 2398 lfor 0/2398/2396 flags hashpspool stripe_width 0
+pool 3 'myrbd1' replicated size 3 min_size 2 crush_rule 0 object_hash rjenkins pg_num 64 pgp_num 64 autoscale_mode on last_change 333 flags hashpspool,selfmanaged_snaps stripe_width 0 application rbd
+pool 4 '.rgw.root' replicated size 3 min_size 2 crush_rule 0 object_hash rjenkins pg_num 32 pgp_num 32 autoscale_mode on last_change 3042 lfor 0/3042/3040 flags hashpspool stripe_width 0 application rgw
+pool 5 'default.rgw.log' replicated size 3 min_size 2 crush_rule 0 object_hash rjenkins pg_num 32 pgp_num 32 autoscale_mode on last_change 1936 flags hashpspool stripe_width 0 application rgw
+pool 6 'default.rgw.control' replicated size 3 min_size 2 crush_rule 0 object_hash rjenkins pg_num 32 pgp_num 32 autoscale_mode on last_change 1639 flags hashpspool stripe_width 0 application rgw
+pool 7 'default.rgw.meta' replicated size 3 min_size 2 crush_rule 0 object_hash rjenkins pg_num 256 pgp_num 256 autoscale_mode on last_change 1682 lfor 0/0/1668 flags hashpspool stripe_width 0 pg_autoscale_bias 4 pg_num_min 8 application rgw
+pool 8 'cephfs-metadata' replicated size 3 min_size 2 crush_rule 0 object_hash rjenkins pg_num 256 pgp_num 256 autoscale_mode on last_change 2413 lfor 0/0/2411 flags hashpspool stripe_width 0 pg_autoscale_bias 4 pg_num_min 16 recovery_priority 5 application cephfs
+pool 9 'cephfs-data' replicated size 3 min_size 2 crush_rule 0 object_hash rjenkins pg_num 64 pgp_num 64 autoscale_mode on last_change 2409 flags hashpspool stripe_width 0 application cephfs
+
+$ ceph osd lspools
+1 device_health_metrics
+2 mypool
+3 myrbd1
+4 .rgw.root
+5 default.rgw.log
+6 default.rgw.control
+7 default.rgw.meta
+8 cephfs-metadata
+9 cephfs-data
+
+4.9.1.2 获取存储池的事件信息
+$ ceph osd pool stats mypool
+pool mypool id 2
+  nothing is going on
+
+4.9.1.3 重合名存储池，正在使用的pool是无法重命名的
+$ ceph osd pool rename mypool mypool1
+pool 'mypool' renamed to 'mypool1'
+
+4.9.1.4 显示存储池的用量信息
+$ ceph df
+--- RAW STORAGE ---
+CLASS     SIZE    AVAIL     USED  RAW USED  %RAW USED
+ssd    150 GiB  149 GiB  779 MiB   779 MiB       0.51
+TOTAL  150 GiB  149 GiB  779 MiB   779 MiB       0.51
+
+--- POOLS ---
+POOL                   ID  PGS   STORED  OBJECTS     USED  %USED  MAX AVAIL
+device_health_metrics   1   32      0 B        0      0 B      0     47 GiB
+mypool                  2   64      0 B        0      0 B      0     47 GiB
+myrbd1                  3   64  116 MiB       53  348 MiB   0.24     47 GiB
+.rgw.root               4   32  1.3 KiB        4   48 KiB      0     47 GiB
+default.rgw.log         5   32  3.6 KiB      209  408 KiB      0     47 GiB
+default.rgw.control     6   32      0 B        8      0 B      0     47 GiB
+default.rgw.meta        7  256      0 B        0      0 B      0     47 GiB
+cephfs-metadata         8  256   26 KiB       22  160 KiB      0     47 GiB
+cephfs-data             9   64      0 B        0      0 B      0     47 GiB
+$ rados df
+POOL_NAME                 USED  OBJECTS  CLONES  COPIES  MISSING_ON_PRIMARY  UNFOUND  DEGRADED  RD_OPS       RD  WR_OPS       WR  USED COMPR  UNDER COMPR
+.rgw.root               48 KiB        4       0      12                   0        0         0      39   39 KiB       0      0 B         0 B          0 B
+cephfs-data                0 B        0       0       0                   0        0         0       0      0 B       0      0 B         0 B          0 B
+cephfs-metadata        160 KiB       22       0      66                   0        0         0      84   89 KiB      14   12 KiB         0 B          0 B
+default.rgw.control        0 B        8       0      24                   0        0         0       0      0 B       0      0 B         0 B          0 B
+default.rgw.log        408 KiB      209       0     627                   0        0         0  130149  127 MiB   86291   34 KiB         0 B          0 B
+default.rgw.meta           0 B        0       0       0                   0        0         0       0      0 B       0      0 B         0 B          0 B
+device_health_metrics      0 B        0       0       0                   0        0         0       0      0 B       0      0 B         0 B          0 B
+mypool                     0 B        0       0       0                   0        0         0       1    2 KiB      12   36 MiB         0 B          0 B
+myrbd1                 348 MiB       53       0     159                   0        0         0     455  3.7 MiB     201  118 MiB         0 B          0 B
+
+total_objects    296
+total_used       784 MiB
+total_avail      149 GiB
+total_space      150 GiB
+
+4.9.2 存储池的山珍
+ceph osd pool create mypool2 4 4 
+ceph osd pool get mypool2 nodelete  --查看存储是否可以删除
+ceph osd pool set mypool2 nodelete true	--设置存储池不可以被删除，此时存储池和mon设置都为不允许删除了
+注：如果mon设置为可以删除，但是pool设置为不允许删除，那么你还是删除不了这个存储池了
+
+4.9.3 存储池配额
+存储池可以设置两个配对存储的对象进行限制，一个配额是最大空间
+$ ceph osd pool get-quota mypool 	--查看存储池配额限制，默认是没有限制的 
+quotas for pool 'mypool':
+  max objects: N/A
+  max bytes  : N/A
+$ ceph osd pool set-qouta mypool max_objects 1000	--设置对象数量为1000，这个一般很少设置
+$ ceph osd pool set-qouta mypool max_bytes 214748364800	--设置最大存储容量为200G，这个常用
+
+4.9.4 存储池可用参数
+size: 存储沁中的对象副本数，默认一主两个备共3个副本
+$ ceph osd pool get mypool size 	--查看存储池副本数
+size: 3
+$ ceph osd pool set mypool size 2		--设置存储池副本数
+$ ceph osd pool get mypool min_size 	--提供服务所需要的最小副本数
+min_size: 2
+$ ceph osd pool get mypool pg_num		--查看当前PG的数量 
+pg_num: 64
+$ ceph osd pool get mypool crush_rule		--查看crush算法规则 
+crush_rule: replicated_rule	--默认为副本池
+$ ceph osd pool get mypool --查看可以获取的属性值 
+$ ceph osd pool get mypool nopgchange 	--查看是否可以调整pg和pgp的数量
+nopgchange: false
+$ ceph osd pool set mypool pg_num 4 	--修改指定pool的pg数量，数据不会丢，但会重新平衡数据，会使ceph很繁忙
+set pool 2 pg_num to 4
+$ ceph osd pool set mypool pgp_num 4 	--修改指定pool的pgp数量，数据不会丢，但会重新平衡数据，会使ceph很繁忙
+set pool 2 pgp_num to 4
+$ ceph osd pool get mypool pg_num	--重新平衡pg是有一个慢性过程的
+pg_num: 61
+$ ceph osd pool get mypool nosizechange		--控制是否可以更改存储池的大小
+ 
+noscrub和nodeep-scrub: 控制是否不进行轻量扫描(扫描OSD的元数据信息，默认每天一次)或是否深层扫描存储池(扫描数据本身，更耗IO，默认每周一次)，ceph这种扫描机制可以检测同一个PG中多个副本OSD是否有不一致情况，如果有则报告mon服务器有数据不一致而告警，扫描结果是json数据。在IO高的情况下，关闭扫描可临时解决高IO问题
+$ ceph osd pool get mypool noscrub 	--控制是否开关轻量扫描
+noscrub: false
+$ ceph osd pool set mypool noscrub true	--关闭轻量扫描
+set pool 2 noscrub to true
+$ ceph osd pool get mypool nodeep-scrub 	--控制是否开关深层扫描
+nodeep-scrub: false
+$ ceph osd pool set mypool nodeep-scrub true	--关闭深层扫描
+set pool 2 nodeep-scrub to true
+$ ceph osd pool get mypool scrub_min_interval 	--查看扫描间隔时间，这个得到OSD上查看，
+--osd上执行
+sudo ceph daemon osd.3 config show | grep scrub	--查看扫描时间配置
+"mon_scrub_interval": "86400",	--轻量扫描时间
+"osd_deep_scrub_interval": "604800.000000",	--深层扫描时间
+"osd_max_scrubs": "1",	--扫描时启用几个线程进行扫描
+"osd_scrub_invalid_stats": "true",	--定义scrub是否有效
+"osd_scrub_max_interval": "604800.000000",	--定义最大执行scrub间隔为7天
+"osd_scrub_min_interval": "86400.000000",	--定义最小执行普通scrub间隔为1天
+
+4.10 存储池快照
+快照用于读取存储池中的数据进行备份与还原，创建快照需要占用的磁盘空间会比较大，取决于存储池中的数据大小，使用以下命令创建快照：
+4.10.1 创建快照
+$ ceph osd pool mksnap mypool mypool-snap1 	--创建快照方式1	
+$ rados -p mypool mksnap mypool-snap2	--创建快照方式2
+4.10.2 验证快照
+$ created pool mypool snap mypool-snap2
+$ rados lssnap -p mypool
+1       mypool-snap1    2021.12.11 16:06:21
+2       mypool-snap2    2021.12.11 16:06:57
+2 snaps	--总共2个快照
+4.10.3 回滚快照
+$ rados -p mypool put testfil1 /etc/passwd
+$ rados -p mypool ls
+testfil1
+$ ceph osd pool mksnap mypool mypool-snap-test001	--先创建快照
+created pool mypool snap mypool-snap-test001
+$ rados -p mypool rm testfil1	--模拟删除文件
+$ rados rollback -p mypool testfil1  mypool-snap-test001	--回滚快照mypool-snap-test001的对象文件testfil1到存储池mypool中，注：只能还原某个对象文件
+rolled back pool mypool to snapshot mypool-snap-test001
+$ rados -p mypool ls	--此时文件又恢复了
+testfil1
+4.10.4 删除快照
+$ rados lssnap -p mypool
+1       mypool-snap1    2021.12.11 16:06:21
+2       mypool-snap2    2021.12.11 16:06:57
+3       mypool-snap-test001     2021.12.11 16:15:14
+3 snaps
+$ ceph osd pool rmsnap mypool mypool-snap-test001
+removed pool mypool snap mypool-snap-test001
+$ ceph osd pool rmsnap mypool mypool-snap2
+removed pool mypool snap mypool-snap2
+$ rados lssnap -p mypool
+1       mypool-snap1    2021.12.11 16:06:21
+1 snaps
+$ ceph osd pool rmsnap mypool mypool-snap1
+removed pool mypool snap mypool-snap1
+$ rados lssnap -p mypool
+0 snaps
+
+4.11 数据压缩：	--生产环境上一般不使用
+如果使用blustore存储引擎，ceph支持称为"实时数据压缩"即边压缩边保存数据的功能，该功能有助于节省磁盘空间，可以在Bluestore OSD上创建的每个Ceph池上启用或禁用压缩，以节约磁盘空间，默认没有开户压缩，需要后期配置并开启。
+4.11.1 启用压缩并指定压缩算法
+$ ceph osd pool set mypool compression_algorithm snappy 	--默认算法为snappy，也是ceph推荐的压缩算法
+snappy: 该配置为指定压缩使用的算法默认为snpppy，还有none、zlib、lz4、zstd和snappy等算法，zstd压缩比好，但消耗CPU，lz4和snappy对CPU占用较低，不建议使用zlib
+4.11.2 指定压缩模式
+ceph osd pool set mypool compression_mode aggressive 
+aggressive: 压缩的模式，有none,aggressive,passive和force，默认none
+none: 从不压缩数据
+passive: 除非写操作具有可压缩的提示集，否则不要压缩数据
+aggressive: 压缩数据，除非写操作具有不可压缩的提示集
+force: 无论如何都尝试压缩数据，即使客户端暗示数据不可压缩也会压缩，也就是在所有情况下都使用压缩
+
+存储池压缩设置参数：
+compression_algorithm	--压缩算法
+compression_mode	--压缩模式
+compression_required_ratio	--压缩后与压缩前的压缩比，默认为0.875
+compression_max_blob_size	--大于此的块在被压缩之前被分解成更小的blob(块)，此设置将覆盖bluestore压缩max blob*的全局设置
+compression_min_blob_size	--小于此的块不被压缩，此设置将覆盖bluestore压缩max blob*的全局设置
+全局压缩选项，这些可以配置到ceph.conf配置文件，作用于所有存储池：
+blustore_compression_algorithm	--压缩算法
+blustore_compression_mode	--压缩模块
+blustore_compression_required_ratio	--压缩后与压缩前的压缩比，默认为0.875
+blustore_compression_min_blob_size	--小于它的块不会被压缩，默认0
+blustore_compression_max_blob_size	--大于它的块在压缩前会被拆成更小的块，默认0
+blustore_compression_min_blob_size_ssd	--默认8k
+blustore_compression_max_blob_size_ssd	--默认64k
+blustore_compression_min_blob_size_hdd	--默认128k
+blustore_compression_min_blob_size_hdd	--默认512k
+
+到node节点验证：
+[root@ceph01 ~]# ceph daemon osd.1 config show | grep compression
+    "bluestore_compression_algorithm": "snappy",
+    "bluestore_compression_max_blob_size": "0",
+    "bluestore_compression_max_blob_size_hdd": "65536",
+    "bluestore_compression_max_blob_size_ssd": "65536",
+    "bluestore_compression_min_blob_size": "0",
+    "bluestore_compression_min_blob_size_hdd": "8192",
+    "bluestore_compression_min_blob_size_ssd": "8192",
+    "bluestore_compression_mode": "none",
+    "bluestore_compression_required_ratio": "0.875000",
+    "bluestore_rocksdb_options": "compression=kNoCompression,max_write_buffer_number=4,min_write_buffer_number_to_merge=1,recycle_log_file_num=4,write_buffer_size=268435456,writable_file_max_buffer_size=0,compaction_readahead_size=2097152,max_background_compactions=2,max_total_wal_size=1073741824",
+    "filestore_rocksdb_options": "max_background_jobs=10,compaction_readahead_size=2097152,compression=kNoCompression",
+    "kstore_rocksdb_options": "compression=kNoCompression",
+    "leveldb_compression": "true",
+    "mon_rocksdb_options": "write_buffer_size=33554432,compression=kNoCompression,level_compaction_dynamic_level_bytes=true",
+    "rbd_compression_hint": "none",
+#ceph-deploy上操作
+ceph osd pool set mypool compression_algorithm snappy 	--修改压缩算法
+ceph osd pool get mypool compression_algorithm			--查看压缩算法
+ceph osd pool set mypool compression_mode passive	--修改压缩模式
+ceph osd pool get mypool compression_mode 			--查看压缩模式
+
+
+五：CephX认证机制：
+Ceph使用cephx协议对客户端进行身份认证，cephx用于对ceph保存的数据进行谁访问和授权，用于对访问ceph的请求进行认证和授权检测，与mon通信的请求都要经过ceph认证通过，但是也可以在mon节点关闭cephx认证机制。但是关闭认证之后 任何访问都将被允许，因此无法保证数据的安全性。
+5.1 授权流程
+每个mon节点都可以对客户端进行身份认证并颁发秘钥，因此多个mon节点就不存在单点故障和认证性能瓶颈
+mon节点会返回用于身份认证的数据结构，其中包含获取ceph服务时用到的session key,session key通过客户端秘钥进行加密，秘钥是在客户端提前配置好的，/etc/ceph/ceph.client.admin.keyring
+客户端使用session key向mon请求所需要的服务，mon向客户端提供一个tiket，用于向实际 处理数据的OSD等服务验证客户端身份，MON和OSD共享同一个secret，因此OSD会信任所有MON发放的tiket
+tiket存在有效期
+注意： CephX身份验证功能仅限制在Ceph各组件之间，不能扩展到其它非ceph组件。ceph只负责认证授权，不能解决数据传输的加密问题
+
+5.2访问流程
+1. 客户端请求认证，读取ceph.conf文件得知mon服务器地址、自己客户端key的文件在哪，并拿着客户端key去mon服务器认证。
+2. mon服务器验证客户端key是洁合法，合法则生成session key，并用key加密后发送给客户端
+3. 客户端上用户key解密后得到session key,并向MON服务器发送session key申请tiket 
+4. MON服务器验证session key是否合法，合法则用session key加密tiket并发送给客户端
+5. 客户端使用session key解密tiket并拿着tiket访问OSD（或者MDS）
+6. OSD验证tiket并返回数据
+注：OSD和MON服务器共享tiket
+
+5.3 访问用户
+用户是指个人(ceph管理者)或系统参与者（MON/OSD/MDS）
+通过创建用户，可以控制用户或哪个参与者能够访问ceph存储集群、以及可访问的存储池及存储池中的数据。
+ceph支持多种类型的用户，但可管理的用户都属于client类型，区分用户类型的原因在于，MON/OSD/MDS等系统组件特使用cephx协议，但是它们为非客户端。通过点号来分割用户类型和用户名，格式为TYPE.ID，例如 client.admin
+$ ceph auth list
+mds.ceph-mgr01
+        key: AQDnJqthYDIRBhAAawCn6G0GT+LPVBOIWI0bHA==
+        caps: [mds] allow
+        caps: [mon] allow profile mds
+        caps: [osd] allow rwx
+osd.0
+        key: AQC2g6Nh0cEXARAACWH1tqYFA/PQEyjgVQG2PQ==
+        caps: [mgr] allow profile osd
+        caps: [mon] allow profile osd
+        caps: [osd] allow *
+osd.1
+        key: AQCghKNhVmZ3HhAASD4z2wdLYnf89VaU9WRQBQ==
+        caps: [mgr] allow profile osd
+        caps: [mon] allow profile osd
+        caps: [osd] allow *
+osd.10
+        key: AQDHhqNhT/lFCxAAUhH3aclNoN0lsKFb/wNFaw==
+        caps: [mgr] allow profile osd
+        caps: [mon] allow profile osd
+        caps: [osd] allow *
+osd.11
+        key: AQD8hqNhXh8vJhAATdLlCbFbT2yz7933cxb3Rg==
+        caps: [mgr] allow profile osd
+        caps: [mon] allow profile osd
+        caps: [osd] allow *
+osd.12
+        key: AQAwh6Nhh3HaJRAAb6tPXjUMoTM+HSGWLz+7xg==
+        caps: [mgr] allow profile osd
+        caps: [mon] allow profile osd
+        caps: [osd] allow *
+osd.13
+        key: AQBvh6NhfJgjFhAAr1pHixxZtip3+bA1dIM/Pg==
+        caps: [mgr] allow profile osd
+        caps: [mon] allow profile osd
+        caps: [osd] allow *
+osd.14
+        key: AQCqh6Nhpsj4MhAAfRoN/4o7dSTnwfYzeL2/lQ==
+        caps: [mgr] allow profile osd
+        caps: [mon] allow profile osd
+        caps: [osd] allow *
+osd.2
+        key: AQDihKNhC3skARAAGkDenlnM/PeW9puZicKDog==
+        caps: [mgr] allow profile osd
+        caps: [mon] allow profile osd
+        caps: [osd] allow *
+osd.3
+        key: AQArhaNhejBsExAAg3vhjspeSMhGm0l/MVQ6hQ==
+        caps: [mgr] allow profile osd
+        caps: [mon] allow profile osd
+        caps: [osd] allow *
+osd.4
+        key: AQBxhaNh1EZsGBAABSy6cgj+MLxVlpTs8zLtzA==
+        caps: [mgr] allow profile osd
+        caps: [mon] allow profile osd
+        caps: [osd] allow *
+osd.5
+        key: AQCwhaNh2FSTChAAOMp+3Ed6ZBx3cjlpRAlO/Q==
+        caps: [mgr] allow profile osd
+        caps: [mon] allow profile osd
+        caps: [osd] allow *
+osd.6
+        key: AQDlhaNhbrjOIRAADxKKBHX3T468D9WhJ2hEnA==
+        caps: [mgr] allow profile osd
+        caps: [mon] allow profile osd
+        caps: [osd] allow *
+osd.7
+        key: AQAehqNhL98vLRAA6vb7FERP3RKQjtOPhDGcEQ==
+        caps: [mgr] allow profile osd
+        caps: [mon] allow profile osd
+        caps: [osd] allow *
+osd.8
+        key: AQBWhqNhLl7yNxAALIOQCQquMwAnpvZzJK9gcg==
+        caps: [mgr] allow profile osd
+        caps: [mon] allow profile osd
+        caps: [osd] allow *
+osd.9
+        key: AQCNhqNh7b2ZDBAAGAeaLG2RxsGoe/1eEOMitQ==
+        caps: [mgr] allow profile osd
+        caps: [mon] allow profile osd
+        caps: [osd] allow *
+client.admin
+        key: AQBvQqJhejFEHhAAsUidhVFym74h036oDshlyw==
+        caps: [mds] allow *
+        caps: [mgr] allow *
+        caps: [mon] allow *
+        caps: [osd] allow *
+client.bootstrap-mds
+        key: AQBvQqJhxghFHhAAk8B6kse7gtQ7LxWjK6VC5w==
+        caps: [mon] allow profile bootstrap-mds
+client.bootstrap-mgr
+        key: AQBvQqJhWSNGHhAAXMMG355+lvKSwrMpvM8f1A==
+        caps: [mon] allow profile bootstrap-mgr
+client.bootstrap-osd
+        key: AQBvQqJhQe5GHhAAS4+JAPQsU2bzi+1X/gb5Jg==
+        caps: [mon] allow profile bootstrap-osd
+client.bootstrap-rbd
+        key: AQBvQqJh27dHHhAAX1hOKBcG3ueBzPHbDVVz9Q==
+        caps: [mon] allow profile bootstrap-rbd
+client.bootstrap-rbd-mirror
+        key: AQBvQqJhu39IHhAAosOokUxW0RMvTMpRj4rgVg==
+        caps: [mon] allow profile bootstrap-rbd-mirror
+client.bootstrap-rgw
+        key: AQBvQqJhlEdJHhAA/6Z396smwahTc7aX65Y23w==
+        caps: [mon] allow profile bootstrap-rgw
+client.rgw.ceph-mgr01
+        key: AQAlFathEiKlCRAAs45P1GqD2yv9Ta5Plj1naA==
+        caps: [mon] allow rw
+        caps: [osd] allow rwx
+mgr.ceph-mgr01
+        key: AQBqcaNhId4cHBAA0zFKwKdqIPKi0TjzWk8adQ==
+        caps: [mds] allow *
+        caps: [mon] allow profile mgr
+        caps: [osd] allow *
+mgr.ceph-mgr02
+        key: AQCVnKNhUT7PGRAAOevjcHw/gcPpeSS+g5kAFw==
+        caps: [mds] allow *
+        caps: [mon] allow profile mgr
+        caps: [osd] allow *
+installed auth entries:
+
+$ ceph auth get client.admin   --获取单个用户权限
+[client.admin]
+        key = AQBvQqJhejFEHhAAsUidhVFym74h036oDshlyw==
+        caps mds = "allow *"
+        caps mgr = "allow *"
+        caps mon = "allow *"
+        caps osd = "allow *"
+exported keyring for client.admin
+
+5.4 ceph授权和使能
+ceph基于使能/能力来描述用户可针对MON/OSD或MDS使用的授权范围或级别。
+通用语法格式： daemon-type 'allow caps' [...]
+r: 向用户授予读取权限，访问mon以检查 CRUSH运行图时需要具有此车能力。
+w: 一般OSD，向用户授予针对对象的写入权限。
+x: 授予用户调用类方法（包括读取和写入）的能力，以及在监视器中执行auth操作的能力。
+*: 授予用户对特定守护进程/存储池的读取、写入和执行权限，以及执行管理命令的能力
+class-read: 授予用户调用类读取方法的能力，属于是x能力的子集。
+class-write: 授予用户调用类写入方法的能力，属于是x能力的子集。
+profile osd: 授予用户以某个OSD身份连接到其他OSD或监视器的权限，授予OSD权限，使OSD能够处理复制检测信息流量和状态报告（获取OSD的状信息）。
+profile mds: 授予用户以某个MDS身份连接到其他MDS或监视器的权限 
+profile bootstrap-osd: 授予用户引导OSD的权限（初始化OSD并将OSD加入ceph集群），授权给部署工具，使其在引导OSD时有权添加密钥。
+profile bootstrap-mds: 授予用户引导元数据服务器的权限，授权部署工具权限，使其在引导元数据服务时有权添加密钥。
+
+MON能力：
+包括r/w/x 和allow profile cap(ceph的运行图)
+例如：
+mon 'allow rwx'
+mon 'allow profile osd'
+OSD能力：
+包括r,w,x,class-read,class-write和profile osd，另外OSD能力还允许进行存储池和名称空间设置
+osd 'allow capability' [pool=poolname] [namespace-name]\
+MDS能力：
+只需要allow或空都表示允许 
+mds 'allow'
+针对用户采用YPTE.ID表示法，例如osd.0指定是osd类并且ID为0的用户(节点)，client.admin是client类型的用户，其ID为admin.
+另外 注意，每个项包含一个key=xxx项，以及一个或多个caps项，可以结合使用-o 文件名选项和 ceph auth list 将输出保存到某个文件 
+
+5.5 ceph用户管理
+添加一个用户会创建用户名（YPTE.ID）
+$ ceph auth add client.tom mon 'allow r' osd 'allow rwx pool=mypool'   --key在用户创建时自己生成
+added key for client.tom
+$ ceph auth get client.tom
+[client.tom]
+        key = AQAjudJhYm5gHRAAbLLo+3di1uc06BYPD7PdOA==
+        caps mon = "allow r"
+        caps osd = "allow rwx pool=mypool"
+exported keyring for client.tom 
+$ ceph auth get-or-create client.jack mon 'allow r' osd 'allow rwx pool=mypool'  --获取或创建并返回key
+[client.jack]
+        key = AQBQutJhOwl3GxAAkzkiyHIdJ3qbz2YvouJBLg==
+$ ceph auth get-or-create-key client.jack mon 'allow r' osd 'allow rwx pool=mypool' --获取或创建并只返回key主体信息
+AQBQutJhOwl3GxAAkzkiyHIdJ3qbz2YvouJBLg==
+$ ceph auth print-key client.jack   --获取key主体信息
+AQBQutJhOwl3GxAAkzkiyHIdJ3qbz2YvouJBLg==
+$ ceph auth print_key client.jack
+AQBQutJhOwl3GxAAkzkiyHIdJ3qbz2YvouJBLg==
+$ ceph auth caps client.jack mon 'allow rw' osd 'allow rw pool=mypool' --修改权限，会立即生效
+updated caps for client.jack
+$ ceph auth get client.jack
+[client.jack]
+        key = AQBQutJhOwl3GxAAkzkiyHIdJ3qbz2YvouJBLg==
+        caps mon = "allow rw"
+        caps osd = "allow rw pool=mypool"
+exported keyring for client.jack	--删除用户
+$ ceph auth del client.jack
+updated
+$ ceph auth get client.jack
+Error ENOENT: failed to find client.jack in keyring
+
+5.6 秘钥环管理
+ceph的秘钥环是一个保存了secrets、keys、certificates并且能够让客户端认证访问ceph的keyring file（集合文件），一个keyring file可以保存一个或多个认证信息，每一个key都有一个实际名称加权限，类型为：
+{client, mon, mds, osd}.name
+当客户端访问ceph信息时，ceph会使用以下四个密钥环文件预设置密钥环设置：
+/etc/ceph<$cluster name>.<user $type>.<user $id>.keyring	--保存单个用户的keyring
+/etc/ceph/cluster.keyring	--保存多个用户的keyring
+/etc/ceph/keyring	--未定义集群名称的多个用户的keyring
+/etc/ceph/keyring.bin	--编译后的二进制文件
+
+5.6.1 通过秘钥环文件备份与恢复用户：
+使用ceph auth add等命令添加的用户还需要额外使用ceph-authtool命令为其创建用户秘钥环文件，创建keyring文件命令格式：
+ceph-authtool --create-keyring FILE
+5.6.1.1 导出用户认证信息至keyring文件：
+将用户信息导出至keyring文件，对用户信息进行备份：
+$ ceph auth get-or-create client.user1 mon 'allow r' osd 'allow * pool=mypool'  --创建新用户
+[client.user1]
+        key = AQAVv9JhRJwaLhAAH806EF6bWSVEEIi3HFyAjw==
+$ ceph auth get client.user1
+[client.user1]
+        key = AQAVv9JhRJwaLhAAH806EF6bWSVEEIi3HFyAjw==
+        caps mon = "allow r"
+        caps osd = "allow * pool=mypool"
+exported keyring for client.user1
+$ ceph-authtool --create-keyring ceph.client.user1.keyring	--创建keyring空密钥环文件
+creating ceph.client.user1.keyring
+$ file ceph.client.user1.keyring	--文件类型是empty，跟touch一个文件一样
+ceph.client.user1.keyring: empty
+$ ceph auth get client.user1 -o ceph.client.user1.keyring	--导出备份keyring
+catexported keyring for client.user1
+$ cat ceph.client.user1.keyring	
+[client.user1]
+        key = AQAVv9JhRJwaLhAAH806EF6bWSVEEIi3HFyAjw==
+        caps mon = "allow r"
+        caps osd = "allow * pool=mypool"
+$ ceph auth del client.user1	--模拟误删除用户
+updated
+$
+$ ceph auth get client.user1	--此时用户已查询不到
+Error ENOENT: failed to find client.user1 in keyring
+$ ceph auth import  -i ceph.client.user1.keyring	--恢复备份文件keyring，并且key会跟之前一样。{如果新建同名用户是没有用的，因为key已经变了}
+imported keyring
+$ ceph auth get client.user1	--对比跟之前是否一样
+[client.user1]
+        key = AQAVv9JhRJwaLhAAH806EF6bWSVEEIi3HFyAjw==
+        caps mon = "allow r"
+        caps osd = "allow * pool=mypool"
+exported keyring for client.user1
+
+--一个keyring文件保存多个用户信息
+$ ceph-authtool --create-keyring ceph.client.user.keyring
+creating ceph.client.user.keyring
+$ ceph-authtool ./ceph.client.user.keyring --import-keyring ./ceph.client.admin.keyring
+importing contents of ./ceph.client.admin.keyring into ./ceph.client.user.keyring
+$ ceph-authtool ./ceph.client.user.keyring --import-keyring ./ceph.client.user1.keyring
+importing contents of ./ceph.client.user1.keyring into ./ceph.client.user.keyring
+$ cat ./ceph.client.user.keyring
+[client.admin]
+        key = AQBvQqJhejFEHhAAsUidhVFym74h036oDshlyw==
+        caps mds = "allow *"
+        caps mgr = "allow *"
+        caps mon = "allow *"
+        caps osd = "allow *"
+[client.user1]
+        key = AQAVv9JhRJwaLhAAH806EF6bWSVEEIi3HFyAjw==
+        caps mon = "allow r"
+        caps osd = "allow * pool=mypool"
+
+
+##########6 RBD的使用
+cephFS:6789
+mon：3300
+注：如果开启防火墙则打开以上端口
+
+创建一个存储池
+$ ceph osd pool create rbd-data1 4 4
+$ ceph osd pool application enable rbd-data1 rbd  --开启rbd
+$ rbd pool init -p rbd-data1	--初始化pool
+$ rbd create data-img1 --size 1G --pool rbd-data1 --image-format 2 --image-feature layering		--创建镜像
+$ rbd create data-img2 --size 1G --pool rbd-data1 --image-format 2 --image-feature layering
+$ rbd ls --pool rbd-data1 -l
+NAME       SIZE   PARENT  FMT  PROT  LOCK
+data-img1  1 GiB            2
+data-img2  1 GiB            2
+$ rbd --image data-img1 --pool rbd-data1 info
+rbd image 'data-img1':
+        size 1 GiB in 256 objects
+        order 22 (4 MiB objects)
+        snapshot_count: 0
+        id: 198ab4c4a8acc
+        block_name_prefix: rbd_data.198ab4c4a8acc
+        format: 2
+        features: layering
+        op_features:
+        flags:
+        create_timestamp: Mon Jan  3 17:48:54 2022
+        access_timestamp: Mon Jan  3 17:48:54 2022
+        modify_timestamp: Mon Jan  3 17:48:54 2022
+$ rbd ls --pool rbd-data1 -l --format json --pretty-format
+[
+    {
+        "image": "data-img1",
+        "id": "198ab4c4a8acc",
+        "size": 1073741824,
+        "format": 2
+    },
+    {
+        "image": "data-img2",
+        "id": "198b4ede436",
+        "size": 1073741824,
+        "format": 2
+    }
+]
+#块存储特性简介
+layering: 支持镜像分层快照特性，用于快照及写时复制，可以对image创建快照并捉住，然后从快照克隆出新的image出来，父子image之间采用COW技术，共享对象数据。
+striping: 支持条带化v2,类似raid 0，只不过在ceph环境中的数据被分散到不同的对象中，可改善顺序读写场景较多情况下的性能。
+exclusive-lock: 支持独占锁，限制一个镜像只能被一个客户端使用。
+object-map: 支持对象映射（依赖exclusive-lock），加速数据导入导出及已用空间统计等，此特性开启的时候，会记录image所有对象的一个位图，用以标记对象是否真的存在，在一些场景下可以加速Io.
+fast-diff: 快速计算镜像与快照数据差异对比（依赖object-map).
+deep-flatten: 支持快照扁平化操作，用于快照管理时解决快照依赖关系等。
+journaling: 修改数据是否记录日志，该特性可以通过记录日志并通过日志恢复数据（依赖独占锁），开启此特性会增加系统磁盘IO使用。
+jewel默认开启的特性包括：layerin/exclusive-lock/object-map/fast-diff/deep-flatten	--如果内核版本太低导致挂载不上RBD，原因就是特性开得太多了，应该要关闭相关特性功能
+
+#镜像特性的启用：
+--启用或关闭指定存储池中的指定镜像的特性
+$ rbd feature enable exclusive-lock --pool rbd-data1 --image data-img1	--开启特性
+$ rbd --image data-img1 --pool rbd-data1 info
+rbd image 'data-img1':
+        size 1 GiB in 256 objects
+        order 22 (4 MiB objects)
+        snapshot_count: 0
+        id: 198ab4c4a8acc
+        block_name_prefix: rbd_data.198ab4c4a8acc
+        format: 2
+        features: layering, exclusive-lock
+        op_features:
+        flags:
+        create_timestamp: Mon Jan  3 17:48:54 2022
+        access_timestamp: Mon Jan  3 17:48:54 2022
+        modify_timestamp: Mon Jan  3 17:48:54 2022
+$ rbd feature disable exclusive-lock --pool rbd-data1 --image data-img1	--关闭特性
+$ rbd --image data-img1 --pool rbd-data1 info
+rbd image 'data-img1':
+        size 1 GiB in 256 objects
+        order 22 (4 MiB objects)
+        snapshot_count: 0
+        id: 198ab4c4a8acc
+        block_name_prefix: rbd_data.198ab4c4a8acc
+        format: 2
+        features: layering
+        op_features:
+        flags:
+        create_timestamp: Mon Jan  3 17:48:54 2022
+        access_timestamp: Mon Jan  3 17:48:54 2022
+        modify_timestamp: Mon Jan  3 17:48:54 2022
+
+#客户端配置yum源：
+客户端要想挂载使用ceph RBD,需要安装ceph客户端组件ceph-common,但是ceph-common不在centos的yum仓库中，因此需要单独配置yum源：
+[root@centos7-node04 ~]# yum install epel-release
+[root@centos7-node04 ~]# yum install -y https://mirrors.aliyun.com/ceph/rpm-octopus/el7/noarch/ceph-release-1-1.el7.noarch.rpm	
+注：由于P版还没有centos7yum源，所以用O版centos7yum源。ubuntu18系统源上有ceph-common包，不用单独配置源
+[root@centos7-node02 ~]# yum install -y ceph-common
+
+#ceph-deploy上创建普通用户key
+$ ceph auth add client.jack mon 'allow r' osd 'allow rwx pool=rbd-data1'
+added key for client.jack
+$ ceph auth get client.jack
+[client.jack]
+        key = AQDIluJhU6ZZChAA5bv43g5tMHQUk3O6FwK8dA==
+        caps mon = "allow r"
+        caps osd = "allow rwx pool=rbd-data1"
+exported keyring for client.jack
+$ ceph-authtool --create-keyring ceph.client.jack.keyring
+creating ceph.client.jack.keyring
+$ ceph auth get client.jack -o ceph.client.jack.keyring
+exported keyring for client.jack
+$ cat ceph.client.jack.keyring
+[client.jack]
+        key = AQDIluJhU6ZZChAA5bv43g5tMHQUk3O6FwK8dA==
+        caps mon = "allow r"
+        caps osd = "allow rwx pool=rbd-data1"
+$ scp ceph.conf ceph.client.jack.keyring root@172.168.2.14:/etc/ceph/		--将配置文件和key文件复制到客户端/etc/ceph/目录下
+
+#centos7客户端上测试是否有权限访问ceph存储
+[root@centos7-node02 ~]# ceph --user jack -s	--当显示如下状态表示这个普通用户有权限访问ceph存储了
+  cluster:
+    id:     4d5745dd-5f75-485d-af3f-eeaad0c51648
+    health: HEALTH_WARN
+            1 pool(s) do not have an application enabled
+            2 daemons have recently crashed
+
+  services:
+    mon: 3 daemons, quorum ceph01,ceph02,ceph03 (age 6h)
+    mgr: ceph-mgr01(active, since 12d), standbys: ceph-mgr02
+    mds: 1/1 daemons up
+    osd: 15 osds: 15 up (since 3d), 15 in (since 3d)
+    rgw: 1 daemon active (1 hosts, 1 zones)
+
+  data:
+    volumes: 1/1 healthy
+    pools:   10 pools, 896 pgs
+    objects: 304 objects, 126 MiB
+    usage:   2.3 GiB used, 148 GiB / 150 GiB avail
+    pgs:     896 active+clean
+
+[root@centos7-node02 ~]# rbd --user jack -p rbd-data1 map data-img1	--映射存储块设备
+/dev/rbd0
+[root@centos7-node02 ~]# lsblk
+NAME            MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+sda               8:0    0   20G  0 disk
+├─sda1            8:1    0    2G  0 part /boot
+└─sda2            8:2    0   18G  0 part
+  └─centos-root 253:0    0   18G  0 lvm  /
+sr0              11:0    1 1024M  0 rom
+rbd0            252:0    0    1G  0 disk
+[root@centos7-node02 ~]# cat /etc/ceph/ceph.conf	--通过mon服务器携带认证信息去访问ceph存储
+[global]
+fsid = 4d5745dd-5f75-485d-af3f-eeaad0c51648
+public_network = 192.168.13.0/24
+cluster_network = 10.10.13.0/24
+mon_initial_members = ceph01
+mon_host = 192.168.13.31
+auth_cluster_required = cephx
+auth_service_required = cephx
+auth_client_required = cephx
+
+mon clock drift allowed = 1
+mon clock drift warn backoff = 10
+[root@centos7-node02 ~]# cat /etc/ceph/ceph.client.jack.keyring
+[client.jack]
+        key = AQDIluJhU6ZZChAA5bv43g5tMHQUk3O6FwK8dA==
+        caps mon = "allow r"
+        caps osd = "allow rwx pool=rbd-data1"
+		
+--测试挂载mysql存储
+[root@centos7-node02 ~]# mkdir /data/mysql -p
+--创建LVM，将/dev/rbd0全部创建一个分区，并更改分区类型为LVM，或者不更改直接使用pvcreate创建
+[root@centos7-node02 ~]# pvcreate /dev/rbd0	--创建pv失败，因为centos7上lvm并不能识别rbd，需要更改lvm.conf配置文件
+  Device /dev/rbd0 excluded by a filter.
+[root@centos7-node02 ~]# grep types /etc/lvm/lvm.conf
+        types =  [ "rbd", 1024 ]	--添加rbd类型，最大分区数为1024
+		[root@centos7-node02 ~]# pvcreate /dev/rbd0
+WARNING: dos signature detected on /dev/rbd0 at offset 510. Wipe it? [y/n]: y
+  Wiping dos signature on /dev/rbd0.
+  Physical volume "/dev/rbd0" successfully created.	--此时pv创建成功了
+[root@centos7-node02 ~]# vgcreate myvg /dev/rbd0
+[root@centos7-node02 ~]# lvcreate -l 100%FREE -n mylv myvg
+[root@centos7-node02 ~]# mkfs.xfs /dev/myvg/mylv
+[root@centos7-node02 ~]# mount /dev/myvg/mylv /data/mysql/	--挂载mysql存储目录
+[root@centos7-node02 ~]# df -h
+Filesystem               Size  Used Avail Use% Mounted on
+devtmpfs                 898M     0  898M   0% /dev
+tmpfs                    910M  100K  910M   1% /dev/shm
+tmpfs                    910M   26M  885M   3% /run
+tmpfs                    910M     0  910M   0% /sys/fs/cgroup
+/dev/mapper/centos-root   18G  2.4G   16G  13% /
+/dev/sda1                2.0G  153M  1.9G   8% /boot
+tmpfs                    182M     0  182M   0% /run/user/0
+/dev/mapper/myvg-mylv   1018M   33M  986M   4% /data/mysql
+[root@centos7-node02 ~]# yum install -y mariadb-server mariadb	--安装mysql
+[root@centos7-node02 ~]# vim /etc/my.cnf
+[mysqld]
+datadir=/data/mysql		--更改存储路径是
+[root@centos7-node02 ~]# chown -R mysql.mysql /data/mysql/
+[root@centos7-node02 ~]# systemctl start mariadb	--启动mysql
+[root@centos7-node02 ~]# systemctl enable mariadb
+Created symlink from /etc/systemd/system/multi-user.target.wants/mariadb.service to /usr/lib/systemd/system/mariadb.service.
+[root@centos7-node02 ~]# netstat -tnlp | grep :3306
+tcp        0      0 0.0.0.0:3306            0.0.0.0:*               LISTEN      117085/mysqld
+
+#ceph-deploy上查看存储池rbd-data1使用空间为32M，其实已经写进来了
+$ ceph df
+--- RAW STORAGE ---
+CLASS     SIZE    AVAIL     USED  RAW USED  %RAW USED
+ssd    150 GiB  148 GiB  2.4 GiB   2.4 GiB       1.60
+TOTAL  150 GiB  148 GiB  2.4 GiB   2.4 GiB       1.60
+
+--- POOLS ---
+POOL                   ID  PGS   STORED  OBJECTS     USED  %USED  MAX AVAIL
+device_health_metrics   1   32      0 B        0      0 B      0     46 GiB
+mypool                  2   64  2.7 KiB        2   12 KiB      0     46 GiB
+myrbd1                  3   64  116 MiB       53  348 MiB   0.25     46 GiB
+.rgw.root               4   32  1.3 KiB        4   48 KiB      0     46 GiB
+default.rgw.log         5   32  3.6 KiB      209  408 KiB      0     46 GiB
+default.rgw.control     6   32      0 B        8      0 B      0     46 GiB
+default.rgw.meta        7  256      0 B        0      0 B      0     46 GiB
+cephfs-metadata         8  256   31 KiB       22  172 KiB      0     46 GiB
+cephfs-data             9   64      0 B        0      0 B      0     46 GiB
+rbd-data1              12   64   32 MiB       29   97 MiB   0.07     46 GiB
+[root@centos7-node02 ~]# lsmod | grep ceph	--客户端挂载ceph存储实际是挂载ceph模块
+libceph               306750  1 rbd
+dns_resolver           13140  1 libceph
+libcrc32c              12644  4 xfs,ip_vs,libceph,nf_conntrack
+[root@centos7-node02 ~]# modinfo libceph
+filename:       /lib/modules/3.10.0-1127.el7.x86_64/kernel/net/ceph/libceph.ko.xz
+license:        GPL
+description:    Ceph core library
+author:         Patience Warnick <patience@newdream.net>
+author:         Yehuda Sadeh <yehuda@hq.newdream.net>
+author:         Sage Weil <sage@newdream.net>
+retpoline:      Y
+rhelversion:    7.8
+srcversion:     D4ABB648AE8130ECF90AA3F
+depends:        libcrc32c,dns_resolver
+intree:         Y
+vermagic:       3.10.0-1127.el7.x86_64 SMP mod_unload modversions
+signer:         CentOS Linux kernel signing key
+sig_key:        69:0E:8A:48:2F:E7:6B:FB:F2:31:D8:60:F0:C6:62:D8:F1:17:3D:57
+sig_hashalgo:   sha256
+
+#ceph RBD容量拉伸
+$ rbd ls -p rbd-data1 -l
+NAME       SIZE   PARENT  FMT  PROT  LOCK
+data-img1  1 GiB            2
+data-img2  1 GiB            2
+$ rbd resize --pool rbd-data1 --image data-img1 --size 2G	--ceph上拉伸存储
+Resizing image: 100% complete...done.
+$ rbd ls -p rbd-data1 -l
+NAME       SIZE   PARENT  FMT  PROT  LOCK
+data-img1  2 GiB            2
+data-img2  1 GiB            2
+[root@centos7-node02 ~]# lsblk	--在ceph客户端上查看/dev/rbd0现在为2G了，但是/dev/myvg/mylv现在还是1G大小，需要进行lvm拉伸操作
+NAME            MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
+sda               8:0    0   20G  0 disk
+├─sda1            8:1    0    2G  0 part /boot
+└─sda2            8:2    0   18G  0 part
+  └─centos-root 253:0    0   18G  0 lvm  /
+sr0              11:0    1 1024M  0 rom
+rbd0            252:0    0    2G  0 disk
+└─myvg-mylv     253:1    0 1020M  0 lvm  /data/mysql
+--centos7客户端上进行lvm拉伸
+[root@centos7-node02 ~]# pvdisplay	
+  --- Physical volume ---
+  PV Name               /dev/rbd0
+  VG Name               myvg
+  PV Size               1.00 GiB / not usable 0
+  Allocatable           yes (but full)
+  PE Size               4.00 MiB
+  Total PE              255
+  Free PE               0
+  Allocated PE          255
+  PV UUID               KZMM7l-IPdw-smwp-WJ0Y-fEiM-xHH0-grWbZL
+[root@centos7-node02 ~]# pvresize /dev/rbd0	--扩展/dev/rbd0大小
+  Physical volume "/dev/rbd0" changed
+  1 physical volume(s) resized or updated / 0 physical volume(s) not resized
+[root@centos7-node02 ~]# pvdisplay
+  --- Physical volume ---
+  PV Name               /dev/rbd0
+  VG Name               myvg
+  PV Size               2.00 GiB / not usable 4.00 MiB
+  Allocatable           yes
+  PE Size               4.00 MiB
+  Total PE              511
+  Free PE               256
+  Allocated PE          255
+  PV UUID               KZMM7l-IPdw-smwp-WJ0Y-fEiM-xHH0-grWbZL
+[root@centos7-node02 ~]# vgdisplay	--在pvextend后，vg大小就为为2G了，此时Free  PE有空间了
+  --- Volume group ---
+  VG Name               myvg
+  System ID
+  Format                lvm2
+  Metadata Areas        1
+  Metadata Sequence No  3
+  VG Access             read/write
+  VG Status             resizable
+  MAX LV                0
+  Cur LV                1
+  Open LV               1
+  Max PV                0
+  Cur PV                1
+  Act PV                1
+  VG Size               <2.00 GiB
+  PE Size               4.00 MiB
+  Total PE              511
+  Alloc PE / Size       255 / 1020.00 MiB
+  Free  PE / Size       256 / 1.00 GiB
+  VG UUID               PCuPF0-s3L7-OqIV-4q7n-b62b-j9yc-t8ffA8
+[root@centos7-node02 ~]# lvextend -l +255 /dev/myvg/mylv	--扩展lv大小
+  Size of logical volume myvg/mylv changed from 1.00 GiB (256 extents) to <2.00 GiB (511 extents).
+  Logical volume myvg/mylv successfully resized.
+[root@centos7-node02 ~]# lvdisplay	--lv扩展大小成功
+  --- Logical volume ---
+  LV Path                /dev/myvg/mylv
+  LV Name                mylv
+  VG Name                myvg
+  LV UUID                fDIdMX-Pak3-zT32-EpnY-hdnG-OzhR-Izc1xM
+  LV Write Access        read/write
+  LV Creation host, time centos7-node02, 2022-01-16 15:04:22 +0800
+  LV Status              available
+  # open                 1
+  LV Size                <2.00 GiB
+  Current LE             511
+  Segments               1
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     8192
+  Block device           253:1
+[root@centos7-node02 ~]# df -h	--大小还是为1G 	
+Filesystem               Size  Used Avail Use% Mounted on
+devtmpfs                 898M     0  898M   0% /dev
+tmpfs                    910M  100K  910M   1% /dev/shm
+tmpfs                    910M   26M  885M   3% /run
+tmpfs                    910M     0  910M   0% /sys/fs/cgroup
+/dev/mapper/centos-root   18G  2.4G   16G  14% /
+/dev/sda1                2.0G  153M  1.9G   8% /boot
+tmpfs                    182M     0  182M   0% /run/user/0
+/dev/mapper/myvg-mylv   1018M   62M  956M   7% /data/mysql
+[root@centos7-node02 ~]# mount | grep /data/mysql	--查看是xfs文件系统还是ext4文件系统
+/dev/mapper/myvg-mylv on /data/mysql type xfs (rw,relatime,attr2,inode64,sunit=8192,swidth=8192,noquota)
+[root@centos7-node02 ~]# xfs_growfs /dev/myvg/mylv	--如果是ext4则使用resize2fs /dev/myvg/mylv
+meta-data=/dev/mapper/myvg-mylv  isize=512    agcount=8, agsize=32768 blks
+         =                       sectsz=512   attr=2, projid32bit=1
+         =                       crc=1        finobt=0 spinodes=0
+data     =                       bsize=4096   blocks=261120, imaxpct=25
+         =                       sunit=1024   swidth=1024 blks
+naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
+log      =internal               bsize=4096   blocks=624, version=2
+         =                       sectsz=512   sunit=8 blks, lazy-count=1
+realtime =none                   extsz=4096   blocks=0, rtextents=0
+data blocks changed from 261120 to 523264
+[root@centos7-node02 ~]# df -h	--此时大小为2G了
+Filesystem               Size  Used Avail Use% Mounted on
+devtmpfs                 898M     0  898M   0% /dev
+tmpfs                    910M  100K  910M   1% /dev/shm
+tmpfs                    910M   26M  885M   3% /run
+tmpfs                    910M     0  910M   0% /sys/fs/cgroup
+/dev/mapper/centos-root   18G  2.4G   16G  14% /
+/dev/sda1                2.0G  153M  1.9G   8% /boot
+tmpfs                    182M     0  182M   0% /run/user/0
+/dev/mapper/myvg-mylv    2.0G   63M  2.0G   4% /data/mysql
+
+#设置centos7开机自动挂载ceph存储
+[root@centos7-node02 ~]# vim /etc/rc.d/rc.local
+#ceph
+rbd --user jack -p rbd-data1 map data-img1
+mount /dev/myvg/mylv /data/mysql/
+[root@centos7-node02 ~]# chmod +x /etc/rc.d/rc.local
+[root@centos7-node02 ~]# vim /usr/lib/systemd/system/stopSrv.service	--配置关机前的操作
+[Unit]
+Description=close services before reboot and shutdown
+DefaultDependencies=no
+Before=shutdown.target reboot.target halt.target
+# This works because it is installed in the target and will be
+#   executed before the target state is entered
+# Also consider kexec.target
+
+[Service]
+Type=oneshot
+ExecStart=/shell/halt_after_shell.sh
+
+[Install]
+WantedBy=halt.target reboot.target shutdown.target
+[root@centos7-node02 ~]# systemctl is-enabled stopSrv.service
+enabled
+[root@centos7-node02 ~]# cat /shell/halt_after_shell.sh
+#!/bin/sh
+
+umount /data/mysql
+[root@centos7-node02 ~]# ls -l /shell/halt_after_shell.sh
+-rwxr-xr-x 1 root root 30 Jan 16 16:21 /shell/halt_after_shell.sh
+[root@centos7-node02 ~]# reboot	--重启测试
+注：经过重启测试得出如下问题：1. 在关机停止运行服务时一直卡在类似"A job running at /data/mysql"这里，无法正常关机。2. 强制关机并开机后，在/etc/rc.d/rc.local里面第一步成功，但是在第二步挂载"mount /dev/mapper/myvg-mylv /data/mysql"时不成功，始终没有挂载个，这两个问题需要解决。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
