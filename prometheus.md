@@ -2181,17 +2181,17 @@ systemctl start ipmi_exporter.service && systemctl enable ipmi_exporter.service
 --config.env
 VSPHERE_USER=root
 VSPHERE_PASSWORD="secure password"
-VSPHERE_HOST=192.168.13.1
+VSPHERE_HOST=192.168.13.242
 VSPHERE_IGNORE_SSL=TRUE
 VSPHERE_SPECS_SIZE=2000
 --docker run
 docker run -d  -p 9272:9272 --env-file config.env --name vmware_exporter pryorda/vmware_exporter
 --prometheus.yml
-  - job_name: 'vmware_esxi'
+  - job_name: 'vmware_exporter'
     metrics_path: '/metrics'
     consul_sd_configs:
     - server: '192.168.13.236:8500'
-      services: [consul-esxi]
+      services: [vmware_exporter]
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
@@ -2201,12 +2201,12 @@ docker run -d  -p 9272:9272 --env-file config.env --name vmware_exporter pryorda
         action: labelmap
       - target_label: __address__
         replacement: 192.168.13.236:9272
---consul
+--consul-vmware_exporter-192.168.13.242.json
 {
-  "Name": "consul-esxi",
-  "ID": "esxi-192.168.13.242",
+  "Name": "vmware_exporter",
+  "ID": "vmware_exporter-192.168.13.242",
   "Tags": [
-    "esxi"
+    "vmware_exporter"
   ],
   "Address": "192.168.13.236",
   "Port": 9272,
@@ -2226,9 +2226,49 @@ docker run -d  -p 9272:9272 --env-file config.env --name vmware_exporter pryorda
     "Warning": 1
   }
 }
-curl -X PUT -d @esxi-192.168.13.242.json http://localhost:8500/v1/agent/service/register?replace-existing-check=1
-curl -X POST http://localhost:9090/-/reload
+--vmware_exporter.rule
+------------------------
+groups:
+- name: vmware_exporterServiceAlert
+  rules:
+  - alert: vmware_exporterHostDown
+    expr: up{job="vmware_esxi"} < 1
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "Host Down"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Host is Down (current value: {{ $value }})"
 
+  - alert: vmware_exporterHostMemoryAlert
+    expr: vmware_host_memory_usage / vmware_host_memory_max * 100 > 95
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "Memory Usage High"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Host Memory Usage great than 95% (current value: {{ $value }})"
+
+  - alert: vmware_exporterHostDiskAlert
+    expr: vmware_datastore_freespace_size /1024 /1024 /1024 < 50
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "Disk Capacity Low"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Host Disk Capacity less than 50G (current value: {{ $value }})"
+
+  - alert: vmware_exporterHostCPUAlert
+    expr: vmware_host_cpu_usage / vmware_host_cpu_max * 100 > 85
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "CPU Usate High"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Host CPU Usage great than 85% (current value: {{ $value }})"
+------------------------
+curl -X PUT -d @consul-esxi-192.168.13.242.json http://localhost:8500/v1/agent/service/register?replace-existing-check=1
+curl -X POST http://localhost:9090/-/reload
 
 
 
