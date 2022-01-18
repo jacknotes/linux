@@ -6,6 +6,26 @@ vi /etc/security/limits.conf
         * hard nproc 11000 #硬限制最多打开的软件数
         * soft nofile 655350#软限制最多打开的文件数
         * hard nofile 655350#硬限制最多打开的文件数
+#配置覆盖问题：
+当我们在 /etc/security/limits.conf 配置了:
+root soft nofile 65538
+root hard nofile 65538
+* soft nofile 65539
+* hard nofile 65539
+
+然后我们在 /etc/security/limits.d/20-nofile.conf 配置了：
+root soft nofile 65536
+root hard nofile 65536
+* soft nofile 65540
+* hard nofile 65540
+最后的取值是会取 /etc/security/limits.d/20-nofile.conf 里面的值。
+	配置，只能被特定覆盖。
+	/etc/security/limits.d/ 下文件的相同配置可以覆盖 /etc/security/limits.conf
+	soft和hard需要都进行设置,才能生效。
+	nofile不能设置 unlimited
+	nofile可以设置的最大值为 1048576(2**20)，设置的值大于该数，就会进行登录不了。
+	soft 设置的值 一定要小于或等于 hard 的值。
+
 
 #优化TCP
         vi /etc/sysctl.conf
