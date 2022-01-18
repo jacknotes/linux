@@ -2177,6 +2177,62 @@ WantedBy=multi-user.target
 systemctl start ipmi_exporter.service && systemctl enable ipmi_exporter.service
 
 
+#vmware_esxi
+--config.env
+VSPHERE_USER=root
+VSPHERE_PASSWORD="secure password"
+VSPHERE_HOST=192.168.13.1
+VSPHERE_IGNORE_SSL=TRUE
+VSPHERE_SPECS_SIZE=2000
+--docker run
+docker run -d  -p 9272:9272 --env-file config.env --name vmware_exporter pryorda/vmware_exporter
+--prometheus.yml
+  - job_name: 'vmware_esxi'
+    metrics_path: '/metrics'
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: [consul-esxi]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - target_label: __address__
+        replacement: 192.168.13.236:9272
+--consul
+{
+  "Name": "consul-esxi",
+  "ID": "esxi-192.168.13.242",
+  "Tags": [
+    "esxi"
+  ],
+  "Address": "192.168.13.236",
+  "Port": 9272,
+  "Meta": {
+    "app": "esxi01.rack05.idc01.hs.com",
+    "env": "pro",
+    "project": "Machine",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://192.168.13.236:9272/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}
+curl -X PUT -d @esxi-192.168.13.242.json http://localhost:8500/v1/agent/service/register?replace-existing-check=1
+curl -X POST http://localhost:9090/-/reload
+
+
+
+
+
 
 </pre>
 

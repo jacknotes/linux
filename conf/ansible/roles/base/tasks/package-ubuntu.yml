@@ -3,6 +3,8 @@
   apt: name={{item}} state=latest update_cache=true
   with_items:
   - build-essential
+  - curl
+  - wget
   - libtool
   - libpcre3
   - libpcre3-dev
@@ -27,3 +29,5 @@
   - bind9-host
   - bc
   - bash-completion
+  - python-pip
+  - axel

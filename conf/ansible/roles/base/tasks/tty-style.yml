@@ -1,0 +1,19 @@
+---
+- name: /etc/bashrc append PS1 variable
+  lineinfile: 
+    path: /etc/bashrc
+    line: export PS1='[\u@\h \w]\$ '
+    state: present
+    owner: root
+    group: root
+    mode: 0644
+  when: ansible_os_family == 'RedHat'
+
+- name: /etc/profile append TMOUT variable
+  lineinfile: 
+    path: /etc/profile
+    line: export TMOUT=3600
+    state: present
+    owner: root
+    group: root
+    mode: 0644

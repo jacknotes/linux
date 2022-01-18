@@ -1,0 +1,9 @@
+---
+- hosts: 
+  - 172.168.2.14
+  - 172.168.2.12
+  remote_user: root
+  become: yes
+  gather_facts: true
+  roles:
+  - base

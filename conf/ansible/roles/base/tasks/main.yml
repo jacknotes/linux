@@ -12,3 +12,10 @@
 - include: postfix.yml
 - include: selinux.yml
 - include: sshd.yml
+- include: python-pip.yml
+- include: sysctl.yml
+- include: limits.yml
+- include: tty-style.yml
+- include: node_exporter.yml
+- include: salt-minion.yml
+- include: k8s.yml

@@ -1,0 +1,3 @@
+---
+- name: config node limites argument
+  copy: src=limits.conf dest=/etc/security/limits.d/10-ansible.conf mode=0644 owner=root group=root

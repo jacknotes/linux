@@ -1,0 +1,28 @@
+---
+- name: create prometheus system group for prometheus
+  group: name=prometheus gid=9090 system=yes
+  tags: install_node_exporter
+
+- name: create prometheus system user for prometheus
+  user: name=prometheus uid=9090 group=prometheus system=yes shell=/sbin/nologin 
+  tags: install_node_exporter
+
+- name: copy node_exporter for prometheus
+  copy: src=node_exporter-1.1.0.linux-amd64.tar.gz dest=/usr/local/src mode=755
+  tags: install_node_exporter
+
+- name: install node_exporter for prometheus
+  shell: creates=/usr/local/node_exporter cd /usr/local/src && tar xf node_exporter-1.1.0.linux-amd64.tar.gz -C /usr/local/ && chown -R prometheus:prometheus /usr/local/node_exporter-1.1.0.linux-amd64/ && chmod -R 755 /usr/local/node_exporter-1.1.0.linux-amd64/ && ln -s /usr/local/node_exporter-1.1.0.linux-amd64/ /usr/local/node_exporter
+  tags: install_node_exporter
+
+- name: copy node_exporter boot service for ubuntu
+  copy: src=node_exporter.service dest=/lib/systemd/system/node_exporter.service backup=yes mode=644
+  when: ansible_os_family == 'Debian'
+  tags: install_node_exporter
+  notify: restart node_exporter service
+
+- name: copy node_exporter boot service for centos
+  copy: src=node_exporter.service dest=/usr/lib/systemd/system/node_exporter.service backup=yes mode=644
+  when: ansible_os_family == 'RedHat'
+  tags: install_node_exporter
+  notify: restart node_exporter service

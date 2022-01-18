@@ -1,1 +1,3 @@
 - include: sshd.yml
+- include: salt.yml
+- include: node_exporter.yml

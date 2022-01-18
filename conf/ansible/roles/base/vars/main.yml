@@ -1,1 +1,5 @@
+#sshd service
 sshd_port: 22
+
+#saltstack minion service
+salt_master: 172.168.2.222

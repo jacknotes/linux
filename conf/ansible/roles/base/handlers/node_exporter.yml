@@ -1,0 +1,4 @@
+---
+- name: restart node_exporter service
+  shell: systemctl daemon-reload && systemctl enable node_exporter && systemctl restart node_exporter
+

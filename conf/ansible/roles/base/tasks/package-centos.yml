@@ -31,4 +31,7 @@
   - bind-utils
   - bc
   - bash-completion
-
+  - python3-pip
+  - axel
+  - curl
+  - wget
