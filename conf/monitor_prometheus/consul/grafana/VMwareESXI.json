@@ -19,7 +19,7 @@
   "gnetId": 10076,
   "graphTooltip": 1,
   "id": 66,
-  "iteration": 1642482455695,
+  "iteration": 1642484320214,
   "links": [],
   "panels": [
     {
@@ -86,12 +86,12 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": false
       },
-      "tableColumn": "{app=\"esxi01.rack05.idc01.hs.com\", dc_name=\"ha-datacenter\", env=\"pro\", host_name=\"esxi01.rack05.idc01.hs.com\", instance=\"192.168.13.236:9272\", job=\"vmware_esxi\", project=\"Machine\", team=\"ops\"}",
+      "tableColumn": "{app=\"esxi01.rack05.idc01.hs.com\", dc_name=\"ha-datacenter\", env=\"pro\", host_name=\"esxi01.rack05.idc01.hs.com\", instance=\"192.168.13.236:9272\", job=\"vmware_exporter\", project=\"Machine\", team=\"ops\"}",
       "targets": [
         {
           "expr": "vmware_host_boot_timestamp_seconds{host_name=~\"$esxhost\"} / 60",
           "format": "time_series",
-          "instant": false,
+          "instant": true,
           "interval": "",
           "intervalFactor": 1,
           "legendFormat": "",
@@ -175,11 +175,12 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": true
       },
-      "tableColumn": "{app=\"esxi01.rack05.idc01.hs.com\", dc_name=\"ha-datacenter\", env=\"pro\", host_name=\"esxi01.rack05.idc01.hs.com\", instance=\"192.168.13.236:9272\", job=\"vmware_esxi\", project=\"Machine\", team=\"ops\"}",
+      "tableColumn": "{app=\"esxi01.rack05.idc01.hs.com\", dc_name=\"ha-datacenter\", env=\"pro\", host_name=\"esxi01.rack05.idc01.hs.com\", instance=\"192.168.13.236:9272\", job=\"vmware_exporter\", project=\"Machine\", team=\"ops\"}",
       "targets": [
         {
           "expr": "(vmware_host_cpu_usage{host_name=~\"$esxhost\"} / vmware_host_cpu_max{host_name=~\"$esxhost\"})  * 100 ",
           "format": "time_series",
+          "instant": true,
           "interval": "",
           "intervalFactor": 1,
           "legendFormat": "",
@@ -263,11 +264,12 @@
         "lineColor": "rgb(31, 120, 193)",
         "show": true
       },
-      "tableColumn": "{app=\"esxi01.rack05.idc01.hs.com\", dc_name=\"ha-datacenter\", env=\"pro\", host_name=\"esxi01.rack05.idc01.hs.com\", instance=\"192.168.13.236:9272\", job=\"vmware_esxi\", project=\"Machine\", team=\"ops\"}",
+      "tableColumn": "{app=\"esxi01.rack05.idc01.hs.com\", dc_name=\"ha-datacenter\", env=\"pro\", host_name=\"esxi01.rack05.idc01.hs.com\", instance=\"192.168.13.236:9272\", job=\"vmware_exporter\", project=\"Machine\", team=\"ops\"}",
       "targets": [
         {
           "expr": "(vmware_host_memory_usage{host_name=~\"$esxhost\"} / vmware_host_memory_max{host_name=~\"$esxhost\"}) * 100 ",
           "format": "time_series",
+          "instant": true,
           "interval": "",
           "intervalFactor": 1,
           "legendFormat": "",
@@ -293,7 +295,7 @@
       "cacheTimeout": null,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "$datasource",
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -538,7 +540,7 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
-      "datasource": "$datasource",
+      "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
           "custom": {}
@@ -643,25 +645,6 @@
   "templating": {
     "list": [
       {
-        "current": {
-          "selected": false,
-          "text": "Prometheus",
-          "value": "Prometheus"
-        },
-        "hide": 0,
-        "includeAll": false,
-        "label": "Datasource",
-        "multi": false,
-        "name": "datasource",
-        "options": [],
-        "query": "prometheus",
-        "queryValue": "",
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "type": "datasource"
-      },
-      {
         "allValue": null,
         "current": {
           "selected": true,
@@ -673,7 +656,7 @@
           ]
         },
         "datasource": "Prometheus",
-        "definition": "",
+        "definition": "label_values(vmware_host_boot_timestamp_seconds,host_name)",
         "hide": 0,
         "includeAll": false,
         "label": "Host",
@@ -694,7 +677,7 @@
     ]
   },
   "time": {
-    "from": "now-3h",
+    "from": "now-5m",
     "to": "now"
   },
   "timepicker": {
@@ -726,5 +709,5 @@
   "timezone": "browser",
   "title": "VMware ESXi",
   "uid": "_gg9LEqmk",
-  "version": 34
+  "version": 41
 }
