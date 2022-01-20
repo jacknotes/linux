@@ -2560,7 +2560,11 @@ ceph osd pool set mypool pg_autoscale_mode off
 ceph osd pool set mypool pg_num 4
 ceph osd pool set mypool pgp_num 4
 
-
+#查看ceph配置
+$ ceph config get mon
+WHO     MASK  LEVEL     OPTION                                 VALUE  RO
+mon           advanced  auth_allow_insecure_global_id_reclaim  false
+global        advanced  osd_pool_default_pg_autoscale_mode     off
 
 
 
