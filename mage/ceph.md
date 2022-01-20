@@ -2553,11 +2553,12 @@ ceph osd tree    --可以查看哪个osd故障
 ceph mon stat   --查看mon状态，最少3个保持高可用
 
 #更改存储池pg和pgp大小
+ceph config set global osd_pool_default_pg_autoscale_mode off	--设置默认pg自动伸缩模式
+ceph osd pool autoscale-status
 ceph osd pool get mypool pg_autoscale_mode
 ceph osd pool set mypool pg_autoscale_mode off
 ceph osd pool set mypool pg_num 4
 ceph osd pool set mypool pgp_num 4
-
 
 
 
