@@ -22,35 +22,23 @@ RADOS cluster: 由多台host存储服务器组成的ceph集群
 OSD(Object Storage Daemon): 每台存储服务器的磁盘组成的存储空间
 Mon（Monitor）：ceph的监视器，维护OSD和PG的集群状态，一个ceph集群至少要有一个mon,可以是一三五七等等这样的奇数个。
 Mgr(Manager): 负责跟踪运行时指标和Ceph集群的当前状态，包括存储利用率，当前性能指标和系统负载等。
-MDS(ceph 元数据服务器 ceph-mds):代表 ceph 文件系统(NFS/CIFS)存储元数据，(即 Ceph 块设备和 Ceph 对象存储不使用
-MDS)
+MDS(ceph 元数据服务器 ceph-mds):代表 ceph 文件系统(NFS/CIFS)存储元数据(Ceph 块设备和 Ceph对象存储不使用MDS)
 
 ceph基础：
 Ceph 是一个开源的分布式存储系统，同时支持对象存储、块设备、文件系统.
-ceph 是一个对象(object)式存储系统，它把每一个待管理的数据流(文件等数据)切分为一到
-多个固定大小(默认 4 兆)的对象数据，并以其为原子单元(原子是构成元素的最小单元)完成
-数据的读写。
-对象数据的底层存储服务是由多个存储主机(host)组成的存储集群，该集群也被称之为
-RADOS(reliable automatic distributed object store)存储集群，即可靠的、自动化的、分布
-式的对象存储系统。
-librados 是 RADOS 存储集群的 API，支持 C/C++/JAVA/python/ruby/php/go
-等编程语言客户端。
+ceph 是一个对象(object)式存储系统，它把每一个待管理的数据流(文件等数据)切分为一到多个固定大小(默认 4 兆)的对象数据，并以其为原子单元(原子是构成元素的最小单元)完成数据的读写。
+对象数据的底层存储服务是由多个存储主机(host)组成的存储集群，该集群也被称之为RADOS(reliable automatic distributed object store)存储集群，即可靠的、自动化的、分布式的对象存储系统。
+librados 是 RADOS 存储集群的 API，支持 C/C++/JAVA/python/ruby/php/go等编程语言客户端。
 
-Ceph 的管理节点：
-1.ceph 的常用管理接口是一组命令行工具程序，例如 rados、ceph、rbd 等命令，ceph 管
-理员可以从某个特定的 ceph-mon 节点执行管理操作
-2.推荐使用部署专用的管理节点对 ceph 进行配置管理、升级与后期维护，方便后期权限管
-理，管理节点的权限只对管理人员开放，可以避免一些不必要的误操作的发生。
+Ceph的管理节点：
+1.ceph 的常用管理接口是一组命令行工具程序，例如 rados、ceph、rbd 等命令，ceph 管理员可以从某个特定的 ceph-mon 节点执行管理操作
+2.推荐使用部署专用的管理节点对 ceph 进行配置管理、升级与后期维护，方便后期权限管理，管理节点的权限只对管理人员开放，可以避免一些不必要的误操作的发生。
 
 ceph 逻辑组织架构：
 Pool：存储池、分区，存储池的大小取决于底层的存储空间。
-PG(placement group)：一个 pool 内部可以有多个 PG 存在，pool 和 PG 都是抽象的逻辑概
-念，一个 pool 中有多少个 PG 可以通过公式计算。
-OSD(Object Storage Daemon,对象存储设备):每一块磁盘都是一个 osd，一个主机由一个或
-多个 osd 组成.
-ceph 集群部署好之后,要先创建存储池才能向 ceph 写入数据，文件在向 ceph 保存之前要
-先进行一致性 hash 计算，计算后会把文件保存在某个对应的 PG 的，此文件一定属于某个
-pool 的一个 PG，在通过 PG 保存在 OSD 上。
+PG(placement group)：一个 pool 内部可以有多个 PG 存在，pool 和 PG 都是抽象的逻辑概念，一个 pool 中有多少个 PG 可以通过公式计算。
+OSD(Object Storage Daemon,对象存储设备):每一块磁盘都是一个osd，一个主机由一个或多个 osd 组成.
+ceph 集群部署好之后,要先创建存储池才能向ceph 写入数据，文件在向 ceph 保存之前要先进行一致性 hash 计算，计算后会把文件保存在某个对应的PG上，此文件一定属于某个pool 的一个 PG，在通过 PG 保存在 OSD 上。
 数据对象在写到主 OSD 之后再同步对从 OSD 以实现数据的高可用。
 
 #一致性hash和CRUSH算法：
@@ -60,7 +48,7 @@ file_name --> 分块(默认每块4M) --> 一个或多个oid(object id) --> 一�
 ino:inode number (INO)，File 的元数据序列号，File 的唯一 id。 
 ono:object number (ONO)，File 切分产生的某个 object 的序号，默认以 4M 切分一个块大小。
 第二步：通过 hash 算法计算出文件对应的 pool 中的 PG:
-通过一致性 HASH 计算 Object 到 PG， Object -> PG 映射 hash(oid) & mask-> pgid
+通过一致性 HASH 计算 Object 到哪个pool中的PG， Object -> PG 映射 hash(oid) & mask-> pgid
 第三步: 通过 CRUSH 把对象映射到 PG 中的 OSD 通过 CRUSH 算法计算 PG 到 OSD，PG -> OSD 映射：[CRUSH(pgid)->(osd1,osd2,osd3)]
 第四步：PG 中的主 OSD 将对象写入到硬盘
 第五步: 主 OSD 将数据同步给备份 OSD,并等待备份 OSD 返回确认
@@ -231,11 +219,7 @@ ceph03.hs.com:
 [root@ubuntu /srv/salt/dev]# sudo salt 'ceph*' cmd.run 'sudo echo "deb https://mirrors.tuna.tsinghua.edu.cn/ceph/debian-pacific bionic main ">> /etc/apt/sources.list'
 [root@ubuntu /srv/salt/dev]# sudo salt 'ceph*' cmd.run 'sudo apt update'
 5. 创建 ceph 用户：
-推荐使用指定的普通用户部署和运行 ceph 集群，普通用户只要能以非交互方式执行 sudo
-命令执行一些特权命令即可，新版的 ceph-deploy 可以指定包含 root 的在内只要可以执行
-sudo 命令的用户，不过仍然推荐使用普通用户，比如 ceph、cephuser、cephadmin 这样
-的用户去管理 ceph 集群。
-在包含 ceph-deploy 节点的存储节点、mon 节点和 mgr 节点等创建 ceph 用户。
+推荐使用指定的普通用户部署和运行 ceph 集群，普通用户只要能以非交互方式执行sudo命令执行一些特权命令即可，新版的 ceph-deploy 可以指定包含 root 在内只要可以执行sudo 命令的用户，不过仍然推荐使用普通用户，比如ceph、cephuser、cephadmin 这样的用户去管理 ceph 集群。在包含 ceph-deploy 节点的存储节点、mon 节点和 mgr 节点等创建 ceph 用户。
 [root@ubuntu /srv/salt/dev]# sudo salt 'ceph*' cmd.run 'groupadd -r -g 2022 ceph && useradd -r -m -u 2022 -g 2022 ceph && echo ceph:123456 | chpasswd'
 --各服务器允许 ceph 用户以 sudo 执行特权命令：
 [root@ubuntu /srv/salt/dev]# sudo salt 'ceph*' cmd.run 'echo "ceph ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && grep "ceph ALL" /etc/sudoers'
@@ -346,7 +330,7 @@ $ ceph -s
     usage:   0 B used, 0 B / 0 B avail
     pgs:
 11. 部署 ceph-mgr 节点：
---在所有(三个节点)mgr节点不安装包
+--在所有(三个节点)mgr节点上安装包
 apt install ceph-mgr
 --配置ceph-deploy免密登录 
 $ ssh-keygen
@@ -567,23 +551,17 @@ $ ceph -s
 
 #管理ceph集群：
 #--从RADOS集群删除OSD
-Ceph 集群中的一个 OSD 是一个 node 节点的服务进程且对应于一个物理磁盘设备，是一个
-专用的守护进程。在某 OSD 设备出现故障，或管理员出于管理之需确实要移除特定的 OSD
-设备时，需要先停止相关的守护进程，而后再进行移除操作。对于 Luminous 及其之后的版
-本来说，停止和移除命令的格式分别如下所示：
+Ceph 集群中的一个 OSD 是一个 node 节点的服务进程且对应于一个物理磁盘设备，是一个专用的守护进程。在某 OSD 设备出现故障，或管理员出于管理之需确实要移除特定的OSD设备时，需要先停止相关的守护进程，而后再进行移除操作。对于Luminous及其之后的版本来说，停止和移除命令的格式分别如下所示：
 1. 停用设备：ceph osd out {osd-num}
 2. 停止进程：sudo systemctl stop ceph-osd@{osd-num}
 3. 移除设备：ceph osd purge {id} --yes-i-really-mean-it
-若类似如下的 OSD 的配置信息存在于 ceph.conf 配置文件中，管理员在删除 OSD 之后手动将其删除。
-不过，对于 Luminous 之前的版本来说，管理员需要依次手动执行如下步骤删除 OSD 设备：
+若类似如下的 OSD 的配置信息存在于 ceph.conf 配置文件中，管理员在删除 OSD 之后手动将其删除。不过，对于 Luminous 之前的版本来说，管理员需要依次手动执行如下步骤删除 OSD 设备：
 1. 于 CRUSH 运行图中移除设备：ceph osd crush remove {name}
 2. 移除 OSD 的认证 key：ceph auth del osd.{osd-num}
 3. 最后移除 OSD 设备：ceph osd rm {osd-num}
 
 #--测试上传与下载数据：
-存取数据时，客户端必须首先连接至 RADOS 集群上某存储池，然后根据对象名称由相关的
-CRUSH 规则完成数据对象寻址。于是，为了测试集群的数据存取功能，这里首先创建一个
-用于测试的存储池 mypool，并设定其 PG 数量为 32 个。
+存取数据时，客户端必须首先连接至 RADOS 集群上某存储池，然后根据对象名称由相关的CRUSH 规则完成数据对象寻址。于是，为了测试集群的数据存取功能，这里首先创建一个用于测试的存储池 mypool，并设定其 PG 数量为 32 个。
 $ ceph osd pool create mypool 32 32
 pool 'mypool' created
 $ ceph pg ls-by-pool mypool | awk '{print $1,$2,$15}'
@@ -654,7 +632,7 @@ $ ls -lh /usr/local/src/
 上传文件： 
 $ sudo rados put msg1 /usr/local/src/consul_1.10.3_linux_amd64.zip --pool=mypool  #把 messages 文件上传到 mypool 并指定对象 id 为 msg1 
 列出文件:
-[ceph@ceph-deploy ceph-cluster]$ $ rados ls --pool=mypool
+[ceph@ceph-deploy ceph-cluster]$ rados ls --pool=mypool
 msg1
 文件信息: ceph osd map 命令可以获取到存储池中数据对象的具体位置信息：
 $ ceph osd map mypool msg1
@@ -725,12 +703,7 @@ $ ceph -s
 
 ###ceph 集群应用基础：
 #4.1：块设备 RBD：
-RBD(RADOS Block Devices)即为块存储的一种，RBD 通过 librbd 库与 OSD 进行交互，RBD
-为 KVM 等虚拟化技术和云服务（如 OpenStack 和 CloudStack）提供高性能和无限可扩展
-性的存储后端，这些系统依赖于 libvirt 和 QEMU 实用程序与 RBD 进行集成，客户端基于
-librbd 库即可将 RADOS 存储集群用作块设备，不过，用于 rbd 的存储池需要事先启用 rbd
-功能并进行初始化。例如，下面的命令创建一个名为 myrbd1 的存储池，并在启用 rbd 功能
-后对其进行初始化：
+RBD(RADOS Block Devices)即为块存储的一种，RBD 通过 librbd 库与 OSD 进行交互，RBD为 KVM 等虚拟化技术和云服务（如 OpenStack 和 CloudStack）提供高性能和无限可扩展性的存储后端，这些系统依赖于 libvirt 和 QEMU 实用程序与 RBD进行集成，客户端基于librbd 库即可将 RADOS 存储集群用作块设备，不过用于 rbd 的存储池需要事先启用 rbd功能并进行初始化。例如，下面的命令创建一个名为 myrbd1 的存储池，并在启用 rbd 功能后对其进行初始化：
 
 4.1.1:创建 RBD：
 创建存储池命令格式：
@@ -744,7 +717,7 @@ $ rbd -h
 $ rbd pool init -p myrbd1 #通过 RBD 命令对存储池初始化
 
 4.1.2:创建并验证 img：
-不过，rbd 存储池并不能直接用于块设备，而是需要事先在其中按需创建映像（image），并把映像文件作为块设备使用，rbd命令可用于创建、查看及删除块设备相在的映像（image），以及克隆映像、创建快照、将映像回滚到快照和查看快照等管理操作，例如，下面的命令能够创建一个名为 myimg1 的映像：
+不过，rbd存储池并不能直接用于块设备，而是需要事先在其中按需创建映像（image），并把映像文件作为块设备使用，rbd命令可用于创建、查看及删除块设备相关的映像（image），以及克隆映像、创建快照、将映像回滚到快照和查看快照等管理操作，例如，下面的命令能够创建一个名为 myimg1 的映像：
 $ rbd create myimg1 --size 5G --pool myrbd1 
 $ rbd create myimg2 --size 3G --pool myrbd1 --image-format 2 --image-feature layering
 注：后续步骤会使用 myimg2 ，由于 centos 系统内核较低无法挂载使用，因此只开启部分特性。除了 layering 其他特性需要高版本内核支持
@@ -898,7 +871,7 @@ device_health_metrics   1  128      0 B        0      0 B      0     47 GiB
 mypool                  2  256      0 B        0      0 B      0     47 GiB
 myrbd1                  3   64  116 MiB       53  348 MiB   0.24     47 GiB
 注：写了两个20M数据后，使用量增加了120M(从228到348)，初算应该是3副本的原因
-注：当使用RBD块时，应该将块配置为LVM,这样在ceph扩容时，我们挂载的路径也可以实现动态扩容，否则不能实现路径扩容，只能把RBD块扩容的部分重新建立一个分区
+注：当使用RBD块时，应该将块配置为LVM,这样在ceph扩容时，我们挂载的路径也可以实现动态扩容，否则不能实现动态扩容，只能把RBD块扩容的部分重新建立一个分区
 
 #4.2：ceph radosgw(RGW)对象存储：
 RGW 提供的是 REST 接口，客户端通过 http 与其进行交互，完成数据的增删改查等管理操作。radosgw 用在需要使用 RESTful API 接口访问 ceph 数据的场合，因此在使用 RBD 即块存储得场合或者使用 cephFS 的场合可以不用启用 radosgw 功能。
@@ -1173,7 +1146,7 @@ dumped monmap epoch 3
 
 #ceph集群维护
 http://docs.ceph.org.cn/rados/  	--ceph集群配置、部署与运维
-4.4.1 通过布套接字进行单机管理：
+4.4.1 通过套接字进行单机管理：
 --可以在node节点或者mon节点通过ceph命令进行单机管理本机的mon或者osd服务
 --先瘵admin认证文件同步到mon或者node节点
 $ scp ceph.client.admin.keyring root@192.168.13.31:/etc/ceph
@@ -2525,3 +2498,94 @@ umount /data/mysql
 
 
 </pre>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<pre>
+#常用命令
+ceph osd pool ls
+ceph osd pool rm mypool --yes-i-really-really-mean-it --yes-i-really-really-mean-it
+ceph osd pool ls
+cat /etc/ceph/ceph.conf
+ceph pg ls-by-pool mypool | awk '{print $1,$2,$15}'
+ceph osd tree
+ceph osd pool ls
+sudo rados put msg1 /usr/local/src/consul_1.10.3_linux_amd64.zip --pool=mypool 
+rados ls --pool=mypool
+ceph osd map mypool msg1 
+
+#RBD
+ceph osd pool create myrbd1 64 64 #创建存储池
+ceph osd pool application enable myrbd1 rbd   #对存储池启用 RBD 功能
+rbd pool init -p myrbd1 #通过 RBD 命令对存储池初始化
+rbd create myimg1 --size 5G --pool myrbd1 
+rbd create myimg2 --size 3G --pool myrbd1 --image-format 2 --image-feature layering
+rbd ls --pool myrbd1	#列出指定的pool中所有的img
+rbd --image myimg1 --pool myrbd1 info	#查看指定 rdb 的信息
+
+ceph df
+rbd --user jack -p rbd-data1 map data-img1 
+rbd feature disable myrbd1/myimg1 object-map fast-diff deep-flatten  #关闭img1特性
+rbd -p myrbd1 map myimg1
+
+#cephfs
+ceph osd pool create cephfs-metadata 32 32
+ceph osd pool create cephfs-data 64 64
+ceph fs new mycephfs cephfs-metadata cephfs-data 
+$ ceph mds stat
+mycephfs:1 {0=ceph-mgr01=up:active}
+$ ceph fs status mycephfs
+
+
+ceph osd lspools
+ceph pg stat		--查看PG状态，不太准，有Jemter进行压测
+ceph osd stat		--查看osd状态
+ceph osd tree    --可以查看哪个osd故障
+ceph mon stat   --查看mon状态，最少3个保持高可用
+
+</pre>
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
