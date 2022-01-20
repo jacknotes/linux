@@ -1148,7 +1148,7 @@ dumped monmap epoch 3
 http://docs.ceph.org.cn/rados/  	--ceph集群配置、部署与运维
 4.4.1 通过套接字进行单机管理：
 --可以在node节点或者mon节点通过ceph命令进行单机管理本机的mon或者osd服务
---先瘵admin认证文件同步到mon或者node节点
+--先把admin认证文件同步到mon或者node节点
 $ scp ceph.client.admin.keyring root@192.168.13.31:/etc/ceph
 [root@ceph01 ~]# ceph --admin-socket /var/run/ceph/ceph-osd.0.asok --help
 [root@ceph01 ~]# ls -l /var/run/ceph/
@@ -1378,8 +1378,7 @@ $CEPH_CONF环境变量
 $ ceph osd pool create --help
 osd pool create <pool> [<pg_num:int>] [<pgp_num:int>] [replicated|erasure]  
 副本池：replicated，定义每个对象在集群中保存为多少个副本，默认为三个副本，一主两备，实现高可用，副本池是ceph默认的存储池类型。用得最多
-纠删码池(erasure code):把各对象存储为N=K+M个块，其中K为数据块数量，M为编码块数量，因此存储池的尺寸为K+M。即数据保存在K个数据块，并提供M个冗余块提供数据高可用，那么最多能故障的块就是M个，实际的磁盘占用就是K+M块，因此相比副本池机制比较节省存储资源，一般采用8+4机制，即8个数据块+4个冗余 块，那么也就是12个数据块有8个数据块保存数据，有4个实现数据冗余，即1/3的磁盘空间用于数据冗余，比默认副本池的三倍冗余节省空间，但是不能出现大于一定数据块故障，但是不是所有的应用都支持纠删码池，RBD只支持副本池面radosgw则可以支持纠删码池。类似RAID，但用得不多
-但是不是所有的应用都支持纠删码池，RBD只支持副本池而RADOSGW则可以支持纠删码池，ceph默认是副本池。
+纠删码池(erasure code):把各对象存储为N=K+M个块，其中K为数据块数量，M为编码块数量，因此存储池的尺寸为K+M。即数据保存在K个数据块，并提供M个冗余块提供数据高可用，那么最多能故障的块就是M个，实际的磁盘占用就是K+M块，因此相比副本池机制比较节省存储资源，一般采用8+4机制，即8个数据块+4个冗余 块，那么也就是12个数据块有8个数据块保存数据，有4个实现数据冗余，即1/3的磁盘空间用于数据冗余，比默认副本池的三倍冗余节省空间，但是不能出现大于一定数据块故障，但是不是所有的应用都支持纠删码池，RBD只支持副本池，radosgw则可以支持纠删码池。类似RAID，但用得不多。但是不是所有的应用都支持纠删码池，RBD只支持副本池而RADOSGW则可以支持纠删码池，ceph默认是副本池。
 
 4.6.2--创建纠删删码池
 $ ceph osd pool create erasure-testpool 32 32 erasure
@@ -1469,16 +1468,12 @@ $ tail /opt/1.log
 4.6.3 PG与PGP
 PG=Placement Group	--归置组
 PGP=Placement Group for Placement Purpose	--归置组的组合，PGP相当于是PG对应osd的一种排列组合关系。官方推荐PGP和PG数量一样。
-归置组(Placement group)是用于跨越多OSD将数据存储在每个存储池中的内部数据结构，归置组在OSD守护进程和ceph客户端之间生成了一个中间层，CRUSH算法负责将每个对象动态映射到一个归置组，然后再将每个归置组动态映射到一个或多个OSD守护进程，从而能够支持在新的OSD设备上线时进行数据重新平衡。
+归置组(Placement group)是用于跨越多OSD将数据存储在每个存储池中的内部数据结构，归置组在OSD守护进程和ceph客户端之间生成了一个中间层，hash算法负责将每个对象动态映射到一个归置组，然后CRUSH算法再将每个归置组动态映射到一个或多个OSD守护进程，从而能够支持在新的OSD设备上线时进行数据重新平衡。
 
-相对于存储池来说，PG是一个虚拟组件，它是对象映射到存储池时使用的虚拟层。
-可以自定义存储池中的归置组数量。
-ceph出于规模伸缩及性能方面的考虑，ceph将存储池细分为多个归置组，把每个单独的对象映射到归置组，并为归置组分配一个主OSD。
-存储池由一系列的归置组组成，而CRUSH算法则根据集群运行图和集群状态，将各PG均匀、伪随机(基于hash映射，每次的计算结果都一样)的分布到集群中的OSD之止。
-如果某个OSD失败奥需要对集群进行重新平衡，ceph则移动或复制整个归置组而不需要单独对每个镜像进行寻址。
+相对于存储池来说，PG是一个虚拟组件，它是对象映射到存储池时使用的虚拟层。可以自定义存储池中的归置组数量。ceph出于规模伸缩及性能方面的考虑，ceph将存储池细分为多个归置组，把每个单独的对象映射到归置组，并为归置组分配一个主OSD。存储池由一系列的归置组组成，而CRUSH算法则根据集群运行图和集群状态，将各PG均匀、伪随机(基于hash映射，每次的计算结果都一样)的分布到集群中的OSD之止。如果某个OSD失败奥需要对集群进行重新平衡，ceph则移动或复制整个归置组而不需要单独对每个镜像进行寻址。
 
 4.6.4 PG与OSD的关系
-ceph基于crush算法将归置组PG分配至OSD，当一个客户端存储对象的时候，CRUSH算法映射每一个对象至归置组(PG)
+ceph基于crush算法将归置组PG分配至OSD，当一个客户端存储对象的时候，hash算法映射每一个对象至归置组(PG),然后CRUSH算法将归置组PG分配至OSD
 
 4.6.5 PG分配计算
 归置组(PG)的数量 是由管理员在创建存储池的时候指定的，然后由CRUSH负责创建和使用，PG的数量是2的N次方的倍数，每个OSD的PG不要超出250个PG，官方建议是每个OSD的PG是100个左右
@@ -1502,7 +1497,7 @@ ceph基于crush算法将归置组PG分配至OSD，当一个客户端存储对象
 		1. 磁盘总数 X 每个磁盘PG数 / 副本数 ==> ceph集群总PG数
 		2. 例如：单个pool的PG计算：
 			1. 有100个osd，3副本，5个pool
-			2. Total PG=100*100/3=333
+			2. Total PG=100*100/3=3333
 			3. 每个pool的PG=3333/5=512，那么创建pool的时候就指定pg为512
 		3. 需要结合数据数量，磁盘数量及磁盘空间计算出PG数量 ，8、16、32、64、128、256、512、1024等2的N次方
 5. 测试创建 17个PG,17个PGP的情况
@@ -1648,7 +1643,7 @@ total_used       784 MiB
 total_avail      149 GiB
 total_space      150 GiB
 
-4.9.2 存储池的山珍
+4.9.2 存储池配置是否为可删除
 ceph osd pool create mypool2 4 4 
 ceph osd pool get mypool2 nodelete  --查看存储是否可以删除
 ceph osd pool set mypool2 nodelete true	--设置存储池不可以被删除，此时存储池和mon设置都为不允许删除了
@@ -1664,7 +1659,7 @@ $ ceph osd pool set-qouta mypool max_objects 1000	--设置对象数量为1000，
 $ ceph osd pool set-qouta mypool max_bytes 214748364800	--设置最大存储容量为200G，这个常用
 
 4.9.4 存储池可用参数
-size: 存储沁中的对象副本数，默认一主两个备共3个副本
+size: 存储池中的对象副本数，默认一主两个备共3个副本
 $ ceph osd pool get mypool size 	--查看存储池副本数
 size: 3
 $ ceph osd pool set mypool size 2		--设置存储池副本数
@@ -1683,6 +1678,12 @@ $ ceph osd pool set mypool pgp_num 4 	--修改指定pool的pgp数量，数据不
 set pool 2 pgp_num to 4
 $ ceph osd pool get mypool pg_num	--重新平衡pg是有一个慢性过程的
 pg_num: 61
+
+$ ceph osd pool get mypool pg_autoscale_mode	--查看特定存储池pg自动伸缩状态是否开启，如果开启则无法调整pg和pgp数量
+pg_autoscale_mode: on
+$ ceph osd pool set mypool pg_autoscale_mode off	--关闭pg自动伸缩
+set pool 2 pg_autoscale_mode to off
+
 $ ceph osd pool get mypool nosizechange		--控制是否可以更改存储池的大小
  
 noscrub和nodeep-scrub: 控制是否不进行轻量扫描(扫描OSD的元数据信息，默认每天一次)或是否深层扫描存储池(扫描数据本身，更耗IO，默认每周一次)，ceph这种扫描机制可以检测同一个PG中多个副本OSD是否有不一致情况，如果有则报告mon服务器有数据不一致而告警，扫描结果是json数据。在IO高的情况下，关闭扫描可临时解决高IO问题
@@ -1710,7 +1711,6 @@ sudo ceph daemon osd.3 config show | grep scrub	--查看扫描时间配置
 $ ceph osd pool mksnap mypool mypool-snap1 	--创建快照方式1	
 $ rados -p mypool mksnap mypool-snap2	--创建快照方式2
 4.10.2 验证快照
-$ created pool mypool snap mypool-snap2
 $ rados lssnap -p mypool
 1       mypool-snap1    2021.12.11 16:06:21
 2       mypool-snap2    2021.12.11 16:06:57
@@ -2516,14 +2516,11 @@ umount /data/mysql
 #常用命令
 ceph osd pool ls
 ceph osd pool rm mypool --yes-i-really-really-mean-it --yes-i-really-really-mean-it
-ceph osd pool ls
-cat /etc/ceph/ceph.conf
 ceph pg ls-by-pool mypool | awk '{print $1,$2,$15}'
 ceph osd tree
-ceph osd pool ls
-sudo rados put msg1 /usr/local/src/consul_1.10.3_linux_amd64.zip --pool=mypool 
+sudo rados put testfil1 /usr/local/src/consul_1.10.3_linux_amd64.zip --pool=mypool 
 rados ls --pool=mypool
-ceph osd map mypool msg1 
+ceph osd map mypool testfil1
 
 #RBD
 ceph osd pool create myrbd1 64 64 #创建存储池
@@ -2535,6 +2532,7 @@ rbd ls --pool myrbd1	#列出指定的pool中所有的img
 rbd --image myimg1 --pool myrbd1 info	#查看指定 rdb 的信息
 
 ceph df
+rados df
 rbd --user jack -p rbd-data1 map data-img1 
 rbd feature disable myrbd1/myimg1 object-map fast-diff deep-flatten  #关闭img1特性
 rbd -p myrbd1 map myimg1
@@ -2553,6 +2551,20 @@ ceph pg stat		--查看PG状态，不太准，有Jemter进行压测
 ceph osd stat		--查看osd状态
 ceph osd tree    --可以查看哪个osd故障
 ceph mon stat   --查看mon状态，最少3个保持高可用
+
+#更改存储池pg和pgp大小
+ceph osd pool get mypool pg_autoscale_mode
+ceph osd pool set mypool pg_autoscale_mode off
+ceph osd pool set mypool pg_num 4
+ceph osd pool set mypool pgp_num 4
+
+
+
+
+
+
+
+	
 
 </pre>
 
