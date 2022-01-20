@@ -419,6 +419,12 @@ WantedBy=multi-user.target
 
 #--windows_exporter
 注：windows_exporter客户端使用版本为windows_exporter-0.13.0-amd64.msi，此版本不能采集windows server 2003系统。
+C:\software>msiexec /i windows_exporter-0.17.1-amd64.msi ENABLED_COLLECTORS="[defaults],tcp,iis,cpu_info" TEXTFILE_DIR="C:\custom_metrics\" /quiet
+C:\software>msiexec /x windows_exporter-0.17.1-amd64.msi /quiet
+注：开启iis，tcp,cpu_info等信息收集
+
+msiexec /i windows_exporter-0.13.0-amd64.msi ENABLED_COLLECTORS="[defaults],tcp,iis,cpu_info" TEXTFILE_DIR="C:\custom_metrics\" /quiet
+
 #--wmi_exporter
 注：wmi_exporter客户端使用版本为wmi_exporter-0.8.3-386.msi,此版本可以采集windows server 2003系统。
 
