@@ -5200,5 +5200,40 @@ ERROR 1839 (HY000) at line 24 in file: '/root/db_hdf_bqjfl_xxxx_xx_xx.sql': @@GL
 MySQL [(none)]> set @@GLOBAL.GTID_MODE = OFF_PERMISSIVE;
 | gtid_mode     | OFF_PERMISSIVE |
 
+
+
+
+#ubuntu18下apt安装mysql-server更改数据目录失败问题
+root@ubuntu18-node01:/etc/mysql# mysqld --initialize
+mysqld: Can't create directory '/data/mysql/' (Errcode: 17 - File exists)
+2022-01-21T07:42:39.962304Z 0 [Warning] TIMESTAMP with implicit DEFAULT value is deprecated. Please use --explicit_defaults_for_timestamp server option (see documentation for more details).
+2022-01-21T07:42:39.965643Z 0 [ERROR] Aborting
+原因：因为Ubuntu有个AppArmor，是一个Linux系统安全应用程序，类似于Selinux,AppArmor默认安全策略定义个别应用程序可以访问系统资源和各自的特权，如果不设置服务的执行程序，即使你改了属主属组并0777权限，也是对服务起不到作用。apt安装下MySQL默认数据目录是/var/lib/mysql，其它的目录权限都不可。开始修改：
+vim /etc/apparmor.d/usr.sbin.mysqld
+找到：
+# Allow data dir access
+  /var/lib/mysql/ r,
+  /var/lib/mysql/** rwk,
+修改为：
+# Allow data dir access
+  /data/mysql/ r,
+  /data/mysql/** rwk,
+
+--再次初始化mysql
+root@ubuntu18-node01:/etc/mysql# mysqld --initialize
+
+--启动mysql
+root@ubuntu18-node01:/etc/mysql# systemctl start mysql
+root@ubuntu18-node01:/etc/mysql# systemctl status mysql
+
+--查看root密码
+root@ubuntu18-node01:/etc/mysql# cat /var/log/mysql/error.log | grep -i password | grep 'root@localhost'
+2022-01-21T07:12:08.048732Z 1 [Warning] root@localhost is created with an empty password ! Please consider switching off the --initialize-insecure option.
+2022-01-21T07:44:40.064990Z 1 [Note] A temporary password is generated for root@localhost: Qal4*LYjoJ#0
+
+
+
+
+
 </pre>
 

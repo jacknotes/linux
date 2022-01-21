@@ -1679,6 +1679,9 @@ set pool 2 pgp_num to 4
 $ ceph osd pool get mypool pg_num	--重新平衡pg是有一个慢性过程的
 pg_num: 61
 
+
+$ ceph config get mon	--查看ceph mon配置
+$ ceph config set global osd_pool_default_pg_autoscale_mode off	--设置默认pg自动伸缩模式为关
 $ ceph osd pool get mypool pg_autoscale_mode	--查看特定存储池pg自动伸缩状态是否开启，如果开启则无法调整pg和pgp数量
 pg_autoscale_mode: on
 $ ceph osd pool set mypool pg_autoscale_mode off	--关闭pg自动伸缩
@@ -1801,16 +1804,13 @@ ceph osd pool get mypool compression_mode 			--查看压缩模式
 五：CephX认证机制：
 Ceph使用cephx协议对客户端进行身份认证，cephx用于对ceph保存的数据进行谁访问和授权，用于对访问ceph的请求进行认证和授权检测，与mon通信的请求都要经过ceph认证通过，但是也可以在mon节点关闭cephx认证机制。但是关闭认证之后 任何访问都将被允许，因此无法保证数据的安全性。
 5.1 授权流程
-每个mon节点都可以对客户端进行身份认证并颁发秘钥，因此多个mon节点就不存在单点故障和认证性能瓶颈
-mon节点会返回用于身份认证的数据结构，其中包含获取ceph服务时用到的session key,session key通过客户端秘钥进行加密，秘钥是在客户端提前配置好的，/etc/ceph/ceph.client.admin.keyring
-客户端使用session key向mon请求所需要的服务，mon向客户端提供一个tiket，用于向实际 处理数据的OSD等服务验证客户端身份，MON和OSD共享同一个secret，因此OSD会信任所有MON发放的tiket
-tiket存在有效期
+每个mon节点都可以对客户端进行身份认证并颁发秘钥，因此多个mon节点就不存在单点故障和认证性能瓶颈，mon节点会返回用于身份认证的数据结构，其中包含获取ceph服务时用到的session key,session key通过客户端秘钥进行加密，秘钥是在客户端提前配置好的(/etc/ceph/ceph.client.admin.keyring)，客户端使用session key向mon请求所需要的服务，mon向客户端提供一个tiket，用于向实际 处理数据的OSD等服务验证客户端身份，MON和OSD共享同一个secret，因此OSD会信任所有MON发放的tiket，tiket存在有效期
 注意： CephX身份验证功能仅限制在Ceph各组件之间，不能扩展到其它非ceph组件。ceph只负责认证授权，不能解决数据传输的加密问题
 
 5.2访问流程
 1. 客户端请求认证，读取ceph.conf文件得知mon服务器地址、自己客户端key的文件在哪，并拿着客户端key去mon服务器认证。
-2. mon服务器验证客户端key是洁合法，合法则生成session key，并用key加密后发送给客户端
-3. 客户端上用户key解密后得到session key,并向MON服务器发送session key申请tiket 
+2. mon服务器验证客户端key是否合法，合法则生成session key，并用客户端key加密后发送给客户端
+3. 客户端上用客户端key解密后得到session key,并向MON服务器发送session key申请tiket 
 4. MON服务器验证session key是否合法，合法则用session key加密tiket并发送给客户端
 5. 客户端使用session key解密tiket并拿着tiket访问OSD（或者MDS）
 6. OSD验证tiket并返回数据
@@ -1818,8 +1818,7 @@ tiket存在有效期
 
 5.3 访问用户
 用户是指个人(ceph管理者)或系统参与者（MON/OSD/MDS）
-通过创建用户，可以控制用户或哪个参与者能够访问ceph存储集群、以及可访问的存储池及存储池中的数据。
-ceph支持多种类型的用户，但可管理的用户都属于client类型，区分用户类型的原因在于，MON/OSD/MDS等系统组件特使用cephx协议，但是它们为非客户端。通过点号来分割用户类型和用户名，格式为TYPE.ID，例如 client.admin
+通过创建用户，可以控制用户或哪个参与者能够访问ceph存储集群、以及可访问的存储池及存储池中的数据。ceph支持多种类型的用户，但可管理的用户都属于client类型，区分用户类型的原因在于，MON/OSD/MDS等系统组件特使用cephx协议，但是它们为非客户端。通过点号来分割用户类型和用户名，格式为TYPE.ID，例如 client.admin
 $ ceph auth list
 mds.ceph-mgr01
         key: AQDnJqthYDIRBhAAawCn6G0GT+LPVBOIWI0bHA==
@@ -1951,7 +1950,7 @@ $ ceph auth get client.admin   --获取单个用户权限
 exported keyring for client.admin
 
 5.4 ceph授权和使能
-ceph基于使能/能力来描述用户可针对MON/OSD或MDS使用的授权范围或级别。
+ceph基于使能/能力来描述用户可针对MON/MGR,OSD或MDS使用的授权范围或级别。
 通用语法格式： daemon-type 'allow caps' [...]
 r: 向用户授予读取权限，访问mon以检查 CRUSH运行图时需要具有此车能力。
 w: 一般OSD，向用户授予针对对象的写入权限。
@@ -1975,8 +1974,7 @@ osd 'allow capability' [pool=poolname] [namespace-name]\
 MDS能力：
 只需要allow或空都表示允许 
 mds 'allow'
-针对用户采用YPTE.ID表示法，例如osd.0指定是osd类并且ID为0的用户(节点)，client.admin是client类型的用户，其ID为admin.
-另外 注意，每个项包含一个key=xxx项，以及一个或多个caps项，可以结合使用-o 文件名选项和 ceph auth list 将输出保存到某个文件 
+针对用户采用YPTE.ID表示法，例如osd.0指定是osd类并且ID为0的用户(节点)，client.admin是client类型的用户，其ID为admin。另外注意，每个项包含一个key=xxx项，以及一个或多个caps项，可以结合使用-o 文件名选项和 ceph auth list 将输出保存到某个文件 
 
 5.5 ceph用户管理
 添加一个用户会创建用户名（YPTE.ID）
@@ -2473,10 +2471,69 @@ umount /data/mysql
 注：经过重启测试得出如下问题：1. 在关机停止运行服务时一直卡在类似"A job running at /data/mysql"这里，无法正常关机。2. 强制关机并开机后，在/etc/rc.d/rc.local里面第一步成功，但是在第二步挂载"mount /dev/mapper/myvg-mylv /data/mysql"时不成功，始终没有挂载个，这两个问题需要解决。
 
 
+#####设置ubuntu18开机挂载ceph存储
+root@ubuntu18-node01:~# cat /lib/systemd/system/rc.local.service
+------------
+[Unit]
+Description=/etc/rc.local Compatibility
+Documentation=man:systemd-rc-local-generator(8)
+ConditionFileIsExecutable=/etc/rc.local
+After=network.target
 
+[Service]
+Type=forking
+ExecStart=/etc/rc.local start
+TimeoutSec=0
+RemainAfterExit=yes
+GuessMainPID=no
+------------
+root@ubuntu18-node01:~# cat /etc/rc.local
+#!/bin/sh
+echo 'hehe'
+rbd --user jack -p rbd-data1 map data-img2
+------------
+root@ubuntu18-node01:~# ls -l /etc/rc.local
+-rwxr-xr-x 1 root root 99 Jan 21 16:28 /etc/rc.local
+------------
+root@ubuntu18-node01:~# cat /lib/systemd/system/mysql.service
+# MySQL systemd service file
+[Unit]
+Description=MySQL Community Server
+After=network.target
+After=rc-local.service		#关键在这，在rc-local.service运行之后再运行
 
+[Install]
+WantedBy=multi-user.target
 
+[Service]
+Type=forking
+User=mysql
+Group=mysql
+PIDFile=/run/mysqld/mysqld.pid
+PermissionsStartOnly=true
+ExecStartPre=/usr/share/mysql/mysql-systemd-start pre
+ExecStart=/usr/sbin/mysqld --daemonize --pid-file=/run/mysqld/mysqld.pid
+TimeoutSec=infinity
+Restart=on-failure
+RuntimeDirectory=mysqld
+RuntimeDirectoryMode=755
+LimitNOFILE=5000
+------------
+root@ubuntu18-node01:~# systemctl daemon-reload
+root@ubuntu18-node01:~# systemctl reboot		--重启服务器
+root@ubuntu18-node01:~# systemctl status mysql	--重启后挂载正常，mysql服务正常
+* mysql.service - MySQL Community Server
+   Loaded: loaded (/lib/systemd/system/mysql.service; enabled; vendor preset: enabled)
+   Active: active (running) since Fri 2022-01-21 17:34:11 CST; 4s ago
+  Process: 760 ExecStart=/usr/sbin/mysqld --daemonize --pid-file=/run/mysqld/mysqld.pid (code=exited, status=0/SUCCESS)
+  Process: 747 ExecStartPre=/usr/share/mysql/mysql-systemd-start pre (code=exited, status=0/SUCCESS)
+ Main PID: 762 (mysqld)
+    Tasks: 27 (limit: 2232)
+   CGroup: /system.slice/mysql.service
+           `-762 /usr/sbin/mysqld --daemonize --pid-file=/run/mysqld/mysqld.pid
 
+Jan 21 17:34:05 ubuntu18-node01 systemd[1]: Starting MySQL Community Server...
+Jan 21 17:34:11 ubuntu18-node01 systemd[1]: Started MySQL Community Server.
 
 
 
