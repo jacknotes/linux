@@ -2328,6 +2328,26 @@ $ rbd ls -p rbd-data1 -l
 NAME       SIZE   PARENT  FMT  PROT  LOCK
 data-img1  2 GiB            2
 data-img2  1 GiB            2
+---------------------------慎用---------------------------
+----注：小插曲，如果客户端为非lVM卷，可以使用resize2fs和xfs_growfs命令分别对ext4和xfs文件系统进行容量拉伸，这个未进行严格测试，在生产上慎用
+root@ubuntu18-node01:~# df -Th | grep /dev/rbd0
+/dev/rbd0                            xfs      1014M  168M  847M  17% /data/mysql
+root@ubuntu18-node01:~# xfs_growfs /dev/rbd0
+meta-data=/dev/rbd0              isize=512    agcount=9, agsize=31744 blks
+         =                       sectsz=512   attr=2, projid32bit=1
+         =                       crc=1        finobt=1 spinodes=0 rmapbt=0
+         =                       reflink=0
+data     =                       bsize=4096   blocks=262144, imaxpct=25
+         =                       sunit=1024   swidth=1024 blks
+naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
+log      =internal               bsize=4096   blocks=2560, version=2
+         =                       sectsz=512   sunit=8 blks, lazy-count=1
+realtime =none                   extsz=4096   blocks=0, rtextents=0
+data blocks changed from 262144 to 384000
+root@ubuntu18-node01:~# df -Th | grep /dev/rbd0
+/dev/rbd0                            xfs       1.5G  168M  1.3G  12% /data/mysql
+---------------------------慎用---------------------------
+
 [root@centos7-node02 ~]# lsblk	--在ceph客户端上查看/dev/rbd0现在为2G了，但是/dev/myvg/mylv现在还是1G大小，需要进行lvm拉伸操作
 NAME            MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
 sda               8:0    0   20G  0 disk
@@ -2489,8 +2509,8 @@ GuessMainPID=no
 ------------
 root@ubuntu18-node01:~# cat /etc/rc.local
 #!/bin/sh
-echo 'hehe'
 rbd --user jack -p rbd-data1 map data-img2
+/bin/mount /dev/rbd0 /data/mysql
 ------------
 root@ubuntu18-node01:~# ls -l /etc/rc.local
 -rwxr-xr-x 1 root root 99 Jan 21 16:28 /etc/rc.local
@@ -2535,17 +2555,709 @@ root@ubuntu18-node01:~# systemctl status mysql	--重启后挂载正常，mysql�
 Jan 21 17:34:05 ubuntu18-node01 systemd[1]: Starting MySQL Community Server...
 Jan 21 17:34:11 ubuntu18-node01 systemd[1]: Started MySQL Community Server.
 
+#卸载并删除存储池rbd-data1中的镜像data-img2
+root@ubuntu18-node01:~# systemctl stop mysql
+root@ubuntu18-node01:~# umount /data/mysql
+root@ubuntu18-node01:~# rbd --user jack -p rbd-data1 unmap data-img2	--客户端操作
+然后取消开机自启动
+rbd rm --pool rbd-data1 --image data-img2 	--服务端操作，永久删除镜像
+
+#rbd镜像回收站机制
+删除的镜像数据无法恢复，但是还有另外一种方法可以先把镜像移动到回收站，后期确认删除的时候再从回收站删除即可
+rbd help trash	--回收站帮助命令
+$ rbd ls -p rbd-data1 -l
+NAME       SIZE     PARENT  FMT  PROT  LOCK
+data-img1    2 GiB            2
+data-img2  1.5 GiB            2
+$ rbd status --pool rbd-data1 --image data-img1		--查看客户端挂载详情
+Watchers:
+        watcher=172.168.2.14:0/1168538719 client.105668 cookie=18446462598732840964
+$ rbd status --pool rbd-data1 --image data-img2
+Watchers:
+        watcher=172.168.2.12:0/1558883488 client.108501 cookie=18446462598732840965
+--客户端卸载ceph存储
+root@ubuntu18-node01:~# systemctl stop mysql
+root@ubuntu18-node01:~# umount /data/mysql
+root@ubuntu18-node01:~# rbd --user jack -p rbd-data1 unmap data-img2
+$ rbd status --pool rbd-data1 --image data-img2	--此时已无客户端挂载
+Watchers: none
+$ rbd trash move --pool rbd-data1 --image data-img2	--把data-img2移到回收站中
+$ rbd ls -p rbd-data1  -l		--此时无法看到data-img2，因为在回收站中
+NAME       SIZE   PARENT  FMT  PROT  LOCK
+data-img1  2 GiB            2
+root@ubuntu18-node01:~# rbd --user jack -p rbd-data1 map data-img2	--此时客户端挂载data-img2会报错，因为已经在回收站中了
+rbd: sysfs write failed
+In some cases useful info is found in syslog - try "dmesg | tail".
+rbd: map failed: (2) No such file or directory
+$ rbd trash move --pool rbd-data1 --image data-img1	--这个移除镜像动作是在客户端还在挂载的情况下操作的，非常危险，因为用户还在读写数据，会造成数据丢失，此操作只能在测试情况下操作，但是结果表明在线移除到回收站客户端上挂载还是正常使用的，当你挂载释放后将无法再次挂载
+$ rbd ls --pool rbd-data1 -l	--此时无镜像
+[root@centos7-node02 ~]# df -Th | grep /data/mysql	--此时客户端还在挂载中
+/dev/mapper/myvg-mylv   xfs       2.0G   63M  2.0G   4% /data/mysql
+$ rbd trash ls --pool rbd-data1	--在rbd回收站中查看镜像信息
+198ab4c4a8acc data-img1
+198b4ede436 data-img2
+$ rbd trash restore --pool rbd-data1 --image data-img2 --image-id 198b4ede436	--恢复data-img2到存储池rbd-data1中
+$ rbd trash ls --pool rbd-data1
+198ab4c4a8acc data-img1
+$ rbd ls --pool rbd-data1 -l 	--此时data-img2已正常对外提供服务
+NAME       SIZE     PARENT  FMT  PROT  LOCK
+data-img2  1.5 GiB            2
+root@ubuntu18-node01:~#  rbd --user jack -p rbd-data1 map data-img2		--客户端直接挂载使用即可，服务端不用格式化，否则会造成全部数据丢失
+root@ubuntu18-node01:~# mount /dev/rbd0 /data/mysql/
+root@ubuntu18-node01:~# df -Th | grep mysql
+/dev/rbd0                            xfs       1.5G  156M  1.4G  11% /data/mysql
+--从回收站删除镜像可使用rbd trash remove --pool rbd-data1 --image-id 198b4ede436命令，此后这个回收站镜像将永久删除了
+
+#rbd镜像快照
+rbd help snap 
+snap create (snap add)	--创建快照
+snap limit clear	--清除一个镜像的快照上限
+snap limit set	--设置一个镜像的快照上限
+snap list (snap ls)	--列出快照
+snap protect	--保护快照不允许被删除
+snap unprotect	--允许一个快照被删除，取消快照保护
+snap purge	--删除所有未被保护的镜像
+snap remove (snap rm)	--删除删除
+snap rename	--重命名快照
+snap rollback (snap revert)	--还原快照
+
+--创建快照
+$ rbd snap create --pool rbd-data1 --image data-img2 --snap img2-snap-202201281718	--快照是全量的
+Creating snap: 100% complete...done.
+$ rbd snap list --pool rbd-data1 --image data-img2
+SNAPID  NAME                    SIZE     PROTECTED  TIMESTAMP
+     4  img2-snap-202201281718  1.5 GiB             Fri Jan 28 17:18:32 2022
+--删除并还原快照
+root@ubuntu18-node01:/data/mysql# ls
+auto.cnf    ca.pem           client-key.pem  ibdata1      ib_logfile1  jackli  performance_schema  public_key.pem   server-key.pem
+ca-key.pem  client-cert.pem  ib_buffer_pool  ib_logfile0  ibtmp1       mysql   private_key.pem     server-cert.pem  sys
+root@ubuntu18-node01:/data/mysql# systemctl stop mysql
+root@ubuntu18-node01:~# umount /data/mysql
+root@ubuntu18-node01:~# rbd --user jack -p rbd-data1 unmap data-img2	--客户端上进行卸载
+$ rbd snap rollback --pool rbd-data1 --image data-img2 --snap img2-snap-202201281718	--客户端上进行快照还原
+Rolling back to snapshot: 100% complete...done.
+root@ubuntu18-node01:~# rbd --user jack -p rbd-data1 map data-img2	--重新映射
+/dev/rbd0
+root@ubuntu18-node01:~# mount /dev/rbd0 /data/mysql/	--重新挂载
+root@ubuntu18-node01:~# systemctl start mysql	--此时创建的jackli数据库已经没有了
+root@ubuntu18-node01:~# ls /data/mysql/
+auto.cnf    ca.pem           client-key.pem  ibdata1      ib_logfile1  mysql               private_key.pem  server-cert.pem  sys
+ca-key.pem  client-cert.pem  ib_buffer_pool  ib_logfile0  ibtmp1       performance_schema  public_key.pem   server-key.pem
+$ rbd snap limit set --pool rbd-data1 --image data-img2 --limit 3	--设置快照数据限制
+$ rbd snap limit clear --pool rbd-data1 --image data-img2
 
 
 
+####CephFS使用
+可以实现文件系统共享功能，客户端通过ceph协议挂载并使用ceph集群作为数据存储服务器
+cephFS需要运行Meta Data Services(MDS)服务，其守护进程为ceph-mds,ceph-mds进程管理与cephFS上存储的文件相关的元数据，并协调对ceph存储集群的访问。
+cephFS的元数据使用的动态子树分区，把元数据划分名称空间对应到不同的mds，写入元数据的时候将元数据按照名称保存到不同主mds上，有点类似于nginx的缓存目录分层一样。
+
+#挂载cephFS	
+$ ceph auth add client.bob mon 'allow r' mds 'allow rw' osd 'allow rwx pool=cephfs-data'	--创建挂载cephFS用户
+added key for client.bob
+$ ceph auth get client.bob
+[client.bob]
+        key = AQCT4/NhiWQ1AhAAYDHqJsnRse43dHZ5b/lIYQ==
+        caps mds = "allow rw"
+        caps mon = "allow r"
+        caps osd = "allow rwx pool=cephfs-data"
+exported keyring for client.bob
+$ ceph auth get client.bob -o ceph.client.bob.keyring	--nf
+exported keyring for client.bob
+$ ceph auth print-key client.bob
+AQCT4/NhiWQ1AhAAYDHqJsnRse43dHZ5b/lIYQ==
+$ ceph auth print-key client.bob > bob.key
+$ ls -lt	--此时有这三个文件是我们需要的
+-rw-rw-r-- 1 ceph ceph     40 Jan 28 20:39 bob.key
+-rw-rw-r-- 1 ceph ceph    147 Jan 28 20:38 ceph.client.bob.keyring
+-rw-rw-r-- 1 ceph ceph    324 Dec  4 21:52 ceph.conf
+$ scp bob.key ceph.client.bob.keyring ceph.conf root@172.168.2.12:/etc/ceph/	--复制配置和key到cephFS客户端
+
+--ubuntu18客户端上挂载cephFS
+root@ubuntu18-node01:~# dpkg -l | grep ceph	
+ii  ceph-common                            12.2.13-0ubuntu0.18.04.10                       amd64        common utilities to mount and interact with a ceph storage cluster
+--内核空间搭载cephFS，内核需大于2.6.34支持（另外一种为用户空间，性能很差）
+root@ubuntu18-node01:/etc/ceph# mkdir -p /data/cephfs
+root@ubuntu18-node01:/etc/ceph# mount -t ceph 192.168.13.31:6789,192.168.13.32:6789,192.168.13.33:6789:/ /data/cephfs -o name=bob,secretfile=/etc/ceph/bob.key
+或root@ubuntu18-node01:/etc/ceph# mount -t ceph 192.168.13.31:6789,192.168.13.32:6789,192.168.13.33:6789:/ /data/cephfs -o name=bob,secret=AQCT4/NhiWQ1AhAAYDHqJsnRse43dHZ5b/lIYQ==
+root@ubuntu18-node01:/etc/ceph# df -TH
+Filesystem                                                 Type      Size  Used Avail Use% Mounted on
+udev                                                       devtmpfs  976M     0  976M   0% /dev
+tmpfs                                                      tmpfs     200M  7.2M  193M   4% /run
+/dev/mapper/ubuntu18--x8664--vg-root                       xfs        21G  5.2G   16G  26% /
+tmpfs                                                      tmpfs     1.0G   17k  1.0G   1% /dev/shm
+tmpfs                                                      tmpfs     5.3M     0  5.3M   0% /run/lock
+tmpfs                                                      tmpfs     1.0G     0  1.0G   0% /sys/fs/cgroup
+/dev/sda1                                                  ext4      991M   64M  859M   7% /boot
+/dev/rbd0                                                  xfs       1.6G  177M  1.4G  12% /data/mysql
+tmpfs                                                      tmpfs     200M     0  200M   0% /run/user/0
+192.168.13.31:6789,192.168.13.32:6789,192.168.13.33:6789:/ ceph       50G     0   50G   0% /data/cephfs
+root@ubuntu18-node01:/etc/ceph# cp /var/log/syslog /data/cephfs/
+root@ubuntu18-node01:/etc/ceph# ls -l /data/cephfs/
+-rw-r----- 1 root root 150324 Jan 28 20:55 syslog
+
+--centos7客户端上挂载cephFS
+[root@centos7-node02 ~]# rpm -qa | grep ceph-common
+python3-ceph-common-15.2.15-0.el7.x86_64
+ceph-common-15.2.15-0.el7.x86_64
+[root@centos7-node02 ~]# ceph --user bob -s
+  cluster:
+    id:     4d5745dd-5f75-485d-af3f-eeaad0c51648
+    health: HEALTH_OK
+
+  services:
+    mon: 3 daemons, quorum ceph01,ceph02,ceph03 (age 5h)
+    mgr: ceph-mgr01(active, since 5h), standbys: ceph-mgr02
+    mds: 1/1 daemons up
+    osd: 15 osds: 15 up (since 5h), 15 in (since 3d)
+    rgw: 1 daemon active (1 hosts, 1 zones)
+
+  data:
+    volumes: 1/1 healthy
+    pools:   10 pools, 68 pgs
+    objects: 449 objects, 352 MiB
+    usage:   1.5 GiB used, 148 GiB / 150 GiB avail
+    pgs:     68 active+clean
+[root@centos7-node02 ~]# mkdir -p /data/cephfs
+[root@centos7-node02 ~]# mount -t ceph 192.168.13.31:6789,192.168.13.32:6789,192.168.13.33:6789:/ /data/cephfs -o name=bob,secret=AQCT4/NhiWQ1AhAAYDHqJsnRse43dHZ5b/lIYQ==
+--cephFS共享使用
+[root@centos7-node02 /data/cephfs]# echo 123 >> /data/cephfs/hehe.txt
+root@ubuntu18-node01:/etc/ceph# cat /data/cephfs/hehe.txt
+123
+234
+注：cephFS是有先后顺序的，有文件锁是文件系统原因，跟cephFS没有关系
+
+--设置开机自启动
+root@ubuntu18-node01:/etc/ceph# cat /etc/fstab	
+192.168.13.31:6789,192.168.13.32:6789,192.168.13.33:6789:/      /data/cephfs    ceph    defaults,name=bob,secret=AQCT4/NhiWQ1AhAAYDHqJsnRse43dHZ5b/lIYQ==,_netdev       0 0
+root@ubuntu18-node01:/etc/ceph# mount -a
+root@ubuntu18-node01:~# lsmod | grep ceph
+ceph                  376832  1
+libceph               315392  2 ceph,rbd
+fscache                65536  1 ceph
+libcrc32c              16384  2 xfs,libceph
+root@ubuntu18-node01:~# modinfo ceph
+filename:       /lib/modules/4.15.0-112-generic/kernel/fs/ceph/ceph.ko
+license:        GPL
+description:    Ceph filesystem for Linux
+author:         Patience Warnick <patience@newdream.net>
+author:         Yehuda Sadeh <yehuda@hq.newdream.net>
+author:         Sage Weil <sage@newdream.net>
+alias:          fs-ceph
+srcversion:     B2806F4EAACAC1E19EE7AFA
+depends:        libceph,fscache
+retpoline:      Y
+intree:         Y
+name:           ceph
+vermagic:       4.15.0-112-generic SMP mod_unload
+signat:         PKCS#7
+signer:
+sig_key:
+sig_hashalgo:   md4
+
+--centos7用户空间挂载ceph-fs，当内核小于2.6.34时只能这样，性能很差，不用安装ceph-common
+[root@centos7-node02 /data/cephfs]# cat /etc/yum.repos.d/ceph.repo
+--------------
+[Ceph]
+name=Ceph packages for $basearch
+baseurl=http://download.ceph.com/rpm-octopus/el7/$basearch
+enabled=1
+gpgcheck=1
+type=rpm-md
+gpgkey=https://download.ceph.com/keys/release.asc
+
+[Ceph-noarch]
+name=Ceph noarch packages
+baseurl=http://download.ceph.com/rpm-octopus/el7/noarch
+enabled=1
+gpgcheck=1
+type=rpm-md
+gpgkey=https://download.ceph.com/keys/release.asc
+
+[ceph-source]
+name=Ceph source packages
+baseurl=http://download.ceph.com/rpm-octopus/el7/SRPMS
+enabled=1
+gpgcheck=1
+type=rpm-md
+gpgkey=https://download.ceph.com/keys/release.asc
+--------------
+[root@centos7-node01 ~]# yum install -y ceph-fuse	--客户端安装
+$ scp bob.key ceph.client.bob.keyring ceph.conf root@172.168.2.13:/etc/ceph/	--服务端操作
+bob.key                                                                                                                                               100%   40     6.8KB/s   00:00
+ceph.client.bob.keyring                                                                                                                               100%  147    15.9KB/s   00:00
+ceph.conf                                                                                                                                             100%  324   162.0KB/s   00:00
+[root@centos7-node01 ~]# ceph-fuse --name client.bob -m 192.168.13.31:6789,192.168.13.32:6789,192.168.13.33:6789 /data/cephfuse	--客户端挂载
+ceph-fuse[2022-01-28T21:48:21.978+0800 7f6dc79c0f40 -1 init, newargv = 0x5581883c0df0 newargc=9
+74775]: starting ceph client
+ceph-fuse[74775]: starting fuse
+[root@centos7-node01 ~]# cd /data/cephfuse/
+[root@centos7-node01 /data/cephfuse]# dd if=/dev/zero of=1file bs=1M count=100
+100+0 records in
+100+0 records out
+104857600 bytes (105 MB) copied, 2.2857 s, 45.9 MB/s
+[root@centos7-node01 /data/cephfuse]# vim /etc/fstab	--设置开机挂载
+none    /data/cephfuse  fuse.ceph       ceph.id=bob,ceph.conf=/etc/ceph/ceph.conf,_netdev,defaults      0 0
 
 
+#cephFS高可用
+1个active + 1个standby模式	--推荐这种模式
+2个active + 1个standby模式
+3个active
+当MDS是动态子树分区时，mds集群是没有standby的MDS(都是active的MDS)，那么当挂掉某一个MDS，那么其它mon服务器将进行动态分配到其它MDS上，那么在分配的过程会有大量的IO消耗、cpu消耗。所以建议使用active + standby模式的MDS集群。因为MDS元数据不太，例如10几T数据，最大也就4个G元数据，同步很快，因为有部分人设置8个主
+
+#部署MDS高可用:
+$ ceph mds stat
+mycephfs:1 {0=ceph-mgr01=up:active}
+$ ceph fs status	--查看当前集群MDS状态，MDS节点是ceph-mgr01---192.168.13.31
+mycephfs - 0 clients
+========
+RANK  STATE      MDS         ACTIVITY     DNS    INOS   DIRS   CAPS
+ 0    active  ceph-mgr01  Reqs:    0 /s    10     13     12      0
+      POOL         TYPE     USED  AVAIL
+cephfs-metadata  metadata   236k  46.5G
+  cephfs-data      data       0   46.5G
+MDS version: ceph version 16.2.6 (ee28fb57e47e9f88813e24bbf4c14496ca299d31) pacific (stable)
+
+MDS集群规划：
+active MDS: ceph-mon01---192.168.13.31,ceph-mon02---192.168.13.32
+standby MDS: ceph-mon03---192.168.13.33，ceph-deploy---192.168.13.34
+$ cat /etc/hosts
+127.0.0.1 localhost
+192.168.13.31 ceph01.hs.com   ceph-mon01        ceph-mgr01      ceph-osd01
+192.168.13.32 ceph02.hs.com   ceph-mon02        ceph-mgr02      ceph-osd02
+192.168.13.33 ceph03.hs.com   ceph-mon03                        ceph-osd03
+192.168.13.34 ceph04.hs.com   ceph-deploy
+$ ceph-deploy mds create ceph-mon02	--添加mds服务器
+[ceph_deploy.conf][DEBUG ] found configuration file at: /var/lib/ceph/.cephdeploy.conf
+[ceph_deploy.cli][INFO  ] Invoked (2.0.1): /usr/bin/ceph-deploy mds create ceph-mon02
+[ceph_deploy.cli][INFO  ] ceph-deploy options:
+[ceph_deploy.cli][INFO  ]  username                      : None
+[ceph_deploy.cli][INFO  ]  verbose                       : False
+[ceph_deploy.cli][INFO  ]  overwrite_conf                : False
+[ceph_deploy.cli][INFO  ]  subcommand                    : create
+[ceph_deploy.cli][INFO  ]  quiet                         : False
+[ceph_deploy.cli][INFO  ]  cd_conf                       : <ceph_deploy.conf.cephdeploy.Conf instance at 0x7f6e491780f0>
+[ceph_deploy.cli][INFO  ]  cluster                       : ceph
+[ceph_deploy.cli][INFO  ]  func                          : <function mds at 0x7f6e491507d0>
+[ceph_deploy.cli][INFO  ]  ceph_conf                     : None
+[ceph_deploy.cli][INFO  ]  mds                           : [('ceph-mon02', 'ceph-mon02')]
+[ceph_deploy.cli][INFO  ]  default_release               : False
+[ceph_deploy.mds][DEBUG ] Deploying mds, cluster ceph hosts ceph-mon02:ceph-mon02
+[ceph-mon02][DEBUG ] connection detected need for sudo
+[ceph-mon02][DEBUG ] connected to host: ceph-mon02
+[ceph-mon02][DEBUG ] detect platform information from remote host
+[ceph-mon02][DEBUG ] detect machine type
+[ceph_deploy.mds][INFO  ] Distro info: Ubuntu 18.04 bionic
+[ceph_deploy.mds][DEBUG ] remote host will use systemd
+[ceph_deploy.mds][DEBUG ] deploying mds bootstrap to ceph-mon02
+[ceph-mon02][DEBUG ] write cluster configuration to /etc/ceph/{cluster}.conf
+[ceph-mon02][WARNIN] mds keyring does not exist yet, creating one
+[ceph-mon02][DEBUG ] create a keyring file
+[ceph-mon02][DEBUG ] create path if it doesn't exist
+[ceph-mon02][INFO  ] Running command: sudo ceph --cluster ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/ceph.keyring auth get-or-create mds.ceph-mon02 osd allow rwx mds allow mon allow profile mds -o /var/lib/ceph/mds/ceph-ceph-mon02/keyring
+[ceph-mon02][INFO  ] Running command: sudo systemctl enable ceph-mds@ceph-mon02
+[ceph-mon02][WARNIN] Created symlink /etc/systemd/system/ceph-mds.target.wants/ceph-mds@ceph-mon02.service -> /lib/systemd/system/ceph-mds@.service.
+[ceph-mon02][INFO  ] Running command: sudo systemctl start ceph-mds@ceph-mon02
+[ceph-mon02][INFO  ] Running command: sudo systemctl enable ceph.target
+[ceph-mon02][WARNIN] No data was received after 7 seconds, disconnecting...
+$ ceph mds stat
+mycephfs:1 {0=ceph-mgr01=up:active} 1 up:standby	--加进来的MDS自动为standby角色
+$ ceph mds stat
+mycephfs:1 {0=ceph-mgr01=up:active} 1 up:standby
+$ ceph -s
+  cluster:
+    id:     4d5745dd-5f75-485d-af3f-eeaad0c51648
+    health: HEALTH_OK
+
+  services:
+    mon: 3 daemons, quorum ceph01,ceph02,ceph03 (age 11h)
+    mgr: ceph-mgr01(active, since 9d), standbys: ceph-mgr02
+    mds: 1/1 daemons up, 1 standby
+    osd: 15 osds: 15 up (since 9d), 15 in (since 12d)
+    rgw: 1 daemon active (1 hosts, 1 zones)
+
+  data:
+    volumes: 1/1 healthy
+    pools:   10 pools, 68 pgs
+    objects: 472 objects, 453 MiB
+    usage:   3.0 GiB used, 147 GiB / 150 GiB avail
+    pgs:     68 active+clean
+$ ceph fs get mycephfs
+Filesystem 'mycephfs' (1)
+fs_name mycephfs
+epoch   137
+flags   12
+created 2021-12-04T18:16:31.743004+0800
+modified        2022-01-28T15:44:43.850680+0800
+tableserver     0
+root    0
+session_timeout 60
+session_autoclose       300
+max_file_size   1099511627776
+required_client_features        {}
+last_failure    0
+last_failure_osd_epoch  7238
+compat  compat={},rocompat={},incompat={1=base v0.20,2=client writeable ranges,3=default file layouts on dirs,4=dir inode in separate object,5=mds uses versioned encoding,6=dirfrag is stored in omap,7=mds uses inline data,8=no anchor table,9=file layout v2,10=snaprealm v2}
+max_mds 1	--此参数表示MDS最大有多少个active MDS，所以加进来只有一个active MDS
+in      0
+up      {0=114114}
+failed
+damaged
+stopped
+data_pools      [9]
+metadata_pool   8
+inline_data     disabled
+balancer
+standby_count_wanted    1
+[mds.ceph-mgr01{0:114114} state up:active seq 41 addr [v2:192.168.13.31:6800/3437480283,v1:192.168.13.31:6801/3437480283] compat {c=[1],r=[1],i=[7ff]}]
+#设置为2个active
+$ ceph fs set mycephfs max_mds 2
+$ ceph mds stat
+mycephfs:2 {0=ceph-mgr01=up:active,1=ceph-mon02=up:active}
+$ ceph -s
+  cluster:
+    id:     4d5745dd-5f75-485d-af3f-eeaad0c51648
+    health: HEALTH_WARN
+            insufficient standby MDS daemons available
+
+  services:
+    mon: 3 daemons, quorum ceph01,ceph02,ceph03 (age 11h)
+    mgr: ceph-mgr01(active, since 9d), standbys: ceph-mgr02
+    mds: 2/2 daemons up
+    osd: 15 osds: 15 up (since 9d), 15 in (since 12d)
+    rgw: 1 daemon active (1 hosts, 1 zones)
+
+  data:
+    volumes: 1/1 healthy
+    pools:   10 pools, 68 pgs
+    objects: 490 objects, 453 MiB
+    usage:   3.0 GiB used, 147 GiB / 150 GiB avail
+    pgs:     68 active+clean
+
+  io:
+    client:   938 B/s wr, 0 op/s rd, 3 op/s wr
+
+$ ceph fs get mycephfs
+Filesystem 'mycephfs' (1)
+fs_name mycephfs
+epoch   143
+flags   12
+created 2021-12-04T18:16:31.743004+0800
+modified        2022-02-06T19:24:47.670589+0800
+tableserver     0
+root    0
+session_timeout 60
+session_autoclose       300
+max_file_size   1099511627776
+required_client_features        {}
+last_failure    0
+last_failure_osd_epoch  7238
+compat  compat={},rocompat={},incompat={1=base v0.20,2=client writeable ranges,3=default file layouts on dirs,4=dir inode in separate object,5=mds uses versioned encoding,6=dirfrag is stored in omap,7=mds uses inline data,8=no anchor table,9=file layout v2,10=snaprealm v2}
+max_mds 2
+in      0,1
+up      {0=114114,1=114403}
+failed
+damaged
+stopped
+data_pools      [9]
+metadata_pool   8
+inline_data     disabled
+balancer
+standby_count_wanted    1
+[mds.ceph-mgr01{0:114114} state up:active seq 41 addr [v2:192.168.13.31:6800/3437480283,v1:192.168.13.31:6801/3437480283] compat {c=[1],r=[1],i=[7ff]}]
+[mds.ceph-mon02{1:1bee3} state up:active seq 5f addr [v2:192.168.13.32:1aa4/f33e6272,v1:192.168.13.32:1aa5/f33e6272] compat {c=[1],r=[1],i=[7ff]}]
+#添加2两个standby MDS
+#--ceph-mon03
+$ ceph-deploy mds create ceph-mon03
+[ceph_deploy.conf][DEBUG ] found configuration file at: /var/lib/ceph/.cephdeploy.conf
+[ceph_deploy.cli][INFO  ] Invoked (2.0.1): /usr/bin/ceph-deploy mds create ceph-mon03
+[ceph_deploy.cli][INFO  ] ceph-deploy options:
+[ceph_deploy.cli][INFO  ]  username                      : None
+[ceph_deploy.cli][INFO  ]  verbose                       : False
+[ceph_deploy.cli][INFO  ]  overwrite_conf                : False
+[ceph_deploy.cli][INFO  ]  subcommand                    : create
+[ceph_deploy.cli][INFO  ]  quiet                         : False
+[ceph_deploy.cli][INFO  ]  cd_conf                       : <ceph_deploy.conf.cephdeploy.Conf instance at 0x7f313e4b60f0>
+[ceph_deploy.cli][INFO  ]  cluster                       : ceph
+[ceph_deploy.cli][INFO  ]  func                          : <function mds at 0x7f313e48e7d0>
+[ceph_deploy.cli][INFO  ]  ceph_conf                     : None
+[ceph_deploy.cli][INFO  ]  mds                           : [('ceph-mon03', 'ceph-mon03')]
+[ceph_deploy.cli][INFO  ]  default_release               : False
+[ceph_deploy.mds][DEBUG ] Deploying mds, cluster ceph hosts ceph-mon03:ceph-mon03
+[ceph-mon03][DEBUG ] connection detected need for sudo
+[ceph-mon03][DEBUG ] connected to host: ceph-mon03
+[ceph-mon03][DEBUG ] detect platform information from remote host
+[ceph-mon03][DEBUG ] detect machine type
+[ceph_deploy.mds][INFO  ] Distro info: Ubuntu 18.04 bionic
+[ceph_deploy.mds][DEBUG ] remote host will use systemd
+[ceph_deploy.mds][DEBUG ] deploying mds bootstrap to ceph-mon03
+[ceph-mon03][DEBUG ] write cluster configuration to /etc/ceph/{cluster}.conf
+[ceph-mon03][WARNIN] mds keyring does not exist yet, creating one
+[ceph-mon03][DEBUG ] create a keyring file
+[ceph-mon03][DEBUG ] create path if it doesn't exist
+[ceph-mon03][INFO  ] Running command: sudo ceph --cluster ceph --name client.bootstrap-mds --keyring /var/lib/ceph/bootstrap-mds/ceph.keyring auth get-or-create mds.ceph-mon03 osd allow rwx mds allow mon allow profile mds -o /var/lib/ceph/mds/ceph-ceph-mon03/keyring
+[ceph-mon03][INFO  ] Running command: sudo systemctl enable ceph-mds@ceph-mon03
+[ceph-mon03][WARNIN] Created symlink /etc/systemd/system/ceph-mds.target.wants/ceph-mds@ceph-mon03.service -> /lib/systemd/system/ceph-mds@.service.
+[ceph-mon03][INFO  ] Running command: sudo systemctl start ceph-mds@ceph-mon03
+[ceph-mon03][INFO  ] Running command: sudo systemctl enable ceph.target
+[ceph-mon03][WARNIN] No data was received after 7 seconds, disconnecting...
+#--ceph-deploy
+$ sudo apt update
+$ sudo apt install -y ceph-mds
+$ ceph-deploy mds create  ceph-deploy
+#查看ceph fs状态
+$ ceph fs status
+mycephfs - 3 clients
+========
+RANK  STATE      MDS         ACTIVITY     DNS    INOS   DIRS   CAPS
+ 0    active  ceph-mgr01  Reqs:    0 /s    13     16     12      8
+ 1    active  ceph-mon02  Reqs:    0 /s    10     13     11      0
+      POOL         TYPE     USED  AVAIL
+cephfs-metadata  metadata   404k  45.3G
+  cephfs-data      data     300M  45.3G
+STANDBY MDS
+ ceph-mon03
+ceph-deploy
+                                    VERSION                                                   DAEMONS
+ceph version 16.2.6 (ee28fb57e47e9f88813e24bbf4c14496ca299d31) pacific (stable)  ceph-mgr01, ceph-mon02, ceph-mon03
+ceph version 16.2.7 (dd0603118f56ab514f133c8d2e3adfc983942503) pacific (stable)             ceph-deploy
+
+#配置MDS standby和active的对应关系
+$ cd ceph-cluster/
+$ vim ceph.conf
+---------
+[global]
+fsid = 4d5745dd-5f75-485d-af3f-eeaad0c51648
+public_network = 192.168.13.0/24
+cluster_network = 10.10.13.0/24
+mon_initial_members = ceph01
+mon_host = 192.168.13.31
+auth_cluster_required = cephx
+auth_service_required = cephx
+auth_client_required = cephx
+
+mon clock drift allowed = 1
+mon clock drift warn backoff = 10
 
 
+[mds.ceph-mon03]
+#mds_standby_for_fscid = mycephfs
+mds_standby_for_name = ceph-mon02	--配置active MDS为ceph-mon02
+mds_standby_replay = true			--配置是否中继同步active元数据
+
+[mds.ceph-deploy]
+#mds_standby_for_fscid = mycephfs
+mds_standby_for_name = ceph-mgr01
+mds_standby_replay = true
+---------
+
+$ ceph-deploy --overwrite-conf config push ceph-mgr01
+$ ceph-deploy --overwrite-conf config push ceph-deploy
+$ ceph-deploy --overwrite-conf config push ceph-mon02
+$ ceph-deploy --overwrite-conf config push ceph-mon03
+root@ansible:~# ansible ceph -m shell -a 'cat /etc/ceph/ceph.conf'
+192.168.13.34 | SUCCESS | rc=0 >>
+[global]
+fsid = 4d5745dd-5f75-485d-af3f-eeaad0c51648
+public_network = 192.168.13.0/24
+cluster_network = 10.10.13.0/24
+mon_initial_members = ceph01
+mon_host = 192.168.13.31
+auth_cluster_required = cephx
+auth_service_required = cephx
+auth_client_required = cephx
+
+mon clock drift allowed = 1
+mon clock drift warn backoff = 10
+
+[mds.ceph-mon03]
+#mds_standby_for_fscid = mycephfs
+mds_standby_for_name = ceph-mon02
+mds_standby_replay = true
+
+[mds.ceph-deploy]
+#mds_standby_for_fscid = mycephfs
+mds_standby_for_name = ceph-mgr01
+mds_standby_replay = true
+
+192.168.13.33 | SUCCESS | rc=0 >>
+[global]
+fsid = 4d5745dd-5f75-485d-af3f-eeaad0c51648
+public_network = 192.168.13.0/24
+cluster_network = 10.10.13.0/24
+mon_initial_members = ceph01
+mon_host = 192.168.13.31
+auth_cluster_required = cephx
+auth_service_required = cephx
+auth_client_required = cephx
+
+mon clock drift allowed = 1
+mon clock drift warn backoff = 10
+
+[mds.ceph-mon03]
+#mds_standby_for_fscid = mycephfs
+mds_standby_for_name = ceph-mon02
+mds_standby_replay = true
+
+[mds.ceph-deploy]
+#mds_standby_for_fscid = mycephfs
+mds_standby_for_name = ceph-mgr01
+mds_standby_replay = true
+
+192.168.13.32 | SUCCESS | rc=0 >>
+[global]
+fsid = 4d5745dd-5f75-485d-af3f-eeaad0c51648
+public_network = 192.168.13.0/24
+cluster_network = 10.10.13.0/24
+mon_initial_members = ceph01
+mon_host = 192.168.13.31
+auth_cluster_required = cephx
+auth_service_required = cephx
+auth_client_required = cephx
+
+mon clock drift allowed = 1
+mon clock drift warn backoff = 10
+
+[mds.ceph-mon03]
+#mds_standby_for_fscid = mycephfs
+mds_standby_for_name = ceph-mon02
+mds_standby_replay = true
+
+[mds.ceph-deploy]
+#mds_standby_for_fscid = mycephfs
+mds_standby_for_name = ceph-mgr01
+mds_standby_replay = true
+
+192.168.13.31 | SUCCESS | rc=0 >>
+[global]
+fsid = 4d5745dd-5f75-485d-af3f-eeaad0c51648
+public_network = 192.168.13.0/24
+cluster_network = 10.10.13.0/24
+mon_initial_members = ceph01
+mon_host = 192.168.13.31
+auth_cluster_required = cephx
+auth_service_required = cephx
+auth_client_required = cephx
+
+mon clock drift allowed = 1
+mon clock drift warn backoff = 10
+
+[mds.ceph-mon03]
+#mds_standby_for_fscid = mycephfs
+mds_standby_for_name = ceph-mon02
+mds_standby_replay = true
+
+[mds.ceph-deploy]
+#mds_standby_for_fscid = mycephfs
+mds_standby_for_name = ceph-mgr01
+mds_standby_replay = true
+
+root@ansible:~# ansible ceph -m shell -a 'ls /etc/systemd/system//*mds*'
+192.168.13.34 | SUCCESS | rc=0 >>
+ceph-mds@ceph-deploy.service
+192.168.13.32 | SUCCESS | rc=0 >>
+ceph-mds@ceph-mon02.service
+192.168.13.33 | SUCCESS | rc=0 >>
+ceph-mds@ceph-mon03.service
+192.168.13.31 | SUCCESS | rc=0 >>
+ceph-mds@ceph-mgr01.service
+
+root@ansible:~# ansible 192.168.13.34  -m shell -a 'systemctl restart ceph-mds@ceph-deploy.service'
+192.168.13.34 | SUCCESS | rc=0 >>
+root@ansible:~# ansible 192.168.13.33  -m shell -a 'systemctl restart ceph-mds@ceph-mon03.service'
+192.168.13.33 | SUCCESS | rc=0 >>
+root@ansible:~# ansible 192.168.13.32  -m shell -a 'systemctl restart ceph-mds@ceph-mon02.service'	--此时重启active MDS后，将会由指定的standby MDS接管
+192.168.13.32 | SUCCESS | rc=0 >>
+$ ceph fs status
+mycephfs - 3 clients
+========
+RANK  STATE      MDS         ACTIVITY     DNS    INOS   DIRS   CAPS
+ 0    active  ceph-mgr01  Reqs:    0 /s    13     16     12      8
+ 1    failed														--为失败状态
+      POOL         TYPE     USED  AVAIL
+cephfs-metadata  metadata   404k  45.3G
+  cephfs-data      data     300M  45.3G
+STANDBY MDS
+ceph-deploy
+ ceph-mon03
+                                    VERSION                                             DAEMONS
+ceph version 16.2.6 (ee28fb57e47e9f88813e24bbf4c14496ca299d31) pacific (stable)  ceph-mgr01, ceph-mon03
+ceph version 16.2.7 (dd0603118f56ab514f133c8d2e3adfc983942503) pacific (stable)       ceph-deploy
+$ ceph fs status
+mycephfs - 3 clients
+========
+RANK  STATE      MDS         ACTIVITY     DNS    INOS   DIRS   CAPS
+ 0    active  ceph-mgr01  Reqs:    0 /s    13     16     12      8
+ 1    rejoin  ceph-mon03                    0      3      1      0	--rejoin状态
+      POOL         TYPE     USED  AVAIL
+cephfs-metadata  metadata   404k  45.3G
+  cephfs-data      data     300M  45.3G
+STANDBY MDS
+ceph-deploy
+                                    VERSION                                             DAEMONS
+ceph version 16.2.6 (ee28fb57e47e9f88813e24bbf4c14496ca299d31) pacific (stable)  ceph-mgr01, ceph-mon03
+ceph version 16.2.7 (dd0603118f56ab514f133c8d2e3adfc983942503) pacific (stable)       ceph-deploy
+$ ceph fs status
+mycephfs - 3 clients
+========
+RANK  STATE      MDS         ACTIVITY     DNS    INOS   DIRS   CAPS
+ 0    active  ceph-mgr01  Reqs:    0 /s    13     16     12      8
+ 1    active  ceph-mon03  Reqs:    0 /s    10     13     11      0	--此时ceph-mon03成功加入为active
+      POOL         TYPE     USED  AVAIL
+cephfs-metadata  metadata   404k  45.3G
+  cephfs-data      data     300M  45.3G
+STANDBY MDS
+ceph-deploy
+ ceph-mon02
+                                    VERSION                                                   DAEMONS
+ceph version 16.2.6 (ee28fb57e47e9f88813e24bbf4c14496ca299d31) pacific (stable)  ceph-mgr01, ceph-mon03, ceph-mon02
+ceph version 16.2.7 (dd0603118f56ab514f133c8d2e3adfc983942503) pacific (stable)             ceph-deploy
+root@ansible:~# ansible 192.168.13.31  -m shell -a 'systemctl restart ceph-mds@ceph-mgr01.service'	--重启ceph-mds@ceph-mgr01.service服务
 
 
-
-
+#通过ganesha将cephfs导出为NFS:
+通过ganesha将cephfs通过NFS共享使用：
+https://www.server-world.info/en/note?os=Ubuntu_20.04&p=ceph15&f=8
+[root@ceph02 ~]# apt install nfs-ganesha-ceph -y
+[root@ceph02 ~]# mv /etc/ganesha/ganesha.conf /etc/ganesha/ganesha.conf.bak
+[root@ceph02 ~]# vim /etc/ganesha/ganesha.conf
+NFS_CORE_PARAM {
+    # disable NLM
+    Enable_NLM = false;
+    # disable RQUOTA (not suported on CephFS)
+    Enable_RQUOTA = false;
+    # NFS protocol
+    Protocols = 4;
+}
+EXPORT_DEFAULTS {
+    # default access mode
+    Access_Type = RW;
+}
+EXPORT {
+    # uniq ID
+    Export_Id = 1;
+    # mount path of CephFS
+    Path = "/";
+    FSAL {
+        name = CEPH;
+        # hostname or IP address of this Node
+        hostname="192.168.13.31";
+    }
+    # setting for root Squash
+    Squash="No_root_squash";
+    # NFSv4 Pseudo path
+    Pseudo="/nfspath";
+    # allowed security options
+    SecType = "sys";
+}
+LOG {
+    # default log level
+    Default_Log_Level = WARN;
+}
+systemctl restart nfs-ganesha		--ganesha服务启动失败，需要再找原因
+mount -t nfs 192.168.13.31:/nfspath /mnt	
 
 
 
