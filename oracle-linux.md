@@ -1,4 +1,4 @@
-﻿#Oracle
+#Oracle
 <pre>
 Environment:
 [root@node1 ~]# cat /etc/redhat-release 
@@ -765,7 +765,8 @@ SQL>alter system set sga_target=100M;
 2．如何使用ASMM
 Oracle 10g提供了一个新的初始化参数：sga_target来启动ASMM，该参数定义了整个SGA的总容量。同时，初始化参数statistics_level必须设置为typical或all才能启动ASMM，否则如果设置为basic，则关闭ASMM。ASMM只能自动调整5个内存池的大小，它们是：shared pool、buffer cache、large pool、java pool 和stream pool。我 们 不 再 需要 设 置 shared_pool_size、db_cache_size large_pool_size、java_pool_size、streams_pool_size这五个初始化参数。而其他的内存池，比如log buffer、keep buffer cache 等仍然需要DBA手工进行调整。
 
-
+3. oracle关闭自动内存管理
+MEMORY_MAX_TARGET 指定了DBA可以设置MEMORY_TARGET参数的最大值 MEMORY_TARGET 默认是为0 SGA自动调整被关闭
 
 </pre>
 
