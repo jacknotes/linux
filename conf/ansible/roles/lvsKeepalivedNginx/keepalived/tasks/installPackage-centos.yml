@@ -1,0 +1,15 @@
+---
+- name: install required packge by centos for nginx
+  yum: name={{item}} state=latest update_cache=true
+  with_items:
+  - gcc
+  - gcc-c++
+  - glibc
+  - make
+  - autoconf
+  - openssl
+  - openssl-devel
+  - pcre
+  - pcre-devel
+  - libaio
+  - ipvsadm

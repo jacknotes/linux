@@ -1,4 +1,4 @@
-﻿#lvs
+#lvs
 <pre>
 #ipvs
 从Linux内核版本2.6起，ip_vs code已经被整合进了内核中，因此，只要在编译内核的时候选择了ipvs的功能，您的Linux即能支持LVS。Linux 2.4.23以后的内核版本也整合了ip_vs code，但如果是更旧的内核版本，您得自己手动将ip_vs code整合进内核原码中，并重新编译内核方可使用lvs。
@@ -114,7 +114,7 @@ Director在接收到来自于Client的请求时，会基于"schedule"从RealServ
 四、关于LVS追踪标记fwmark：
 如果LVS放置于多防火墙的网络中，并且每个防火墙都用到了状态追踪的机制，那么在回应一个针对于LVS的连接请求时必须经过此请求连接进来时的防火墙，否则，这个响应的数据包将会被丢弃。
 
-#IPVS安装
+#查看内核是否支持IPVS
 [root@lvs ~]# grep -i 'ipvs' /boot/config-2.6.32-696.el6.x86_64   #查看内核是否支持ipvs
 # IPVS transport protocol load balancing support
 # IPVS scheduler
@@ -160,9 +160,8 @@ CONFIG_MOUSE_VSXXXAA=m
 CONFIG_MAX_RAW_DEVS=8192
 CONFIG_USB_SEVSEG=m
 CONFIG_USB_VST=m
+#IPVS安装
 [root@lvs ~]# yum install ipvsadm -y
-
-
 #命令详解
 ipvsadm:
 	管理集群服务：
@@ -212,7 +211,7 @@ ipvsadm:
 # ipvsadm -R < /tmp/ipvs.save #载入ipvs规则
 
 #NAT:
-LVS-NAT基于cisco的LocalDirector。VS/NAT不需要在RealServer上做任何设置，其只要能提供一个tcp/ip的协议栈即可，甚至其无论基于什么OS。基于VS/NAT，所有的入站数据包均由Director进行目标地址转换后转发至内部的RealServer，RealServer响应的数据包再由Director转换源地址后发回客户端。 
+LVS-NAT基于cisco的LocalDirector。VS/NAT不需要在RealServer上做任何设置，其只要能提供一个tcp/ip的协议栈即可，甚至其无论基于什么OS。基于LVS/NAT，所有的入站数据包均由Director进行目标地址转换后转发至内部的RealServer，RealServer响应的数据包再由Director转换源地址后发回客户端。 
 VS/NAT模式不能与netfilter兼容，因此，不能将VS/NAT模式的Director运行在netfilter的保护范围之中。现在已经有补丁可以解决此问题，但尚未被整合进ip_vs code。
         ____________
        |            |
@@ -342,7 +341,7 @@ ARP问题：
 |              |  |              |  |              |
 | realserver1  |  | realserver2  |  | realserver3  |
 |______________|  |______________|  |______________|
-在如上图的VS/DR或VS/TUN应用的一种模型中（所有机器都在同一个物理网络），所有机器（包括Director和RealServer）都使用了一个额外的IP地址，即VIP。当一个客户端向VIP发出一个连接请求时，此请求必须要连接至Director的VIP，而不能是RealServer的。因为，LVS的主要目标就是要Director负责调度这些连接请求至RealServer的。
+在如上图的LVS/DR或LVS/TUN应用的一种模型中（所有机器都在同一个物理网络），所有机器（包括Director和RealServer）都使用了一个额外的IP地址，即VIP。当一个客户端向VIP发出一个连接请求时，此请求必须要连接至Director的VIP，而不能是RealServer的。因为，LVS的主要目标就是要Director负责调度这些连接请求至RealServer的。
 因此，在Client发出至VIP的连接请求后，只能由Director将其MAC地址响应给客户端（也可能是直接与Director连接的路由设备），而Director则会相应的更新其ipvsadm table以追踪此连接，而后将其转发至后端的RealServer之一。
 如果Client在请求建立至VIP的连接时由某RealServer响应了其请求，则Client会在其MAC table中建立起一个VIP至RealServer的对就关系，并以至进行后面的通信。此时，在Client看来只有一个RealServer而无法意识到其它服务器的存在。
 为了解决此问题，可以通过在路由器上设置其转发规则来实现。当然，如果没有权限访问路由器并做出相应的设置，则只能通过传统的本地方式来解决此问题了。这些方法包括：
@@ -351,7 +350,7 @@ ARP问题：
 3、基于“透明代理（Transparent Proxy）”或者“fwmark （firewall mark）”；
 4、禁止ARP请求发往RealServers；
 传统认为，解决ARP问题可以基于网络接口，也可以基于主机来实现。Linux采用了基于主机的方式，因为其可以在大多场景中工作良好，但LVS却并不属于这些场景之一，因此，过去实现此功能相当麻烦。现在可以通过设置arp_ignore和arp_announce，这变得相对简单的多了。
-Linux 2.2和2.4（2.4.26之前的版本）的内核解决“ARP问题”的方法各不相同，且比较麻烦。幸运的是，2.4.26和2.6的内核中引入了两个新的调整ARP栈的标志（device flags）：arp_announce和arp_ignore。基于此，在DR/TUN的环境中，所有IPVS相关的设定均可使用arp_announce=2和arp_ignore=1/2/3来解决“ARP问题”了。
+Linux 2.2和2.4（2.4.26之前的版本）的内核解决“ARP问题”的方法各不相同，且比较麻烦。幸运的是，2.4.26和2.6的内核中引入了两个新的调整ARP栈的标志（device flags）：arp_announce和arp_ignore。基于此，在DR/TUN的环境中，所有IPVS相关的设定均可使用arp_announce=2和arp_ignore=1来解决“ARP问题”了。
 arp_annouce：Define different restriction levels for announcing the local source IP address from IP packets in ARP requests sent on interface；
 	0 - (default) Use any local address, configured on any interface.
 	1 - Try to avoid local addresses that are not in the target's subnet for this interface. 
@@ -370,7 +369,7 @@ arp_ignore: Define different modes for sending replies in response to received A
 	kernel parameter:
 		arp_ignore: 定义接收到ARP请求时的响应级别；
 			0：只要本地配置的有相应地址，就给予响应；
-			1：仅在请求的目标地址配置请求到达的接口上的时候，才给予响应；
+			1：仅当目标 IP 地址是传入接口上配置的本地地址时才回复。
 
 		arp_announce：定义将自己地址向外通告时的通告级别；
 			0：将本地任何接口上的任何地址向外通告；
@@ -380,7 +379,7 @@ arp_ignore: Define different modes for sending replies in response to received A
 部署DR环境：
 Director:
 	eth0,DIP:192.168.1.199 
-	eth0:1,VIP:192.168.1.200
+	eth0:0,VIP:192.168.1.200
 RealServer1:
 	eth3,Rip:192.168.1.198
 	lo,VIP:192.168.1.200
@@ -721,10 +720,10 @@ failback(){
   done
   if [[ $SUM -eq 0 ]] && `checklvslist $FAIL_BACK;[ $? -eq 1 ]` ;then
     addrs $FAIL_BACK 1
-    [ $? -eq 0 ] &&  echo "`date +'%F %H:%M:%S'`, $FAIL_BACK is back." >> $LOG
+    [ $? -eq 0 ] &&  echo "`date +'%F %H:%M:%S'`, RealServer is Down, $FAIL_BACK is back." >> $LOG
   elif [[ $SUM -ne 0 ]] && `checklvslist $FAIL_BACK;[ $? -eq 0 ]`; then
     delrs $FAIL_BACK
-    [ $? -eq 0 ] &&  echo "`date +'%F %H:%M:%S'`, $FAIL_BACK is gone." >> $LOG
+    [ $? -eq 0 ] &&  echo "`date +'%F %H:%M:%S'`, RealServer is Up, $FAIL_BACK is gone." >> $LOG
   fi
 }
 
@@ -821,6 +820,599 @@ FWM  8 rr
   -> 192.168.1.197:0              Route   2      0          0         
   -> 192.168.1.198:0              Route   2      0          0         
 #经过实践证明，同一个客户端访问80和23端口都会被定向到同一台服务器，这个就是防火墙标记将两个不相关的服务绑定在一起。
+
+
+
+
+####旧lvs操作步骤：
+--环境
+OS： Centos7
+172.168.2.18 lvs01	keepalived01	role:DirectorServer01	sorryServer:127.0.0.1:80	VIP: 172.168.2.20(Master)
+172.168.2.19 lvs02	keepalived02	role:DirectorServer02	sorryServer:127.0.0.1:80	VIP: 172.168.2.20(Backup)
+172.168.2.15 nginx01 role:RealServer01
+172.168.2.17 nginx02 role:RealServer02
+
+##DR模型
+##部署Director:
+[root@lvs01 ~]# yum install -y ipvsadm
+[root@lvs01 ~]# ifconfig eth0:0 172.168.2.20/32 broadcast 172.168.2.20 up
+[root@lvs01 ~]# route add -host 172.168.2.20 dev eth0:0
+[root@lvs01 ~]# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         172.168.2.254   0.0.0.0         UG    100    0        0 eth0
+172.168.0.0     0.0.0.0         255.255.0.0     U     100    0        0 eth0
+172.168.2.20    0.0.0.0         255.255.255.255 UH    0      0        0 eth0
+[root@lvs01 ~]# ifconfig
+eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 172.168.2.18  netmask 255.255.0.0  broadcast 172.168.255.255
+        ether 00:0c:29:dc:4c:18  txqueuelen 1000  (Ethernet)
+        RX packets 279107  bytes 200895653 (191.5 MiB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 79624  bytes 5340452 (5.0 MiB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+eth0:0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500
+        inet 172.168.2.20  netmask 0.0.0.0  broadcast 172.168.2.20
+        ether 00:0c:29:dc:4c:18  txqueuelen 1000  (Ethernet)
+
+lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536
+        inet 127.0.0.1  netmask 255.0.0.0
+        loop  txqueuelen 1000  (Local Loopback)
+        RX packets 632  bytes 55604 (54.3 KiB)
+        RX errors 0  dropped 0  overruns 0  frame 0
+        TX packets 632  bytes 55604 (54.3 KiB)
+        TX errors 0  dropped 0 overruns 0  carrier 0  collisions 0
+
+
+##部署Realserver01:
+[root@nginx01 ~]# vim /etc/sysctld/lvs.conf
+net.ipv4.conf.eth0.arp_ignore = 1
+net.ipv4.conf.eth0.arp_announce = 2
+net.ipv4.conf.all.arp_ignore = 1
+net.ipv4.conf.all.arp_announce = 2
+[root@nginx01 ~]# sysctl --system 
+[root@nginx01 ~]# sysctl -a | grep -E 'arp_ignore|arp_announce'
+net.ipv4.conf.all.arp_announce = 2
+net.ipv4.conf.all.arp_ignore = 1
+net.ipv4.conf.default.arp_announce = 0
+net.ipv4.conf.default.arp_ignore = 0
+net.ipv4.conf.eth0.arp_announce = 2
+net.ipv4.conf.eth0.arp_ignore = 1
+net.ipv4.conf.lo.arp_announce = 0
+net.ipv4.conf.lo.arp_ignore = 0
+[root@nginx01 ~]# ifconfig lo:0 172.168.2.20 netmask 255.255.255.255 broadcast 172.168.2.20 up
+[root@nginx01 ~]# route add -host 172.168.2.20 dev lo:0
+[root@nginx01 ~]# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         172.168.2.254   0.0.0.0         UG    100    0        0 eth0
+172.168.2.0     0.0.0.0         255.255.255.0   U     100    0        0 eth0
+172.168.2.20    0.0.0.0         255.255.255.255 UH    0      0        0 lo
+
+
+##部署Realserver02:
+[root@nginx02 ~]# vim /etc/sysctld/lvs.conf
+net.ipv4.conf.eth0.arp_ignore = 1
+net.ipv4.conf.eth0.arp_announce = 2
+net.ipv4.conf.all.arp_ignore = 1
+net.ipv4.conf.all.arp_announce = 2
+[root@nginx02 ~]# sysctl --system 
+[root@nginx02 ~]# sysctl -a | grep -E 'arp_ignore|arp_announce'
+net.ipv4.conf.all.arp_announce = 2
+net.ipv4.conf.all.arp_ignore = 1
+net.ipv4.conf.default.arp_announce = 0
+net.ipv4.conf.default.arp_ignore = 0
+net.ipv4.conf.eth0.arp_announce = 2
+net.ipv4.conf.eth0.arp_ignore = 1
+net.ipv4.conf.lo.arp_announce = 0
+net.ipv4.conf.lo.arp_ignore = 0
+[root@nginx02 ~]# ifconfig lo:0 172.168.2.20 netmask 255.255.255.255 broadcast 172.168.2.20 up
+[root@nginx02 ~]# route add -host 172.168.2.20 dev lo:0
+[root@nginx02 ~]# route -n
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+0.0.0.0         172.168.2.254   0.0.0.0         UG    100    0        0 eth0
+172.168.2.0     0.0.0.0         255.255.255.0   U     100    0        0 eth0
+172.168.2.20    0.0.0.0         255.255.255.255 UH    0      0        0 lo
+
+##Director上进行ipvsadm操作
+[root@lvs01 ~]# ipvsadm -C
+[root@lvs01 ~]# ipvsadm -A -t 172.168.2.20:80 -s wlc
+[root@lvs01 ~]# ipvsadm -a -t 172.168.2.20:80 -r 172.168.2.15 -g -w 3
+[root@lvs01 ~]# ipvsadm -a -t 172.168.2.20:80 -r 172.168.2.17 -g -w 1
+[root@lvs01 ~]# ipvsadm -ln
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  172.168.2.20:80 wlc
+  -> 172.168.2.15:80              Route   3      1          0
+  -> 172.168.2.17:80              Route   1      1          0
+[root@lvs01 ~]# ipvsadm -lcn
+IPVS connection entries
+pro expire state       source             virtual            destination
+TCP 14:37  ESTABLISHED 172.168.2.219:50658 172.168.2.20:80    172.168.2.17:80
+TCP 14:47  ESTABLISHED 172.168.2.219:50659 172.168.2.20:80    172.168.2.15:80
+--为了保证其时效性，Hash table中“连接追踪”信息被定义了“生存时间”。LVS为记录“连接超时”定义了三个计时器：
+	1、空闲TCP会话；
+	2、客户端正常断开连接后的TCP会话；
+	3、无连接的UDP数据包（记录其两次发送数据包的时间间隔）；
+上面三个计时器的默认值可以由类似下面的命令修改，其后面的值依次对应于上述的三个计时器：
+# ipvsadm --set 28800 30 600
+
+</pre>
+
+
+
+
+
+#LVS+keepalived+nginx高可用
+<pre>
+环境：
+OS： Centos7
+172.168.2.18 lvs01	keepalived01	role:DirectorServer01	sorryServer:127.0.0.1:80	VIP: 172.168.2.20(Master)
+172.168.2.19 lvs02	keepalived02	role:DirectorServer02	sorryServer:127.0.0.1:80	VIP: 172.168.2.20(Backup)
+172.168.2.15 nginx01 role:RealServer01
+172.168.2.17 nginx02 role:RealServer02
+
+#安装keepalived01
+[root@lvs01 ~]# curl -sSfL -O https://www.keepalived.org/software/keepalived-2.0.20.tar.gz
+[root@lvs01 ~]# tar xf keepalived-2.0.20.tar.gz
+[root@lvs01 ~]# cd keepalived-2.0.20/
+[root@lvs01 ~/keepalived-2.0.20]# ls
+aclocal.m4  AUTHOR       build_setup  compile    configure.ac  COPYING  doc      INSTALL     keepalived          lib          Makefile.in  README.md  TODO
+ar-lib      bin_install  ChangeLog    configure  CONTRIBUTORS  depcomp  genhash  install-sh  keepalived.spec.in  Makefile.am  missing      snap
+[root@lvs01 ~/keepalived-2.0.20]# ./configure --prefix=/usr/local/keepalived --sysconf=/etc
+Keepalived configuration
+------------------------
+Keepalived version       : 2.0.20
+Compiler                 : gcc
+Preprocessor flags       : -D_GNU_SOURCE
+Compiler flags           : -g -g -O2 -Wall -Wextra -Wunused -Wstrict-prototypes -Wbad-function-cast -Wcast-align -Wcast-qual -Wdisabled-optimization -Wdouble-promotion -Wfloat-equal -Wformat-security -Wframe-larger-than=5120 -Winit-self -Winline -Wjump-misses-init -Wlogical-op -Wmissing-declarations -Wmissing-field-initializers -Wmissing-prototypes -Wnested-externs -Wold-style-definition -Woverlength-strings -Wpointer-arith -Wredundant-decls -Wshadow -Wstack-protector -Wstrict-overflow=4 -Wstrict-prototypes -Wsuggest-attribute=const -Wsuggest-attribute=format -Wsuggest-attribute=noreturn -Wsuggest-attribute=pure -Wsync-nand -Wtrampolines -Wundef -Wuninitialized -Wunknown-pragmas -Wunsuffixed-float-constants -Wunused-macros -Wvariadic-macros -Wwrite-strings -fPIE -Wformat -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2 -fexceptions -fstack-protector-strong --param=ssp-buffer-size=4 -grecord-gcc-switches -O2
+Linker flags             : -pie -Wl,-z,relro -Wl,-z,now
+Extra Lib                : -lm -lcrypto -lssl
+Use IPVS Framework       : Yes
+IPVS use libnl           : No
+IPVS syncd attributes    : No
+IPVS 64 bit stats        : No
+HTTP_GET regex support   : No
+fwmark socket support    : Yes
+Use VRRP Framework       : Yes
+Use VRRP VMAC            : Yes
+Use VRRP authentication  : Yes
+With ip rules/routes     : Yes
+With track_process       : Yes
+With linkbeat            : Yes
+Use BFD Framework        : No
+SNMP vrrp support        : No
+SNMP checker support     : No
+SNMP RFCv2 support       : No
+SNMP RFCv3 support       : No
+DBUS support             : No
+SHA1 support             : No
+Use JSON output          : No
+libnl version            : None
+Use IPv4 devconf         : No
+Use iptables             : Yes
+Use libiptc              : No
+Use libipset             : No
+Use nftables             : No
+init type                : systemd
+Strict config checks     : No
+Build genhash            : Yes
+Build documentation      : No
+[root@lvs01 ~/keepalived-2.0.20]# make && make install
+[root@lvs01 ~/keepalived-2.0.20]# cp keepalived/etc/init.d/keepalived /etc/init.d/
+[root@lvs01 ~/keepalived-2.0.20]# \cp keepalived/etc/sysconfig/keepalived /etc/sysconfig/
+[root@lvs01 ~/keepalived-2.0.20]# systemctl daemon-reload
+[root@lvs01 ~/keepalived-2.0.20]# systemctl start keepalived.service
+[root@lvs01 ~/keepalived-2.0.20]# systemctl enable keepalived.service
+#安装lvs01
+[root@lvs01 ~]# yum install -y ipvsadm
+#配置keepalived01，使其调用ipvs模块，实现keepalived+lvs功能
+[root@lvs01 ~]# cat /etc/keepalived/keepalived.conf
+-------------------------
+global_defs {
+   router_id LVS01
+}
+
+vrrp_instance LVS_HA {
+    state MASTER
+    interface eth0
+    virtual_router_id 100
+    priority 100
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass uGLGQp5gVyYzCuKI
+    }
+    virtual_ipaddress {
+        172.168.2.20
+    }
+}
+
+virtual_server 172.168.2.20 80 {
+    delay_loop 5
+    lb_algo rr
+    lb_kind DR
+    persistence_timeout 5
+    protocol TCP
+
+    sorry_server 127.0.0.1 80
+
+    real_server 172.168.2.15 80 {
+        weight 1
+        TCP_CHECK {
+            connect_port 80
+            connect_timeout 2		!超时时间为connect_timeout + retry * delay_before_retry = 5秒
+            retry 3
+            delay_before_retry 1
+        }
+    }
+
+    real_server 172.168.2.17 80 {
+        weight 1
+        TCP_CHECK {
+            connect_port 80
+            connect_timeout 1
+            retry 3
+            delay_before_retry 1
+        }
+    }
+}
+-------------------------
+
+#安装keepalived02
+[root@lvs02 ~]# curl -sSfL -O https://www.keepalived.org/software/keepalived-2.0.20.tar.gz
+[root@lvs02 ~]# tar xf keepalived-2.0.20.tar.gz
+[root@lvs02 ~]# cd keepalived-2.0.20/
+[root@lvs02 ~/keepalived-2.0.20]# ls
+aclocal.m4  AUTHOR       build_setup  compile    configure.ac  COPYING  doc      INSTALL     keepalived          lib          Makefile.in  README.md  TODO
+ar-lib      bin_install  ChangeLog    configure  CONTRIBUTORS  depcomp  genhash  install-sh  keepalived.spec.in  Makefile.am  missing      snap
+[root@lvs02 ~/keepalived-2.0.20]# ./configure --prefix=/usr/local/keepalived --sysconf=/etc
+[root@lvs02 ~/keepalived-2.0.20]# make && make install
+[root@lvs02 ~/keepalived-2.0.20]# cp keepalived/etc/init.d/keepalived /etc/init.d/
+[root@lvs02 ~/keepalived-2.0.20]# \cp keepalived/etc/sysconfig/keepalived /etc/sysconfig/
+[root@lvs02 ~/keepalived-2.0.20]# systemctl daemon-reload
+[root@lvs02 ~/keepalived-2.0.20]# systemctl start keepalived.service
+[root@lvs02 ~/keepalived-2.0.20]# systemctl enable keepalived.service
+#安装lvs02
+[root@lvs02 ~]# yum install -y ipvsadm
+#配置keepalived02，使其调用ipvs模块，实现keepalived+lvs功能
+------------------------
+[root@lvs02 ~]# cat /etc/keepalived/keepalived.conf
+global_defs {
+   router_id LVS02
+}
+
+vrrp_instance LVS_HA {
+    state BACKUP
+    interface eth0
+    virtual_router_id 100
+    priority 90
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass uGLGQp5gVyYzCuKI
+    }
+    virtual_ipaddress {
+        172.168.2.20
+    }
+}
+
+virtual_server 172.168.2.20 80 {
+    delay_loop 5
+    lb_algo rr
+    lb_kind DR
+    persistence_timeout 5
+    protocol TCP
+
+    sorry_server 127.0.0.1 80
+
+    real_server 172.168.2.15 80 {
+        weight 1
+        TCP_CHECK {
+            connect_port 80
+            connect_timeout 2
+            retry 3
+            delay_before_retry 1
+        }
+    }
+
+    real_server 172.168.2.17 80 {
+        weight 1
+        TCP_CHECK {
+            connect_port 80
+            connect_timeout 1
+            retry 3
+            delay_before_retry 1
+        }
+    }
+}
+------------------------
+注：172.168.2.15、172.168.2.17上已编译安装nginx，这里省略安装
+#用ipvsadm上下线realserver
+[root@lvs01 ~]# ipvsadm -ln
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  172.168.2.20:80 rr persistent 5
+  -> 172.168.2.15:80              Route   1      0          0
+  -> 172.168.2.17:80              Route   1      0          10
+
+[root@lvs01 ~]# ipvsadm -d -t 172.168.2.20:80 -r 172.168.2.17:80	--手动删除一个RealServer
+[root@lvs01 ~]# ipvsadm -ln
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  172.168.2.20:80 rr persistent 5
+  -> 172.168.2.15:80              Route   1      0          4
+
+[root@lvs01 ~]# ipvsadm -a -t 172.168.2.20:80 -r 172.168.2.17:80 -w 10 && ipvsadm -d -t 172.168.2.20:80 -r 172.168.2.15:80
+[root@lvs01 ~]# ipvsadm -ln
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  172.168.2.20:80 rr persistent 5
+  -> 172.168.2.17:80              Route   10     0          25
+
+[root@lvs01 ~]# ipvsadm -a -t 172.168.2.20:80 -r 172.168.2.15:80 && ipvsadm -d -t 172.168.2.20:80 -r 172.168.2.17:80
+[root@lvs01 ~]# ipvsadm -ln
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  172.168.2.20:80 rr persistent 5
+  -> 172.168.2.15:80              Route   1      0          103
+
+[root@lvs01 ~]# ipvsadm -a -t 172.168.2.20:80 -r 172.168.2.17:80	--手动添加一个RealServer
+[root@lvs02 ~]# ipvsadm -ln
+IP Virtual Server version 1.2.1 (size=4096)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  172.168.2.20:80 rr persistent 5
+  -> 172.168.2.15:80              Route   1      0          0
+  -> 172.168.2.17:80              Route   1      0          0
+#更改keepalived配置文件上下线realserver
+[root@lvs02 ~]# vim /etc/keepalived/keepalived.conf
+:.,+8s/^/#/g	--注释特定realserver配置段
+[root@lvs02 ~]# systemctl reload keepalived.service
+[root@lvs02 ~]# vim /etc/keepalived/keepalived.conf
+:.,+8s/^#//g	--取消特定注释realserver配置段
+[root@lvs02 ~]# systemctl reload keepalived.service
+
+
+#####keepalived从主备变成主主模式
+环境：
+OS： Centos7
+172.168.2.18 lvs01	keepalived01	role:DirectorServer01	sorryServer:127.0.0.1:80	VIP1: 172.168.2.20(Master)	VIP2: 172.168.2.21(Backup)
+172.168.2.19 lvs02	keepalived02	role:DirectorServer02	sorryServer:127.0.0.1:80	VIP1: 172.168.2.20(Backup)	VIP2: 172.168.2.21(Master)
+172.168.2.15 nginx01 role:RealServer01
+172.168.2.17 nginx02 role:RealServer02
+#keepalived01配置变更如下：
+[root@lvs01 ~]# cat /etc/keepalived/keepalived.conf
+---------------------
+global_defs {
+   router_id LVS01
+}
+
+vrrp_instance LVS_HA1 {
+    state MASTER
+    interface eth0
+    virtual_router_id 100
+    priority 100
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass uGLGQp5gVyYzCuKI
+    }
+    virtual_ipaddress {
+        172.168.2.20
+    }
+}
+
+virtual_server 172.168.2.20 80 {
+    delay_loop 5
+    lb_algo rr
+    lb_kind DR
+    persistence_timeout 5
+    protocol TCP
+
+    sorry_server 127.0.0.1 80
+
+    real_server 172.168.2.15 80 {
+        weight 1
+        TCP_CHECK {
+            connect_port 80
+            connect_timeout 2
+            retry 3
+            delay_before_retry 1
+        }
+    }
+
+    real_server 172.168.2.17 80 {
+        weight 1
+        TCP_CHECK {
+            connect_port 80
+            connect_timeout 1
+            retry 3
+            delay_before_retry 1
+        }
+    }
+}
+
+vrrp_instance LVS_HA2 {
+    state BACKUP
+    interface eth0
+    virtual_router_id 101
+    priority 90
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 56smW6IWMHSJNwb3
+    }
+    virtual_ipaddress {
+        172.168.2.21
+    }
+}
+
+virtual_server 172.168.2.21 80 {
+    delay_loop 5
+    lb_algo rr
+    lb_kind DR
+    persistence_timeout 5
+    protocol TCP
+
+    sorry_server 127.0.0.1 80
+
+    real_server 172.168.2.15 80 {
+        weight 1
+        TCP_CHECK {
+            connect_port 80
+            connect_timeout 2
+            retry 3
+            delay_before_retry 1
+        }
+    }
+
+    real_server 172.168.2.17 80 {
+        weight 1
+        TCP_CHECK {
+            connect_port 80
+            connect_timeout 1
+            retry 3
+            delay_before_retry 1
+        }
+    }
+}
+---------------------
+
+#keepalived02配置变更如下：
+---------------------
+[root@lvs02 ~]# cat /etc/keepalived/keepalived.conf
+global_defs {
+   router_id LVS02
+}
+
+vrrp_instance LVS_HA {
+    state BACKUP
+    interface eth0
+    virtual_router_id 100
+    priority 90
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass uGLGQp5gVyYzCuKI
+    }
+    virtual_ipaddress {
+        172.168.2.20
+    }
+}
+
+virtual_server 172.168.2.20 80 {
+    delay_loop 5
+    lb_algo rr
+    lb_kind DR
+    persistence_timeout 5
+    protocol TCP
+
+    sorry_server 127.0.0.1 80
+
+    real_server 172.168.2.15 80 {
+        weight 1
+        TCP_CHECK {
+            connect_port 80
+            connect_timeout 2
+            retry 3
+            delay_before_retry 1
+        }
+    }
+
+    real_server 172.168.2.17 80 {
+        weight 1
+        TCP_CHECK {
+            connect_port 80
+            connect_timeout 1
+            retry 3
+            delay_before_retry 1
+        }
+    }
+}
+
+vrrp_instance LVS_HA2 {
+    state MASTER
+    interface eth0
+    virtual_router_id 101
+    priority 100
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass 56smW6IWMHSJNwb3
+    }
+    virtual_ipaddress {
+        172.168.2.21
+    }
+}
+
+virtual_server 172.168.2.21 80 {
+    delay_loop 5
+    lb_algo rr
+    lb_kind DR
+    persistence_timeout 5
+    protocol TCP
+
+    sorry_server 127.0.0.1 80
+
+    real_server 172.168.2.15 80 {
+        weight 1
+        TCP_CHECK {
+            connect_port 80
+            connect_timeout 2
+            retry 3
+            delay_before_retry 1
+        }
+    }
+
+    real_server 172.168.2.17 80 {
+        weight 1
+        TCP_CHECK {
+            connect_port 80
+            connect_timeout 1
+            retry 3
+            delay_before_retry 1
+        }
+    }
+}
+---------------------
+
+#所有realserver服务器需要增加配置VIP地址在新接口上
+[root@nginx01 ~]# ifconfig lo:1 172.168.2.21 netmask 255.255.255.255 broadcast 172.168.2.21 up
+[root@nginx01 ~]# route add -host 172.168.2.21 dev lo:1
+[root@nginx02 ~]# ifconfig lo:1 172.168.2.21 netmask 255.255.255.255 broadcast 172.168.2.21 up
+[root@nginx02 ~]# route add -host 172.168.2.21 dev lo:1
+或
+[root@nginx01 ~]# cat /etc/sysconfig/network-scripts/ifcfg-lo:0
+DEVICE=lo:0
+IPADDR=172.168.2.20
+NETMASK=255.255.255.255
+BROADCAST=172.168.2.20
+ONBOOT=yes
+[root@nginx01 ~]# cat /etc/rc.d/rc.local
+#!/bin/bash
+touch /var/lock/subsys/local
+route add -host 172.168.2.20 dev lo:0
+
+[root@nginx02 ~]# cat /etc/sysconfig/network-scripts/ifcfg-lo:0
+DEVICE=lo:0
+IPADDR=172.168.2.20
+NETMASK=255.255.255.255
+BROADCAST=172.168.2.20
+ONBOOT=yes
+[root@nginx02 ~]# cat /etc/rc.d/rc.local
+#!/bin/bash
+touch /var/lock/subsys/local
+route add -host 172.168.2.20 dev lo:0
+
+
 
 
 </pre>

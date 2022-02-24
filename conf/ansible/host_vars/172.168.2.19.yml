@@ -1,0 +1,8 @@
+#roles for lvsKeepalivedNginx/keepalived
+#system os variables
+hostname: lvs02
+
+##advice change arg
+state: BACKUP
+interface: eth0
+priority: 90

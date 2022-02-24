@@ -1,0 +1,50 @@
+! Configuration File for keepalived
+
+global_defs {
+   router_id {{router_id}}
+}
+
+vrrp_instance {{vrrp_instance}} {
+    state {{state}}
+    interface {{interface}}
+    virtual_router_id {{virtual_router_id}}
+    priority {{priority}}
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass {{auth_pass}}
+    }
+    virtual_ipaddress {
+        {{virtual_ipaddress}}
+    }
+}
+
+virtual_server {{virtual_ipaddress}} {{virtual_server_port}} {
+    delay_loop 5
+    lb_algo rr
+    lb_kind DR
+    persistence_timeout 5
+    protocol TCP
+
+    sorry_server {{sorry_server}} {{virtual_server_port}}
+
+    real_server {{real_server01}} {{real_server_port}} {
+        weight 1
+        TCP_CHECK {
+            connect_port {{real_server_port}}
+            connect_timeout 2
+            retry 3
+            delay_before_retry 1
+        }
+    }
+
+    real_server {{real_server02}} {{real_server_port}} {
+        weight 1
+        TCP_CHECK {
+            connect_port {{real_server_port}}
+            connect_timeout 1
+            retry 3
+            delay_before_retry 1
+        }
+    }
+}

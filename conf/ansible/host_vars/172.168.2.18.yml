@@ -1,0 +1,9 @@
+#roles for lvsKeepalivedNginx/keepalived
+#system os variables
+hostname: lvs01
+
+#advice change arg
+state: MASTER
+interface: eth0
+priority: 100
+

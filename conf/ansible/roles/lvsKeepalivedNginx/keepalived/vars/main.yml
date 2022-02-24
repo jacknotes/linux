@@ -1,0 +1,19 @@
+#public config
+router_id: LVS01
+vrrp_instance: LVS_HA1
+auth_pass: 5KtfZal0YKvPkRyB
+
+#advice change arg
+virtual_router_id: 200
+virtual_ipaddress: 172.168.2.20
+
+#lvs config ,default DR mode.
+virtual_server_port: 80
+
+#realserver config
+real_server01: 172.168.2.15
+real_server02: 172.168.2.17
+real_server_port: 80
+sorry_server: 127.0.0.1
+
+

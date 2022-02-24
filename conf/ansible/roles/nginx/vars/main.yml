@@ -6,5 +6,5 @@ web_user:
   username_id: 8090
 
 
-nginx_port: 8090
+nginx_port: 80
 

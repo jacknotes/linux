@@ -1,0 +1,14 @@
+---
+- include: installPackage-centos.yml
+  when: ansible_os_family == 'RedHat'
+
+- include: installPackage-ubuntu.yml
+  when: ansible_os_family == 'Debian'
+  
+- name: copy keepalived source code package to remote host
+  copy: src=keepalived-2.0.20.tar.gz dest=/usr/local/src/keepalived-2.0.20.tar.gz
+  tags: copy_keepalived_package
+
+- name: unzip source code package and compile install keepalived
+  shell: creates=/usr/local/keepalived cd /usr/local/src && tar zxf keepalived-2.0.20.tar.gz && cd keepalived-2.0.20 && ./configure --prefix=/usr/local/keepalived --sysconf=/etc && make && make install
+  tags: install_keepalived_package

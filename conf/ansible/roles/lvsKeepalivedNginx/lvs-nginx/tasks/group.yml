@@ -1,0 +1,3 @@
+---
+- name: create group
+  group: name="{{ web_user.groupname }}" gid="{{ web_user.groupname_id }}" system=yes

@@ -1,0 +1,29 @@
+---
+- name: config sysctl system environment net.ipv4.conf.{{ ansible_default_ipv4.alias }}.arp_ignore
+  sysctl:
+    name: net.ipv4.conf.{{ ansible_default_ipv4.alias }}.arp_ignore
+    value: 1
+    reload: yes
+    state: present
+
+- name: config sysctl system environment net.ipv4.conf.{{ ansible_default_ipv4.alias }}.arp_announce
+  sysctl:
+    name: net.ipv4.conf.{{ ansible_default_ipv4.alias }}.arp_announce
+    value: 2
+    reload: yes
+    state: present
+
+- name: config sysctl system environment net.ipv4.conf.all.arp_ignore
+  sysctl:
+    name: net.ipv4.conf.all.arp_ignore
+    value: 1
+    reload: yes
+    state: present
+
+- name: config sysctl system environment net.ipv4.conf.all.arp_announce
+  sysctl:
+    name: net.ipv4.conf.all.arp_announce
+    value: 2
+    reload: yes
+    state: present
+

@@ -1,0 +1,6 @@
+- include: group.yml
+- include: user.yml
+- include: installPackage.yml
+- include: service.yml
+- include: lvsKernelArg.yml
+- include: lvsNetwork.yml

@@ -1,0 +1,19 @@
+---
+- hosts: 
+  - 172.168.2.18
+  - 172.168.2.19
+  remote_user: root
+  become: yes
+  gather_facts: true
+  roles:
+  - lvsKeepalivedNginx/keepalived
+
+- hosts:
+  - 172.168.2.15
+  - 172.168.2.17
+  remote_user: root
+  become: yes
+  gather_facts: true
+  roles:
+  - lvsKeepalivedNginx/lvs-nginx
+
