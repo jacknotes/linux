@@ -350,7 +350,7 @@ ARP问题：
 3、基于“透明代理（Transparent Proxy）”或者“fwmark （firewall mark）”；
 4、禁止ARP请求发往RealServers；
 传统认为，解决ARP问题可以基于网络接口，也可以基于主机来实现。Linux采用了基于主机的方式，因为其可以在大多场景中工作良好，但LVS却并不属于这些场景之一，因此，过去实现此功能相当麻烦。现在可以通过设置arp_ignore和arp_announce，这变得相对简单的多了。
-Linux 2.2和2.4（2.4.26之前的版本）的内核解决“ARP问题”的方法各不相同，且比较麻烦。幸运的是，2.4.26和2.6的内核中引入了两个新的调整ARP栈的标志（device flags）：arp_announce和arp_ignore。基于此，在DR/TUN的环境中，所有IPVS相关的设定均可使用arp_announce=2和arp_ignore=1来解决“ARP问题”了。
+Linux 2.2和2.4（2.4.26之前的版本）的内核解决“ARP问题”的方法各不相同，且比较麻烦。幸运的是，2.4.26和2.6的内核中引入了两个新的调整ARP栈的标志（device flags）：arp_announce和arp_ignore。基于此，在DR/TUN的环境中，所有IPVS相关的设定均可使用arp_announce=2和arp_ignore=1/2/3来解决“ARP问题”了。
 arp_annouce：Define different restriction levels for announcing the local source IP address from IP packets in ARP requests sent on interface；
 	0 - (default) Use any local address, configured on any interface.
 	1 - Try to avoid local addresses that are not in the target's subnet for this interface. 
@@ -375,6 +375,27 @@ arp_ignore: Define different modes for sending replies in response to received A
 			0：将本地任何接口上的任何地址向外通告；
 			1：试图仅向目标网络通告与其网络匹配的地址；
 			2：仅向与本地接口上地址匹配的网络进行通告；
+
+####LVS/DR模型数据包流向：
+ClientIP: 172.168.2.11(38:22:d6:6c:07:5d)
+DirectorIP: 172.168.2.18(00:1A:4D:8C:FA:D5)		VIP：172.168.2.20(00:1A:4D:8C:FA:D5)		172.168.2.19(00:1A:4D:8C:FA:D6)	
+RealServerIP: 172.168.2.15(00:26:18:45:D7:88)	172.168.2.17(00:26:18:45:D7:89)
+流程：
+1. client请求VIP，找到Director
+2. Director根据调度策略算法选取一台realserver,并把请求转发给后端realserver
+3. realserver收到请求后，响应处理并把结果直接返回给client,而不走director
+数据包解封装流程：
+1.    director接收到client消息，即源mac地址为38:22:d6:6c:07:5d，目的地址为00:1A:4D:8C:FA:D5，源ip为172.168.2.11，目的ip为172.168.2.20
+2.    director根据调度策略算法选取一台realserver，假如调度给172.168.2.15，并把源mac地址改为00:1A:4D:8C:FA:D5(Director VIP mac地址)，目的mac地址改为00:26:18:45:D7:88(172.168.2.15的mac地址)，源ip和目的ip都不变（源ip为172.168.2.11，目的ip为172.168.2.20）
+3.    realserver接收到请求，先看到mac地址(00:26:18:45:D7:88)，再看IP地址(172.168.2.20)都是自己并做出响应处理给客户端。即源mac为00:26:18:45:D7:88，源ip为172.168.2.20，目的mac地址为38:22:d6:6c:07:5d，目的ip为172.168.2.11。
+疑点总结：
+1. client请求VIP时，不光只有director有VIP，realserver也有VIP，如何解决正常解析到Director而不解析到realserver?
+答：通过配置net.ipv4.conf.eth0.arp_ignore = 1，net.ipv4.conf.all.arp_ignore = 1内核参数实现，此参数意思为"仅当目标 IP 地址是传入接口上配置的本地地址时才回复"，当realserver收到arp广播包时，必先是经过eth0物理接口的，而不会经过逻辑接口(lo接口)。因为VIP地址是配置在lo接口的，eth0接口并没有配置，所以当收到VIP地址的ARP广播包时，内核参数net.ipv4.conf.eth0.arp_ignore = 1就生效了，从而不会对client请求的VIP做出ARP响应，从而只有director会做出响应。
+2. lvs/dr模型下director是如何进行转发的？
+答：diretor接收到client的请求后，只对二层以太网帧进行更改，不对对三层ip包进行更改，然后在进行转发
+3. realserver收到director的数据包后如何进行响应的?
+答：直接响应客户端，响应的数据报文中把本地物理接口eth0的mac地址作为源mac地址(因为配置内核参数的原因{net.ipv4.conf.eth0.arp_announce = 2}，意思为只向该网卡回应与该网段匹配的ARP报文，又因为client IP 172.168.2.11跟eth0 ip 172.168.2.15是同网段，所以用eth0的mac地址回应172.168.2.11)，本地VIP做为源IP，目标IP为clientIP，目标mac地址先从ARP缓存查找，如无进行ARP广播，即源mac00:26:18:45:D7:88，源ip为172.168.2.20。目标mac地址为38:22:d6:6c:07:5d，目标ip为172.168.2.11。最后客户端收到消息得知mac地址和ip地址都是自己，并且源ip也是自己请求的VIP地址，就进行正常接收了，并不会再去看源mac地址了。当客户端再次请求172.168.2.20时会去找ARP缓存，或者进行ARP广播。
+
 
 部署DR环境：
 Director:
