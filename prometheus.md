@@ -1635,9 +1635,72 @@ tiger
 错误：Only queries that return single series/table is supported
 清除某个实例的信息，但数据还存在在磁盘中，prometheus在下一次压缩时会进行清理：
 curl -X POST -g 'http://localhost:9090/api/v1/admin/tsdb/delete_series?match[]={instance="127.0.0.1:9100"}'
-手动清理：
-curl -XPOST http://localhost:9090/api/v1/admin/tsdb/clean_tombstones
+手动确定立即清理：
+curl -X PUT http://localhost:9090/api/v1/admin/tsdb/clean_tombstones
 注：当报警邮件收到时，明明一条报警信息，却邮件收到两条，只是实例名称不一样，例如：TCP:172.168.2.222:6379和172.168.2.222:9100，此时需要使用管理API进行清理，{instance="TCP:172.168.2.222:6379"}
+
+#prometheus数据大小优化
+--查看prometheus单个series最大多少，单个数量超过了200 万，就不要单实例了，做下集群分片
+[root@prometheus prometheus]# /usr/local/prometheus/tsdb ls /var/lib/prometheus/
+BLOCK ULID                  MIN TIME       MAX TIME       NUM SAMPLES  NUM CHUNKS  NUM SERIES
+01FRZ1473AKBT9CYDK6J84P6C7  1641513600000  1641708000000  4321475895   35892450    354272
+01FS4TGVFNAJSMRPWGT5R2MTSM  1641708000000  1641902400000  4319848463   35858035    354249
+
+--查看tsdb状态，评估哪些metric 和 label占用较多，去掉没用的指标
+[root@prometheus prometheus]# curl http://localhost:9090/api/v1/status/tsdb | jq .
+{
+  "status": "success",
+  "data": {
+    "seriesCountByMetricName": [
+      {
+        "name": "windows_service_status",
+        "value": 61908
+      },
+      {
+        "name": "windows_service_state",
+        "value": 41272
+      },
+      {
+        "name": "windows_service_start_mode",
+        "value": 25795
+      },
+      {
+        "name": "wmi_service_status",
+        "value": 11520
+      },
+      {
+        "name": "wmi_service_state",
+        "value": 7680
+      },
+      {
+        "name": "container_cpu_usage_seconds_total",
+        "value": 6316
+      },
+      {
+        "name": "container_tasks_state",
+        "value": 6005
+      },
+      {
+        "name": "windows_service_info",
+        "value": 5269
+      },
+      {
+        "name": "container_memory_failures_total",
+        "value": 4804
+      },
+      {
+        "name": "wmi_service_start_mode",
+        "value": 4800
+      }
+    ],
+}
+--看到windows_service_status和windows_service_state很多，可以去prometheus查看此指标是否无用，无用则可以删除
+[root@prometheus ~]# curl -X POST -g 'http://localhost:9090/api/v1/admin/tsdb/delete_series?match[]=windows_service_status&start>2022-01-01&end<2022-01-18'
+或者
+[root@prometheus ~]# curl -X POST -g 'http://localhost:9090/api/v1/admin/tsdb/delete_series?match[]=windows_service_status&match[]={instance="172.168.2.10:9182"}&start>2022-01-01&end<2022-01-18'
+--手动立即清理，（跟--storage.tsdb.retention.size=100GB一起使用，效果更明显）
+[root@prometheus ~]# curl -X PUT http://localhost:9090/api/v1/admin/tsdb/clean_tombstones
+
 </pre>
 
 
@@ -2066,7 +2129,8 @@ Restart=on-failure
 [Install]
 WantedBy=multi-user.target
 
-[root@prometheus conf]# cat /usr/lib/systemd/system/prometheus.service 
+[root@prometheus ~]# systemctl cat prometheus.service
+# /usr/lib/systemd/system/prometheus.service
 [Unit]
 Description=https://prometheus.io
 After=network-online.target
@@ -2078,15 +2142,25 @@ Type=simple
 ExecStart=/usr/local/prometheus/prometheus \
 --config.file /usr/local/prometheus/prometheus.yml \
 --storage.tsdb.path /var/lib/prometheus/ \
---storage.tsdb.retention.time=60d \
---web.external-url=prometheus \
+--storage.tsdb.retention.time=30d \
+--storage.tsdb.retention.size=100GB \
+--storage.tsdb.wal-compression \
+--web.external-url=http://192.168.13.236:9090 \
 --web.enable-admin-api \
 --web.enable-lifecycle
 Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
+
 ------------------
+--storage.tsdb.wal-compression: 启用预写日志 (WAL) 的压缩
+--storage.tsdb.retention.time=30d：数据保留时间，或可用storage.tsdb.retention.time
+--storage.tsdb.retention.size=100GB：数据达到此大小将清理数据，和storage.tsdb.retention.time一起使用时谁先达到条件将清理数据
+--storage.tsdb.path：数据存储路径
+--web.external-url：对外的URL
+--web.enable-admin-api：开启管理API功能
+--web.enable-lifecycle：开启使用API功能管理prometheus服务
 
 [root@prometheus conf]# cat /usr/local/nginx/conf/nginx.conf | grep -Ev '#|^$' 
 worker_processes  1;

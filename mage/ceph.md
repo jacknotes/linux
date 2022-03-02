@@ -947,6 +947,8 @@ default.rgw.control
 default.rgw.meta
 
 
+
+
 #整个ceph集群重启后状态
 $ ceph -s
   cluster:
@@ -3258,6 +3260,271 @@ LOG {
 }
 systemctl restart nfs-ganesha		--ganesha服务启动失败，需要再找原因
 mount -t nfs 192.168.13.31:/nfspath /mnt	
+
+
+
+#radosgw高可用
+radosgw本身无状态，安装多个副本，并且使用负载均衡器代理到后端即可。ceph01之前已经安装radosgw,现在添加一个节点ceph04安装radosgw:
+ceph04安装命令：
+--使用root用户进行安装
+apt install -y radosgw
+--切换为ceph用户进行部署
+ceph-deploy rgw create ceph-deploy
+
+--查看ceph radosgw进程
+root@ansible:~/ansible# ansible ceph -m shell -a 'ps -ef | grep radosgw'
+192.168.13.34 | SUCCESS | rc=0 >>
+root      4380  4379 97 14:21 pts/1    00:00:07 /bin/sh -c ps -ef | grep radosgw
+root      4382  4380  0 14:21 pts/1    00:00:00 grep radosgw
+ceph     31659     1  0 Feb07 ?        04:50:42 /usr/bin/radosgw -f --cluster ceph --name client.rgw.ceph-deploy --setuser ceph --setgroup ceph
+
+192.168.13.31 | SUCCESS | rc=0 >>
+ceph       93816       1  1 Feb07 ?        05:53:09 /usr/bin/radosgw -f --cluster ceph --name client.rgw.ceph-mgr01 --setuser ceph --setgroup ceph
+root      292515  292513 82 14:21 pts/1    00:00:05 /bin/sh -c ps -ef | grep radosgw
+root      292517  292515 67 14:21 pts/1    00:00:00 grep radosgw
+
+--查看ceph集群状态
+$ ceph -s
+  cluster:
+    id:     4d5745dd-5f75-485d-af3f-eeaad0c51648
+    health: HEALTH_WARN
+            There are daemons running an older version of ceph
+
+  services:
+    mon: 3 daemons, quorum ceph01,ceph02,ceph03 (age 6h)
+    mgr: ceph-mgr01(active, since 4w), standbys: ceph-mgr02
+    mds: 2/2 daemons up, 2 standby
+    osd: 15 osds: 15 up (since 2d), 15 in (since 7d)
+    rgw: 2 daemons active (2 hosts, 1 zones)	--目前radosgw有两进程，我们分别 安装在ceph01,ceph04上
+
+  data:
+    volumes: 1/1 healthy
+    pools:   10 pools, 68 pgs
+    objects: 491 objects, 453 MiB
+    usage:   3.5 GiB used, 146 GiB / 150 GiB avail
+    pgs:     68 active+clean
+
+$ ceph osd pool ls	--查看存储池
+device_health_metrics
+mypool
+myrbd1
+.rgw.root
+default.rgw.log
+default.rgw.control
+default.rgw.meta
+cephfs-metadata
+cephfs-data
+rbd-data1
+注：后序有数据写入后，会生产存储池'default.rgw.buckets.data'和'default.rgw.buckets.index'
+ceph osd pool get default.rgw.buckets.data crush_rule	--查看是否是副本池规则
+ceph osd pool get default.rgw.buckets.data size		--查看副本数
+--web访问radosgw
+http://192.168.13.34:7480/
+http://192.168.13.34:7480/
+
+--radosgw存储池功能
+
+--获取radosgw中zone为'default'的信息,radosgw-admin是管理radosgw管理命令
+$ radosgw-admin zone get --rgw-zone="default"	
+{
+    "id": "46daa4c7-cddc-429f-8f05-a501a521e6b6",
+    "name": "default",
+    "domain_root": "default.rgw.meta:root",
+    "control_pool": "default.rgw.control",
+    "gc_pool": "default.rgw.log:gc",
+    "lc_pool": "default.rgw.log:lc",
+    "log_pool": "default.rgw.log",
+    "intent_log_pool": "default.rgw.log:intent",
+    "usage_log_pool": "default.rgw.log:usage",
+    "roles_pool": "default.rgw.meta:roles",
+    "reshard_pool": "default.rgw.log:reshard",
+    "user_keys_pool": "default.rgw.meta:users.keys",
+    "user_email_pool": "default.rgw.meta:users.email",
+    "user_swift_pool": "default.rgw.meta:users.swift",
+    "user_uid_pool": "default.rgw.meta:users.uid",
+    "otp_pool": "default.rgw.otp",
+    "system_key": {
+        "access_key": "",
+        "secret_key": ""
+    },
+    "placement_pools": [
+        {
+            "key": "default-placement",
+            "val": {
+                "index_pool": "default.rgw.buckets.index",
+                "storage_classes": {
+                    "STANDARD": {
+                        "data_pool": "default.rgw.buckets.data"
+                    }
+                },
+                "data_extra_pool": "default.rgw.buckets.non-ec",
+                "index_type": 0
+            }
+        }
+    ],
+    "realm_id": "",
+    "notif_pool": "default.rgw.log:notif"
+}
+
+--更改ceph radosgw端口为9900，并重启radosgw服务使其生效
+--ceph-deploy操作
+$ cat /etc/ceph/ceph.conf
+-------
+[client.rgw.ceph-mgr01]
+rgw_host = ceph-mgr01
+rgw_frontends = civetweb port=9900
+
+[client.rgw.ceph-deploy]
+rgw_host = ceph-deploy
+rgw_frontends = civetweb port=9900
+-------
+$ ceph-deploy --overwrite-conf config push ceph-deploy
+$ ceph-deploy --overwrite-conf config push ceph-deploy
+--节点上操作
+[root@ceph01 ~]# systemctl restart ceph-radosgw@rgw.ceph-mgr01.service
+[root@ceph04 ~]# systemctl restart ceph-radosgw@rgw.ceph-deploy.service
+--web访问radosgw
+http://192.168.13.34:9900/
+http://192.168.13.34:9900/
+
+--radosgw签名证书，有两种方式
+1. 推荐把泛域名证书放到nginx上
+2. rgw内置https功能，需要radosgw自签，这个不被信息。
+
+
+#日志及其它优化配置
+1. 创建日志目录
+[root@ceph01 ~]# mkdir /var/log/radosgw
+[root@ceph01 ~]# chown ceph.ceph /var/log/radosgw
+--当前配置
+$ cat /etc/ceph/ceph.conf
+-------
+[client.rgw.ceph-mgr01]
+rgw_host = ceph-mgr01
+rgw_frontends = "civetweb port=9900+8443s ssl_certificate=/etc/ceph/certs/civetweb.pem error_log_file=/var/log/radosgw/civetweb.error.log access_log_file=/var/log/radosgw/civetweb.access.log request_timeout_ms=30000 num_threads=200"
+-------
+#URL: https://docs.ceph.com/en/mimic/radosgw/config-ref/
+num_threads默认值等于 rgw_thread_pool_size=100
+[root@ceph01 ~]# systemctl restart ceph-radosgw@rgw.ceph-mgr01.service
+
+
+##RGW Server配置
+1. 创建RGW帐户
+$ radosgw-admin user create --uid='jack' --display-name='jack'
+{
+    "user_id": "jack",
+    "display_name": "jack",
+    "email": "",
+    "suspended": 0,
+    "max_buckets": 1000,
+    "subusers": [],
+    "keys": [
+        {
+            "user": "jack",
+            "access_key": "U5XEBIOGLYHXY4N544GB",
+            "secret_key": "nWPoq8gAtpsxhEeKcxOGBK1uFv9rqm4Si7vT9ey9"
+        }
+    ],
+    "swift_keys": [],
+    "caps": [],
+    "op_mask": "read, write, delete",
+    "default_placement": "",
+    "default_storage_class": "",
+    "placement_tags": [],
+    "bucket_quota": {
+        "enabled": false,
+        "check_on_raw": false,
+        "max_size": -1,
+        "max_size_kb": 0,
+        "max_objects": -1
+    },
+    "user_quota": {
+        "enabled": false,
+        "check_on_raw": false,
+        "max_size": -1,
+        "max_size_kb": 0,
+        "max_objects": -1
+    },
+    "temp_url_keys": [],
+    "type": "rgw",
+    "mfa_ids": []
+}
+$ radosgw-admin user list
+[
+    "jack"
+]
+
+2. 安装s3cmd客户端（s3cmd是一个通过命令行访问ceph RGW实现创建存储桶、上传、下载以及管理数据到对象存储的命令行客户端工具。）
+root@ansible:~/ansible# apt-cache madison s3cmd
+     s3cmd |    2.0.1-2 | http://mirrors.aliyun.com/ubuntu bionic/universe amd64 Packages
+     s3cmd |    2.0.1-2 | http://mirrors.aliyun.com/ubuntu bionic/universe i386 Packages
+     s3cmd |    2.0.1-2 | http://mirrors.aliyun.com/ubuntu bionic/universe Sources
+root@ansible:~/ansible# apt install -y s3cmd
+root@ansible:~/ansible# s3cmd --help
+  --configure           Invoke interactive (re)configuration tool. Optionally
+                        use as '--configure s3://some-bucket' to test access
+                        to a specific bucket instead of attempting to list
+                        them all.
+--安装/usr/bin/gpg软件
+root@ansible:/etc/ansible/roles# apt install -y gnupg2
+
+root@ansible:~/ansible# s3cmd --configure	--以交互式方式生成s3cmd配置文件
+
+Enter new values or accept defaults in brackets with Enter.
+Refer to user manual for detailed description of all options.
+
+Access key and Secret key are your identifiers for Amazon S3. Leave them empty for using the env variables.
+Access Key: U5XEBIOGLYHXY4N544GB		--1. 输入key
+Secret Key: nWPoq8gAtpsxhEeKcxOGBK1uFv9rqm4Si7vT9ey9	--2. 输入secret
+Default Region [US]:		--3. 设定默认地区，就选US即可
+
+Use "s3.amazonaws.com" for S3 Endpoint and not modify it to the target Amazon S3.
+S3 Endpoint [s3.amazonaws.com]: 192.168.13.31:9900		--4. 设置radosgw的访问地址或域名
+
+Use "%(bucket)s.s3.amazonaws.com" to the target Amazon S3. "%(bucket)s" and "%(location)s" vars can be used
+if the target S3 system supports dns based buckets.
+DNS-style bucket+hostname:port template for accessing a bucket [%(bucket)s.s3.amazonaws.com]: 192.168.13.31:9900/%(bucket)		--5. 输入backet的完整格式名称，也可以是%(bucket)s.192.168.13.31:9900
+
+Encryption password is used to protect your files from reading
+by unauthorized persons while in transfer to S3
+Encryption password:
+Path to GPG program: /usr/bin/gpg	--6. 输入gpg路径
+
+When using secure HTTPS protocol all communication with Amazon S3
+servers is protected from 3rd party eavesdropping. This method is
+slower than plain HTTP, and can only be proxied with Python 2.7 or newer
+Use HTTPS protocol [Yes]: No	--7. 是否使用https
+
+On some networks all internet access must go through a HTTP proxy.
+Try setting it here if you can't connect to S3 directly
+HTTP Proxy server name:		--8. 是否有http proxy服务名称
+
+New settings:
+  Access Key: U5XEBIOGLYHXY4N544GB
+  Secret Key: nWPoq8gAtpsxhEeKcxOGBK1uFv9rqm4Si7vT9ey9
+  Default Region: US
+  S3 Endpoint: 192.168.13.31:9900
+  DNS-style bucket+hostname:port template for accessing a bucket: 192.168.13.31:9900/%(bucket)
+  Encryption password:
+  Path to GPG program: /usr/bin/gpg
+  Use HTTPS protocol: False
+  HTTP Proxy server name:
+  HTTP Proxy server port: 0
+
+Test access with supplied credentials? [Y/n] Y	--9. 是否进行测试
+Please wait, attempting to list all buckets...
+Success. Your access key and secret key worked fine :-)
+
+Now verifying that encryption works...
+Not configured. Never mind.
+
+Save settings? [y/N] y	--10. 是否保存，在上一步测试失败，则不会跳出这一步
+Configuration saved to '/root/.s3cfg'
+注：结果是创建了/root/.s3cfg文件，如果你很熟悉，可以直接改这个配置文件
+
+--创建bucket
+root@ansible:~/ansible# s3cmd mb s3://mybucket
+
 
 
 
