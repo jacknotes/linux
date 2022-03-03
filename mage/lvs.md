@@ -1434,6 +1434,33 @@ touch /var/lock/subsys/local
 route add -host 172.168.2.20 dev lo:0
 
 
+###lvs调优
+1.调整ipvs connection hash表的大小
+IPVS connection hash table size，取值范围:[12,20]。该表用于记录每个进来的连接及路由去向的信息。连接的Hash表要容纳几百万个并发连接，任何一个报文到达都需要查找连接Hash表。Hash表的查找复杂度为O(n/m)，其中n为Hash表中对象的个数，m为Hash表的桶个数。当对象在Hash表中均匀分布和Hash表的桶个数与对象个数一样多时，Hash表的查找复杂度可以接近O(1)。
+LVS的调优建议将hash table的值设置为不低于并发连接数。例如，并发连接数为200，Persistent时间为200S，那么hash桶的个数应设置为尽可能接近200x200=40000，2的15次方为32768就可以了。当ip_vs_conn_tab_bits=20 时，哈希表的的大小（条目）为 pow(2,20)，即 1048576，对于64位系统，IPVS占用大概16M内存，可以通过demsg看到：IPVS: Connection hash table configured (size=1048576, memory=16384Kbytes)。对于现在的服务器来说，这样的内存占用不是问题。所以直接设置为20即可。
+关于最大“连接数限制”：这里的hash桶的个数，并不是LVS最大连接数限制。LVS使用哈希链表解决“哈希冲突”，当连接数大于这个值时，必然会出现哈稀冲突，会（稍微）降低性能，但是并不对在功能上对LVS造成影响。
+[root@lvs01 ~]# dmesg | grep IPVS
+[   16.052228] IPVS: Connection hash table configured (size=4096, memory=64Kbytes)
+
+1.2调整 ip_vs_conn_tab_bits的方法：
+新的IPVS代码，允许调整 ip_vs_conn_bits 的值。而老的IPVS代码则需要通过重新编译来调整。在发行版里，IPVS通常是以模块的形式编译的。确认能否调整使用命令 modinfo -p ip_vs（查看 ip_vs 模块的参数），看有没有 conn_tab_bits 参数可用。
+[root@lvs01 ~]# modinfo -p ip_vs
+conn_tab_bits:Set connections' hash size (int)
+假如可以用，那么说时可以调整，调整方法是加载时通过设置 conn_tab_bits参数。在/etc/modprobe.d/目录下添加文件ip_vs.conf，内容为：
+options ip_vs conn_tab_bits=20
+ipvsadm -l	--查看，如果显示IP Virtual Server version 1.2.1 (size=4096)，则前面加的参数没有生效
+reboot	--重新启动服务器进行加载
+[root@lvs01 ~]# ipvsadm -ln
+IP Virtual Server version 1.2.1 (size=1048576)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  172.168.2.20:80 rr persistent 5
+  -> 172.168.2.15:80              Route   1      0          0
+  -> 172.168.2.17:80              Route   1      0          0
+
+1.3尽量避免sh算法
+一些业务为了支持会话保持，选择SH调度算法，以实现 同一源ip的请求调度到同一台RS上；但 SH算法本省没有实现一致性hash，一旦一台RS down，当前所有连接都会断掉；如果配置了inhibit_on_failure，那就更悲剧了，调度到该RS上的流量会一直损失；
+实际线上使用时，如需 会话保持，建议配置 persistence_timeout参数，保证一段时间同一源ip的请求到同一RS上
 
 
 </pre>

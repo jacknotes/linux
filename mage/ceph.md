@@ -3561,8 +3561,582 @@ Save settings? [y/N] y	--10. 是否保存，在上一步测试失败，则不会
 Configuration saved to '/root/.s3cfg'
 注：结果是创建了/root/.s3cfg文件，如果你很熟悉，可以直接改这个配置文件
 
---创建bucket
-root@ansible:~/ansible# s3cmd mb s3://mybucket
+--bucket相关操作
+root@ansible:~/ansible# s3cmd mb s3://mybucket	--创建bucket
+root@ansible:~/ansible# s3cmd ls	--列出bucket
+2022-03-02 08:08  s3://mybucket
+$ ceph osd pool ls
+device_health_metrics
+mypool
+myrbd1
+.rgw.root
+default.rgw.log
+default.rgw.control
+default.rgw.meta
+cephfs-metadata
+cephfs-data
+rbd-data1
+default.rgw.buckets.index
+root@ansible:~/ansible# s3cmd put /download/grafana-enterprise_8.3.4_amd64.deb s3://mybucket/deb/	--上传文件到叫"mybucket"的bucket中，并且创建deb目录，在deb目录下上传名称一样的文件
+s3cmd la	--在所有bucket中列出所有对象
+s3cmd ls s3://mybucket/deb/	--列出指定bucket中指定路径的对象文件
+s3cmd get s3://mybucket/deb/grafana-enterprise_8.3.4_amd64.deb /opt		--下载文件到指定目录
+s3cmd rm s3://mybucket/deb/grafana-enterprise_8.3.4_amd64.deb 	--删除文件
+$ ceph osd pool ls
+device_health_metrics
+mypool
+myrbd1
+.rgw.root
+default.rgw.log
+default.rgw.control
+default.rgw.meta
+cephfs-metadata
+cephfs-data
+rbd-data1
+default.rgw.buckets.index
+default.rgw.buckets.non-ec
+default.rgw.buckets.data		--此时数据存储池就出来了
+
+
+###九：ceph crush进阶
+ceph集群中由mon服务器维护的五种运行图：
+Monitor map #监视器运行图
+OSD map #OSD运行图
+PG map #PG运行图
+Crush map #（Controllers replication under scalable hashing）可控的、可复制的、可伸缩的一致性hash算法。crush运行图，当新建存储池时会基于OSD map创建出新的PG组合列表用于存储数据
+MDS map #cephfs metadata运行图
+
+obj --> pg hash(osd)%pg=pgid
+obj --> OSD crush根据当前的mon运行图返回pg内的最新的OSD组合，数据即可开始往主的写，然后往副本OSD同步
+cursh算法针对目的节点的选择：目前有5种算法来实现节点的选择，包括Uniform,List,Tree,Straw,Straw2,早期版本使用的是ceph项目的发起者发明的算法straw，目前已经发展到straw2版本
+
+#9.1 PG与OSD映射调整：
+默认情况下，cursh算法自行对创建的pool中的PG分配OSD,但是可以手动基于权重设置crush算法分配数据的倾向性：比如1T的磁盘权重是1，2T就是2，推荐使用相同大小的设置
+
+9.1.1 查看当前状态
+weight 表示设备的容量相对值，比如1TB对应1.00，那么500G的OSD的weight就应该是0.5，weight是基于磁盘空间分配PG的数量，让crush算法尽可能往磁盘空间大的OSD多分配PG，往磁盘空间小的OSD分配较少的PG
+rewrite 参数的目的是重新平衡ceph的CRUSH算法随机分配的PG，默认的分配是概率上的均衡，即使OSD都是一样的磁盘空间也会产生一些PG分布不均匀的情况，此时可以通过调整reweight参数，让ceph集群立即重新平衡当前磁盘的PG，以达到数据均衡分布的目的，REWEITGHT是PG已经分配完成，要在ceph集群重新平衡PG的分布。
+$ ceph osd df
+ID  CLASS  WEIGHT   REWEIGHT  SIZE     RAW USE  DATA     OMAP     META     AVAIL    %USE  VAR   PGS  STATUS
+ 0    ssd  0.00980   1.00000   10 GiB  300 MiB   13 MiB   10 KiB  288 MiB  9.7 GiB  2.93  1.22   35      up
+ 1    ssd  0.00980   1.00000   10 GiB  111 MiB   70 MiB   19 KiB   41 MiB  9.9 GiB  1.08  0.45   31      up
+ 2    ssd  0.00980   1.00000   10 GiB  131 MiB  100 MiB    6 KiB   31 MiB  9.9 GiB  1.28  0.53   29      up
+ 3    ssd  0.00980   1.00000   10 GiB  211 MiB  168 MiB    7 KiB   44 MiB  9.8 GiB  2.07  0.86   35      up
+ 4    ssd  0.00980   1.00000   10 GiB  528 MiB  127 MiB    9 KiB  401 MiB  9.5 GiB  5.16  2.14   34      up
+ 5    ssd  0.00980   1.00000   10 GiB   48 MiB   41 MiB   27 KiB  7.7 MiB  9.9 GiB  0.47  0.20   38      up
+ 6    ssd  0.00980   1.00000   10 GiB  192 MiB  133 MiB   11 KiB   59 MiB  9.8 GiB  1.87  0.78   30      up
+ 7    ssd  0.00980   1.00000   10 GiB  649 MiB  197 MiB   18 KiB  452 MiB  9.4 GiB  6.34  2.63   34      up
+ 8    ssd  0.00980   1.00000   10 GiB   75 MiB   41 MiB   14 KiB   34 MiB  9.9 GiB  0.73  0.30   36      up
+ 9    ssd  0.00980   1.00000   10 GiB   75 MiB   66 MiB   15 KiB  9.0 MiB  9.9 GiB  0.73  0.30   26      up
+10    ssd  0.00980   1.00000   10 GiB  371 MiB  136 MiB   23 KiB  234 MiB  9.6 GiB  3.62  1.50   39      up
+11    ssd  0.00980   1.00000   10 GiB   81 MiB   53 MiB   22 KiB   28 MiB  9.9 GiB  0.79  0.33   28      up
+12    ssd  0.00980   1.00000   10 GiB  530 MiB   82 MiB    8 KiB  448 MiB  9.5 GiB  5.18  2.15   35      up
+13    ssd  0.00980   1.00000   10 GiB  222 MiB   54 MiB   13 KiB  168 MiB  9.8 GiB  2.17  0.90   30      up
+14    ssd  0.00980   1.00000   10 GiB  176 MiB  152 MiB   13 KiB   24 MiB  9.8 GiB  1.72  0.71   32      up
+                       TOTAL  150 GiB  3.6 GiB  1.4 GiB  223 KiB  2.2 GiB  146 GiB  2.41
+MIN/MAX VAR: 0.20/2.63  STDDEV: 1.80
+
+9.1.2 修改WEIGHT并验证
+$ ceph osd crush reweight osd.14 0.005	--将osd.14的WEIGHT调整为0.005，ceph集群会立即动态调整权重而达到调整PG的数量，这个一定要在晚上用得少的时候调整
+reweighted item id 14 name 'osd.14' to 0.005 in crush map
+$ ceph osd df
+ID  CLASS  WEIGHT   REWEIGHT  SIZE     RAW USE  DATA     OMAP     META     AVAIL    %USE  VAR   PGS  STATUS
+ 0    ssd  0.00980   1.00000   10 GiB  304 MiB  9.8 MiB   10 KiB  294 MiB  9.7 GiB  2.97  1.31   36      up
+ 1    ssd  0.00980   1.00000   10 GiB   98 MiB   68 MiB   19 KiB   30 MiB  9.9 GiB  0.95  0.42   31      up
+ 2    ssd  0.00980   1.00000   10 GiB  133 MiB   97 MiB    6 KiB   36 MiB  9.9 GiB  1.30  0.57   32      up
+ 3    ssd  0.00980   1.00000   10 GiB  194 MiB  165 MiB    7 KiB   29 MiB  9.8 GiB  1.90  0.84   34      up
+ 4    ssd  0.00980   1.00000   10 GiB  532 MiB  124 MiB    9 KiB  408 MiB  9.5 GiB  5.20  2.29   31      up
+ 5    ssd  0.00980   1.00000   10 GiB   47 MiB   38 MiB   27 KiB  9.2 MiB   10 GiB  0.46  0.20   38      up
+ 6    ssd  0.00980   1.00000   10 GiB  195 MiB  130 MiB   11 KiB   65 MiB  9.8 GiB  1.91  0.84   28      up
+ 7    ssd  0.00980   1.00000   10 GiB  657 MiB  194 MiB   18 KiB  462 MiB  9.4 GiB  6.42  2.83   35      up
+ 8    ssd  0.00980   1.00000   10 GiB   74 MiB   38 MiB   14 KiB   35 MiB  9.9 GiB  0.72  0.32   34      up
+ 9    ssd  0.00980   1.00000   10 GiB   73 MiB   63 MiB   15 KiB   10 MiB  9.9 GiB  0.72  0.32   29      up
+10    ssd  0.00980   1.00000   10 GiB  162 MiB  134 MiB   22 KiB   28 MiB  9.8 GiB  1.58  0.70   41      up
+11    ssd  0.00980   1.00000   10 GiB   85 MiB   50 MiB   22 KiB   35 MiB  9.9 GiB  0.83  0.37   32      up
+12    ssd  0.00980   1.00000   10 GiB  529 MiB   80 MiB    8 KiB  450 MiB  9.5 GiB  5.17  2.28   40      up
+13    ssd  0.00980   1.00000   10 GiB  226 MiB   51 MiB   13 KiB  175 MiB  9.8 GiB  2.21  0.97   33      up
+14    ssd  0.00499   1.00000   10 GiB  171 MiB  149 MiB   18 KiB   22 MiB  9.8 GiB  1.67  0.74   18      up	--WEIGHT已经调整为0.005
+                       TOTAL  150 GiB  3.4 GiB  1.4 GiB  227 KiB  2.0 GiB  147 GiB  2.27
+MIN/MAX VAR: 0.20/2.83  STDDEV: 1.80
+
+9.1.3 修改REWEIGHT并验证
+$ ceph osd reweight 1 0.5
+reweighted osd.1 to 0.5 (8000)
+$ ceph osd df
+ID  CLASS  WEIGHT   REWEIGHT  SIZE     RAW USE  DATA     OMAP     META     AVAIL    %USE  VAR   PGS  STATUS
+ 0    ssd  0.00980   1.00000   10 GiB  313 MiB   18 MiB   10 KiB  295 MiB  9.7 GiB  3.06  1.33   39      up
+ 1    ssd  0.00980   0.50000   10 GiB   52 MiB   22 MiB   19 KiB   30 MiB  9.9 GiB  0.51  0.22   16      up
+ 2    ssd  0.00980   1.00000   10 GiB  134 MiB   97 MiB    6 KiB   37 MiB  9.9 GiB  1.31  0.57   36      up
+ 3    ssd  0.00980   1.00000   10 GiB  281 MiB  251 MiB    7 KiB   30 MiB  9.7 GiB  2.74  1.20   39      up
+ 4    ssd  0.00980   1.00000   10 GiB  521 MiB  108 MiB    9 KiB  412 MiB  9.5 GiB  5.09  2.22   34      up
+ 5    ssd  0.00980   1.00000   10 GiB   48 MiB   38 MiB   27 KiB  9.4 MiB  9.9 GiB  0.46  0.20   38      up
+ 6    ssd  0.00980   1.00000   10 GiB  200 MiB  130 MiB   11 KiB   70 MiB  9.8 GiB  1.95  0.85   28      up
+ 7    ssd  0.00980   1.00000   10 GiB  642 MiB  195 MiB   18 KiB  447 MiB  9.4 GiB  6.27  2.74   35      up
+ 8    ssd  0.00980   1.00000   10 GiB   74 MiB   38 MiB   14 KiB   35 MiB  9.9 GiB  0.72  0.31   33      up
+ 9    ssd  0.00980   1.00000   10 GiB   74 MiB   63 MiB   15 KiB   10 MiB  9.9 GiB  0.72  0.32   30      up
+10    ssd  0.00980   1.00000   10 GiB  162 MiB  134 MiB   22 KiB   28 MiB  9.8 GiB  1.59  0.69   42      up
+11    ssd  0.00980   1.00000   10 GiB  101 MiB   66 MiB   22 KiB   35 MiB  9.9 GiB  0.99  0.43   32      up
+12    ssd  0.00980   1.00000   10 GiB  518 MiB   64 MiB    8 KiB  454 MiB  9.5 GiB  5.06  2.21   40      up
+13    ssd  0.00980   1.00000   10 GiB  227 MiB   51 MiB   13 KiB  175 MiB  9.8 GiB  2.22  0.97   34      up
+14    ssd  0.00499   1.00000   10 GiB  171 MiB  149 MiB   18 KiB   22 MiB  9.8 GiB  1.67  0.73   16      up
+                       TOTAL  150 GiB  3.4 GiB  1.4 GiB  227 KiB  2.0 GiB  147 GiB  2.29
+MIN/MAX VAR: 0.20/2.74  STDDEV: 1.77
+
+#9.2 crush运行图管理
+通过工具将ceph的crush运行图导出并进行编辑，然后导入
+
+9.2.1 导出cursh运行图：
+注：导出的crush运行图为二进制格式，无法通过文本编辑器直接打开，需要使用crushtool工具转换为文本格式后才能通过vim等文本编辑工具打开和编辑：
+$ sudo mkdir -p /data/ceph
+$ sudo ceph osd getcrushmap -o /data/ceph/crushmap
+160
+$ file /data/ceph/crushmap
+/data/ceph/crushmap: data
+
+9.2.2 将运行转换为文本：
+$ sudo bash -c 'crushtool -d /data/ceph/crushmap > /data/ceph/crushmap.txt'
+$ file /data/ceph/crushmap.txt
+/data/ceph/crushmap.txt: ASCII text
+$ cat /data/ceph/crushmap.txt
+------------------------------
+# begin crush map
+tunable choose_local_tries 0
+tunable choose_local_fallback_tries 0
+tunable choose_total_tries 50
+tunable chooseleaf_descend_once 1
+tunable chooseleaf_vary_r 1
+tunable chooseleaf_stable 1
+tunable straw_calc_version 1
+tunable allowed_bucket_algs 54
+
+# devices
+device 0 osd.0 class ssd
+device 1 osd.1 class ssd
+device 2 osd.2 class ssd
+device 3 osd.3 class ssd
+device 4 osd.4 class ssd
+device 5 osd.5 class ssd
+device 6 osd.6 class ssd
+device 7 osd.7 class ssd
+device 8 osd.8 class ssd
+device 9 osd.9 class ssd
+device 10 osd.10 class ssd
+device 11 osd.11 class ssd
+device 12 osd.12 class ssd
+device 13 osd.13 class ssd
+device 14 osd.14 class ssd
+
+# types
+type 0 osd
+type 1 host
+type 2 chassis
+type 3 rack
+type 4 row
+type 5 pdu
+type 6 pod
+type 7 room
+type 8 datacenter
+type 9 zone
+type 10 region
+type 11 root
+
+# buckets
+host ceph01 {
+        id -3           # do not change unnecessarily
+        id -4 class ssd         # do not change unnecessarily
+        # weight 0.049
+        alg straw2
+        hash 0  # rjenkins1
+        item osd.0 weight 0.010
+        item osd.1 weight 0.010
+        item osd.2 weight 0.010
+        item osd.3 weight 0.010
+        item osd.4 weight 0.010
+}
+host ceph02 {
+        id -5           # do not change unnecessarily
+        id -6 class ssd         # do not change unnecessarily
+        # weight 0.049
+        alg straw2
+        hash 0  # rjenkins1
+        item osd.5 weight 0.010
+        item osd.6 weight 0.010
+        item osd.7 weight 0.010
+        item osd.8 weight 0.010
+        item osd.9 weight 0.010
+}
+host ceph03 {
+        id -7           # do not change unnecessarily
+        id -8 class ssd         # do not change unnecessarily
+        # weight 0.044
+        alg straw2
+        hash 0  # rjenkins1
+        item osd.10 weight 0.010
+        item osd.11 weight 0.010
+        item osd.12 weight 0.010
+        item osd.13 weight 0.010
+        item osd.14 weight 0.005
+}
+root default {
+        id -1           # do not change unnecessarily
+        id -2 class ssd         # do not change unnecessarily
+        # weight 0.142
+        alg straw2
+        hash 0  # rjenkins1
+        item ceph01 weight 0.049
+        item ceph02 weight 0.049
+        item ceph03 weight 0.044
+}
+
+# rules
+rule replicated_rule {
+        id 0
+        type replicated
+        min_size 1
+        max_size 10
+        step take default
+        step chooseleaf firstn 0 type host
+        step emit
+}
+rule erasure-code {
+        id 1
+        type erasure
+        min_size 3
+        max_size 4
+        step set_chooseleaf_tries 5
+        step set_choose_tries 100
+        step take default
+        step chooseleaf indep 0 type host
+        step emit
+}
+
+# end crush map
+------------------------------
+
+9.2.3 编辑文本：
+# vim /data/ceph/crushmap.txt
+------------------------------
+tunable choose_local_tries 0
+...
+
+#device #当前的设备列表
+device 0 osd.0 class hdd
+device 1 osd.1 class hdd
+
+#types #当前支持的bucket类型
+type 0 osd	#osd守护进程，对应到一个磁盘设备
+type 1 host	#一个主机
+type 2 chassis	#刀片服务器的机箱
+type 3 rack	#包含若干个服务器的机柜/机架
+type 4 row	#包含若干个机柜的一排机柜
+type 5 pdu	#机械的接入电源插座
+type 6 pod	#一个机房中的若干个小房间
+type 7 room	#包含若干机柜的房间，一个数据中心有好多这样的房间组成
+type 8 datacenter	#一个数据中心或IDC
+type 9 zone		#一个区域，比如AWS 
+type 10 region	#一个地区，比如AWS 宁夏中卫数据中心
+type 11 root	#bucket分层的最顶部，根
+
+# buckets
+host ceph01 {	#类型Host名称为ceph01
+        id -3           # do not change unnecessarily	#ceph生成的OSD ID，非必要不要改
+        id -4 class ssd         # do not change unnecessarily
+        # weight 0.049
+        alg straw2	#算法，管理OSD角色 
+        hash 0  # rjenkins1	#使用是哪个hash算法，0表示选择rjenkins1这种hash算法
+        item osd.0 weight 0.010		#osd0权重比例，crush会自动根据磁盘空间计算，不同的磁盘空间的权重不一样
+        item osd.1 weight 0.010
+        item osd.2 weight 0.010
+        item osd.3 weight 0.010
+        item osd.4 weight 0.010
+}
+root default {	#根的配置
+        id -1           # do not change unnecessarily
+        id -2 class ssd         # do not change unnecessarily
+        # weight 0.142
+        alg straw2
+        hash 0  # rjenkins1
+        item ceph01 weight 0.049
+        item ceph02 weight 0.049
+        item ceph03 weight 0.044
+}
+# rules
+rule replicated_rule {	#副本池的默认配置
+        id 0
+        type replicated
+        min_size 1
+        max_size 6	#默认最大副本为10，例如改成6
+        step take default	#基于default定义的主机分配OSD
+        step chooseleaf firstn 0 type host	#选择主机、故障域类型为主机
+        step emit	#弹出配置即返回给客户端
+}
+rule erasure-code {	#纠删码池的默认配置
+        id 1
+        type erasure
+        min_size 3
+        max_size 4
+        step set_chooseleaf_tries 5
+        step set_choose_tries 100
+        step take default
+        step chooseleaf indep 0 type host
+        step emit
+}
+------------------------------
+注：主机OSD等ID编号不要更改，副本池最大数值从10改成6也不会影响当前ceph集群复制，因为当前是3
+
+9.2.4 导入新的crush:
+$ sudo sh -c 'crushtool -c /data/ceph/crushmap.txt -o /data/ceph/crushmapnew.bin'
+$ file /data/ceph/crushmapnew.bin
+/data/ceph/crushmapnew.bin: data
+$ ceph osd setcrushmap -i /data/ceph/crushmapnew.bin
+
+9.2.5 验证crush运行图是否生效：
+ceph osd crush rule dump 
+
+9.3 crush数据分类管理：
+Ceph crush算法分配的PG的时候可以将PG分配到不同主机的OSD上，以实现以主机为单位的高可用，这也是默认机制，但是无法保证不同PG位于不同机械或者机房的主机，如果要实现基于机械或者是更高级的IDC等方式的数据高可用，而且也不能实现A项目的数据在SSD，B项目的数据在机械盘，如果要想实现此功能则需要导出crush运行图并手动编辑，之后再导入并覆盖原有的crush运行图。
+
+9.3.1 对HDD和SSD进行分类
+$ ceph osd tree		--查看哪些主机上有哪些osd
+ID  CLASS  WEIGHT   TYPE NAME        STATUS  REWEIGHT  PRI-AFF
+-1         0.14214  root default
+-3         0.04898      host ceph01
+ 0    ssd  0.00980          osd.0        up   1.00000  1.00000
+ 1    ssd  0.00980          osd.1        up   0.50000  1.00000
+ 2    ssd  0.00980          osd.2        up   1.00000  1.00000
+ 3    ssd  0.00980          osd.3        up   1.00000  1.00000
+ 4    ssd  0.00980          osd.4        up   1.00000  1.00000
+-5         0.04898      host ceph02
+ 5    ssd  0.00980          osd.5        up   1.00000  1.00000
+ 6    ssd  0.00980          osd.6        up   1.00000  1.00000
+ 7    ssd  0.00980          osd.7        up   1.00000  1.00000
+ 8    ssd  0.00980          osd.8        up   1.00000  1.00000
+ 9    ssd  0.00980          osd.9        up   1.00000  1.00000
+-7         0.04417      host ceph03
+10    ssd  0.00980          osd.10       up   1.00000  1.00000
+11    ssd  0.00980          osd.11       up   1.00000  1.00000
+12    ssd  0.00980          osd.12       up   1.00000  1.00000
+13    ssd  0.00980          osd.13       up   1.00000  1.00000
+14    ssd  0.00499          osd.14       up   1.00000  1.00000
+
+9.3.2 配置crush运行图
+$ sudo vim /data/ceph/crushmap-ssd.txt
+------------------------------
+# begin crush map
+tunable choose_local_tries 0
+tunable choose_local_fallback_tries 0
+tunable choose_total_tries 50
+tunable chooseleaf_descend_once 1
+tunable chooseleaf_vary_r 1
+tunable chooseleaf_stable 1
+tunable straw_calc_version 1
+tunable allowed_bucket_algs 54
+
+# devices
+device 0 osd.0 class ssd
+device 1 osd.1 class ssd
+device 2 osd.2 class ssd
+device 3 osd.3 class ssd
+device 4 osd.4 class ssd
+device 5 osd.5 class ssd
+device 6 osd.6 class ssd
+device 7 osd.7 class ssd
+device 8 osd.8 class ssd
+device 9 osd.9 class ssd
+device 10 osd.10 class ssd
+device 11 osd.11 class ssd
+device 12 osd.12 class ssd
+device 13 osd.13 class ssd
+device 14 osd.14 class ssd
+
+# types
+type 0 osd
+type 1 host
+type 2 chassis
+type 3 rack
+type 4 row
+type 5 pdu
+type 6 pod
+type 7 room
+type 8 datacenter
+type 9 zone
+type 10 region
+type 11 root
+
+# buckets
+host ceph01 {
+        id -3           # do not change unnecessarily
+        id -4 class ssd         # do not change unnecessarily
+        # weight 0.049
+        alg straw2
+        hash 0  # rjenkins1
+        item osd.0 weight 0.010
+        item osd.2 weight 0.010
+        item osd.3 weight 0.010
+        item osd.4 weight 0.010
+}
+host ceph02 {
+        id -5           # do not change unnecessarily
+        id -6 class ssd         # do not change unnecessarily
+        # weight 0.049
+        alg straw2
+        hash 0  # rjenkins1
+        item osd.5 weight 0.010
+        item osd.7 weight 0.010
+        item osd.8 weight 0.010
+        item osd.9 weight 0.010
+}
+host ceph03 {
+        id -7           # do not change unnecessarily
+        id -8 class ssd         # do not change unnecessarily
+        # weight 0.044
+        alg straw2
+        hash 0  # rjenkins1
+        item osd.10 weight 0.010
+        item osd.12 weight 0.010
+        item osd.13 weight 0.010
+        item osd.14 weight 0.005
+}
+root default {
+        id -1           # do not change unnecessarily
+        id -2 class ssd         # do not change unnecessarily
+        # weight 0.142
+        alg straw2
+        hash 0  # rjenkins1
+        item ceph01 weight 0.049
+        item ceph02 weight 0.049
+        item ceph03 weight 0.044
+}
+########从这里开始添加
+# magedu hosts
+host ssd-ceph01 {
+        id -102           # do not change unnecessarily
+        id -103 class ssd         # do not change unnecessarily
+        # weight 0.049
+        alg straw2
+        hash 0  # rjenkins1
+        item osd.1 weight 0.010
+}
+host ssd-ceph02 {
+        id -104           # do not change unnecessarily
+        id -105 class ssd         # do not change unnecessarily
+        # weight 0.049
+        alg straw2
+        hash 0  # rjenkins1
+        item osd.6 weight 0.010
+}
+host ssd-ceph03 {
+        id -106           # do not change unnecessarily
+        id -107 class ssd         # do not change unnecessarily
+        # weight 0.044
+        alg straw2
+        hash 0  # rjenkins1
+        item osd.11 weight 0.010
+}
+# magedu buckets
+root ssd {
+        id -100           # do not change unnecessarily
+        id -101 class ssd         # do not change unnecessarily
+        # weight 0.142
+        alg straw2
+        hash 0  # rjenkins1
+        item ssd-ceph01 weight 0.049
+        item ssd-ceph02 weight 0.049
+        item ssd-ceph03 weight 0.044
+}
+
+# magedu ssd rules
+rule magedu_ssd_rule {
+        id 100
+        type replicated
+        min_size 1
+        max_size 5
+        step take ssd
+        step chooseleaf firstn 0 type host
+        step emit
+}
+########到这里添加完成
+
+# rules
+rule replicated_rule {
+        id 0
+        type replicated
+        min_size 1
+        max_size 10
+        step take default
+        step chooseleaf firstn 0 type host
+        step emit
+}
+rule erasure-code {
+        id 1
+        type erasure
+        min_size 3
+        max_size 4
+        step set_chooseleaf_tries 5
+        step set_choose_tries 100
+        step take default
+        step chooseleaf indep 0 type host
+        step emit
+}
+
+# end crush map
+------------------------------
+
+9.3.3 编译成二进制运行图并导入到ceph集群
+$ sudo sh -c 'crushtool -c /data/ceph/crushmap-ssd.txt -o /data/ceph/crushmap-ssd.bin'
+$ ceph osd setcrushmap -i /data/ceph/crushmap-ssd.bin'
+$ ceph osd crush rule dump 	--验证crush运行图是否生效
+
+9.3.4 创建存储池指定rule
+$ ceph osd pool create magedu-ssdpool 32 32 magedu_ssd_rule
+$ ceph osd tree		--再次查看是否有ssd-ceph01、ssd-ceph02、ssd-ceph03相关信息
+$ ceph pg ls-by-pool magedu-ssdpool | awk '{print $1,$2,$15}'		--确定查看是否都分布在osd.1,osd.6,osd.11上
+
+
+####十：dashboard和监控
+Ceph-Dash: Ceph-Dash是用Python开发的一个Ceph的监控面板，用来监控Ceph的运行状态，同时提供REST API来访问状态数据。
+文档地址：http://cephdash.crapworks.de/
+优点：易部署、轻量级、灵活（可以自定义开发功能）
+缺点：功能相对简单
+###Ceph-Dash监控ceph集群
+10.1 在mgr上启用dashboard插件
+#ceph resolv
+192.168.13.31 ceph01.hs.com   ceph-mon01        ceph-mgr01      ceph-osd01
+192.168.13.32 ceph02.hs.com   ceph-mon02        ceph-mgr02      ceph-osd02
+192.168.13.33 ceph03.hs.com   ceph-mon03                        ceph-osd03
+192.168.13.34 ceph04.hs.com   ceph-deploy
+[root@ceph01 ~]# apt-cache madison ceph-mgr-dashboard
+[root@ceph01 ~]# apt install -y ceph-mgr-dashboard
+$ ceph mgr module -h		--查看关于模板的帮助命令
+$ ceph config set mgr mgr/dashboard/ssl false	--关闭ssl
+$ ceph config set mgr mgr/dashboard/ceph-mgr01/server_addr 192.168.13.31		--设置mgr节点的dashboard地址
+$ ceph config set mgr mgr/dashboard/ceph-mgr01/server_port 9009		--设置mgr节点的dashboard端口
+$ ceph mgr module enable dashboard		--开启dashboard
+[root@ceph01 ~]# systemctl restart ceph-mgr@ceph-mgr01.service
+$ ceph mgr services		--查看mgr服务
+
+10.2 创建dashboard帐号和密码
+#ceph dashboard set-login-credentials jack 123456		--这个是早期版本，例如13时用的，现在16版本用不了
+[root@ceph01 ~]# echo '12345678' > pass.txt
+[root@ceph01 ~]# ceph dashboard set-login-credentials jack -i pass.txt
+
+###prometheus监控ceph集群
+$ ceph mgr module enable prometheus		
+$ ceph mgr services
+{
+    "prometheus": "http://192.168.13.32:9283/"
+}
+[root@prometheus prometheus]# vim prometheus.yml
+  - job_name: 'ceph-cluster'
+    metrics_path: '/metrics'
+    static_configs:
+    - targets: ['192.168.13.32:9283']
+      labels:
+        cluster: "ceph"
+[root@prometheus prometheus]# curl -X POST http://localhost:9090/-/reload
+注：最后添加grafana中添加dashboard ID为2842即可。
+
+
 
 
 
