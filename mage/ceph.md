@@ -947,8 +947,6 @@ default.rgw.control
 default.rgw.meta
 
 
-
-
 #整个ceph集群重启后状态
 $ ceph -s
   cluster:
@@ -3262,53 +3260,48 @@ systemctl restart nfs-ganesha		--ganesha服务启动失败，需要再找原因
 mount -t nfs 192.168.13.31:/nfspath /mnt	
 
 
+#对象存储网关RGW
+运维工作：
+1. 启用RGW
+2. 做好RGW的高可用
+3. 创建bucket
+4. 创建用户并授权
+5. 做好监控
+在RGW服务节点上启用Civetweb服务并监听7480端口对外提供服务,RGw是无状态的，可以横向扩展
 
-#radosgw高可用
-radosgw本身无状态，安装多个副本，并且使用负载均衡器代理到后端即可。ceph01之前已经安装radosgw,现在添加一个节点ceph04安装radosgw:
-ceph04安装命令：
---使用root用户进行安装
-apt install -y radosgw
---切换为ceph用户进行部署
-ceph-deploy rgw create ceph-deploy
-
---查看ceph radosgw进程
-root@ansible:~/ansible# ansible ceph -m shell -a 'ps -ef | grep radosgw'
-192.168.13.34 | SUCCESS | rc=0 >>
-root      4380  4379 97 14:21 pts/1    00:00:07 /bin/sh -c ps -ef | grep radosgw
-root      4382  4380  0 14:21 pts/1    00:00:00 grep radosgw
-ceph     31659     1  0 Feb07 ?        04:50:42 /usr/bin/radosgw -f --cluster ceph --name client.rgw.ceph-deploy --setuser ceph --setgroup ceph
-
-192.168.13.31 | SUCCESS | rc=0 >>
-ceph       93816       1  1 Feb07 ?        05:53:09 /usr/bin/radosgw -f --cluster ceph --name client.rgw.ceph-mgr01 --setuser ceph --setgroup ceph
-root      292515  292513 82 14:21 pts/1    00:00:05 /bin/sh -c ps -ef | grep radosgw
-root      292517  292515 67 14:21 pts/1    00:00:00 grep radosgw
-
---查看ceph集群状态
+1 部署RadosRGW服务
+将ceph-mgr1,ceph-deploy服务器部署为高可用的radosRGW服务
+[root@ceph01 ~]# apt install -y radosgw
+[root@ceph04 ~]# apt install -y radosgw
+$ ceph-deploy rgw create ceph-mgr1
+$ ceph-deploy rgw create ceph-deploy
 $ ceph -s
   cluster:
     id:     4d5745dd-5f75-485d-af3f-eeaad0c51648
-    health: HEALTH_WARN
-            There are daemons running an older version of ceph
+    health: HEALTH_OK
 
   services:
-    mon: 3 daemons, quorum ceph01,ceph02,ceph03 (age 6h)
-    mgr: ceph-mgr01(active, since 4w), standbys: ceph-mgr02
+    mon: 3 daemons, quorum ceph01,ceph02,ceph03 (age 10h)
+    mgr: ceph-mgr01(active, since 10d), standbys: ceph-mgr02
     mds: 2/2 daemons up, 2 standby
-    osd: 15 osds: 15 up (since 2d), 15 in (since 7d)
-    rgw: 2 daemons active (2 hosts, 1 zones)	--目前radosgw有两进程，我们分别 安装在ceph01,ceph04上
+    osd: 15 osds: 15 up (since 10d), 15 in (since 13d)
+    rgw: 2 daemons active (2 hosts, 1 zones)		--创建radosGW后自动加入ceph集群，没有主备之分
 
   data:
     volumes: 1/1 healthy
     pools:   10 pools, 68 pgs
     objects: 491 objects, 453 MiB
-    usage:   3.5 GiB used, 146 GiB / 150 GiB avail
+    usage:   3.1 GiB used, 147 GiB / 150 GiB avail
     pgs:     68 active+clean
 
-$ ceph osd pool ls	--查看存储池
+  io:
+    client:   22 KiB/s rd, 0 B/s wr, 21 op/s rd, 10 op/s wr
+
+$ ceph osd pool ls
 device_health_metrics
 mypool
 myrbd1
-.rgw.root
+.rgw.root		--创建radosGW后，自动会创建rgw相关pool，不会用cephFS那样手动创建pool
 default.rgw.log
 default.rgw.control
 default.rgw.meta
@@ -3318,14 +3311,24 @@ rbd-data1
 注：后序有数据写入后，会生产存储池'default.rgw.buckets.data'和'default.rgw.buckets.index'
 ceph osd pool get default.rgw.buckets.data crush_rule	--查看是否是副本池规则
 ceph osd pool get default.rgw.buckets.data size		--查看副本数
---web访问radosgw
-http://192.168.13.34:7480/
-http://192.168.13.34:7480/
 
 --radosgw存储池功能
+.rgw.root： 包含realm(领域信息)，比如zone和zonegroup
+default.rgw.log: 存储日志信息，用于记录各种log信息
+default.rgw.control: 系统控制池，在有数据更新时，通知其它RGW更新缓存
+default.rgw.meta: 元数据存储池，通过不同的名称空间分别存储不同的rados对象，这些名称空间包括用户UID及其bucket映射信息的名称空间users.uid、用户的密钥名称空间users.keys、用户的email名称空间users.email、用户的subuser的名称空间users.swift,以及bucket的名称空间root等
+default.rgw.buckets.index: 当有数据写入时ceph集群自动创建的pool，存放bucket到object的索引信息
+default.rgw.buckets.data: 当有数据写入时ceph集群自动创建的pool，存放对象的数据
+default.rgw.buckets.non-ec: 当有数据写入时ceph集群自动创建的pool，数据额外的信息存储池
 
---获取radosgw中zone为'default'的信息,radosgw-admin是管理radosgw管理命令
-$ radosgw-admin zone get --rgw-zone="default"	
+--web访问radosgw
+http://192.168.13.31:7480/
+http://192.168.13.34:7480/
+
+
+#验证RGW zone信息
+$ radosgw-admin --help
+$ radosgw-admin zone get --rgw-zone="default"
 {
     "id": "46daa4c7-cddc-429f-8f05-a501a521e6b6",
     "name": "default",
@@ -3366,10 +3369,35 @@ $ radosgw-admin zone get --rgw-zone="default"
     "notif_pool": "default.rgw.log:notif"
 }
 
---更改ceph radosgw端口为9900，并重启radosgw服务使其生效
---ceph-deploy操作
-$ cat /etc/ceph/ceph.conf
--------
+#radosgw http高可用
+借用lvs或haproxy、nginx实现
+--自定义http端口，更改ceph radosgw端口为9900，并重启radosgw服务使其生效
+https://docs.ceph.com/en/latest/radosgw/frontends/
+更改radosGW配置文件：
+$ vim ceph.conf
+[global]
+fsid = 4d5745dd-5f75-485d-af3f-eeaad0c51648
+public_network = 192.168.13.0/24
+cluster_network = 10.10.13.0/24
+mon_initial_members = ceph01
+mon_host = 192.168.13.31
+auth_cluster_required = cephx
+auth_service_required = cephx
+auth_client_required = cephx
+
+mon clock drift allowed = 1
+mon clock drift warn backoff = 10
+
+[mds.ceph-mon03]
+#mds_standby_for_fscid = mycephfs
+mds_standby_for_name = ceph-mon02
+mds_standby_replay = true
+
+[mds.ceph-deploy]
+#mds_standby_for_fscid = mycephfs
+mds_standby_for_name = ceph-mgr01
+mds_standby_replay = true
+
 [client.rgw.ceph-mgr01]
 rgw_host = ceph-mgr01
 rgw_frontends = civetweb port=9900
@@ -3377,20 +3405,32 @@ rgw_frontends = civetweb port=9900
 [client.rgw.ceph-deploy]
 rgw_host = ceph-deploy
 rgw_frontends = civetweb port=9900
--------
+$ ceph-deploy --overwrite-conf config push ceph-mgr01
 $ ceph-deploy --overwrite-conf config push ceph-deploy
-$ ceph-deploy --overwrite-conf config push ceph-deploy
---节点上操作
 [root@ceph01 ~]# systemctl restart ceph-radosgw@rgw.ceph-mgr01.service
 [root@ceph04 ~]# systemctl restart ceph-radosgw@rgw.ceph-deploy.service
---web访问radosgw
-http://192.168.13.34:9900/
-http://192.168.13.34:9900/
+root@ansible:~# ansible 192.168.13.31,192.168.13.34 -m shell -a 'ss -tnlp | grep 9900'
+192.168.13.34 | SUCCESS | rc=0 >>
+LISTEN   0         128                 0.0.0.0:9900             0.0.0.0:*        users:(("radosgw",pid=31659,fd=54))                                          
 
---radosgw签名证书，有两种方式
-1. 推荐把泛域名证书放到nginx上
-2. rgw内置https功能，需要radosgw自签，这个不被信息。
+192.168.13.31 | SUCCESS | rc=0 >>
+LISTEN   0         128                 0.0.0.0:9900             0.0.0.0:*        users:(("radosgw",pid=93816,fd=58))             
+--并更改后端服务器端口为9900，并测试http反向代理，
+--如果提供https服务，需要提供证书,有两种方式
+1. 把泛域名证书放到nginx上(推荐)
+2. rgw内置https功能，需要radosgw自签，这个不被信任。
+haproxy需要将key和crt放到同一个文件: sudo cat civetweb.key civetweb.crt > civetweb.pem
+--ceph.conf配置
+[client.rgw.ceph-mgr01]
+rgw_host = ceph-mgr01
+rgw_frontends = civetweb port=9900+9443s ssl_certificate=/etc/ceph/certs/civetweb.pem
 
+[client.rgw.ceph-deploy]
+rgw_host = ceph-deploy
+rgw_frontends = civetweb port=9900+9443s ssl_certificate=/etc/ceph/certs/civetweb.pem
+[root@ceph01 ~]# systemctl restart ceph-radosgw@rgw.ceph-mgr01.service
+[root@ceph04 ~]# systemctl restart ceph-radosgw@rgw.ceph-deploy.service
+--然后就可以使用https://192.168.13.31:9443进行访问https了
 
 #日志及其它优化配置
 1. 创建日志目录
@@ -3406,7 +3446,6 @@ rgw_frontends = "civetweb port=9900+8443s ssl_certificate=/etc/ceph/certs/civetw
 #URL: https://docs.ceph.com/en/mimic/radosgw/config-ref/
 num_threads默认值等于 rgw_thread_pool_size=100
 [root@ceph01 ~]# systemctl restart ceph-radosgw@rgw.ceph-mgr01.service
-
 
 ##RGW Server配置
 1. 创建RGW帐户
@@ -3524,10 +3563,6 @@ Configuration saved to '/root/.s3cfg'
 
 --创建bucket
 root@ansible:~/ansible# s3cmd mb s3://mybucket
-
-
-
-
 
 
 
