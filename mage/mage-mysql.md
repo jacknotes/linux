@@ -3989,6 +3989,7 @@ socket=/usr/local/mysql/mysql.sock
 [root@localhost mysqldata]# cat /etc/my.cnf 
 [mysqld]
 #skip-grant-tables = 1
+#skip-slave-start = 1	#表示启动mysql服务后不启动slave线程
 datadir = /home/mysqldata
 basedir = /usr/local/mysql
 socket=/usr/local/mysql/mysql.sock
@@ -5117,7 +5118,7 @@ aliyun
 
 #整个mysql数据实例迁移：
 旧192.168.13.116：
-[root@devmysql ~]# mysqldump -uroot -p --all-databases --triggers --routines --events --set-gtid-purged=OFF --flush-logs --master-data=2  > alldatabases.sql
+[root@devmysql ~]# mysqldump -uroot -p --all-databases --triggers --routines --events --set-gtid-purged=OFF --flush-logs --master-data=2 --single-transaction > alldatabases.sql
 [root@devmysql ~]# scp alldatabases.sql root@192.168.13.202:/root/
 新192.168.13.202：
 [root@devmysql ~]# mysql -uroot -p < alldatabases.sql 
@@ -5233,6 +5234,43 @@ root@ubuntu18-node01:/etc/mysql# cat /var/log/mysql/error.log | grep -i password
 
 
 
+
+#202203091056--生产mysql主主集群其中一个节点进行迁移
+master01: 192.168.13.160
+master02: 192.168.13.163 
+new master02: 192.168.13.164
+需求：将192.168.13.163迁移至192.168.13.164，192.168.13.160跟192.168.13.164成为主主集群
+
+1. 192.168.13.164安装mysql，并复制192.168.13.163复制器配置文件到192.168.13.164，重启192.168.13.164服务
+2. 停止192.168.13.163 slave线程，并确保无任何客户端写入数据到192.168.13.163。
+3. 全库备份192.168.13.163并复制到192.168.13.164，记录192.168.13.163slave同步192.168.13.160master01执行到什么文件、什么位置，例如master_log_file='master-bin.000157',master_log_pos=111047299{其实可以直接从192.168.13.160进行全库备份，然后复制到192.168.13.164进行恢复，直接把192.168.13.160作为主}
+ mysqldump -uroot -p --all-databases --triggers --routines --events --set-gtid-purged=OFF --flush-logs --master-data=2 --single-transaction > alldatabases.sql
+4. 192.168.13.164恢复数据库，并配置192.168.13.160为master，此时主从复制集群配置完成
+set session sql_log_bin=0;
+source /root/alldatabases.sql;
+set session sql_log_bin=1;
+change master to master_host='192.168.13.160',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000157',MASTER_LOG_POS=111047299 for channel 'channel1';
+show slave status\G
+5. 需要实现主主集群，还需要在192.168.13.160上把192.168.13.164设置为主
+  5.1 将192.168.13.164的配置文件/etc/my.cnf关闭多级复制，log-slave-updates = 0，并重启服务。观察192.168.13.164 binlog文件确定是否未变化(本机未执行DML语句时)
+  5.2 在192.168.13.160上将192.168.13.164设置为主
+change master to master_host='192.168.13.164',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000005',MASTER_LOG_POS=194 for channel 'channel1';
+  5.3 然后配置文件/etc/my.cnf开启多级复制，log-slave-updates = 1，并重启服务
+------------------------------------------------------------------------------------ 
+注：其实可以省略log-slave-updates的配置，直接配置change master,只需要查看本地binlog文件执行哪个位置，可以从早期位置同步，但是上面步骤更稳妥。例如
+mysql> show master status\G
+*************************** 1. row ***************************
+             File: master-bin.000004
+         Position: 115946474			------可以使用早期Position进行master同步
+mysql> show master status\G
+*************************** 1. row ***************************
+             File: master-bin.000004
+         Position: 115947139
+change master to master_host='192.168.13.164',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000004',MASTER_LOG_POS=115946474 for channel 'channel1';
+------------------------------------------------------------------------------------
+6. 测试master01和new master02是否可以互写同步即可
+
+7. 安装keepalived高可用，注意keepalived的配置，优先级、单播注意IP地址一定要匹配对，否则会出现脑残情况。
 
 
 </pre>
