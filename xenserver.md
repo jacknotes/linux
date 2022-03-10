@@ -101,7 +101,7 @@ uuid ( RO)                  : c6efe80b-8b47-b24b-f70e-143b24cd4257
 --遗忘sr，可以再次挂载，数据不会丢失
 [root@HOMSOM-XEN08 ~]# xe sr-forget uuid=b233727a-ca4b-f244-8ee4-6573e6926138
 --或者删除sr，数据会丢失
-[root@HOMSOM-XEN08 ~]# xe sr-forget uuid=b233727a-ca4b-f244-8ee4-6573e6926138
+[root@HOMSOM-XEN08 ~]# xe sr-destroy uuid=b233727a-ca4b-f244-8ee4-6573e6926138
 
 
 #关于xenserver7存储在ext模式下硬盘空间不释放的见解
