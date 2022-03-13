@@ -1324,6 +1324,22 @@ root@k8s-master02:~# ETCDCTL_API=3 etcdctl snapshot restore /root/etcd-20220306.
 Error: data-dir "/tmp/etcd" exists
 然后停止etcd服务
 
+5.4.2 v3版本自动备份数据
+root@k8s-master02:~# mkdir /data/etcd-backup-dir/ -p
+root@k8s-master02:~# cat script.sh
+#!/bin/bash
+source /etc/profile
+DATE=`date +%Y-%m-%d_%H-%M-%S`
+ETCDCTL_API=3 /usr/bin/etcdctl snapshot save /data/etcd-backup-dir/etcd-snapshot-${DATE}.db
+---------------
+
+5.4.3 etcd 集群v3版本数据自动备份与恢复：
+root@ansible:/etc/kubeasz# ./ezctl backup k8s-01
+root@ansible:/etc/kubeasz#  kubectl delete pod net-test4
+pod "net-test4" deleted
+root@ansible:/etc/kubeasz# ./ezctl restore k8s-01
+
+
 
 ###5.5 模拟单etcd节点故障
 root@k8s-master02:~# for ip in ${NODE_IPS}; do ETCDCTL_API=3 /usr/local/bin/etcdctl --endpoints=https://${ip}:2379 --cacert=/etc/kubernetes/ssl/ca.pem --cert=/etc/kubernetes/ssl/etcd.pem --key=/etc/kubernetes/ssl/etcd-key.pem --write-out=table endpoint status ; done
@@ -1539,8 +1555,7 @@ root@k8s-master03:~# systemctl start kube-apiserver.service kube-controller-mana
 
 
 
-
-5.6 通过kubeasz来删除和添加etcd节点
+5.7 通过kubeasz来删除和添加etcd节点
 --删除etcd节点
 root@ansible:/etc/kubeasz# ./ezctl del-etcd k8s-01 172.168.2.21		--删除etcd节点
 PLAY RECAP *****************************************************************************************************************************************************************************
@@ -1554,10 +1569,16 @@ PLAY RECAP *********************************************************************
 172.168.2.23               : ok=8    changed=6    unreachable=0    failed=0
 
 
+5.8 KubernetesAPI简介
+1. 命令式API
+2. 声明式API
+官方说API Server接收最多5000个node
+资源对象：
+LimitRange: 1. 限制容器  2. 限制pod  3. 限制名称空间
 
-root@k8s-master01:~/k8s# \cp -r /tmp/etcd/member/ /var/lib/etcd/		--恢复还原的快照
-root@k8s-master01:~/k8s# ls /var/lib/etcd/
-member
+kubernetes现在版本支持ipvs和iptables，ipvs性能更好，当不支持ipvs的时候自动降级为iptables
+
+
 
 
 

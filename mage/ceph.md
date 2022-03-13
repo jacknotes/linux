@@ -31,15 +31,15 @@ ceph 是一个对象(object)式存储系统，它把每一个待管理的数据�
 librados 是 RADOS 存储集群的 API，支持 C/C++/JAVA/python/ruby/php/go等编程语言客户端。
 
 Ceph的管理节点：
-1.ceph 的常用管理接口是一组命令行工具程序，例如 rados、ceph、rbd 等命令，ceph 管理员可以从某个特定的 ceph-mon 节点执行管理操作
-2.推荐使用部署专用的管理节点对 ceph 进行配置管理、升级与后期维护，方便后期权限管理，管理节点的权限只对管理人员开放，可以避免一些不必要的误操作的发生。
+1.ceph的常用管理接口是一组命令行工具程序，例如 rados、ceph、rbd 等命令，ceph 管理员可以从某个特定的 ceph-mon节点执行管理操作
+2.推荐使用部署专用的管理节点对ceph进行配置管理、升级与后期维护，方便后期权限管理，管理节点的权限只对管理人员开放，可以避免一些不必要的误操作的发生。
 
-ceph 逻辑组织架构：
+ceph逻辑组织架构：
 Pool：存储池、分区，存储池的大小取决于底层的存储空间。
 PG(placement group)：一个 pool 内部可以有多个 PG 存在，pool 和 PG 都是抽象的逻辑概念，一个 pool 中有多少个 PG 可以通过公式计算。
 OSD(Object Storage Daemon,对象存储设备):每一块磁盘都是一个osd，一个主机由一个或多个 osd 组成.
 ceph 集群部署好之后,要先创建存储池才能向ceph 写入数据，文件在向 ceph 保存之前要先进行一致性 hash 计算，计算后会把文件保存在某个对应的PG上，此文件一定属于某个pool 的一个 PG，在通过 PG 保存在 OSD 上。
-数据对象在写到主 OSD 之后再同步对从 OSD 以实现数据的高可用。
+数据对象在写到主 OSD 之后再同步到从 OSD 以实现数据的高可用。
 
 #一致性hash和CRUSH算法：
 file_name --> 分块(默认每块4M) --> 一个或多个oid(object id) --> 一致性hash -->　哪个pool中的pg(得出pgid，例如2.11) --> CRUSH算法通过pgid算出到OSD的映射，PG -> OSD 映射：[CRUSH(pgid)->(osd1,osd2,osd3)]
@@ -79,6 +79,7 @@ mon节点3个，用于高可用，16c16g，200G硬盘
 mgr节点两个，16c16g，200G硬盘
 存储服务器osd：企业级SSD
 网卡：万兆网卡，或者PCIE万兆网卡
+
 2. 测试环境角色：
 节点系统：Ubuntu 18.04.5 LTS 
 ceph版本：16.2.5
@@ -99,6 +100,7 @@ hard:
 192.168.13.32: os 1块 + 数据盘10G 5块
 192.168.13.33: os 1块 + 数据盘10G 5块
 192.168.13.34: os 1块 
+
 3. 配置节点时间同步、网络和主机名解析
 时间同步
 [root@ubuntu ~]# sudo salt 'ceph*' cmd.run 'apt install ntpdate -y'
@@ -212,30 +214,36 @@ ceph03.hs.com:
     192.168.13.32 ceph02.hs.com   ceph-mon02    ceph-mgr02      ceph-osd02
     192.168.13.33 ceph03.hs.com   ceph-mon03                    ceph-osd03
     192.168.13.34 ceph04.hs.com   ceph-deploy
+注：重启后使期生效
+
 4. 仓库准备：
-各节点配置 ceph yum 仓库：
+各节点配置 ceph 库：
+root@ubuntu-18:~# apt install -y gnupg ca-certificates
 导入 key 文件: ~# wget -q -O- 'https://mirrors.tuna.tsinghua.edu.cn/ceph/keys/release.asc' | sudo apt-key add -
 [root@ubuntu /srv/salt/dev]# sudo salt 'ceph*' cmd.run "wget -q -O- 'https://mirrors.tuna.tsinghua.edu.cn/ceph/keys/release.asc' | sudo apt-key add -"
-[root@ubuntu /srv/salt/dev]# sudo salt 'ceph*' cmd.run 'sudo echo "deb https://mirrors.tuna.tsinghua.edu.cn/ceph/debian-pacific bionic main ">> /etc/apt/sources.list'
+[root@ubuntu /srv/salt/dev]# sudo salt 'ceph*' cmd.run 'sudo echo "deb https://mirrors.tuna.tsinghua.edu.cn/ceph/debian-pacific bionic main ">> /etc/apt/sources.list.d/ceph.list'
 [root@ubuntu /srv/salt/dev]# sudo salt 'ceph*' cmd.run 'sudo apt update'
+
 5. 创建 ceph 用户：
-推荐使用指定的普通用户部署和运行 ceph 集群，普通用户只要能以非交互方式执行sudo命令执行一些特权命令即可，新版的 ceph-deploy 可以指定包含 root 在内只要可以执行sudo 命令的用户，不过仍然推荐使用普通用户，比如ceph、cephuser、cephadmin 这样的用户去管理 ceph 集群。在包含 ceph-deploy 节点的存储节点、mon 节点和 mgr 节点等创建 ceph 用户。
+推荐使用指定的普通用户部署和运行 ceph 集群，普通用户只要能以执行sudo命令执行一些特权命令即可，新版的 ceph-deploy 可以指定包含 root 在内只要可以执行sudo 命令的用户，不过仍然推荐使用普通用户，比如ceph、cephuser、cephadmin 这样的用户去管理 ceph 集群。在包含 ceph-deploy 节点的存储节点、mon 节点和 mgr 节点等创建 ceph 用户。
 [root@ubuntu /srv/salt/dev]# sudo salt 'ceph*' cmd.run 'groupadd -r -g 2022 ceph && useradd -r -m -u 2022 -g 2022 ceph && echo ceph:123456 | chpasswd'
 --各服务器允许 ceph 用户以 sudo 执行特权命令：
 [root@ubuntu /srv/salt/dev]# sudo salt 'ceph*' cmd.run 'echo "ceph ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers && grep "ceph ALL" /etc/sudoers'
-6. 配置免秘钥登录（此步骤建议在第9步操作）：
-在 ceph-deploy 节点配置允许以非交互的方式登录到各 ceph node/mon/mgr 节点，即在ceph-deploy 节点(ceph04.hs.com)生成秘钥对，然后分发公钥到各被管理节点：
+--配置免秘钥登录：在 ceph-deploy 节点配置允许以非交互的方式登录到各 ceph node/mon/mgr 节点，即在ceph-deploy 节点(ceph04.hs.com)生成秘钥对，然后分发公钥到各被管理节点：
 ceph@ceph04:~$ su - ceph
 ceph@ceph04:~$ ssh-keygen
 ceph@ceph04:~$ ssh-copy-id ceph@192.168.13.31
 ceph@ceph04:~$ ssh-copy-id ceph@192.168.13.32
 ceph@ceph04:~$ ssh-copy-id ceph@192.168.13.33
-7. 在部署节点上安装 ceph 部署工具：
+ceph@ceph04:~$ ssh-copy-id ceph@192.168.13.34
+
+6. 在部署节点上安装 ceph 部署工具：
 [root@ceph04 ~]# apt list --all-versions ceph-deploy
 ceph-deploy/stable,stable 2.0.1 all
 ceph-deploy/bionic,bionic 1.5.38-0ubuntu1 all
 [root@ceph04 ~]# sudo apt -y install ceph-deploy=2.0.1
-8. 初始化生成配置文件：
+
+7. 初始化生成配置文件：
 --Ubuntu 各服务器需要单独安装 Python2：
 [root@ubuntu /srv/salt/dev]# sudo salt 'ceph*' cmd.run 'apt install python2.7 -y'
 [root@ubuntu /srv/salt/dev]# sudo salt 'ceph*' cmd.run 'ln -sv /usr/bin/python2.7 /usr/bin/python2'
@@ -249,8 +257,9 @@ ceph02.hs.com:
 ceph01.hs.com:
     lrwxrwxrwx 1 root root 18 Nov 27 22:09 /usr/bin/python2 -> /usr/bin/python2.7
 --初始化mon节点
+root@ubuntu-18:~# su - ceph
 ceph@ceph04:~$ mkdir ceph-cluster
-ceph@ceph04:~/ceph-cluster$ ceph-deploy new --cluster-network 10.10.13.0/24 --public-network 192.168.13.0/24 ceph01.hs.com
+ceph@ceph04:~/ceph-cluster$ ceph-deploy new --cluster-network 10.10.13.0/24 --public-network 192.168.13.0/24 ceph01.hs.com		#mon节点应该使用ceph-mon01此名称，方便辩认
 [ceph01.hs.com][DEBUG ] IP addresses found: [u'192.168.13.31', u'172.17.0.1', u'172.19.0.1', u'10.10.13.31']
 ceph@ceph04:~/ceph-cluster$ ls
 ceph.conf  ceph-deploy-ceph.log  ceph.mon.keyring
@@ -264,10 +273,19 @@ mon_host = 192.168.13.31
 auth_cluster_required = cephx
 auth_service_required = cephx
 auth_client_required = cephx
-9. 配置 mon 节点并生成和同步秘钥：
-在所有mon节点安装ceph-mon包，安装后会自己安装ceph用户会覆盖之前创建的用户ceph，gid和uid不会变，但用户家目录已经改变了，所以之前的免密登录失效，需要重新执行免密登录步骤
-apt install -y ceph-mon
-----初始化mon节点key，自己会读取ceph.conf配置文件进行初始化:
+
+8. 配置 mon 节点
+--在所有mon节点安装ceph-mon包，安装后会自己安装ceph用户会覆盖之前创建的用户ceph，gid和uid不会变，但用户家目录已经改变了，所以之前的免密登录失效，需要重新执行免密登录步骤
+root@ceph01:~# apt install -y ceph-mon
+--生成和同步秘钥：
+ceph@ceph04:~$ ssh-copy-id ceph@192.168.13.31
+ceph@ceph04:~$ ssh-copy-id ceph@192.168.13.32
+ceph@ceph04:~$ ssh-copy-id ceph@192.168.13.33
+ceph@ceph04:~$ ssh-copy-id ceph@192.168.13.34
+--或者
+$ mv /home/ceph/.ssh/* ~/.ssh/
+
+9. 初始化mon节点key，自己会读取ceph.conf配置文件进行初始化:
 root@ceph04:~$ su - ceph
 $ cd /home/ceph/ceph-cluster/
 $ ceph-deploy mon create-initial
@@ -278,10 +296,12 @@ ceph.bootstrap-mgr.keyring  ceph.bootstrap-rgw.keyring  ceph.conf               
 [root@ceph01 ~]# ps aux | grep ceph-mon
 ceph      5405  0.8  1.0 480412 40688 ?        Ssl  22:36   0:02 /usr/bin/ceph-mon -f --cluster ceph --id ceph01 --setuser ceph --setgroup ceph
 root      5831 19.0  0.0  15508  2004 pts/0    S+   22:42   0:00 grep --color=auto ceph-mon
+
 10. 分发admin秘钥：
 在 ceph-deploy 节点把配置文件和 admin 密钥拷贝至 Ceph 集群需要执行 ceph 管理命令的节点，从而不需要后期通过 ceph 命令对 ceph 集群进行管理配置的时候每次都需要指定ceph-mon 节点地址和 ceph.client.admin.keyring 文件,另外各 ceph-mon 节点也需要同步ceph 的集群配置文件与认证文件：
 --在所有节点上安装ceph-common
-apt install -y ceph-common #先安装 ceph 的公共组件,安装的节点就有了管理ceph集群的管理命令了
+root@ansible:~/ansible/ceph# sudo ansible ceph -m shell -a 'apt install -y ceph-common'  #先安装 ceph 的公共组件,安装的节点就有了管理ceph集群的管理命令了
+--在ceph-deploy节点要查看ceph集群状态
 root@ceph04:~/ceph-cluster$ su - ceph
 $ mv /home/ceph/ceph-cluster/ /var/lib/ceph/
 $ cd ~/ceph-cluster/
@@ -330,13 +350,9 @@ $ ceph -s
     usage:   0 B used, 0 B / 0 B avail
     pgs:
 11. 部署 ceph-mgr 节点：
---在所有(三个节点)mgr节点上安装包
+--在所有(2个节点)mgr节点上安装包
+root@ansible:~# ansible '~192.168.13.3[12]' -m apt -a 'name=ceph-mgr state=present'
 apt install ceph-mgr
---配置ceph-deploy免密登录 
-$ ssh-keygen
-$ ssh-copy-id ceph@ceph01.hs.com
-$ ssh-copy-id ceph@ceph02.hs.com
-$ ssh-copy-id ceph@ceph03.hs.com
 --添加mgr节点，在mgr节点上运行的是一个mgr服务，自己会设置开机自启动
 $ ceph-deploy mgr create ceph-mgr01
 [ceph-mgr01][INFO  ] Running command: sudo systemctl start ceph-mgr@ceph-mgr01
@@ -405,7 +421,7 @@ $ ceph -s
     usage:   0 B used, 0 B / 0 B avail
     pgs:
 14. 准备 OSD 节点：
-$ ceph-deploy install --release pacifi ceph-osd01  #擦除磁盘之前通过 deploy 节点对 node 节点执行安装 ceph 基本运行环境，之前通过ceph-deploy install --no-adjust-repos --nogpgcheck ceph-osd01进行安装过了,此步骤省略
+$ ceph-deploy install --release pacifi ceph-osd01  #此步骤省略，擦除磁盘之前通过 deploy 节点对 node 节点执行安装 ceph 基本运行环境，之前通过ceph-deploy install --no-adjust-repos --nogpgcheck ceph-osd01进行安装过了
 --列出node磁盘
 $ cd ceph-cluster/
 $ ceph-deploy disk list ceph-osd01 ceph-osd02 ceph-osd03
@@ -511,7 +527,7 @@ $ ceph -s
     objects: 0 objects, 0 B
     usage:   0 B used, 0 B / 0 B avail
     pgs:
---添加osd,data、block、block-wal都安装在--data中
+--添加osd, data、block、block-wal都安装在--data中
 ceph-deploy osd create ceph-osd01 --data /dev/xvdb
 ceph-deploy osd create ceph-osd01 --data /dev/xvdc
 ceph-deploy osd create ceph-osd01 --data /dev/xvde
@@ -543,7 +559,7 @@ $ ceph -s
     pools:   1 pools, 512 pgs
     objects: 0 objects, 0 B
     usage:   161 MiB used, 150 GiB / 150 GiB avail
-    pgs:     512 active+clean
+    pgs:     512 active+clean	
 --添加osd后再查看ceph状态，只要整个集群中osd大于等于3就不会再报警告了，其实在添加第三个osd时集群就不会报警告了
 注：至此，ceph集群就部署好了，以后就是添加服务器、节点和osd
 --设置 OSD 服务自启动:
@@ -555,6 +571,55 @@ Ceph 集群中的一个 OSD 是一个 node 节点的服务进程且对应于一�
 1. 停用设备：ceph osd out {osd-num}
 2. 停止进程：sudo systemctl stop ceph-osd@{osd-num}
 3. 移除设备：ceph osd purge {id} --yes-i-really-mean-it
+ceph@ceph04:~$ ceph osd tree
+ID CLASS WEIGHT  TYPE NAME          STATUS REWEIGHT PRI-AFF
+-1       0.02838 root default
+-3       0.00946     host ceph01
+ 0   ssd 0.00189         osd.0          up  1.00000 1.00000
+ 1   ssd 0.00189         osd.1          up  1.00000 1.00000
+ 2   ssd 0.00189         osd.2          up  1.00000 1.00000
+ 3   ssd 0.00189         osd.3          up  1.00000 1.00000
+ 4   ssd 0.00189         osd.4          up  1.00000 1.00000
+-7       0.00946     host ceph02
+ 5   ssd 0.00189         osd.5          up  1.00000 1.00000
+ 6   ssd 0.00189         osd.6          up  1.00000 1.00000
+ 7   ssd 0.00189         osd.7          up  1.00000 1.00000
+ 8   ssd 0.00189         osd.8          up  1.00000 1.00000
+ 9   ssd 0.00189         osd.9          up  1.00000 1.00000
+-9       0.00946     host ceph03
+10   ssd 0.00189         osd.10         up  1.00000 1.00000
+11   ssd 0.00189         osd.11         up  1.00000 1.00000
+12   ssd 0.00189         osd.12         up  1.00000 1.00000
+13   ssd 0.00189         osd.13         up  1.00000 1.00000
+14   ssd 0.00189         osd.14         up  1.00000 1.00000
+-5             0     host ubuntu-18
+ceph@ceph04:~$ ceph osd out osd.4
+root@ceph01:~# sudo systemctl stop ceph-osd@4.service
+ceph@ceph04:~$ ceph osd purge 4 --yes-i-really-mean-it
+purged osd.4
+ceph@ceph04:~$ ceph osd tree
+ID CLASS WEIGHT  TYPE NAME          STATUS REWEIGHT PRI-AFF
+-1       0.02649 root default
+-3       0.00757     host ceph01
+ 0   ssd 0.00189         osd.0          up  1.00000 1.00000
+ 1   ssd 0.00189         osd.1          up  1.00000 1.00000
+ 2   ssd 0.00189         osd.2          up  1.00000 1.00000
+ 3   ssd 0.00189         osd.3          up  1.00000 1.00000
+-7       0.00946     host ceph02
+ 5   ssd 0.00189         osd.5          up  1.00000 1.00000
+ 6   ssd 0.00189         osd.6          up  1.00000 1.00000
+ 7   ssd 0.00189         osd.7          up  1.00000 1.00000
+ 8   ssd 0.00189         osd.8          up  1.00000 1.00000
+ 9   ssd 0.00189         osd.9          up  1.00000 1.00000
+-9       0.00946     host ceph03
+10   ssd 0.00189         osd.10         up  1.00000 1.00000
+11   ssd 0.00189         osd.11         up  1.00000 1.00000
+12   ssd 0.00189         osd.12         up  1.00000 1.00000
+13   ssd 0.00189         osd.13         up  1.00000 1.00000
+14   ssd 0.00189         osd.14         up  1.00000 1.00000
+
+
+
 若类似如下的 OSD 的配置信息存在于 ceph.conf 配置文件中，管理员在删除 OSD 之后手动将其删除。不过，对于 Luminous 之前的版本来说，管理员需要依次手动执行如下步骤删除 OSD 设备：
 1. 于 CRUSH 运行图中移除设备：ceph osd crush remove {name}
 2. 移除 OSD 的认证 key：ceph auth del osd.{osd-num}
@@ -564,7 +629,7 @@ Ceph 集群中的一个 OSD 是一个 node 节点的服务进程且对应于一�
 存取数据时，客户端必须首先连接至 RADOS 集群上某存储池，然后根据对象名称由相关的CRUSH 规则完成数据对象寻址。于是，为了测试集群的数据存取功能，这里首先创建一个用于测试的存储池 mypool，并设定其 PG 数量为 32 个。
 $ ceph osd pool create mypool 32 32
 pool 'mypool' created
-$ ceph pg ls-by-pool mypool | awk '{print $1,$2,$15}'
+$ ceph pg ls-by-pool mypool | awk '{print $1,$2,$15}'			#此版本是16.2.6,  16.2.7是ceph pg ls-by-pool mypool | awk '{print $1,$2,$18,$19}'
 PG OBJECTS ACTING
 2.0 0 [8,10,3]p8
 2.1 0 [2,13,9]p2
@@ -626,7 +691,7 @@ mypool
 $ rados lspools
 device_health_metrics
 mypool
-----当前的 ceph 环境还没还没有部署使用块存储和文件系统使用 ceph，也没有使用对象存储的客户端，但是 ceph 的 rados 命令可以实现访问ceph 对象存储的功能：
+----当前的 ceph 环境还没还没有部署块存储和文件系统来使用ceph，也没有使用对象存储的客户端，但是 ceph 的 rados 命令可以实现访问ceph 对象存储的功能：
 $ ls -lh /usr/local/src/
 -rw-r--r-- 1 root root 37M Oct 27 11:58 consul_1.10.3_linux_amd64.zip 
 上传文件： 
@@ -4160,7 +4225,7 @@ $ ceph mgr services
 <pre>
 #常用命令
 ceph osd pool ls
-ceph osd pool rm mypool --yes-i-really-really-mean-it --yes-i-really-really-mean-it
+ceph osd pool rm mypool mypool --yes-i-really-really-mean-it 
 ceph pg ls-by-pool mypool | awk '{print $1,$2,$15}'
 ceph osd tree
 sudo rados put testfil1 /usr/local/src/consul_1.10.3_linux_amd64.zip --pool=mypool 
@@ -4212,6 +4277,12 @@ mon           advanced  auth_allow_insecure_global_id_reclaim  false
 global        advanced  osd_pool_default_pg_autoscale_mode     off
 
 
+
+ceph@ceph04:~$ ceph health detail
+ceph@ceph04:~$ ceph tell mon.* injectargs --mon-allow-pool-delete=true
+ceph@ceph04:~$ ceph osd pool rm mypool mypool --yes-i-really-really-mean-it
+ceph@ceph04:~$ ceph tell mon.* injectargs --mon-allow-pool-delete=false
+ceph@ceph04:~/ceph-cluster$ ceph quorum_status --format json-pretty
 
 
 	
