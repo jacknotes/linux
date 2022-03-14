@@ -2353,6 +2353,60 @@ curl -X POST http://localhost:9090/-/reload
 
 
 
+#联邦集群
+主prometheus:
+  - job_name: 'federate'
+    scrape_interval: 15s
+    honor_labels: true			#不重写源 Prometheus 服务暴露的标签
+    metrics_path: '/federate'
+    params:
+      'match[]':
+       - '{job=~"aliyun-node_exporter|aliyun-docker"}'
+    static_configs:
+    - targets: ['10.10.10.230:9090']
+      labels:
+        prometheus: "aliyun"
+
+子prometheus:
+[ops0799@jumpserver /usr/local/prometheus]$ cat prometheus.yml
+global:
+  scrape_interval:     15s 
+  evaluation_interval: 15s 
+scrape_configs:  
+  - job_name: 'aliyun-prometheus'  
+    static_configs:               
+    - targets: ['127.0.0.1:9090'] 
+      labels:
+        app: "aliyun-prometheus_server"
+
+  - job_name: 'aliyun-node_exporter'
+    static_configs:
+    - targets:
+      - '192.168.0.42:9100'
+      labels:
+        app: "aliyun-node_exporter"
+
+  - job_name: 'aliyun-docker'
+    static_configs:
+    - targets:
+      - '192.168.0.42:7070'
+      labels:
+        app: "aliyun-docker"
+
+
+#prometheus2.19.3升级到prometheus2.33.4
+tar xf prometheus-2.33.4.linux-amd64.tar.gz -C /usr/local/
+cd /usr/local/
+cp -r prometheus/prometheus.yml prometheus-2.33.4.linux-amd64/
+\cp -a prometheus/tsdb prometheus-2.33.4.linux-amd64/
+\cp -a prometheus/rules /usr/local/prometheus/
+chown -R prometheus.prometheus prometheus-2.33.4.linux-amd64/
+systemctl stop prometheus
+rm -rf /usr/local/prometheus
+ln -sv prometheus-2.33.4.linux-amd64/ prometheus
+systemctl start prometheus
+
+
 
 </pre>
 
