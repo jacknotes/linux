@@ -592,7 +592,6 @@ ID CLASS WEIGHT  TYPE NAME          STATUS REWEIGHT PRI-AFF
 12   ssd 0.00189         osd.12         up  1.00000 1.00000
 13   ssd 0.00189         osd.13         up  1.00000 1.00000
 14   ssd 0.00189         osd.14         up  1.00000 1.00000
--5             0     host ubuntu-18
 ceph@ceph04:~$ ceph osd out osd.4
 root@ceph01:~# sudo systemctl stop ceph-osd@4.service
 ceph@ceph04:~$ ceph osd purge 4 --yes-i-really-mean-it
@@ -817,6 +816,15 @@ rbd image 'myimg2':
         create_timestamp: Sat Dec  4 13:45:49 2021
         access_timestamp: Sat Dec  4 13:45:49 2021
         modify_timestamp: Sat Dec  4 13:45:49 2021
+$ ceph-cluster$ ceph osd pool ls detail
+pool 1 'device_health_metrics' replicated size 3 min_size 2 crush_rule 0 object_hash rjenkins pg_num 1 pgp_num 1 autoscale_mode on last_change 19 flags hashpspool stripe_width 0 pg_num_min 1 application mgr_devicehealth
+pool 2 'mypool' replicated size 3 min_size 2 crush_rule 0 object_hash rjenkins pg_num 4 pgp_num 4 autoscale_mode off last_change 194 lfor 0/194/192 flags hashpspool stripe_width 0
+pool 3 'myrbd1' replicated size 3 min_size 2 crush_rule 0 object_hash rjenkins pg_num 8 pgp_num 8 autoscale_mode off last_change 202 flags hashpspool,selfmanaged_snaps stripe_width 0 application rbd
+$ ceph-cluster$ rbd list --pool myrbd1 --long
+NAME    SIZE   PARENT  FMT  PROT  LOCK
+myimg1  5 GiB            2
+myimg2  3 GiB            2
+
 
 4.1.3:客户端使用块存储：
 4.1.3.1:当前 ceph 状态：
@@ -1100,7 +1108,7 @@ MDS version: ceph version 16.2.6 (ee28fb57e47e9f88813e24bbf4c14496ca299d31) paci
 
 4.3.5:挂载CephFS
 $ cat ceph.client.admin.keyring   --复制key
-mount -t ceph 192.168.13.31:6789/ /mnt -o name=admin,secret=4d5745dd-5f75-485d-af3f-eeaad0c516   --centos和ubuntu内核版本等于大于2.6.34则不用安装挂载模板
+mount -t ceph 192.168.13.31:6789:/ /mnt -o name=admin,secret=4d5745dd-5f75-485d-af3f-eeaad0c516   --centos和ubuntu内核版本等于大于2.6.34则不用安装挂载模板
 注：推荐装上ceph-common包，这样会比上面免安装的包新，传输速率会快些
 
 
@@ -2282,12 +2290,12 @@ $ scp ceph.conf ceph.client.jack.keyring root@172.168.2.14:/etc/ceph/		--将配�
 [root@centos7-node02 ~]# lsblk
 NAME            MAJ:MIN RM  SIZE RO TYPE MOUNTPOINT
 sda               8:0    0   20G  0 disk
-├─sda1            8:1    0    2G  0 part /boot
-└─sda2            8:2    0   18G  0 part
-  └─centos-root 253:0    0   18G  0 lvm  /
-sr0              11:0    1 1024M  0 rom
-rbd0            252:0    0    1G  0 disk
-[root@centos7-node02 ~]# cat /etc/ceph/ceph.conf	--通过mon服务器携带认证信息去访问ceph存储
+	├─sda1            8:1    0    2G  0 part /boot
+	└─sda2            8:2    0   18G  0 part
+	  └─centos-root 253:0    0   18G  0 lvm  /
+	sr0              11:0    1 1024M  0 rom
+	rbd0            252:0    0    1G  0 disk
+	[root@centos7-node02 ~]# cat /etc/ceph/ceph.conf	--通过mon服务器携带认证信息去访问ceph存储
 [global]
 fsid = 4d5745dd-5f75-485d-af3f-eeaad0c51648
 public_network = 192.168.13.0/24
@@ -2387,7 +2395,7 @@ $ rbd ls -p rbd-data1 -l
 NAME       SIZE   PARENT  FMT  PROT  LOCK
 data-img1  1 GiB            2
 data-img2  1 GiB            2
-$ rbd resize --pool rbd-data1 --image data-img1 --size 2G	--ceph上拉伸存储
+$ rbd resize --pool rbd-data1 --image data-img1 --size 2G	#ceph上拉伸存储
 Resizing image: 100% complete...done.
 $ rbd ls -p rbd-data1 -l
 NAME       SIZE   PARENT  FMT  PROT  LOCK
