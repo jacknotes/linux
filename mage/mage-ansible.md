@@ -1822,4 +1822,134 @@ LISTEN     0      128       [::]:3000                  [::]:*
 
 
 
+
+#####其它模块问题解疑：
+----本地操作功能-------local_action
+Ansible默认只会对控制机器执行操作，但如果在这个过程中需要在Ansible本机执行操作呢？
+可以使用delegate_to(任务委派)功能，不过除了任务委派之外，还可以使用local_action关键字
+例如：
+- name: add hostname resolv to /etc/hosts
+  local_action: shell 'echo "192.168.1.1 test.xyz.com" >> /etc/hosts'
+或者：
+- name: add hostname resolv to /etc/hosts
+  shell: 'echo "192.168.1.1 test.xyz.com" >> /etc/hosts'
+  connection: local
+注：这两个操作结果是一样的
+
+----轮循方式检测服务状态
+- name: 以轮询的方式等待服务同步完成
+  shell: "systemctl status etcd.service|grep Active"
+  register: etcd_status
+  until: '"running" in etcd_status.stdout'
+  retries: 8
+  delay: 8
+  tags: upgrade_etcd, restart_etcd
+- name: 轮询等待node达到Ready状态
+  shell: "{{ bin_dir }}/kubectl get node {{ inventory_hostname }}|awk 'NR>1{print $2}'"
+  register: node_status
+  until: node_status.stdout == "Ready" or node_status.stdout == "Ready,SchedulingDisabled"
+  retries: 8
+  delay: 8
+  tags: upgrade_k8s, restart_node
+  
+----roles下文件夹defaults和vars都是定义当前role的变量
+root@ansible:/etc/kubeasz# cat roles/etcd/defaults/main.yml
+# etcd 集群间通信的IP和端口, 根据etcd组成员自动生成
+TMP_NODES: "{% for h in groups['etcd'] %}etcd-{{ h }}=https://{{ h }}:2380,{% endfor %}"
+ETCD_NODES: "{{ TMP_NODES.rstrip(',') }}"
+# etcd 集群初始状态 new/existing
+CLUSTER_STATE: "new"
+root@ansible:/etc/kubeasz# cat roles/docker/vars/main.yml
+# cgroup driver
+CGROUP_DRIVER: "{%- if DOCKER_VER|float >= 20.10 -%} \
+                     systemd \
+                {%- else -%} \
+                     cgroupfs \
+                {%- endif -%}"
+
+----只执行一次获取docker版本并注册到变量docker_ver中
+# 18.09.x 版本二进制名字有变化，需要做判断
+- name: 获取docker版本信息
+  shell: "{{ base_dir }}/bin/dockerd --version|cut -d' ' -f3"
+  register: docker_ver
+  connection: local
+  run_once: true
+  tags: upgrade_docker, download_docker
+- name: debug info		#debug输入变量等于"docker_ver"的信息
+  debug: var="docker_ver"
+  connection: local
+  run_once: true
+  tags: upgrade_docker, download_docker
+  
+----set_fact------设置fact变量，可以跨playbook调用，但是这个值在运行期间有用，运行完成后变量将会销毁，获取变量也都是针对同一台主机
+- name: 转换docker版本信息为浮点数
+  set_fact:
+    DOCKER_VER: "{{ docker_ver.stdout.split('.')[0]|int + docker_ver.stdout.split('.')[1]|int/100 }}"
+  connection: local
+  run_once: true
+  tags: upgrade_docker, download_docker
+
+----block块，可以当when满足时，执行block中的多个task，否则不执行block中的多个task
+- block:
+    - name: 准备docker相关目录
+      file: name={{ item }} state=directory
+      with_items:
+      - "{{ bin_dir }}"
+      - "/etc/docker"
+      - "/etc/bash_completion.d"
+
+----通过inport_tasks导入task,使用include也行
+#----------- 创建配置文件: /root/.kube/config
+- import_tasks: create-kubectl-kubeconfig.yml
+  tags: create_kctl_cfg
+
+----注册变量，只运行一次，如果注册变量是notfound则会进行创建kubernetes-crb集群角色绑定
+- name: 获取user:kubernetes是否已经绑定对应角色
+  shell: "{{ bin_dir }}/kubectl get clusterrolebindings|grep kubernetes-crb || echo 'notfound'"
+  register: crb_info
+  run_once: true
+- name: 创建user:kubernetes角色绑定
+  command: "{{ bin_dir }}/kubectl create clusterrolebinding kubernetes-crb --clusterrole=cluster-admin --user=kubernetes"
+  run_once: true
+  when: "'notfound' in crb_info.stdout"
+
+----设置变量到fact
+- name: 注册变量 DNS_SVC_IP
+  shell: echo {{ SERVICE_CIDR }}|cut -d/ -f1|awk -F. '{print $1"."$2"."$3"."$4+2}'
+  register: DNS_SVC_IP
+- name: 设置变量 CLUSTER_DNS_SVC_IP
+  set_fact: CLUSTER_DNS_SVC_IP={{ DNS_SVC_IP.stdout }}
+
+
+----playbook再次确认node不在master组时再部署
+root@ansible:/etc/kubeasz# cat playbooks/05.kube-node.yml
+# to set up 'kube_node' nodes
+- hosts: kube_node
+  roles:
+  - { role: kube-lb, when: "inventory_hostname not in groups['kube_master']" }
+  - { role: kube-node, when: "inventory_hostname not in groups['kube_master']" }
+
+
+----calico ansible部分
+    - name: 尝试推送离线docker 镜像（若执行失败，可忽略）
+      copy: src={{ base_dir }}/down/{{ item }} dest=/opt/kube/images/{{ item }}
+      when: 'item in download_info.stdout'
+      with_items:
+      - "pause.tar"
+      - "{{ calico_offline }}"
+      ignore_errors: true
+# 等待网络插件部署成功，视下载镜像速度而定
+- name: 轮询等待calico-node 运行，视下载镜像速度而定
+  shell: "{{ bin_dir }}/kubectl get pod -n kube-system -o wide|grep 'calico-node'|grep ' {{ inventory_hostname }} '|awk '{print $3}'"
+  register: pod_status
+  until: pod_status.stdout == "Running"
+  retries: 15
+  delay: 15
+  ignore_errors: true
+
+
+
+
+
+
 </pre>

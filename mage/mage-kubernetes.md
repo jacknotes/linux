@@ -25,7 +25,7 @@ etcd: 8c 16G ssd/150g
 172.168.2.26	node03
 OS: ubuntu18
 DeployMethod: Binary Install
-注：etcd是镜集群，任一etcd节点进行备份，任一etcd节点进行恢复即可。
+注：etcd是镜像集群，任意etcd节点进行备份，任意etcd节点进行恢复即可。
 DeployUrl: https://github.com/easzlab/kubeasz
 
 #ubuntu20.04.3时区调整为24小时制
@@ -277,7 +277,7 @@ INSECURE_REG: '["127.0.0.1/8","192.168.13.235:8000","192.168.13.197:8000"]'
 MAX_PODS: 300
 # role:network [flannel,calico,cilium,kube-ovn,kube-router]，我们选择的是calico，所以配置calico就可以了
 # ----calico
-# [calico]设置 CALICO_IPV4POOL_IPIP=“off”,可以提高网络性能，条件限制详见 docs/setup/calico.md，开启可以跨子网，为了以后网络扩展可以打开
+# [calico]设置 CALICO_IPV4POOL_IPIP=“off”,可以提高网络性能，条件限制详见 docs/setup/calico.md，为Always开启跨子网，为了以后网络扩展可以打开
 CALICO_IPV4POOL_IPIP: "Always"
 # role:cluster-addon	所有插件不自动安装，后面手动安装
 # coredns 自动安装
@@ -614,7 +614,7 @@ spec:
   type: NodePort		#指定service类型为NodePort
   selector:
     k8s-app: kube-dns
-  clusterIP: 10.68.0.2		#此ip地址需要自己填写，一般为service IP(SERVICE_CIDR="10.68.0.0/16")的第二个地址，可从pod上/etc/resolv.conf文件查看
+  clusterIP: 10.68.0.2		#此ip地址需要自己填写，一般为service IP(SERVICE_CIDR="10.68.0.0/16")的第二个地址，ansible部署的可以从roles/kube-node中看出+2，可从pod上/etc/resolv.conf文件查看
   ports:
   - name: dns
     port: 53
@@ -745,7 +745,7 @@ NAME           STATUS                     ROLES    AGE   VERSION
 172.168.2.24   Ready                      node     38h   v1.21.0
 172.168.2.25   Ready                      node     38h   v1.21.0
 
-4.5.2 root@ansible:/etc/kubeasz# ./ezctl add-master k8s-01 172.168.2.23		--添加master节点前提是节点配置了名密认证
+4.5.2 root@ansible:/etc/kubeasz# ./ezctl add-master k8s-01 172.168.2.23		--添加master节点前提是节点配置了免密认证
 PLAY RECAP *****************************************************************************************************************************************************************************
 172.168.2.21               : ok=5    changed=3    unreachable=0    failed=0
 172.168.2.22               : ok=5    changed=3    unreachable=0    failed=0
@@ -773,7 +773,7 @@ events {
 
 stream {
     upstream backend {
-        server 172.168.2.23:6443    max_fails=2 fail_timeout=3s;
+        server 172.168.2.23:6443    max_fails=2 fail_timeout=3s;		#此行在执行add-master时，kubeasz会将新master节点增加到/etc/kubeasz/clusters/k8s-01/hosts中的master组里，从面新添加的master节点会增加此行，对行老的master需要手动添加此行
         server 172.168.2.21:6443    max_fails=2 fail_timeout=3s;
         server 172.168.2.22:6443    max_fails=2 fail_timeout=3s;
     }
@@ -792,6 +792,21 @@ NAME           STATUS                     ROLES    AGE   VERSION
 172.168.2.23   Ready,SchedulingDisabled   master   7m    v1.21.0
 172.168.2.24   Ready                      node     38h   v1.21.0
 172.168.2.25   Ready                      node     38h   v1.21.0
+
+root@ansible:~# ansible 172.168.2.21,172.168.2.22,172.168.2.23 -m shell -a 'md5sum /etc/kubernetes/ssl/kubernetes*'
+-------------------------------
+172.168.2.23 | SUCCESS | rc=0 >>			------172.168.2.23新添加的master，他跟老的master不是同一批，所以md5值不一样，但不妨碍他们集群信息交换，因为共同信任一个CA
+48123460ebea81b0e7c9f34505783327  /etc/kubernetes/ssl/kubernetes-key.pem
+2888ca75106741e12be28405d6c3c88b  /etc/kubernetes/ssl/kubernetes.pem
+
+172.168.2.22 | SUCCESS | rc=0 >>
+fb6aeefdfb637da3b890b54c966e150b  /etc/kubernetes/ssl/kubernetes-key.pem
+de7dfcd82015953231bde245660753c5  /etc/kubernetes/ssl/kubernetes.pem
+
+172.168.2.21 | SUCCESS | rc=0 >>
+fb6aeefdfb637da3b890b54c966e150b  /etc/kubernetes/ssl/kubernetes-key.pem
+de7dfcd82015953231bde245660753c5  /etc/kubernetes/ssl/kubernetes.pem
+-------------------------------
 
 4.5 k8s node添加
 root@ansible:/etc/kubeasz# ./ezctl add-node k8s-01 172.168.2.26
@@ -837,6 +852,11 @@ NAME           STATUS                     ROLES    AGE     VERSION
 2. 再升级node	
 	2.1 相比master节点容易升级，需要先停kubelet,kube-proxy服务，然后替换二进制进行升级，升级要快
 	2.2 node升级前需要将pod进行驱逐，否则会影响服务
+
+3. master组件选主解释
+apiserver作为集群入口，本身是无状态的web服务器，多个apiserver服务之间直接负载请求并不需要做选主。
+Controller-Manager和Scheduler作为任务类型的组件，比如controller-manager内置的k8s各种资源对象的控制器实时的watch  apiserver获取对象最新的变化事件做期望状态和实际状态调整，调度器watch未绑定节点的pod做节点选择，显然多个这些任务同时工作是完全没有必要的，所以controller-manager和scheduler也是需要选主的，但是选主逻辑和etcd不一样的，这里只需要保证从多个controller-manager和scheduler之间选出一个进入工作状态即可，而无需考虑它们之间的数据一致和同步。
+	
 	
 4.6.3 采用滚动升级方式进行升级
 4.6.3.1 下载需要更新的k8s版本二进制，我们是下载1.21.5
@@ -966,7 +986,7 @@ NAME           STATUS                     ROLES    AGE   VERSION
 172.168.2.25   Ready                      node     39h   v1.21.0
 172.168.2.26   Ready                      node     73m   v1.21.0
 
-4.6.3.4 升级第二个、第三个master(172.168.2.22,172.68.2.23)
+4.6.3.4 升级第二个、第三个master(172.168.2.22,172.68.2.23)，
 root@ansible:~/download/kubernetes/server/bin# vim /root/ansible/172.168.2.24/etc/kube-lb/conf/kube-lb.conf
 root@ansible:~/download/kubernetes/server/bin# cat /root/ansible/172.168.2.24/etc/kube-lb/conf/kube-lb.conf
 user root;
@@ -1255,10 +1275,10 @@ root@k8s-master01:~/k8s# ETCDCTL_API=3 etcdctl del /magedu/n56
 root@k8s-master01:~/k8s# ETCDCTL_API=3 etcdctl get /magedu/n56
 
 5.3 etcd数据watch机制
-基于不断监看数据，发⽣变化就主动触发通知客户端，Etcd v3 的watch机制⽀持watch某个固定的key，也支持watch一个范围。
+基于不断监看数据，发生变化就主动触发通知客户端，Etcd v3 的watch机制支持watch某个固定的key，也支持watch一个范围。
 相比Etcd v2, Etcd v3的一些主要变化：
-	接⼝通过grpc提供rpc接⼝，放弃了v2的http接⼝，优势是长连接效率提升明显，缺点是使用不如以前方便，尤其对不方便维护长连接的场景。
-	废弃了原来的目录结构，变成了纯粹的kv，用户可以通过前缀匹配模式模拟⽬录。
+	接口通过grpc提供rpc接口，放弃了v2的http接口，优势是长连接效率提升明显，缺点是使用不如以前方便，尤其对不方便维护长连接的场景。
+	废弃了原来的目录结构，变成了纯粹的kv，用户可以通过前缀匹配模式模拟目录。
 	内存中不再保存value，同样的内存可以支持存储更多的key。
 	watch机制更稳定，基本上可以通过watch机制实现数据的完全同步。
 	提供了批量操作以及事务机制，用户可以通过批量事务请求来实现Etcd v2的CAS机制（批量事务支持if条件判断）。
@@ -1280,7 +1300,6 @@ root@k8s-etcd2:~# ETCDCTL_API=2 etcdctl backup --data-dir /var/lib/etcd/ --backu
 2019-07-11 18:59:57.674432 I | wal: segmented wal file
 /opt/etcd_backup/member/wal/0000000000000001-0000000000017183.wal is created
 V2版本恢复数据：
-etcd --data-dir=/var/lib/etcd/default.etcd --force-new-cluster &
 root@k8s-etcd2:~# vim /etc/systemd/system/etcd.service
 [Unit]
 Description=Etcd Server
@@ -1303,7 +1322,7 @@ LimitNOFILE=65536
 WantedBy=multi-user.target
 ----------
 
-5.4.2 ----etcd 集群v3版本数据⼿动备份与恢复
+5.4.2 ----etcd 集群v3版本数据自动备份与恢复
 手动备份：
 root@k8s-master02:~# ETCDCTL_API=3 etcdctl snapshot save etcd-20220306.db
 {"level":"info","ts":1646568636.104002,"caller":"snapshot/v3_snapshot.go:119","msg":"created temporary db file","path":"etcd-20220306.db.part"}
@@ -1322,9 +1341,8 @@ root@k8s-master02:~# ETCDCTL_API=3 etcdctl snapshot restore /root/etcd-20220306.
 {"level":"info","ts":1646568802.8260946,"caller":"snapshot/v3_snapshot.go:309","msg":"restored snapshot","path":"/root/etcd-20220306.db","wal-dir":"/tmp/etcd/member/wal","data-dir":"/tmp/etcd","snap-dir":"/tmp/etcd/member/snap"}
 root@k8s-master02:~# ETCDCTL_API=3 etcdctl snapshot restore /root/etcd-20220306.db --data-dir=/tmp/etcd		#再次执行恢复会报错
 Error: data-dir "/tmp/etcd" exists
-然后停止etcd服务
 
-5.4.2 v3版本自动备份数据
+5.4.2 v3版本自动备份数据脚本
 root@k8s-master02:~# mkdir /data/etcd-backup-dir/ -p
 root@k8s-master02:~# cat script.sh
 #!/bin/bash
@@ -1491,7 +1509,7 @@ root@k8s-master01:~# systemctl stop etcd
 root@k8s-master01:~# rm -rf /var/lib/etcd/member/
 root@k8s-master02:~# systemctl stop etcd
 root@k8s-master02:~# rm -rf /var/lib/etcd/
-root@k8s-master03:~# kubectl get nodes
+root@k8s-master03:~# kubectl get nodes		--此时两个etcd已经故障，就是整个etcd集群故障不可使用
 Error from server: etcdserver: request timed out
 root@k8s-master03:~# systemctl stop etcd
 root@k8s-master03:~# rm -rf /var/lib/etcd/
