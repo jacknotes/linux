@@ -343,6 +343,10 @@ root@k8s-master01:~# kubectl get nodes	--能执行kubectl命令说明master部�
 NAME           STATUS                     ROLES    AGE   VERSION
 172.168.2.21   Ready,SchedulingDisabled   master   36m   v1.21.0
 172.168.2.22   Ready,SchedulingDisabled   master   36m   v1.21.0
+注：
+-----etcd、kube-apiserver、kubelet此3个服务都有自己的一套证书，并且信任同一个CA，其中etcd启动服务时使用自己的一套证书配置启动。其中kubelet启动服务时也使用自己的一套证书配置启动。kube-apiserver除了也使用自己的一套证书配置启动外，还在服务配置了访问etcd的证书、私钥，kubelet的证书、私钥，kube-apiserver配置访问etcd和kubelet的证书私钥是跟kube-apiserver一样的证书私钥文件。当kube-apiserver访问etcd或者kubelet时使用自己的私钥加密，并将自己的公钥发送给etcd或者kubelet，从而etcd或kubetlet可以使用kube-apiserver的公钥解密。反之亦然。
+----kube-controller-manager、kube-scheduler、kube-proxy他们的证书和私钥都配置在kubeconfig文件中
+
 
 4.2.7 安装node
 --可以在安装node时调整相关配置，例如kube-proxy ipvs模式，ipvs调度算法等
@@ -1593,7 +1597,6 @@ PLAY RECAP *********************************************************************
 官方说API Server接收最多5000个node
 资源对象：
 LimitRange: 1. 限制容器  2. 限制pod  3. 限制名称空间
-
 kubernetes现在版本支持ipvs和iptables，ipvs性能更好，当不支持ipvs的时候自动降级为iptables
 
 
