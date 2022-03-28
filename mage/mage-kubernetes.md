@@ -1662,6 +1662,3244 @@ users:
     client-key-data: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBNDZNMkRia0VQLzNEM0dMYkppVUg1Q3dTaXpKQUJEcnFsTzhlaUxXdDB5VlFzNHM4CktDUHNBVmMwOTU0dVNJVkp3aUJrMkt6MlBhOHpIS1dNQ1BobHQvN1o3N3B3K2RRRUl5RVdPendpZ0krNnptbXUKYmpYWFRSZVFxb2ZHc3UrOEFvVU1Ya2NsczhualhrZjIvY3l2dVZ2anJVQ0NKRXRuMW9PR2FaaFNNRmhGL3dMQgppaFVOTEZsb1lmbWNTSGZZSThkVEhZWklLaUk5SUNZY2JCWDFsUEowQTVuak11STd0eENKSWlIcmIzd29oRWw1CldkcmhkWDJFcTR0Rjc1ckJ0YjF6Q0RoczlITmswU0NqTmxpQjA2YjUrZmdVdTArNkpjVG1jejVobGZpMklreEUKZkova3EzaGtTaGJCandhK09wZGJ6NEV6bmFPUURLaFNkbDV2SHdJREFRQUJBb0lCQVFEZDBjNzhkRXYxNTF5UwpSeXB4OHlmTGFqN3ZzUm04aFlUTmVHMXlua2N5TjJ4NmFMVklFQ2tMN1dUSjNqUVBxd0tDem5vMndlUjVtMTNkCkRseDA2VWlGa1N2aGRQWmVIQUdrRWJ2T0lQMGw5ZWo4OXZKb3BzS1VkdUFickk4dEVudE1vVVc2SU81V1VlYmoKbXBET0pFVWdCTERKeE5DTWVZWkgvSVpnSTNRRGNrb1RCWXJHR2pzQ096UUNQS3dTRG5ZYlFTM2IzcUtBZnVMYwpUNjczdnZPUFZWV1ROc3l4cExId2xWcFpZUWFCS09DVXZxdk81V05Xdmp2Q3NFeW85TjJxZmlVaDJqUk1ETzEwCnp0WnEvRWJ4NGxSaDMvcGYzcEVHK0lmK21JN2VYOCtjV0ZRYUxCZk1xTjd1UG5OOWsrUll6Nk8zWnVMcm9zN08KWkNiVWh0cWhBb0dCQVArdXdDaUNyMndIMlNsbzFYK0Z1VEh2SDFHamtydDE5UkJiMzlqMHdyNnJrMUMvYU13Ngp5bHgwdmg3WXRKWmc4NXJHTzFxV0lraWdyc21yNndQL3d2UzBmcUwza09qdm9ZUnBEV1dpRCtVaStSZTZlbzZRClZ2WGFNNmNvRmNCUm9taHhWVkFTVXRiZDJRQ3pIS2Zrb0trRm0yUStONWhtdTV3eW15SisvTk1wQW9HQkFPUHIKakd2NUlWVnhCbTRzV0VGcnZTNXgwS1FVSzRBelNQVVU4ME54d055WWdYVEVsa3ppTTFNeElyMmJpTjAwb2xCegpwbE4rOTlJRW45WFlRTHYwZUlseUhRMnZtWWh2Y2VFclU3WHRiTkdEOGhnQzJKdUV2TTlXTzIwajB0ejN5eGx4CkpiV3p0dW9QSXg5cUR2NlBIay80aXI2c05RaGNGMkdNS09QbFJZRUhBb0dBRGRHT0JTSjdCS1d2OFBML2h2TGQKUFh1ay82Nk5nYUF3YkgvcXF6a2ZSVnJValdxcTZVN01IUThhTDJTYTdmMnpiTXdGN1RGc0RPelNSWWdMSFo0MwpGUzZrSVg2cjBFc1RPYXJMMUpCYnQ1Q2FVZFA4UjdRNVh2UTZFbkN5TEVDOVBGUFR2bzRlK0FucGJvWS9xRHROCkM1V0gvblQyWUVBOUo0WDhxSEtnaTNFQ2dZRUFvQ25ZcGMrT1V5SjM2RmdWTlBQbkg0b3ZtZjNxaTg1K1NHdU8KZnlpaTVPSHVwd1cyc1JTTUNMd1FzN2xtdGp2VWpFQ1k4emZZSXFmSlFsY1ROb0dYYXM3Y0I5QU1Ua295ZG84aAo1a2lRSGJOaEh1cHhHT2h3WGlzMDIzOC9JTFNvN3BvS2ErTjhlSUptcGg2N3Byc2dEQWFXU1dOdWFROStCcmlkCnkzaEVIV1VDZ1lCTnpRR2Q0ZTNEcmJuTmN0SXhBZVFydW9qTzhPYnl1UzRIOVNsd250eUxUTDU2eWRKMFk5NFoKMDlDZFZHZW5MYjFsWVZQcnVmakZMQ3ZWMFAxVSsrZE53R2FETWhkVFFOVWErUnFUNmpYUnR6dlRHTFlzMmM5bQpsZGU3WUt4WFdITDBkSkRCQ29kSWllMlk3N01QQVBzYmJmdnBXTnk5eW9GMnY4ZWZGb3dpMEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=bbb
     token: eyJhbGciOiJSUzI1NiIsImtpZCI6ImQ3UV9STlJ4TEpQRS1XWmNHblFmaHJOUmdUaW5jMVJvSERqeE9VajR1LWcifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlcm5ldGVzLWRhc2hib2FyZCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJhZG1pbi11c2VyLXRva2VuLW00ZHBoIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImFkbWluLXVzZXIiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiI3ZTY3OTZjMS04NDcxLTRkYWItODU3Mi1hODg2YmY4NWQyZGUiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZXJuZXRlcy1kYXNoYm9hcmQ6YWRtaW4tdXNlciJ9.vetemWR84jzBdD4akQPvk3gKFNuxMpF4e0THKY3vmQ77wLEOOyxI7KWolTU6qYQAh11t-cTa4H0gtlvvQwA_IBBuYrl6sSDpFrAQhrD9AaAW2mcMb2ocXs70T-okZwTgginIaB4Yhes7psqI1NG9aHDbKDkk1ECg62ou96QKNOKgtXc1lfcpPRJHbP0j8sg3JGvXIsg4F5TAUjPkEu4lNQr8bKrPvTheqqQF2JphoOQObZ9J1AbKpinBrZlSD7QxEVJwCa4Q-T-hLr93Y1epbesJ6blna7MfCyX9y-qqqJ6mtgWoLlNNUhsGIgJ1sWeTDZli5lwU1INATLGkmlYglA
 
+	
+	
+6.0 基于PV和PVC运行 zookeeper集群
+root@k8s-master01:~/k8s/dockerfile/zookeeper# docker pull elevy/slim_java:8
+root@k8s-master01:~/k8s/dockerfile/zookeeper# docker tag elevy/slim_java:8 192.168.13.197:8000/baseimages/slim_java:8
+root@k8s-master01:~/k8s/dockerfile/zookeeper# docker push 192.168.13.197:8000/baseimages/slim_java:8
+
+server.1=zk1-service:2888:3888
+server.2=zk2-service:2888:3888
+server.3=zk3-service:2888:3888
+注：2888端口谁为Leader谁监听，3888为每个zookeeper节点的集群端口
+1.优先对比事务 id，谁大谁为leader，集群刚开始是没有事务ID的，所以得看第二步
+2.对比server id，谁的server id谁就是leader
+
+----------zookeeper Dockerfile---------------
+root@k8s-master01:~/k8s/dockerfile/zookeeper# cat Dockerfile
+#FROM harbor-linux38.local.com/linux38/slim_java:8
+FROM 192.168.13.197:8000/baseimages/slim_java:8
+
+ENV ZK_VERSION 3.4.14
+ADD repositories /etc/apk/repositories
+# Download Zookeeper
+COPY zookeeper-3.4.14.tar.gz /tmp/zk.tgz
+COPY zookeeper-3.4.14.tar.gz.asc /tmp/zk.tgz.asc
+COPY KEYS /tmp/KEYS
+RUN apk add --no-cache --virtual .build-deps \
+      ca-certificates   \
+      gnupg             \
+      tar               \
+      wget &&           \
+    #
+    # Install dependencies
+    apk add --no-cache  \
+      bash &&           \
+    #
+    #
+    # Verify the signature
+    export GNUPGHOME="$(mktemp -d)" && \
+    gpg -q --batch --import /tmp/KEYS && \
+    gpg -q --batch --no-auto-key-retrieve --verify /tmp/zk.tgz.asc /tmp/zk.tgz && \
+    #
+    # Set up directories
+    #
+    mkdir -p /zookeeper/data /zookeeper/wal /zookeeper/log && \
+    #
+    # Install
+    tar -x -C /zookeeper --strip-components=1 --no-same-owner -f /tmp/zk.tgz && \
+    #
+    # Slim down
+    cd /zookeeper && \
+    cp dist-maven/zookeeper-${ZK_VERSION}.jar . && \
+    rm -rf \
+      *.txt \
+      *.xml \
+      bin/README.txt \
+      bin/*.cmd \
+      conf/* \
+      contrib \
+      dist-maven \
+      docs \
+      lib/*.txt \
+      lib/cobertura \
+      lib/jdiff \
+      recipes \
+      src \
+      zookeeper-*.asc \
+      zookeeper-*.md5 \
+      zookeeper-*.sha1 && \
+    #
+    # Clean up
+    apk del .build-deps && \
+    rm -rf /tmp/* "$GNUPGHOME"
+
+COPY conf /zookeeper/conf/
+COPY bin/zkReady.sh /zookeeper/bin/
+COPY entrypoint.sh /
+
+ENV PATH=/zookeeper/bin:${PATH} \
+    ZOO_LOG_DIR=/zookeeper/log \
+    ZOO_LOG4J_PROP="INFO, CONSOLE, ROLLINGFILE" \
+    JMXPORT=9010
+
+ENTRYPOINT [ "/entrypoint.sh" ]
+
+CMD [ "zkServer.sh", "start-foreground" ]
+
+EXPOSE 2181 2888 3888 9010
+--------zookeeper endpoint.sh----------
+root@k8s-master01:~/k8s/dockerfile/zookeeper# cat entrypoint.sh
+#!/bin/bash
+
+echo ${MYID:-1} > /zookeeper/data/myid
+
+if [ -n "$SERVERS" ]; then
+        IFS=\, read -a servers <<<"$SERVERS"
+        for i in "${!servers[@]}"; do
+                printf "\nserver.%i=%s:2888:3888" "$((1 + $i))" "${servers[$i]}" >> /zookeeper/conf/zoo.cfg
+        done
+fi
+
+cd /zookeeper
+exec "$@"
+----------zookeeper yaml-----------
+root@k8s-master01:~/k8s/yaml/zookeeper# cat zookeeper.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper
+  namespace: magedu
+spec:
+  ports:
+    - name: client
+      port: 2181
+  selector:
+    app: zookeeper
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper1
+  namespace: magedu
+spec:
+  type: NodePort
+  ports:
+    - name: client
+      port: 2181
+      nodePort: 42181
+    - name: followers
+      port: 2888
+    - name: election
+      port: 3888
+  selector:
+    app: zookeeper
+    server-id: "1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper2
+  namespace: magedu
+spec:
+  type: NodePort
+  ports:
+    - name: client
+      port: 2181
+      nodePort: 42182
+    - name: followers
+      port: 2888
+    - name: election
+      port: 3888
+  selector:
+    app: zookeeper
+    server-id: "2"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper3
+  namespace: magedu
+spec:
+  type: NodePort
+  ports:
+    - name: client
+      port: 2181
+      nodePort: 42183
+    - name: followers
+      port: 2888
+    - name: election
+      port: 3888
+  selector:
+    app: zookeeper
+    server-id: "3"
+---
+kind: Deployment
+#apiVersion: extensions/v1beta1
+apiVersion: apps/v1
+metadata:
+  name: zookeeper1
+  namespace: magedu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+        server-id: "1"
+    spec:
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: wal
+          emptyDir:
+            medium: Memory
+      containers:
+        - name: server
+          image: 192.168.13.197:8000/magedu/zookeeper:zk3414_202203231223
+          #imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MYID
+              value: "1"
+            - name: SERVERS
+              value: "zookeeper1,zookeeper2,zookeeper3"
+            - name: JVMFLAGS
+              value: "-Xmx2G"
+          ports:
+            - containerPort: 2181
+            - containerPort: 2888
+            - containerPort: 3888
+          volumeMounts:
+          - mountPath: "/zookeeper/data"
+            name: zookeeper-datadir-pvc-1
+      volumes:
+        - name: zookeeper-datadir-pvc-1
+          persistentVolumeClaim:
+            claimName: zookeeper-datadir-pvc-1
+---
+kind: Deployment
+#apiVersion: extensions/v1beta1
+apiVersion: apps/v1
+metadata:
+  name: zookeeper2
+  namespace: magedu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+        server-id: "2"
+    spec:
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: wal
+          emptyDir:
+            medium: Memory
+      containers:
+        - name: server
+          image: 192.168.13.197:8000/magedu/zookeeper:zk3414_202203231223
+          #imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MYID
+              value: "2"
+            - name: SERVERS
+              value: "zookeeper1,zookeeper2,zookeeper3"
+            - name: JVMFLAGS
+              value: "-Xmx2G"
+          ports:
+            - containerPort: 2181
+            - containerPort: 2888
+            - containerPort: 3888
+          volumeMounts:
+          - mountPath: "/zookeeper/data"
+            name: zookeeper-datadir-pvc-2
+      volumes:
+        - name: zookeeper-datadir-pvc-2
+          persistentVolumeClaim:
+            claimName: zookeeper-datadir-pvc-2
+---
+kind: Deployment
+#apiVersion: extensions/v1beta1
+apiVersion: apps/v1
+metadata:
+  name: zookeeper3
+  namespace: magedu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+        server-id: "3"
+    spec:
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: wal
+          emptyDir:
+            medium: Memory
+      containers:
+        - name: server
+          image: 192.168.13.197:8000/magedu/zookeeper:zk3414_202203231223
+          #imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MYID
+              value: "3"
+            - name: SERVERS
+              value: "zookeeper1,zookeeper2,zookeeper3"
+            - name: JVMFLAGS
+              value: "-Xmx2G"
+          ports:
+            - containerPort: 2181
+            - containerPort: 2888
+            - containerPort: 3888
+          volumeMounts:
+          - mountPath: "/zookeeper/data"
+            name: zookeeper-datadir-pvc-3
+      volumes:
+        - name: zookeeper-datadir-pvc-3
+          persistentVolumeClaim:
+           claimName: zookeeper-datadir-pvc-3
+-----------------------------------
+windows zookeeper客户端：https://github.com/vran-dev/PrettyZoo/releases/download/v1.9.5/prettyZoo-win.msi
+安装好zookeeper客户端后，可以连接zookeeper NodePort端口进行连接进行测试
+
+
+6.1 构建基础镜像，业务镜像等，并推送到镜像仓库，实现nginx+tomcat动静分离
+NodePort --> nginx Service --> nginx --> 代理至后端tomcat，静态资源代理至本地NFS挂载目录
+
+
+6.2 结合ceph实现web数据持久化
+k8s在使用ceph作为动态存储卷的时候，需要kube-controller-manager组件能够访问ceph，因此需要在包括k8s master及node节点在内的每一个node同步认证文件。
+ceph认证两种方式：
+一：通过ceph认证文件放到宿主机目录，keyring
+二：通过K8S secret实现认证
+6.2.1 创建初始化rbd
+ceph@ansible:~$ ceph osd pool create shijie-rbd-pool1 16 16
+pool 'shijie-rbd-pool1' created
+
+ceph@ansible:~$ ceph osd pool application enable shijie-rbd-pool1 rbd
+enabled application 'rbd' on pool 'shijie-rbd-pool1'
+
+ceph@ansible:~$ rbd pool init -p shijie-rbd-pool1
+6.2.2 创建image
+ceph@ansible:~$ rbd create shijie-img-img1 --size 3G --pool shijie-rbd-pool1 --image-format 2 --image-feature layering
+ceph@ansible:~$ rbd ls --pool shijie-rbd-pool1		#列出image
+shijie-img-img1
+ceph@ansible:~$ rbd --image shijie-img-img1 --pool shijie-rbd-pool1 info	#只要看特性，不要开太多，挂太多内核太低挂载不上
+rbd image 'shijie-img-img1':
+        size 3 GiB in 768 objects
+        order 22 (4 MiB objects)
+        snapshot_count: 0
+        id: d3ff221f6940
+        block_name_prefix: rbd_data.d3ff221f6940
+        format: 2
+        features: layering
+        op_features:
+        flags:
+        create_timestamp: Wed Mar 23 20:29:22 2022
+        access_timestamp: Wed Mar 23 20:29:22 2022
+        modify_timestamp: Wed Mar 23 20:29:22 2022
+
+6.2.3 客户端安装ceph-common:
+--分别在k8s master和node节点安装ceph-common组件包
+root@ansible:~# ansible '~172.168.2.2[123456]' -m shell -a ' apt install -y gnupg ca-certificates'
+root@ansible:~# ansible '~172.168.2.2[123456]' -m shell -a "wget -q -O- 'https://mirrors.tuna.tsinghua.edu.cn/ceph/keys/release.asc' | sudo apt-key add -"
+root@ansible:~# ansible '~172.168.2.2[123456]' -m shell -a 'sudo echo "deb https://mirrors.tuna.tsinghua.edu.cn/ceph/debian-pacific bionic main ">> /etc/apt/sources.list.d/ceph.list'
+root@ansible:~# ansible '~172.168.2.2[123456]' -m shell -a 'sudo apt update'
+--各节点安装和当前ceph集群相同版本的ceph-common
+root@k8s-master01:~/k8s/dockerfile/web/magedu/tomcat-app1# apt-cache madison ceph-common
+ceph-common | 16.2.7-1bionic | https://mirrors.tuna.tsinghua.edu.cn/ceph/debian-pacific bionic/main amd64 Packages
+ceph-common | 12.2.13-0ubuntu0.18.04.10 | http://mirrors.aliyun.com/ubuntu bionic-security/main amd64 Packages
+ceph-common | 12.2.13-0ubuntu0.18.04.10 | http://mirrors.aliyun.com/ubuntu bionic-updates/main amd64 Packages
+ceph-common | 12.2.4-0ubuntu1 | http://mirrors.aliyun.com/ubuntu bionic/main amd64 Packages
+      ceph | 12.2.4-0ubuntu1 | http://mirrors.aliyun.com/ubuntu bionic/main Sources
+      ceph | 12.2.13-0ubuntu0.18.04.10 | http://mirrors.aliyun.com/ubuntu bionic-security/main Sources
+      ceph | 12.2.13-0ubuntu0.18.04.10 | http://mirrors.aliyun.com/ubuntu bionic-updates/main Sources
+root@ansible:~# ansible '~172.168.2.2[123456]' -m shell -a 'apt install -y ceph-common=16.2.7-1bionic'
+root@ansible:~# ansible '~172.168.2.2[123456]' -m shell -a 'dpkg -l | grep ceph-common'
+172.168.2.24 | SUCCESS | rc=0 >>
+ii  ceph-common                            16.2.7-1bionic                                  amd64        common utilities to mount and interact with a ceph storage cluster
+ii  python3-ceph-common                    16.2.7-1bionic                                  all          Python 3 utility libraries for Ceph
+
+172.168.2.26 | SUCCESS | rc=0 >>
+ii  ceph-common                            16.2.7-1bionic                                  amd64        common utilities to mount and interact with a ceph storage cluster
+ii  python3-ceph-common                    16.2.7-1bionic                                  all          Python 3 utility libraries for Ceph
+
+172.168.2.23 | SUCCESS | rc=0 >>
+ii  ceph-common                            16.2.7-1bionic                                  amd64        common utilities to mount and interact with a ceph storage cluster
+ii  python3-ceph-common                    16.2.7-1bionic                                  all          Python 3 utility libraries for Ceph
+
+172.168.2.21 | SUCCESS | rc=0 >>
+ii  ceph-common                            16.2.7-1bionic                                  amd64        common utilities to mount and interact with a ceph storage cluster
+ii  python3-ceph-common                    16.2.7-1bionic                                  all          Python 3 utility libraries for Ceph
+
+172.168.2.25 | SUCCESS | rc=0 >>
+ii  ceph-common                            16.2.7-1bionic                                  amd64        common utilities to mount and interact with a ceph storage cluster
+ii  python3-ceph-common                    16.2.7-1bionic                                  all          Python 3 utility libraries for Ceph
+
+172.168.2.22 | SUCCESS | rc=0 >>
+ii  ceph-common                            16.2.7-1bionic                                  amd64        common utilities to mount and interact with a ceph storage cluster
+ii  python3-ceph-common                    16.2.7-1bionic                                  all          Python 3 utility libraries for Ceph
+--centos7 node04安装ceph-common
+[root@k8s-node04 yum.repos.d]# wget https://mirrors.aliyun.com/ceph/rpm-octopus/el7/noarch/ceph-release-1-1.el7.noarch.rpm -P /root/
+[root@k8s-node04 ~]# rpm -qlp ceph-release-1-1.el7.noarch.rpm
+/etc/yum.repos.d/ceph.repo
+[root@k8s-node04 ~]# rpm -ivh ceph-release-1-1.el7.noarch.rpm
+[root@k8s-node04 ~]# sed -i 's#download.ceph.com#mirrors.tuna.tsinghua.edu.cn/ceph#g' /etc/yum.repos.d/ceph.repo
+[root@k8s-node04 ~]# cat /etc/yum.repos.d/ceph.repo
+[Ceph]
+name=Ceph packages for $basearch
+baseurl=http://mirrors.tuna.tsinghua.edu.cn/ceph/rpm-octopus/el7/$basearch
+enabled=1
+gpgcheck=1
+type=rpm-md
+gpgkey=https://mirrors.tuna.tsinghua.edu.cn/ceph/keys/release.asc
+
+[Ceph-noarch]
+name=Ceph noarch packages
+baseurl=http://mirrors.tuna.tsinghua.edu.cn/ceph/rpm-octopus/el7/noarch
+enabled=1
+gpgcheck=1
+type=rpm-md
+gpgkey=https://mirrors.tuna.tsinghua.edu.cn/ceph/keys/release.asc
+
+[ceph-source]
+name=Ceph source packages
+baseurl=http://mirrors.tuna.tsinghua.edu.cn/ceph/rpm-octopus/el7/SRPMS
+enabled=1
+gpgcheck=1
+type=rpm-md
+gpgkey=https://mirrors.tuna.tsinghua.edu.cn/ceph/keys/release.asc
+---
+[root@k8s-node04 ~]# yum install epel-release -y
+[root@k8s-node04 ~]# yum install ceph-common -y
+
+6.2.4 创建ceph用户与授权
+ceph@ansible:~/ceph-cluster$ ceph auth get-or-create client.magedu-shijie mon 'allow r' osd 'allow * pool=shijie-rbd-pool1'
+[client.magedu-shijie]
+        key = AQDmHTtiJOaEEhAAvsD/ifbfUf2GFFf9F+XVHg==
+ceph@ansible:~/ceph-cluster$ ceph auth get client.magedu-shijie
+[client.magedu-shijie]
+        key = AQDmHTtiJOaEEhAAvsD/ifbfUf2GFFf9F+XVHg==
+        caps mon = "allow r"
+        caps osd = "allow * pool=shijie-rbd-pool1"
+exported keyring for client.magedu-shijie
+ceph@ansible:~/ceph-cluster$ ceph auth get client.magedu-shijie -o ceph.client.magedu-shijie.keyring	#认证信息导致出文件
+exported keyring for client.magedu-shijie
+ceph@ansible:~/ceph-cluster$ cat ceph.client.magedu-shijie.keyring
+[client.magedu-shijie]
+        key = AQDmHTtiJOaEEhAAvsD/ifbfUf2GFFf9F+XVHg==
+        caps mon = "allow r"
+        caps osd = "allow * pool=shijie-rbd-pool1"
+
+6.2.5 如果通过ceph认证文件进行认证，需要将相关文件复制到节点/etc/ceph/目录下
+root@ansible:~# cd /var/lib/ceph/ceph-cluster/
+root@ansible:/var/lib/ceph/ceph-cluster# ansible k8s -m copy -a 'src=ceph.conf dest=/etc/ceph/'
+root@ansible:/var/lib/ceph/ceph-cluster# ansible k8s -m copy -a 'src=ceph.client.magedu-shijie.keyring dest=/etc/ceph/'
+--节点测试ceph
+root@k8s-master01:~# rbd --id magedu-shijie ls --pool=shijie-rbd-pool1
+shijie-img-img1
+[root@k8s-node04 ~]# rbd --id magedu-shijie ls --pool=shijie-rbd-pool1
+shijie-img-img1
+
+6.2.6 k8s节点配置主机名解析
+root@ansible:~# cat /etc/hosts
+127.0.0.1       localhost
+
+172.168.2.11 ansible
+172.168.2.21 master01
+172.168.2.22 master02
+172.168.2.23 master03
+172.168.2.24 node01
+172.168.2.25 node02
+172.168.2.26 node03
+192.168.13.63 node04
+
+172.168.2.27 ceph01
+172.168.2.28 ceph02
+172.168.2.29 ceph03
+172.168.2.11 ceph-deploy
+-----
+root@ansible:~# ansible k8s -m copy -a 'src=/etc/hosts dest=/etc/hosts'
+
+6.2.7 通过keyring文件挂载rbd
+root@k8s-master01:~/k8s/yaml/ceph-case# cat case1-busybox-keyring.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busybox
+  namespace: default
+spec:
+  #nodeName: '172.168.2.26'
+  containers:
+  - image: busybox
+    command:
+      - sleep
+      - "3600"
+    imagePullPolicy: Always
+    name: busybox
+    #restartPolicy: Always
+    volumeMounts:
+    - name: rbd-data1
+      mountPath: /data
+  volumes:
+    - name: rbd-data1
+      rbd:
+        monitors:
+        - '172.168.2.27:6789'
+        - '172.168.2.28:6789'
+        - '172.168.2.29:6789'
+        pool: shijie-rbd-pool1
+        image: shijie-img-img1
+        fsType: ext4
+        readOnly: false
+        user: magedu-shijie
+        keyring: /etc/ceph/ceph.client.magedu-shijie.keyring
+注：node04主机是centos7系统，内核是3.10，挂载不上，经过内核升级为5.4后可以挂载上。但是机器太旧，后面又挂载不上。
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl apply -f case1-busybox-keyring.yaml
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl get pod -o wide
+NAME      READY   STATUS    RESTARTS   AGE   IP              NODE            NOMINATED NODE   READINESS GATES
+busybox   1/1     Running   0          66s   172.20.217.78   192.168.13.63   <none>           <none>
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl exec -it busybox sh
+/ # df -h | grep rbd
+/dev/rbd0                 2.9G      9.0M      2.9G   0% /data
+/ # echo 'magedu' >> /data/n56.txt	#可进行读写
+/ # cat /data/n56.txt
+magedu
+[root@k8s-node04 ~]# df -TH | grep rbd		#其实是node04节点宿主机进行挂载，pod使用的是宿主机的内核
+/dev/rbd0                                              ext4      3.2G  9.5M  3.1G   1% /var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/shijie-rbd-pool1-image-shijie-img-img1
+[root@k8s-node04 ~]# rbd showmapped
+id  pool              namespace  image            snap  device
+0   shijie-rbd-pool1             shijie-img-img1  -     /dev/rbd0
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl delete -f case1-busybox-keyring.yaml	#先删除这个yaml，因为rbd只能挂载一个容器
+
+--使用nginx挂载rbd
+root@k8s-master01:~/k8s/yaml/ceph-case# cat case2-nginx-keyring.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels: #rs or deployment
+      app: ng-deploy-80
+  template:
+    metadata:
+      labels:
+        app: ng-deploy-80
+    spec:
+	  #nodeName: '172.168.2.26'
+      containers:
+      - name: ng-deploy-80
+        image: nginx
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: rbd-data1
+          mountPath: /data
+      volumes:
+        - name: rbd-data1
+          rbd:
+            monitors:
+            - '172.168.2.27:6789'
+            - '172.168.2.28:6789'
+            - '172.168.2.29:6789'
+            pool: shijie-rbd-pool1
+            image: shijie-img-img1
+            fsType: ext4
+            readOnly: false
+            user: magedu-shijie
+            keyring: /etc/ceph/ceph.client.magedu-shijie.keyring
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl apply -f case2-nginx-keyring.yaml
+
+6.2.8 使用secret挂载k8s
+6.2.8.1
+--将ceph认证key用base64加密，然后写入到k8s secret中
+root@k8s-master01:~# cat /etc/ceph/ceph.client.magedu-shijie.keyring
+[client.magedu-shijie]
+        key = AQDmHTtiJOaEEhAAvsD/ifbfUf2GFFf9F+XVHg==
+        caps mon = "allow r"
+        caps osd = "allow * pool=shijie-rbd-pool1"
+root@k8s-master01:~# cat /etc/ceph/ceph.client.magedu-shijie.keyring | grep key | awk -F' ' '{print $3}' | tr -d ' ' | base64
+QVFEbUhUdGlKT2FFRWhBQXZzRC9pZmJmVWYyR0ZGZjlGK1hWSGc9PQo=
+root@k8s-master01:~/k8s/yaml/ceph-case# cat case3-secret-client-shijie.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ceph-secret-magedu-shijie
+type: "kubernetes.io/rbd"
+data:
+  key: QVFEbUhUdGlKT2FFRWhBQXZzRC9pZmJmVWYyR0ZGZjlGK1hWSGc9PQo=						#此key是经过base64加密的
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl apply -f case3-secret-client-shijie.yaml
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl get secret
+NAME                        TYPE                                  DATA   AGE
+ceph-secret-magedu-shijie   kubernetes.io/rbd                     1      5s
+default-token-qghvn         kubernetes.io/service-account-token   3      19d
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl get secret ceph-secret-magedu-shijie -o yaml | grep key:
+  key: QVFEbUhUdGlKT2FFRWhBQXZzRC9pZmJmVWYyR0ZGZjlGK1hWSGc9PQo=
+6.2.8.2 仓库pod使用secret进行挂载ceph
+root@k8s-master01:~/k8s/yaml/ceph-case# cat case4-nginx-secret.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels: #rs or deployment
+      app: ng-deploy-80
+  template:
+    metadata:
+      labels:
+        app: ng-deploy-80
+    spec:
+	  #nodeName: '172.168.2.26'			#前面使用centos7旧机器测试挂载不上，所以使用ubuntu虚拟机挂载
+      containers:
+      - name: ng-deploy-80
+        image: nginx
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: rbd-data1
+          mountPath: /data
+      volumes:
+        - name: rbd-data1
+          rbd:
+            monitors:
+            - '172.168.2.27:6789'
+            - '172.168.2.28:6789'
+            - '172.168.2.29:6789'
+            pool: shijie-rbd-pool1
+            image: shijie-img-img1
+            fsType: ext4
+            readOnly: false
+            user: magedu-shijie
+            secretRef:
+              name: ceph-secret-magedu-shijie			#使用刚才创建的secret进行认证ceph
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl apply -f case4-nginx-secret.yaml	  
+			  
+			  
+6.2.9 动态创建存储卷			  
+6.2.9.1 创建secret
+--创建普通用户的secret，给pod挂载使用
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl apply -f case3-secret-client-shijie.yaml
+--创建admin的secret，我们要去ceph做操作，需要ceph管理员权限，通过k8s master进行连ceph进行管理，所以master也要装ceph-common
+ceph@ansible:~/ceph-cluster$ cat ceph.client.admin.keyring
+[client.admin]
+        key = AQCCVTBi8iofJxAAuyX9tKr38EPErNhBnNeG6A==
+        caps mds = "allow *"
+        caps mgr = "allow *"
+        caps mon = "allow *"
+        caps osd = "allow *"
+ceph@ansible:~/ceph-cluster$ cat ceph.client.admin.keyring | grep key | awk -F' ' '{print $3}' | tr -d ' ' | base64
+QVFDQ1ZUQmk4aW9mSnhBQXV5WDl0S3IzOEVQRXJOaEJuTmVHNkE9PQo=
+root@k8s-master01:~/k8s/yaml/ceph-case# cat case5-secret-admin.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ceph-secret-admin
+type: "kubernetes.io/rbd"
+data:
+  key: QVFDQ1ZUQmk4aW9mSnhBQXV5WDl0S3IzOEVQRXJOaEJuTmVHNkE9PQo=
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl apply -f case5-secret-admin.yaml
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl get secret		
+NAME                        TYPE                                  DATA   AGE
+ceph-secret-admin           kubernetes.io/rbd                     1      22h
+ceph-secret-magedu-shijie   kubernetes.io/rbd                     1      22h
+default-token-qghvn         kubernetes.io/service-account-token   3      20d
+
+6.2.9.2 创建ceph存储类
+root@k8s-master01:~/k8s/yaml/ceph-case# cat case6-ceph-storage-class.yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass				#集群级别
+metadata:
+  name: ceph-storage-class-shijie
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true" #设置为默认存储类
+provisioner: kubernetes.io/rbd
+parameters:
+  monitors: 172.168.2.27:6789,172.168.2.28:6789,172.168.2.29:6789	#mon服务器地址
+  adminId: admin   							#ceph管理员名称
+  adminSecretName: ceph-secret-admin		#ceph admin的secret名称
+  adminSecretNamespace: default				#ceph admin的secret所在的名称空间
+  pool: shijie-rbd-pool1					#自己预先创建好的存储池
+  userId: magedu-shijie						#pod挂载使用的普通用户名称
+  userSecretName: ceph-secret-magedu-shijie	#pod挂载使用的普通用户secret名称
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl apply -f case6-ceph-storage-class.yaml
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl get sc
+NAME                                  PROVISIONER         RECLAIMPOLICY   VOLUMEBINDINGMODE   ALLOWVOLUMEEXPANSION   AGE
+ceph-storage-class-shijie (default)   kubernetes.io/rbd   Delete          Immediate           false                  9s
+
+6.2.9.3调用存储类创建pvc
+root@k8s-master01:~/k8s/yaml/ceph-case# cat case7-mysql-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-data-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: ceph-storage-class-shijie
+  resources:
+    requests:
+      storage: '2Gi'
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl apply -f case7-mysql-pvc.yaml
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl get pvc
+NAME             STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS                AGE
+mysql-data-pvc   Bound    pvc-ac762756-7248-49e1-afad-29c60b9eeae6   2Gi        RWO            ceph-storage-class-shijie   2s
+root@k8s-master01:~# kubectl get pv
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                            STORAGECLASS                REASON   AGE
+pvc-ac762756-7248-49e1-afad-29c60b9eeae6   2Gi        RWO            Delete           Bound    default/mysql-data-pvc           ceph-storage-class-shijie            2m8s
+zookeeper-datadir-pv-1                     20Gi       RWO            Retain           Bound    magedu/zookeeper-datadir-pvc-1                                        2d
+zookeeper-datadir-pv-2                     20Gi       RWO            Retain           Bound    magedu/zookeeper-datadir-pvc-2                                        2d
+zookeeper-datadir-pv-3                     20Gi       RWO            Retain           Bound    magedu/zookeeper-datadir-pvc-3                                        2d
+root@k8s-master01:~# kubectl describe pv pvc-ac762756-7248-49e1-afad-29c60b9eeae6 | grep RBDImage	#pv所挂载的image名称
+    RBDImage:      kubernetes-dynamic-pvc-165149fa-ccf6-4abf-b279-706c735c56d1
+ceph@ansible:~$ rbd ls --pool shijie-rbd-pool1			#此时在ceph管理服务器上查看已经创建了image
+kubernetes-dynamic-pvc-165149fa-ccf6-4abf-b279-706c735c56d1
+shijie-img-img1
+
+6.2.9.4 使用mysql挂载pvc
+root@k8s-master01:~/k8s/yaml/ceph-case# docker pull mysql:5.6.46
+root@k8s-master01:~/k8s/yaml/ceph-case# docker tag mysql:5.6.46 192.168.13.197:8000/magedu/mysql:5.6.46
+root@k8s-master01:~/k8s/yaml/ceph-case# docker push 192.168.13.197:8000/magedu/mysql:5.6.46
+root@k8s-master01:~/k8s/yaml/ceph-case# docker run -it --rm -p 33306:3306 192.168.13.197:8000/magedu/mysql:5.6.46		#本机测试运行不起来，需要指定环境变量MYSQL_ROOT_PASSWORD值 
+        You need to specify one of MYSQL_ROOT_PASSWORD, MYSQL_ALLOW_EMPTY_PASSWORD and MYSQL_RANDOM_ROOT_PASSWORD
+root@k8s-master01:~/k8s/yaml/ceph-case# cat case8-mysql-single.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - image: 192.168.13.197:8000/magedu/mysql:5.6.46
+        name: mysql
+        env:
+          # Use secret in real usage
+        - name: MYSQL_ROOT_PASSWORD
+          value: magedu123456
+        ports:
+        - containerPort: 3306
+          name: mysql
+        volumeMounts:
+        - name: mysql-persistent-storage
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-persistent-storage
+        persistentVolumeClaim:
+          claimName: mysql-data-pvc
+---
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: mysql-service-label
+  name: mysql-service
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 3306
+    protocol: TCP
+    targetPort: 3306
+    nodePort: 43306
+  selector:
+    app: mysql
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl apply -f case8-mysql-single.yaml
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl get pods -o wide
+NAME                     READY   STATUS    RESTARTS   AGE   IP              NODE            NOMINATED NODE   READINESS GATES
+mysql-6c7ffcffdf-z8r9l   1/1     Running   0          68s   172.20.217.88   192.168.13.63   <none>           <none>
+root@mysql-6c7ffcffdf-z8r9l:/# df -TH | grep /var/lib/mysql		#进入容器里面查看已经成功挂载，并且服务已经成功启动
+/dev/rbd0               ext4     2.1G  128M  2.0G   7% /var/lib/mysql
+ceph@ansible:~$ ceph df
+--- RAW STORAGE ---
+CLASS    SIZE   AVAIL     USED  RAW USED  %RAW USED
+hdd    45 GiB  44 GiB  1.1 GiB   1.1 GiB       2.44
+TOTAL  45 GiB  44 GiB  1.1 GiB   1.1 GiB       2.44
+
+--- POOLS ---
+POOL                   ID  PGS   STORED  OBJECTS     USED  %USED  MAX AVAIL
+device_health_metrics   1    1      0 B        0      0 B      0     14 GiB
+mypool                  2    4      0 B        0      0 B      0     14 GiB
+myrbd1                  3    8   72 MiB       51  215 MiB   0.51     14 GiB
+cephfs-metadata         4   16   24 KiB       22  160 KiB      0     14 GiB
+cephfs-data             5   64      0 B        0      0 B      0     14 GiB
+shijie-rbd-pool1        6   16  240 MiB       84  721 MiB   1.69     14 GiB		#mysql挂载的存储池使用了240M了
+
+6.2.9.5 使用cephfs挂载
+6.2.9.5.1 ceph@ansible:~$ ceph -s | grep mds    #首先确保ceph已经安装cephfs，如下表示已经安装,并且一主一备
+    mds: 1/1 daemons up, 1 standby
+	
+6.2.9.5.2 创建mds专用用户
+ceph@ansible:~$ ceph auth add client.kubernetes.mds.jack mon 'allow r' mds 'allow rw' osd 'allow rwx pool=cephfs-data'                                                                  added key for client.kubernetes.mds.jack
+ceph@ansible:~$ ceph auth get client.kubernetes.mds.jack
+[client.kubernetes.mds.jack]
+        key = AQBwXT1iOtjWDxAAibWrQwV76onYdXoDZ1WfxQ==
+        caps mds = "allow rw"
+        caps mon = "allow r"
+        caps osd = "allow rwx pool=cephfs-data"
+exported keyring for client.kubernetes.mds.jack
+ceph@ansible:~$ ceph auth get client.kubernetes.mds.jack -o ceph.client.kubernetes.mds.jack.keyring
+ceph@ansible:~$ ceph auth print-key client.kubernetes.mds.jack > ceph.client.kubernetes.mds.jack.key
+[root@k8s-node04 ~]# mount -t ceph 172.168.2.27:6789,172.168.2.28:6789,172.168.2.29:6789:/ /mnt -o name=kubernetes.mds.jack,secret=AQBwXT1iOtjWDxAAibWrQwV76onYdXoDZ1WfxQ==		#测试挂载
+[root@k8s-node04 ~]# df -TH | grep mnt
+172.168.2.27:6789,172.168.2.28:6789,172.168.2.29:6789:/ ceph       15G     0   15G   0% /mnt
+
+6.2.9.5.3 创建mds专用secret
+ceph@ansible:~$ echo 'AQBwXT1iOtjWDxAAibWrQwV76onYdXoDZ1WfxQ==' | base64
+QVFCd1hUMWlPdGpXRHhBQWliV3JRd1Y3Nm9uWWRYb0RaMVdmeFE9PQo=
+root@k8s-master01:~/k8s/yaml/ceph-case# cat case9-secret-mds-client-jack.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ceph-secret-magedu-mds-jack
+type: "kubernetes.io/rbd"
+data:
+  key: QVFCd1hUMWlPdGpXRHhBQWliV3JRd1Y3Nm9uWWRYb0RaMVdmeFE9PQo=
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl apply -f case9-secret-mds-client-jack.yaml
+
+6.2.9.5.4  应用pod挂载
+root@k8s-master01:~/k8s/yaml/ceph-case# cat case9-nginx-cephfs.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels: #rs or deployment
+      app: ng-deploy-80
+  template:
+    metadata:
+      labels:
+        app: ng-deploy-80
+    spec:
+      containers:
+      - name: ng-deploy-80
+        image: nginx
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: magedu-staticdata-cephfs
+          mountPath: /usr/share/nginx/html/
+      volumes:
+        - name: magedu-staticdata-cephfs
+          cephfs:
+            monitors:
+            - '172.168.2.27:6789'
+            - '172.168.2.28:6789'
+            - '172.168.2.29:6789'
+            path: /
+            user: kubernetes.mds.jack
+            secretRef:
+              name: ceph-secret-magedu-mds-jack
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl apply -f case9-nginx-cephfs.yaml
+
+6.2.9.5.5 上面deployment控制器运行的pod报错，报告未找到文件"unable to find a keyring on /etc/ceph/ceph.client.kubernetes.mds.jack.keyring,/etc/ceph/ceph.keyring,/etc/ceph/keyring,/etc/ceph/keyring.bin,: (2) No such file or directory" ，需要复制keyring到所有work节点
+ceph@ansible:~$ sudo ansible k8s -m copy -a 'src=ceph.client.kubernetes.mds.jack.keyring dest=/etc/ceph/'
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl apply -f case9-nginx-cephfs.yaml		#再次运行
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl get pods -o wide
+NAME                                READY   STATUS    RESTARTS   AGE   IP              NODE            NOMINATED NODE   READINESS GATES
+mysql-6c7ffcffdf-z8r9l              1/1     Running   0          62m   172.20.217.88   192.168.13.63   <none>           <none>
+nginx-deployment-7755dbc9d9-m2qml   1/1     Running   0          71s   172.20.217.87   192.168.13.63   <none>           <none>
+nginx-deployment-7755dbc9d9-rjzlf   1/1     Running   0          71s   172.20.217.90   192.168.13.63   <none>           <none>
+nginx-deployment-7755dbc9d9-zqfmb   1/1     Running   0          71s   172.20.217.91   192.168.13.63   <none>           <none>
+--上面运行3个副本nginx。此时无论在哪一个pod更改挂载的目录，其它pod都会拥有同样的变更，实现数据共享
+root@k8s-master01:~/k8s/yaml/ceph-case# kubectl exec -it nginx-deployment-7755dbc9d9-m2qml bash
+root@nginx-deployment-7755dbc9d9-m2qml:/usr/share/nginx/html# echo 'v111' > index.html
+root@nginx-deployment-7755dbc9d9-m2qml:/usr/share/nginx/html# curl localhost
+v111
+root@nginx-deployment-7755dbc9d9-m2qml:/usr/share/nginx/html# curl 172.20.217.90		#此时从nginx-deployment-7755dbc9d9-rjzlf pod获取数据也一样
+v111
+注：有状态应用使用RBD。共享存储使用cephFS。其它需要使用RadowsGW 
+注：在挂载根目录下创建目录来区分项目ID，例如创建 mkdir /usr/share/nginx/html{n56,n57}，两个项目区分就是n56,n57
+
+6.3.0 pod状态及探针
+6.3.0.1 探针简介：
+--探针是由 kubelet 对容器执行的定期诊断，以保证Pod的状态始终处于运行状态，要执行诊断，kubelet 调用由容器实现的Handler(处理程序)，有三种类型的处理程序：
+ExecAction   #在容器内执行指定命令，如果命令退出时返回码为0则认为诊断成功。
+TCPSocketAction    #对指定端口上的容器的IP地址进行TCP检查，如果端口打开，则诊断被认为是成功的。
+HTTPGetAction    #对指定的端口和路径上的容器的IP地址执行HTTPGet请求，如果响应的状态码大于等于200且小于 400，则诊断被认为是成功的。
+每次探测都将获得以下三种结果之一：
+成功：容器通过了诊断。
+失败：容器未通过诊断。
+未知：诊断失败，因此不会采取任何行动。
+--探针类型：
+livenessProbe    #存活探针，检测容器容器是否正在运行，如果存活探测失败，则kubelet会杀死容器，并且容器将受到其重启策略的影响，如果容器不提供存活探针，则默认状态为 Success，livenessProbe⽤于控制是否重启pod。
+readinessProbe    #就绪探针，如果就绪探测失败，端点控制器将从与Pod匹配的所有Service的端点中删除该Pod的IP地址，初始延迟之前的就绪状态默认为Failure(失败)，如果容器不提供就绪探针，则默认状态为Success，readinessProbe用于控制pod是否添加至service。
+
+6.3.0.2 Pod重启策略：
+k8s在Pod出现异常的时候会⾃动将Pod重启以恢复Pod中的服务。
+restartPolicy：
+Always：当容器异常时，k8s自动重启该容器，ReplicationController/Replicaset/Deployment。
+OnFailure：当容器失败时(容器停止运行且退出码不为0)，k8s自动重启该容器。
+Never：不论容器运⾏状态如何都不会重启该容器,Job或CronJob。
+
+6.3.0.3 探针配置：
+initialDelaySeconds: 120
+#初始化延迟时间，告诉kubelet在执行第一次探测前应该等待多少秒，默认是0秒，最小值是0
+periodSeconds: 60
+#探测周期间隔时间，指定了kubelet应该每多少秒秒执行一次存活探测，默认是 10 秒。最小值是 1
+timeoutSeconds: 5
+#单次探测超时时间，探测的超时后等待多少秒，默认值是1秒，最小值是1。
+successThreshold: 1
+#从失败转为成功的重试次数，探测器在失败后，被视为成功的最小连续成功数，默认值是1，存活探测的这个值必须是1，最小值是 1。
+failureThreshold： 3
+#从成功转为失败的重试次数，当Pod启动了并且探测到失败，Kubernetes的重试次数，存活探测情况下的放弃就意味着重新启动容器，就绪探测情况下的放弃Pod 会被打上未就绪的标签，默认值是3，最小值是1。
+----HTTP 探测器可以在 httpGet 上配置额外的字段：
+host:
+#连接使用的主机名，默认是Pod的 IP，也可以在HTTP头中设置 “Host” 来代替。
+scheme: http
+#用于设置连接主机的⽅式（HTTP 还是 HTTPS），默认是 HTTP。
+path: /monitor/index.html
+#访问 HTTP 服务的路径。
+httpHeaders:
+#请求中自定义的 HTTP 头,HTTP 头字段允许重复。
+port: 80
+#访问容器的端⼝号或者端口名，如果数字必须在 1 ～ 65535 之间。
+
+6.3.0.4 livenessProbe和readinessProbe的对比：
+配置参数一样
+livenessProbe #连续探测失败会重启、重建pod，readinessProbe不会执⾏重启或者重建Pod操作
+livenessProbe #连续检测指定次数失败后会将容器置于(Crash Loop BackOff)且不可用，readinessProbe不会
+readinessProbe #连续探测失败会从service的endpointd中删除该Pod，livenessProbe不具备此功能，但是会将容器挂起livenessProbe
+livenessProbe用户控制是否重启pod，readinessProbe⽤于控制pod是否添加⾄service
+建议：
+两个探针都配置
+
+6.3.0.5 探针示例：
+----HTTP探针示例：
+root@k8s-master01:~/k8s/yaml/probe-case# cat nginx.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels: #rs or deployment
+      app: ng-deploy-80
+    #matchExpressions:
+    #  - {key: app, operator: In, values: [ng-deploy-80,ng-rs-81]}
+  template:
+    metadata:
+      labels:
+        app: ng-deploy-80
+    spec:
+      containers:
+      - name: ng-deploy-80
+        image: nginx:1.17.5
+        ports:
+        - containerPort: 80
+        #readinessProbe:
+        livenessProbe:
+          httpGet:
+            #path: /monitor/monitor.html
+            path: /index1.html
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 3
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ng-deploy-80
+spec:
+  ports:
+  - name: http
+    port: 81
+    targetPort: 80
+    nodePort: 40012
+    protocol: TCP
+  type: NodePort
+  selector:
+    app: ng-deploy-80
+----TCP探针示例：
+root@k8s-master01:~/k8s/yaml/probe-case# cat tcp.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels: #rs or deployment
+      app: ng-deploy-80
+    #matchExpressions:
+    #  - {key: app, operator: In, values: [ng-deploy-80,ng-rs-81]}
+  template:
+    metadata:
+      labels:
+        app: ng-deploy-80
+    spec:
+      containers:
+      - name: ng-deploy-80
+        image: nginx:1.17.5
+        ports:
+        - containerPort: 80
+        livenessProbe:
+          tcpSocket:
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 3
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        readinessProbe:
+          tcpSocket:
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 3
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ng-deploy-80
+spec:
+  ports:
+  - name: http
+    port: 81
+    targetPort: 80
+    nodePort: 40012
+    protocol: TCP
+  type: NodePort
+  selector:
+    app: ng-deploy-80
+----ExecAction探针示例：
+root@k8s-master01:~/k8s/yaml/probe-case# cat redis.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels: #rs or deployment
+      app: redis-deploy-6379
+    #matchExpressions:
+    #  - {key: app, operator: In, values: [redis-deploy-6379,ng-rs-81]}
+  template:
+    metadata:
+      labels:
+        app: redis-deploy-6379
+    spec:
+      containers:
+      - name: redis-deploy-6379
+        image: redis
+        ports:
+        - containerPort: 6379
+        readinessProbe:
+          exec:
+            command:
+            - /usr/local/bin/redis-cli
+            - quit
+          initialDelaySeconds: 5
+          periodSeconds: 3
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        livenessProbe:
+          exec:
+            command:
+            - /usr/local/bin/redis-cli
+            - quit
+          initialDelaySeconds: 5
+          periodSeconds: 3
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-deploy-6379
+spec:
+  ports:
+  - name: http
+    port: 6379
+    targetPort: 6379
+    nodePort: 40016
+    protocol: TCP
+  type: NodePort
+  selector:
+    app: redis-deploy-6379
+
+	
+	
+6.4 k8s运行redis
+使用kompose将docker-compose文件转成K8s yaml文件，可以提升效率，但是有些内容未不致，需要进行相应调整。
+redis.conf配置文件：
+stop-writes-on-bgsave-error no		#表示bgsave快照保存错误时是否停止写入，这里改成no，保存快照时不停止写入
+
+6.4.1 创建redis PV
+root@k8s-master01:~/k8s/yaml/magedu/redis# cat pv/redis-persistentvolume.yaml
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis-datadir-pv-1
+  namespace: magedu
+spec:
+  capacity:
+    storage: 2Gi
+  accessModes:
+    - ReadWriteOnce
+  nfs:
+    path: /data/k8sdata/magedu/redis-datadir-1
+    server: 192.168.13.67
+root@k8s-master01:~/k8s/yaml/magedu/redis# kubectl apply -f pv/redis-persistentvolume.yaml
+root@k8s-master01:~/k8s/yaml/magedu/redis# kubectl get pv
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM                            STORAGECLASS                REASON   AGE
+pvc-ac762756-7248-49e1-afad-29c60b9eeae6   2Gi        RWO            Delete           Failed      default/mysql-data-pvc           ceph-storage-class-shijie            5h15m
+redis-datadir-pv-1                         2Gi        RWO            Retain           Available                                                                         3s
+zookeeper-datadir-pv-1                     20Gi       RWO            Retain           Bound       magedu/zookeeper-datadir-pvc-1                                        2d6h
+zookeeper-datadir-pv-2                     20Gi       RWO            Retain           Bound       magedu/zookeeper-datadir-pvc-2                                        2d6h
+zookeeper-datadir-pv-3                     20Gi       RWO            Retain           Bound       magedu/zookeeper-datadir-pvc-3                                        2d6h
+
+6.4.2 创建PVC
+root@k8s-master01:~/k8s/yaml/magedu/redis# cat pv/redis-persistentvolumeclaim.yaml
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-datadir-pvc-1
+  namespace: magedu
+spec:
+  volumeName: redis-datadir-pv-1
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 2Gi
+root@k8s-master01:~/k8s/yaml/magedu/redis# kubectl apply -f pv/redis-persistentvolumeclaim.yaml
+root@k8s-master01:~/k8s/yaml/magedu/redis# kubectl get pvc -n magedu
+NAME                      STATUS   VOLUME                   CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+redis-datadir-pvc-1       Bound    redis-datadir-pv-1       2Gi        RWO                           7s
+zookeeper-datadir-pvc-1   Bound    zookeeper-datadir-pv-1   20Gi       RWO                           2d6h
+zookeeper-datadir-pvc-2   Bound    zookeeper-datadir-pv-2   20Gi       RWO                           2d6h
+zookeeper-datadir-pvc-3   Bound    zookeeper-datadir-pv-3   20Gi       RWO                           2d6h
+
+6.4.3 运行redis
+root@k8s-master01:~/k8s/yaml/magedu/redis# cat redis.yaml
+kind: Deployment
+#apiVersion: extensions/v1beta1
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: devops-redis
+  name: deploy-devops-redis
+  namespace: magedu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: devops-redis
+  template:
+    metadata:
+      labels:
+        app: devops-redis
+    spec:
+      containers:
+        - name: redis-container
+          image: 192.168.13.197:8000/magedu/redis:v4.0.14
+          imagePullPolicy: Always
+          volumeMounts:
+          - mountPath: "/data/redis-data/"
+            name: redis-datadir
+      volumes:
+        - name: redis-datadir
+          persistentVolumeClaim:
+            claimName: redis-datadir-pvc-1
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: devops-redis
+  name: srv-devops-redis
+  namespace: magedu
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 6379
+    targetPort: 6379
+    nodePort: 36379
+  selector:
+    app: devops-redis
+  sessionAffinity: ClientIP		#开启会话保持
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+root@k8s-master01:~/k8s/yaml/magedu/redis# kubectl apply -f redis.yaml
+root@k8s-master01:~/k8s/yaml/magedu/redis# kubectl get pods -n magedu
+NAME                                             READY   STATUS    RESTARTS   AGE
+deploy-devops-redis-749878f59d-gf856             1/1     Running   0          22s
+magedu-nginx-deployment-769d4567ff-8sm6c         1/1     Running   2          2d
+magedu-tomcat-app1-deployment-65747746b9-dfzfl   1/1     Running   1          2d
+zookeeper1-749d87b7c5-stk5w                      1/1     Running   1          2d1h
+zookeeper2-5f5fcb7f4d-s5pgp                      1/1     Running   1          2d1h
+zookeeper3-c857bb585-txchq                       1/1     Running   1          2d1h
+k8s集群外访问: 172.168.2.21:36379 auth:123456
+
+
+6.4.4 运行mysql主从
+statefulSet控制器绑定PV，因为pod名称是固定的，所以无论pod怎么删除怎么重建，pod和PV的绑定关系一直是固定的，不会变动，绑定关系持久保存在etcd当中。
+
+6.4.4.1 做mysql5.7镜像，使用官方,可用于生产
+root@k8s-master01:~# docker pull mysql:5.7
+root@k8s-master01:~# docker run -it --rm mysql:5.7 bash 
+root@bb4d3d7bbc9b:/# mysqld --version
+mysqld  Ver 5.7.36 for Linux on x86_64 (MySQL Community Server (GPL))
+root@k8s-master01:~# docker tag mysql:5.7 192.168.13.197:8000/magedu/mysql:5.7.36
+root@k8s-master01:~# docker push 192.168.13.197:8000/magedu/mysql:5.7.36
+
+6.4.4.2 做xtrabackup镜像，可用于生产
+root@k8s-master01:~# docker pull registry.cn-hangzhou.aliyuncs.com/hxpdocker/xtrabackup:1.0
+root@k8s-master01:~# docker tag registry.cn-hangzhou.aliyuncs.com/hxpdocker/xtrabackup:1.0 192.168.13.197:8000/magedu/xtrabackup:1.0
+root@k8s-master01:~# docker push 192.168.13.197:8000/magedu/xtrabackup:1.0
+
+6.4.4.3 创建mysql nfs存储目录、手动创建PV
+[root@NFSServer ~]# mkdir -p /data/k8sdata/magedu/mysql-datadir-{1,2,3,4,5,6}
+root@k8s-master01:~/k8s/yaml/magedu/mysql/pv# cat mysql-persistentvolume.yaml
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-datadir-1
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  nfs:
+    path: /data/k8sdata/magedu/mysql-datadir-1
+    server: 192.168.13.67
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-datadir-2
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  nfs:
+    path: /data/k8sdata/magedu/mysql-datadir-2
+    server: 192.168.13.67
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-datadir-3
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  nfs:
+    path: /data/k8sdata/magedu/mysql-datadir-3
+    server: 192.168.13.67
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-datadir-4
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  nfs:
+    path: /data/k8sdata/magedu/mysql-datadir-4
+    server: 192.168.13.67
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-datadir-5
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  nfs:
+    path: /data/k8sdata/magedu/mysql-datadir-5
+    server: 192.168.13.67
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-datadir-6
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  nfs:
+    path: /data/k8sdata/magedu/mysql-datadir-6
+    server: 192.168.13.67
+root@k8s-master01:~/k8s/yaml/magedu/mysql/pv# kubectl apply -f mysql-persistentvolume.yaml
+root@k8s-master01:~/k8s/yaml/magedu/mysql/pv# kubectl get pv
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM                            STORAGECLASS                REASON   AGE
+mysql-datadir-1                            50Gi       RWO            Retain           Available                                                                         2s
+mysql-datadir-2                            50Gi       RWO            Retain           Available                                                                         2s
+mysql-datadir-3                            50Gi       RWO            Retain           Available                                                                         2s
+mysql-datadir-4                            50Gi       RWO            Retain           Available                                                                         2s
+mysql-datadir-5                            50Gi       RWO            Retain           Available                                                                         2s
+mysql-datadir-6                            50Gi       RWO            Retain           Available                                                                         2s
+pvc-ac762756-7248-49e1-afad-29c60b9eeae6   2Gi        RWO            Delete           Failed      default/mysql-data-pvc           ceph-storage-class-shijie            7h47m
+redis-datadir-pv-1                         2Gi        RWO            Retain           Bound       magedu/redis-datadir-pvc-1                                            151m
+zookeeper-datadir-pv-1                     20Gi       RWO            Retain           Bound       magedu/zookeeper-datadir-pvc-1                                        2d8h
+zookeeper-datadir-pv-2                     20Gi       RWO            Retain           Bound       magedu/zookeeper-datadir-pvc-2                                        2d8h
+zookeeper-datadir-pv-3                     20Gi       RWO            Retain           Bound       magedu/zookeeper-datadir-pvc-3                                        2d8h
+
+注：应用mysql statefulset控制器部署时，因为遗留StorageClass相关的东西，经过删除没用的PVC和PV、清除mysql挂载的NFS数据目录后，重新创建mysql statefulset控制器部署成功
+6.4.4.4 运行configMap
+root@k8s-master01:~/k8s/yaml/magedu/mysql# cat mysql-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql
+  namespace: magedu
+  labels:
+    app: mysql
+data:
+  master.cnf: |
+    # Apply this config only on the master.
+    [mysqld]
+    log-bin
+    log_bin_trust_function_creators=1
+    lower_case_table_names=1
+  slave.cnf: |
+    # Apply this config only on slaves.
+    [mysqld]
+    super-read-only
+    log_bin_trust_function_creators=1
+root@k8s-master01:~/k8s/yaml/magedu/mysql# kubectl apply -f mysql-configmap.yaml
+
+6.4.4.4 运行service，因为创建mysql statefulset控制器时，需要从mysql service中恢复数据，有依赖关系，否则不会创建成功。
+root@k8s-master01:~/k8s/yaml/magedu/mysql# cat mysql-services.yaml
+# Headless service for stable DNS entries of StatefulSet members.
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: magedu
+  name: mysql
+  labels:
+    app: mysql
+spec:
+  ports:
+  - name: mysql
+    port: 3306
+  clusterIP: None
+  selector:
+    app: mysql
+---
+# Client service for connecting to any MySQL instance for reads.
+# For writes, you must instead connect to the master: mysql-0.mysql.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-read
+  namespace: magedu
+  labels:
+    app: mysql
+spec:
+  ports:
+  - name: mysql
+    port: 3306
+  selector:
+    app: mysql
+root@k8s-master01:~/k8s/yaml/magedu/mysql# kubectl apply -f mysql-services.yaml
+
+6.4.4.5 创建mysql statefulset 控制器，生产使用nodeSelector进行特定节点运行，性能强悍的机器上运行
+root@k8s-master01:~/k8s/yaml/magedu/mysql# cat mysql-statefulset.yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+  namespace: magedu
+spec:
+  selector:
+    matchLabels:
+      app: mysql
+  serviceName: mysql
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      initContainers:
+      - name: init-mysql
+        image: 192.168.13.197:8000/magedu/mysql:5.7.36
+        command:
+        - bash
+        - "-c"
+        - |
+          set -ex
+          # Generate mysql server-id from pod ordinal index.
+          [[ `hostname` =~ -([0-9]+)$ ]] || exit 1
+          ordinal=${BASH_REMATCH[1]}
+          echo [mysqld] > /mnt/conf.d/server-id.cnf
+          # Add an offset to avoid reserved server-id=0 value.
+          echo server-id=$((100 + $ordinal)) >> /mnt/conf.d/server-id.cnf
+          # Copy appropriate conf.d files from config-map to emptyDir.
+          if [[ $ordinal -eq 0 ]]; then
+            cp /mnt/config-map/master.cnf /mnt/conf.d/
+          else
+            cp /mnt/config-map/slave.cnf /mnt/conf.d/
+          fi
+        volumeMounts:
+        - name: conf
+          mountPath: /mnt/conf.d
+        - name: config-map
+          mountPath: /mnt/config-map
+      - name: clone-mysql
+        image: 192.168.13.197:8000/magedu/xtrabackup:1.0
+        command:
+        - bash
+        - "-c"
+        - |
+          set -ex
+          # Skip the clone if data already exists.
+          [[ -d /var/lib/mysql/mysql ]] && exit 0
+          # Skip the clone on master (ordinal index 0).
+          [[ `hostname` =~ -([0-9]+)$ ]] || exit 1
+          ordinal=${BASH_REMATCH[1]}
+          [[ $ordinal -eq 0 ]] && exit 0
+          # Clone data from previous peer.
+          ncat --recv-only mysql-$(($ordinal-1)).mysql 3307 | xbstream -x -C /var/lib/mysql			#在此步需要连接mysql-0.mysql进行克隆数据，所以service需要先创建
+          # Prepare the backup.
+          xtrabackup --prepare --target-dir=/var/lib/mysql
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+          subPath: mysql
+        - name: conf
+          mountPath: /etc/mysql/conf.d
+      containers:
+      - name: mysql
+        image: 192.168.13.197:8000/magedu/mysql:5.7.36
+        env:
+        - name: MYSQL_ALLOW_EMPTY_PASSWORD
+          value: "1"
+        ports:
+        - name: mysql
+          containerPort: 3306
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+          subPath: mysql
+        - name: conf
+          mountPath: /etc/mysql/conf.d
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+        livenessProbe:
+          exec:
+            command: ["mysqladmin", "ping"]
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          exec:
+            # Check we can execute queries over TCP (skip-networking is off).
+            command: ["mysql", "-h", "127.0.0.1", "-e", "SELECT 1"]
+          initialDelaySeconds: 5
+          periodSeconds: 2
+          timeoutSeconds: 1
+      - name: xtrabackup
+        image: 192.168.13.197:8000/magedu/xtrabackup:1.0
+        ports:
+        - name: xtrabackup
+          containerPort: 3307
+        command:
+        - bash
+        - "-c"
+        - |
+          set -ex
+          cd /var/lib/mysql
+          # Determine binlog position of cloned data, if any.
+          if [[ -f xtrabackup_slave_info ]]; then
+            # XtraBackup already generated a partial "CHANGE MASTER TO" query
+            # because we're cloning from an existing slave.
+            mv xtrabackup_slave_info change_master_to.sql.in
+            # Ignore xtrabackup_binlog_info in this case (it's useless).
+            rm -f xtrabackup_binlog_info
+          elif [[ -f xtrabackup_binlog_info ]]; then
+            # We're cloning directly from master. Parse binlog position.
+            [[ `cat xtrabackup_binlog_info` =~ ^(.*?)[[:space:]]+(.*?)$ ]] || exit 1
+            rm xtrabackup_binlog_info
+            echo "CHANGE MASTER TO MASTER_LOG_FILE='${BASH_REMATCH[1]}',\
+                  MASTER_LOG_POS=${BASH_REMATCH[2]}" > change_master_to.sql.in
+          fi
+          # Check if we need to complete a clone by starting replication.
+          if [[ -f change_master_to.sql.in ]]; then
+            echo "Waiting for mysqld to be ready (accepting connections)"
+            until mysql -h 127.0.0.1 -e "SELECT 1"; do sleep 1; done
+            echo "Initializing replication from clone position"
+            # In case of container restart, attempt this at-most-once.
+            mv change_master_to.sql.in change_master_to.sql.orig
+            mysql -h 127.0.0.1 <<EOF
+          $(<change_master_to.sql.orig),
+            MASTER_HOST='mysql-0.mysql',
+            MASTER_USER='root',
+            MASTER_PASSWORD='',
+            MASTER_CONNECT_RETRY=10;
+          START SLAVE;
+          EOF
+          fi
+          # Start a server to send backups when requested by peers.
+          exec ncat --listen --keep-open --send-only --max-conns=1 3307 -c \
+            "xtrabackup --backup --slave-info --stream=xbstream --host=127.0.0.1 --user=root"
+        volumeMounts:
+        - name: data
+          mountPath: /var/lib/mysql
+          subPath: mysql
+        - name: conf
+          mountPath: /etc/mysql/conf.d
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+      volumes:
+      - name: conf
+        emptyDir: {}
+      - name: config-map
+        configMap:
+          name: mysql
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+root@k8s-master01:~/k8s/yaml/magedu/mysql# kubectl apply -f mysql-statefulset.yaml
+
+6.4.4.6 测试
+-- 在master-0库上写入数据，在其它从库上查看数据及slave状态是否正常
+-- service: mysql 和 service: mysql-read 后端pod是一样的，所以无论读哪个service都是可以的。但是写的时候必须使用mysql-0.mysql才行，这样可以解析为pod IP，但是mysql-0.mysql-read则不行。
+bash-4.3# nslookup mysql.magedu.svc.homsom.local	#因为mysql为无头service，所以service直接指向后端pod地址，并且有pod地址有对应的域名，例如172.20.217.104 mysql-0.mysql.magedu.svc.homsom.local，因为是statefulset 控制器，所以名称是固定的，，从而能使用mysql-0.mysql.magedu.svc.homsom.local进行解析
+Name:      mysql.magedu.svc.homsom.local
+Address 1: 172.20.217.108 172-20-217-108.mysql-read.magedu.svc.homsom.local
+Address 2: 172.20.217.106 mysql-2.mysql.magedu.svc.homsom.local
+Address 3: 172.20.217.107 172-20-217-107.mysql-read.magedu.svc.homsom.local
+Address 4: 172.20.217.104 mysql-0.mysql.magedu.svc.homsom.local
+bash-4.3# nslookup mysql-read.magedu.svc.homsom.local		#因为不是无头service，所以service有固定IP地址，从而不能使用mysql-0.mysql.magedu.svc.homsom.local进行解析
+Name:      mysql-read.magedu.svc.homsom.local
+Address 1: 10.68.32.249 mysql-read.magedu.svc.homsom.local
+
+
+6.4.5 运行java类型服务--jenkins
+
+6.4.5.1 构建镜像
+------------------------
+root@k8s-master01:~/k8s/dockerfile/web/magedu/jenkins# cat Dockerfile
+#Jenkins Version 2.190.1
+FROM 192.168.13.197:8000/pub-images/jdk-base:v8.212
+
+MAINTAINER zhangshijie zhangshijie@magedu.net
+
+ADD jenkins-2.190.1.war /apps/jenkins/
+ADD run_jenkins.sh /usr/bin/
+
+EXPOSE 8080
+
+CMD ["/usr/bin/run_jenkins.sh"]
+------------------------
+root@k8s-master01:~/k8s/dockerfile/web/magedu/jenkins# cat run_jenkins.sh
+#!/bin/bash
+cd /apps/jenkins && java -server -Xms1024m -Xmx1024m -Xss512k -jar jenkins-2.190.1.war --webroot=/apps/jenkins/jenkins-data --httpPort=8080
+------------------------
+root@k8s-master01:~/k8s/dockerfile/web/magedu/jenkins# cat build-command.sh
+#!/bin/bash
+docker build -t  192.168.13.197:8000/magedu/jenkins:v2.190.1 .
+echo "镜像制作完成，即将上传至Harbor服务器"
+sleep 1
+docker push 192.168.13.197:8000/magedu/jenkins:v2.190.1
+echo "镜像上传完成"
+------------------------
+
+6.4.5.2 创建PV
+root@k8s-master01:~/k8s/yaml/magedu/jenkins/pv# cat jenkins-persistentvolume.yaml
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jenkins-datadir-pv
+  namespace: magedu
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteOnce
+  nfs:
+    server: 192.168.13.67
+    path: /data/k8sdata/magedu/jenkins-data
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: jenkins-root-datadir-pv
+  namespace: magedu
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteOnce
+  nfs:
+    server: 192.168.13.67
+    path: /data/k8sdata/magedu/jenkins-root-data
+root@k8s-master01:~/k8s/yaml/magedu/jenkins/pv# kubectl apply -f jenkins-persistentvolume.yaml
+root@k8s-master01:~/k8s/yaml/magedu/jenkins/pv# kubectl get pv | grep jenkins
+jenkins-datadir-pv        100Gi      RWO            Retain           Available                                                            23s
+jenkins-root-datadir-pv   100Gi      RWO            Retain           Available                                                            23s
+
+6.4.5.3 创建PVC
+root@k8s-master01:~/k8s/yaml/magedu/jenkins/pv# cat jenkins-persistentvolumeclaim.yaml
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jenkins-datadir-pvc
+  namespace: magedu
+spec:
+  volumeName: jenkins-datadir-pv
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 80Gi
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jenkins-root-data-pvc
+  namespace: magedu
+spec:
+  volumeName: jenkins-root-datadir-pv
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 80Gi
+root@k8s-master01:~/k8s/yaml/magedu/jenkins/pv# kubectl apply -f jenkins-persistentvolumeclaim.yaml
+root@k8s-master01:~/k8s/yaml/magedu/jenkins/pv# kubectl get pvc -n magedu | grep jenkins
+jenkins-datadir-pvc       Pending   jenkins-datadir-pv        0                                        8s
+jenkins-root-data-pvc     Pending   jenkins-root-datadir-pv   0                                        8s
+
+6.4.5.4 运行jenkins
+root@k8s-master01:~/k8s/yaml/magedu/jenkins# cat jenkins.yaml
+kind: Deployment
+#apiVersion: extensions/v1beta1
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: magedu-jenkins
+  name: magedu-jenkins-deployment
+  namespace: magedu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: magedu-jenkins
+  template:
+    metadata:
+      labels:
+        app: magedu-jenkins
+    spec:
+      containers:
+      - name: magedu-jenkins-container
+        image: 192.168.13.197:8000/magedu/jenkins:v2.190.1
+        #imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+          name: http
+        volumeMounts:
+        - mountPath: "/apps/jenkins/jenkins-data/"
+          name: jenkins-datadir-magedu
+        - mountPath: "/root/.jenkins"
+          name: jenkins-root-datadir
+      volumes:
+        - name: jenkins-datadir-magedu
+          persistentVolumeClaim:
+            claimName: jenkins-datadir-pvc
+        - name: jenkins-root-datadir
+          persistentVolumeClaim:
+            claimName: jenkins-root-data-pvc
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: magedu-jenkins
+  name: magedu-jenkins-service
+  namespace: magedu
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+    nodePort: 38080
+  selector:
+    app: magedu-jenkins
+root@k8s-master01:~/k8s/yaml/magedu/jenkins# kubectl get pod -o wide -n magedu | grep jenkins
+magedu-jenkins-deployment-5f94c58f86-226hb       1/1     Running   0          2m27s   172.20.58.205    172.168.2.25    <none>           <none>
+root@k8s-master01:~/k8s/yaml/magedu/jenkins# kubectl get svc -n magedu | grep jenkins
+magedu-jenkins-service       NodePort    10.68.92.47     <none>        80:38080/TCP                                   49s
+
+6.4.5.5 web访问jenkins地址：http://172.168.2.25:38080
+root@k8s-master01:~/k8s/yaml/magedu/jenkins# kubectl exec -it magedu-jenkins-deployment-5f94c58f86-226hb bash -n magedu
+[root@magedu-jenkins-deployment-5f94c58f86-226hb /]# cat /root/.jenkins/secrets/initialAdminPassword
+7179a6bf7caa41d0b98ba67a88b9d70d
+
+
+6.4.6 k8s安装WordPress
+6.4.6.1 构建workpres nginx镜像
+---
+root@k8s-master01:~/k8s/dockerfile/web/pub-images/nginx-base-wordpress# cat Dockerfile
+#Nginx Base Image
+FROM 192.168.13.197:8000/baseimages/magedu-centos-base:7.8.2003
+
+MAINTAINER  zhangshijie@magedu.net
+
+RUN yum install -y vim wget tree  lrzsz gcc gcc-c++ automake pcre pcre-devel zlib zlib-devel openssl openssl-devel iproute net-tools iotop
+ADD nginx-1.14.2.tar.gz /usr/local/src/
+RUN cd /usr/local/src/nginx-1.14.2 && ./configure --prefix=/apps/nginx  && make && make install && ln -sv  /apps/nginx/sbin/nginx /usr/sbin/nginx  &&rm -rf /usr/local/src/nginx-1.14.2.tar.gz
+---
+root@k8s-master01:~/k8s/dockerfile/web/pub-images/nginx-base-wordpress# cat build-command.sh
+#!/bin/bash
+docker build -t 192.168.13.197:8000/pub-images/nginx-base-wordpress:v1.14.2  .
+sleep 1
+docker push  192.168.13.197:8000/pub-images/nginx-base-wordpress:v1.14.2
+---
+root@k8s-master01:~/k8s/dockerfile/web/pub-images/nginx-base-wordpress# ./build-command.sh
+
+6.4.6.2 基本workpres nginx镜像增加配置信息、数据目录再次构建nginx镜像
+root@k8s-master01:~/k8s/dockerfile/web/magedu/wordpress/nginx# cat Dockerfile
+FROM 192.168.13.197:8000/pub-images/nginx-base-wordpress:v1.14.2
+
+ADD nginx.conf /apps/nginx/conf/nginx.conf
+ADD run_nginx.sh /apps/nginx/sbin/run_nginx.sh
+RUN mkdir -pv /home/nginx/wordpress
+RUN chown nginx.nginx /home/nginx/wordpress/ -R
+
+EXPOSE 80 443
+
+CMD ["/apps/nginx/sbin/run_nginx.sh"]
+---
+root@k8s-master01:~/k8s/dockerfile/web/magedu/wordpress/nginx# cat nginx.conf | grep -Ev '#|^$'
+user  nginx nginx;
+worker_processes  auto;
+events {
+    worker_connections  1024;
+}
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile        on;
+    keepalive_timeout  65;
+    client_max_body_size 10M;
+    client_body_buffer_size 16k;
+    client_body_temp_path  /apps/nginx/tmp   1 2 2;
+    gzip  on;
+    server {
+        listen       80;
+        server_name  blogs.magedu.net;
+        location / {
+            root    /home/nginx/wordpress;
+            index   index.php index.html index.htm;
+        }
+        location ~ \.php$ {
+            root           /home/nginx/wordpress;
+            fastcgi_pass   127.0.0.1:9000;
+            fastcgi_index  index.php;
+            fastcgi_param  SCRIPT_FILENAME  $document_root$fastcgi_script_name;
+             include        fastcgi_params;
+        }
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   html;
+        }
+    }
+}
+---
+root@k8s-master01:~/k8s/dockerfile/web/magedu/wordpress/nginx# cat run_nginx.sh
+#!/bin/bash
+#echo "nameserver 10.20.254.254" > /etc/resolv.conf
+#chown nginx.nginx /home/nginx/wordpress/ -R
+/apps/nginx/sbin/nginx
+tail -f /etc/hosts
+root@k8s-master01:~/k8s/dockerfile/web/magedu/wordpress/nginx# cat build-command.sh
+#!/bin/bash
+TAG=$1
+docker build -t 192.168.13.197:8000/magedu/wordpress-nginx:${TAG} .
+echo "镜像制作完成，即将上传至Harbor服务器"
+sleep 1
+docker push  192.168.13.197:8000/magedu/wordpress-nginx:${TAG}
+echo "镜像上传完成"
+root@k8s-master01:~/k8s/dockerfile/web/magedu/wordpress/nginx# ./build-command.sh
+root@k8s-master01:~/k8s/dockerfile/web/magedu/wordpress/nginx# ./build-command.sh v1
+
+6.4.6.3 构建php镜像
+---
+root@k8s-master01:~/k8s/dockerfile/web/magedu/wordpress/php# cat Dockerfile
+#PHP Base Image
+FROM 192.168.13.197:8000/baseimages/magedu-centos-base:7.8.2003
+
+MAINTAINER  zhangshijie@magedu.net
+
+RUN yum install -y  https://mirrors.tuna.tsinghua.edu.cn/remi/enterprise/remi-release-7.rpm && yum install  php56-php-fpm php56-php-mysql -y
+ADD www.conf /opt/remi/php56/root/etc/php-fpm.d/www.conf
+#RUN useradd nginx -u 2019
+ADD run_php.sh /usr/local/bin/run_php.sh
+EXPOSE 9000
+
+CMD ["/usr/local/bin/run_php.sh"]
+---
+root@k8s-master01:~/k8s/dockerfile/web/magedu/wordpress/php# cat run_php.sh
+#!/bin/bash
+#echo "nameserver 10.20.254.254" > /etc/resolv.conf
+
+/opt/remi/php56/root/usr/sbin/php-fpm
+#/opt/remi/php56/root/usr/sbin/php-fpm --nodaemonize
+tail -f /etc/hosts
+---
+root@k8s-master01:~/k8s/dockerfile/web/magedu/wordpress/php# cat build-command.sh
+#!/bin/bash
+TAG=$1
+docker build -t 192.168.13.197:8000/magedu/wordpress-php-5.6:${TAG} .
+echo "镜像制作完成，即将上传至Harbor服务器"
+sleep 1
+docker push 192.168.13.197:8000/magedu/wordpress-php-5.6:${TAG}
+echo "镜像上传完成"
+---
+root@k8s-master01:~/k8s/dockerfile/web/magedu/wordpress/php# cat www.conf | grep -Ev ';|^$|\ $'
+[www]
+user = nginx
+group = nginx
+listen = 0.0.0.0:9000
+pm = dynamic
+pm.max_children = 50
+pm.start_servers = 5
+pm.min_spare_servers = 5
+pm.max_spare_servers = 35
+slowlog = /opt/remi/php56/root/var/log/php-fpm/www-slow.log
+php_admin_value[error_log] = /opt/remi/php56/root/var/log/php-fpm/www-error.log
+php_admin_flag[log_errors] = on
+php_value[session.save_handler] = files
+php_value[session.save_path]    = /opt/remi/php56/root/var/lib/php/session
+php_value[soap.wsdl_cache_dir]  = /opt/remi/php56/root/var/lib/php/wsdlcache
+---
+root@k8s-master01:~/k8s/dockerfile/web/magedu/wordpress/php# ./build-command.sh v1
+
+6.4.6.4 k8s运行nginx+php
+root@k8s-master01:~/k8s/yaml/magedu/wordpress# cat wordpress.yaml
+kind: Deployment
+#apiVersion: extensions/v1beta1
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: wordpress-app
+  name: wordpress-app-deployment
+  namespace: magedu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wordpress-app
+  template:
+    metadata:
+      labels:
+        app: wordpress-app
+    spec:
+      containers:
+      - name: wordpress-app-nginx
+        image: 192.168.13.197:8000/magedu/wordpress-nginx:v1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+          protocol: TCP
+          name: http
+        - containerPort: 443
+          protocol: TCP
+          name: https
+        volumeMounts:
+        - name: wordpress
+          mountPath: /home/nginx/wordpress
+          readOnly: false
+      - name: wordpress-app-php
+        image: 192.168.13.197:8000/magedu/wordpress-php-5.6:v1
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 9000
+          protocol: TCP
+          name: http
+        volumeMounts:
+        - name: wordpress
+          mountPath: /home/nginx/wordpress
+          readOnly: false
+      volumes:
+      - name: wordpress
+        nfs:
+          server: 192.168.13.67
+          path: /data/k8sdata/magedu/wordpress
+---
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: wordpress-app
+  name: wordpress-app-spec
+  namespace: magedu
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 80
+    nodePort: 30031
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 443
+    nodePort: 30033
+  selector:
+    app: wordpress-app
+root@k8s-master01:~/k8s/yaml/magedu/wordpress# kubectl apply -f wordpress.yaml
+root@k8s-master01:~/k8s/yaml/magedu/wordpress# kubectl get pods -n magedu | grep word
+wordpress-app-deployment-7d6d5c4c97-n26gw        2/2     Running   0          45m
+
+6.4.6.5 测试nginx+php功能
+注: 1. 数据持久化 2. 数据共享，php写，nginx读
+[root@wordpress-app-deployment-7d6d5c4c97-n26gw /]# df -TH | grep word		#这个是进入pod中的nginx容器，查看是否正常
+192.168.13.67:/data/k8sdata/magedu/wordpress nfs4     1.1T  2.9G  1.1T   1% /home/nginx/wordpress
+[root@wordpress-app-deployment-7d6d5c4c97-n26gw /]# df -TH | grep word		#这个是进入pod中的php容器，查看是否正常
+192.168.13.67:/data/k8sdata/magedu/wordpress nfs4     1.1T  2.9G  1.1T   1% /home/nginx/wordpress
+[root@wordpress-app-deployment-7d6d5c4c97-n26gw /]# cat /home/nginx/wordpress/index.html	#测试写入首页文件index.html
+magedu n56
+[root@wordpress-app-deployment-7d6d5c4c97-n26gw wordpress]# cat index.php 	#写入测试php首页，通过http://172.168.2.21:30031/index.php进行查看是否正常
+<?php
+        phpinfo();
+?>
+
+6.4.6.6 上传wordpress站点代码到nginx+php的nfs目录下
+6.4.6.6.1 更改wordpress站点文件属主属组为nginx
+[root@wordpress-app-deployment-7d6d5c4c97-5tbrt nginx]# chown -R nginx.nginx /home/nginx/wordpress     
+
+6.4.6.6.2 配置wordpress数据库配置
+mysql> create database wordpress;
+mysql> grant all on wordpress.* to wordpress@'%' identified by 'wordpress';
+
+6.4.6.6.3 进入web页面配置wordpress
+注：一定要在之前创建的主从数据库中主库进行创建写入，从库造成不能进行操作，即数据库:mysql-0.mysql
+> mysql-0.mysql.magedu.svc.homsom.local		#此为无关service所以可以解析
+Server:         10.68.0.2
+Address:        10.68.0.2#53
+Name:   mysql-0.mysql.magedu.svc.homsom.local
+Address: 172.20.217.104
+root@k8s-master01:~/k8s# kubectl get svc -n magedu | grep word
+wordpress-app-spec           NodePort    10.68.65.16     <none>        80:30031/TCP,443:30033/TCP                     115m
+--访问http://172.168.2.21:30031进行配置
+
+
+
+6.4.6.7 dubbo微服务
+6.4.6.7.1 构建dubbo provider镜像
+root@k8s-master01:~/k8s/dockerfile/web/magedu/dubbo/provider# cat dubbo-demo-provider-2.1.5/conf/dubbo.properties | grep -Ev '#|^$'
+dubbo.container=log4j,spring
+dubbo.application.name=demo-provider
+dubbo.application.owner=
+dubbo.registry.address=zookeeper://zookeeper1.magedu.svc.homsom.local:2181 | zookeeper://zookeeper2.magedu.svc.homsom.local:2181 | zookeeper://zookeeper3.magedu.svc.homsom.local:2181
+dubbo.monitor.protocol=registry
+dubbo.protocol.name=dubbo
+dubbo.protocol.port=20880
+dubbo.log4j.file=logs/dubbo-demo-provider.log
+dubbo.log4j.level=WARN
+---
+root@k8s-master01:~/k8s/dockerfile/web/magedu/dubbo/provider# cat Dockerfile
+#Dubbo provider
+FROM 192.168.13.197:8000/pub-images/jdk-base:v8.212
+
+MAINTAINER zhangshijie "zhangshijie@magedu.net"
+
+RUN yum install file nc -y
+RUN mkdir -p /apps/dubbo/provider
+ADD dubbo-demo-provider-2.1.5/  /apps/dubbo/provider
+ADD run_java.sh /apps/dubbo/provider/bin
+RUN chown nginx.nginx /apps -R
+RUN chmod a+x /apps/dubbo/provider/bin/*.sh
+
+CMD ["/apps/dubbo/provider/bin/run_java.sh"]
+---
+root@k8s-master01:~/k8s/dockerfile/web/magedu/dubbo/provider# cat run_java.sh
+#!/bin/bash
+#echo "nameserver 223.6.6.6" > /etc/resolv.conf
+#/usr/share/filebeat/bin/filebeat -c /etc/filebeat/filebeat.yml -path.home /usr/share/filebeat -path.config /etc/filebeat -path.data /var/lib/filebeat -path.logs /var/log/filebeat  &
+su - nginx -c "/apps/dubbo/provider/bin/start.sh"
+tail -f /etc/hosts
+---
+root@k8s-master01:~/k8s/dockerfile/web/magedu/dubbo/provider# cat build-command.sh
+#!/bin/bash
+docker build -t 192.168.13.197:8000/magedu/dubbo-demo-provider:v1  .
+sleep 3
+docker push 192.168.13.197:8000/magedu/dubbo-demo-provider:v1
+---
+root@k8s-master01:~/k8s/dockerfile/web/magedu/dubbo/provider# ./build-command.sh
+
+6.4.6.7.2 测试provider
+root@k8s-master01:~/k8s/yaml/magedu/dubbo/provider# cat provider.yaml
+kind: Deployment
+#apiVersion: extensions/v1beta1
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: magedu-provider
+  name: magedu-provider-deployment
+  namespace: magedu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: magedu-provider
+  template:
+    metadata:
+      labels:
+        app: magedu-provider
+    spec:
+      containers:
+      - name: magedu-provider-container
+        image: 192.168.13.197:8000/magedu/dubbo-demo-provider:v1
+        #command: ["/apps/tomcat/bin/run_tomcat.sh"]
+        #imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 20880
+          protocol: TCP
+          name: http
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: magedu-provider
+  name: magedu-provider-spec
+  namespace: magedu
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 20880
+    #nodePort: 30001
+  selector:
+    app: magedu-provider
+root@k8s-master01:~/k8s/yaml/magedu/dubbo/provider# kubectl apply -f provider.yaml
+root@k8s-master01:~/k8s/dockerfile/web/magedu/dubbo/provider# kubectl get pod -o wide -n magedu | grep provider
+magedu-provider-deployment-7656dfd74f-vpjkl      1/1     Running       0          4m      172.20.217.110   192.168.13.63   <none>           <none>
+
+6.4.6.7.3 连接到zookeeper集群查看是否有dubbo provider数据 
+此时连接到zookeeper客户端可查看到provider注册的信息，ip地址为：172.20.217.110跟上面一样，端口为20880
+/dubbo/com.alibaba.dubbo.demo.DemoService/providers/dubbo%3A%2F%2F172.20.217.110%3A20880%2Fcom.alibaba.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Ddemo-provider%26dubbo%3D2.1.5%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26loadbalance%3Droundrobin%26methods%3DsayHello%26pid%3D57%26revision%3D2.1.5%26timestamp%3D1648286134301
+
+
+6.4.6.7.4 consumer镜像构建
+root@k8s-master01:~/k8s/dockerfile/web/magedu/dubbo/consumer# cat dubbo-demo-consumer-2.1.5/conf/dubbo.properties | grep -Ev '#|^$'
+dubbo.container=log4j,spring
+dubbo.application.name=demo-consumer
+dubbo.application.owner=
+dubbo.registry.address=zookeeper://zookeeper1.magedu.svc.homsom.local:2181 | zookeeper://zookeeper2.magedu.svc.homsom.local:2181 | zookeeper://zookeeper3.magedu.svc.homsom.local:2181
+dubbo.monitor.protocol=registry
+dubbo.log4j.file=logs/dubbo-demo-consumer.log
+dubbo.log4j.level=WARN
+---
+root@k8s-master01:~/k8s/dockerfile/web/magedu/dubbo/consumer# cat Dockerfile
+#Dubbo consumer
+FROM 192.168.13.197:8000/pub-images/jdk-base:v8.212
+
+MAINTAINER zhangshijie "zhangshijie@magedu.net"
+
+RUN yum install file -y
+RUN mkdir -p /apps/dubbo/consumer
+ADD dubbo-demo-consumer-2.1.5  /apps/dubbo/consumer
+ADD run_java.sh /apps/dubbo/consumer/bin
+RUN chown nginx.nginx /apps -R
+RUN chmod a+x /apps/dubbo/consumer/bin/*.sh
+
+CMD ["/apps/dubbo/consumer/bin/run_java.sh"]
+---
+root@k8s-master01:~/k8s/dockerfile/web/magedu/dubbo/consumer# cat run_java.sh
+#!/bin/bash
+#echo "nameserver 223.6.6.6" > /etc/resolv.conf
+#/usr/share/filebeat/bin/filebeat -c /etc/filebeat/filebeat.yml -path.home /usr/share/filebeat -path.config /etc/filebeat -path.data /var/lib/filebeat -path.logs /var/log/filebeat  &
+su - nginx -c "/apps/dubbo/consumer/bin/start.sh"
+tail -f /etc/hosts
+---
+root@k8s-master01:~/k8s/dockerfile/web/magedu/dubbo/consumer# cat build-command.sh
+#!/bin/bash
+docker build -t 192.168.13.197:8000/magedu/dubbo-demo-consumer:v1  .
+sleep 3
+docker push 192.168.13.197:8000/magedu/dubbo-demo-consumer:v1
+root@k8s-master01:~/k8s/dockerfile/web/magedu/dubbo/consumer
+---
+root@k8s-master01:~/k8s/dockerfile/web/magedu/dubbo/consumer# ./build-command.sh
+
+6.4.6.7.5 测试consumer
+root@k8s-master01:~/k8s/yaml/magedu/dubbo/consumer# cat consumer.yaml
+kind: Deployment
+#apiVersion: extensions/v1beta1
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: magedu-consumer
+  name: magedu-consumer-deployment
+  namespace: magedu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: magedu-consumer
+  template:
+    metadata:
+      labels:
+        app: magedu-consumer
+    spec:
+      containers:
+      - name: magedu-consumer-container
+        image: 192.168.13.197:8000/magedu/dubbo-demo-consumer:v1
+        #command: ["/apps/tomcat/bin/run_tomcat.sh"]
+        #imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+          protocol: TCP
+          name: http
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: magedu-consumer
+  name: magedu-consumer-server
+  namespace: magedu
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 80
+    #nodePort: 30001
+  selector:
+    app: magedu-consumer
+root@k8s-master01:~/k8s/yaml/magedu/dubbo/consumer# kubectl apply -f consumer.yaml
+root@k8s-master01:~/k8s/yaml/magedu/dubbo/consumer# kubectl get pods -n magedu -o wide | grep consum
+magedu-consumer-deployment-84547497d4-999wr      1/1     Running       0          21s     172.20.217.111   192.168.13.63   <none>           <none>
+
+6.4.6.7.6 连接到zookeeper集群查看是否有dubbo consumer数据 
+
+6.4.6.7.7 注册中心管理端,非必需，是基于tomcat来做的
+root@k8s-master01:~/k8s/dockerfile/web/magedu/dubbo/dubboadmin# cat dubboadmin/WEB-INF/dubbo.properties | grep -Ev '#|^$'
+dubbo.registry.address=zookeeper://zookeeper1.magedu.svc.homsom.local:2181
+dubbo.admin.root.password=root
+dubbo.admin.guest.password=guest
+---
+root@k8s-master01:~/k8s/dockerfile/web/magedu/dubbo/dubboadmin# cat Dockerfile
+#Dubbo dubboadmin
+FROM 192.168.13.197:8000/pub-images/tomcat-base:v8.5.43
+
+MAINTAINER zhangshijie "zhangshijie@magedu.net"
+
+RUN yum install unzip -y
+ADD server.xml /apps/tomcat/conf/server.xml
+ADD logging.properties /apps/tomcat/conf/logging.properties
+ADD catalina.sh /apps/tomcat/bin/catalina.sh
+ADD run_tomcat.sh /apps/tomcat/bin/run_tomcat.sh
+ADD dubboadmin.war  /data/tomcat/webapps/dubboadmin.war   #此war包就是个zip文件，里面的配置文件dubboadmin/WEB-INF/dubbo.properties一定要确定是否更改，否则会报错运行不起来
+RUN cd /data/tomcat/webapps && unzip dubboadmin.war && rm -rf dubboadmin.war && chown -R nginx.nginx /data /apps
+
+EXPOSE 8080 8443
+
+CMD ["/apps/tomcat/bin/run_tomcat.sh"]
+---
+root@k8s-master01:~/k8s/dockerfile/web/magedu/dubbo/dubboadmin# grep '/data/tomcat/webapps' server.xml
+      <Host appBase="/data/tomcat/webapps" autoDeploy="true" name="localhost" unpackWARs="true">
+---
+root@k8s-master01:~/k8s/dockerfile/web/magedu/dubbo/dubboadmin# ./build-command.sh v1
+
+6.4.6.7.8 部署dubboadmin
+groot@k8s-master01:~/k8s/yaml/magedu/dubbo/dubboadmin# cat dubboadmin.yaml
+kind: Deployment
+#apiVersion: extensions/v1beta1
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: magedu-dubboadmin
+  name: magedu-dubboadmin-deployment
+  namespace: magedu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: magedu-dubboadmin
+  template:
+    metadata:
+      labels:
+        app: magedu-dubboadmin
+    spec:
+      containers:
+      - name: magedu-dubboadmin-container
+        image: 192.168.13.197:8000/magedu/dubboadmin:v1
+        #command: ["/apps/tomcat/bin/run_tomcat.sh"]
+        #imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+          name: http
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: magedu-dubboadmin
+  name: magedu-dubboadmin-service
+  namespace: magedu
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+    nodePort: 30080
+  selector:
+    app: magedu-dubboadmin
+root@k8s-master01:~/k8s/yaml/magedu/dubbo/dubboadmin# kubectl apply -f dubboadmin.yaml
+root@k8s-master01:~/k8s/yaml/magedu/dubbo/dubboadmin# kubectl get pods -o wide -n magedu  | grep dubboadmin
+magedu-dubboadmin-deployment-bbd4b4966-9fnzk     1/1     Running       0          52s     172.20.217.116   192.168.13.63   <none>           <none>
+
+6.4.6.7.8 访问dubboadmin
+root@k8s-master01:~/k8s/yaml/magedu/dubbo/dubboadmin# kubectl get svc -n magedu | grep dubboadmin
+magedu-dubboadmin-service    NodePort    10.68.41.5      <none>        80:30080/TCP                                   81s
+WEB访问：http://172.168.2.21:30080		用户和密码都是root
+
+
+6.4.6.7.9 伸缩provider pod查看日志
+[root@magedu-provider-deployment-7656dfd74f-vpjkl logs]# tail -f stdout.log 
+[20:24:26] Hello world5336, request from consumer: /172.20.217.111:51638		#172.20.217.111是消费者地址
+[20:24:28] Hello world5337, request from consumer: /172.20.217.111:51638
+[20:24:30] Hello world5338, request from consumer: /172.20.217.111:51638
+--查看consumer日志
+[root@magedu-consumer-deployment-84547497d4-999wr logs]# pwd
+/apps/dubbo/consumer/logs
+[root@magedu-consumer-deployment-84547497d4-999wr logs]# tail -f stdout.log 
+[20:22:41] Hello world5284, response form provider: 172.20.217.110:20880		#172.20.217.110是生产者地址
+[20:22:43] Hello world5285, response form provider: 172.20.217.110:20880
+[20:22:45] Hello world5286, response form provider: 172.20.217.110:20880
+--伸缩provider为2个pod，再查看consumer日志
+root@k8s-master01:~/k8s/yaml/magedu/dubbo/dubboadmin# kubectl get deployment magedu-provider-deployment -n magedu
+NAME                         READY   UP-TO-DATE   AVAILABLE   AGE
+magedu-provider-deployment   1/1     1            1           3h14m
+root@k8s-master01:~/k8s/yaml/magedu/dubbo/dubboadmin# kubectl scale --replicas=2 deployment/magedu-provider-deployment -n magedu	#伸缩
+deployment.apps/magedu-provider-deployment scaled
+root@k8s-master01:~/k8s/yaml/magedu/dubbo/dubboadmin# kubectl get deployment magedu-provider-deployment -n magedu
+NAME                         READY   UP-TO-DATE   AVAILABLE   AGE
+magedu-provider-deployment   2/2     2            2           3h15m
+[root@magedu-consumer-deployment-84547497d4-999wr logs]# tail -f stdout.log 	#此时多了172.20.217.112生产者
+20:30:20] Hello world5513, response form provider: 172.20.217.110:20880
+[20:30:22] Hello world5514, response form provider: 172.20.217.110:20880
+[20:30:24] Hello world5515, response form provider: 172.20.217.110:20880
+[20:30:27] Hello world5516, response form provider: 172.20.217.110:20880
+[20:30:29] Hello world5517, response form provider: 172.20.217.110:20880
+[20:30:31] Hello world5518, response form provider: 172.20.217.112:20880
+[20:30:33] Hello world5519, response form provider: 172.20.217.110:20880
+[20:30:35] Hello world5520, response form provider: 172.20.217.112:20880
+[20:30:37] Hello world5521, response form provider: 172.20.217.110:20880
+[20:30:39] Hello world5522, response form provider: 172.20.217.112:20880
+[20:30:41] Hello world5523, response form provider: 172.20.217.110:20880
+[20:30:43] Hello world5524, response form provider: 172.20.217.112:20880
+[20:30:45] Hello world5525, response form provider: 172.20.217.110:20880
+
+
+6.4.6.8 ingress-nginx部署及使用
+root@k8s-master01:~/k8s/yaml/ingress# kubectl apply -f ingress-controller-deploy.yaml
+root@k8s-master01:~/k8s/yaml/ingress# cat ingress-controller-deploy.yaml
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ingress-nginx
+  labels:
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+
+---
+# Source: ingress-nginx/templates/controller-serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    helm.sh/chart: ingress-nginx-2.4.0
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 0.33.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: controller
+  name: ingress-nginx
+  namespace: ingress-nginx
+---
+# Source: ingress-nginx/templates/controller-configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  labels:
+    helm.sh/chart: ingress-nginx-2.4.0
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 0.33.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: controller
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+data:
+---
+# Source: ingress-nginx/templates/clusterrole.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    helm.sh/chart: ingress-nginx-2.4.0
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 0.33.0
+    app.kubernetes.io/managed-by: Helm
+  name: ingress-nginx
+  namespace: ingress-nginx
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - configmaps
+      - endpoints
+      - nodes
+      - pods
+      - secrets
+    verbs:
+      - list
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - nodes
+    verbs:
+      - get
+  - apiGroups:
+      - ''
+    resources:
+      - services
+    verbs:
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - extensions
+      - networking.k8s.io   # k8s 1.14+
+    resources:
+      - ingresses
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+  - apiGroups:
+      - extensions
+      - networking.k8s.io   # k8s 1.14+
+    resources:
+      - ingresses/status
+    verbs:
+      - update
+  - apiGroups:
+      - networking.k8s.io   # k8s 1.14+
+    resources:
+      - ingressclasses
+    verbs:
+      - get
+      - list
+      - watch
+---
+# Source: ingress-nginx/templates/clusterrolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    helm.sh/chart: ingress-nginx-2.4.0
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 0.33.0
+    app.kubernetes.io/managed-by: Helm
+  name: ingress-nginx
+  namespace: ingress-nginx
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ingress-nginx
+subjects:
+  - kind: ServiceAccount
+    name: ingress-nginx
+    namespace: ingress-nginx
+---
+# Source: ingress-nginx/templates/controller-role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    helm.sh/chart: ingress-nginx-2.4.0
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 0.33.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: controller
+  name: ingress-nginx
+  namespace: ingress-nginx
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - namespaces
+    verbs:
+      - get
+  - apiGroups:
+      - ''
+    resources:
+      - configmaps
+      - pods
+      - secrets
+      - endpoints
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - services
+    verbs:
+      - get
+      - list
+      - update
+      - watch
+  - apiGroups:
+      - extensions
+      - networking.k8s.io   # k8s 1.14+
+    resources:
+      - ingresses
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - extensions
+      - networking.k8s.io   # k8s 1.14+
+    resources:
+      - ingresses/status
+    verbs:
+      - update
+  - apiGroups:
+      - networking.k8s.io   # k8s 1.14+
+    resources:
+      - ingressclasses
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - ''
+    resources:
+      - configmaps
+    resourceNames:
+      - ingress-controller-leader-nginx
+    verbs:
+      - get
+      - update
+  - apiGroups:
+      - ''
+    resources:
+      - configmaps
+    verbs:
+      - create
+  - apiGroups:
+      - ''
+    resources:
+      - endpoints
+    verbs:
+      - create
+      - get
+      - update
+  - apiGroups:
+      - ''
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+---
+# Source: ingress-nginx/templates/controller-rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    helm.sh/chart: ingress-nginx-2.4.0
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 0.33.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: controller
+  name: ingress-nginx
+  namespace: ingress-nginx
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ingress-nginx
+subjects:
+  - kind: ServiceAccount
+    name: ingress-nginx
+    namespace: ingress-nginx
+---
+# Source: ingress-nginx/templates/controller-service-webhook.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    helm.sh/chart: ingress-nginx-2.4.0
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 0.33.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: controller
+  name: ingress-nginx-controller-admission
+  namespace: ingress-nginx
+spec:
+  type: ClusterIP
+  ports:
+    - name: https-webhook
+      port: 443
+      targetPort: webhook
+  selector:
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/component: controller
+---
+# Source: ingress-nginx/templates/controller-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    helm.sh/chart: ingress-nginx-2.4.0
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 0.33.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: controller
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+spec:
+  type: NodePort
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: http
+      nodePort: 40080
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: https
+      nodePort: 40444
+  selector:
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/component: controller
+---
+# Source: ingress-nginx/templates/controller-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    helm.sh/chart: ingress-nginx-2.4.0
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 0.33.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: controller
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ingress-nginx
+      app.kubernetes.io/instance: ingress-nginx
+      app.kubernetes.io/component: controller
+  revisionHistoryLimit: 10
+  minReadySeconds: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: ingress-nginx
+        app.kubernetes.io/instance: ingress-nginx
+        app.kubernetes.io/component: controller
+    spec:
+      dnsPolicy: ClusterFirst
+      hostNetwork: true
+      containers:
+        - name: controller
+          image: 192.168.13.197:8000/magedu/nginx-ingress-controller:0.33.0
+          imagePullPolicy: IfNotPresent
+          lifecycle:
+            preStop:
+              exec:
+                command:
+                  - /wait-shutdown
+          args:
+            - /nginx-ingress-controller
+            - --election-id=ingress-controller-leader
+            - --ingress-class=nginx
+            - --configmap=ingress-nginx/ingress-nginx-controller
+            - --validating-webhook=:8443
+            - --validating-webhook-certificate=/usr/local/certificates/cert
+            - --validating-webhook-key=/usr/local/certificates/key
+          securityContext:
+            capabilities:
+              drop:
+                - ALL
+              add:
+                - NET_BIND_SERVICE
+            runAsUser: 101
+            allowPrivilegeEscalation: true
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 10254
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 10254
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+            - name: https
+              containerPort: 443
+              protocol: TCP
+            - name: webhook
+              containerPort: 8443
+              protocol: TCP
+          volumeMounts:
+            - name: webhook-cert
+              mountPath: /usr/local/certificates/
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 90Mi
+      serviceAccountName: ingress-nginx
+      terminationGracePeriodSeconds: 300
+      volumes:
+        - name: webhook-cert
+          secret:
+            secretName: ingress-nginx-admission
+---
+# Source: ingress-nginx/templates/admission-webhooks/validating-webhook.yaml
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  labels:
+    helm.sh/chart: ingress-nginx-2.4.0
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 0.33.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: admission-webhook
+  name: ingress-nginx-admission
+  namespace: ingress-nginx
+webhooks:
+  - name: validate.nginx.ingress.kubernetes.io
+    rules:
+      - apiGroups:
+          - extensions
+          - networking.k8s.io
+        apiVersions:
+          - v1beta1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - ingresses
+    failurePolicy: Fail
+    clientConfig:
+      service:
+        namespace: ingress-nginx
+        name: ingress-nginx-controller-admission
+        path: /extensions/v1beta1/ingresses
+---
+# Source: ingress-nginx/templates/admission-webhooks/job-patch/clusterrole.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: ingress-nginx-admission
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade,post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    helm.sh/chart: ingress-nginx-2.4.0
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 0.33.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: admission-webhook
+  namespace: ingress-nginx
+rules:
+  - apiGroups:
+      - admissionregistration.k8s.io
+    resources:
+      - validatingwebhookconfigurations
+    verbs:
+      - get
+      - update
+---
+# Source: ingress-nginx/templates/admission-webhooks/job-patch/clusterrolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ingress-nginx-admission
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade,post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    helm.sh/chart: ingress-nginx-2.4.0
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 0.33.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: admission-webhook
+  namespace: ingress-nginx
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: ingress-nginx-admission
+subjects:
+  - kind: ServiceAccount
+    name: ingress-nginx-admission
+    namespace: ingress-nginx
+---
+# Source: ingress-nginx/templates/admission-webhooks/job-patch/job-createSecret.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ingress-nginx-admission-create
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    helm.sh/chart: ingress-nginx-2.4.0
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 0.33.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: admission-webhook
+  namespace: ingress-nginx
+spec:
+  template:
+    metadata:
+      name: ingress-nginx-admission-create
+      labels:
+        helm.sh/chart: ingress-nginx-2.4.0
+        app.kubernetes.io/name: ingress-nginx
+        app.kubernetes.io/instance: ingress-nginx
+        app.kubernetes.io/version: 0.33.0
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/component: admission-webhook
+    spec:
+      containers:
+        - name: create
+          image: jettech/kube-webhook-certgen:v1.2.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - create
+            - --host=ingress-nginx-controller-admission,ingress-nginx-controller-admission.ingress-nginx.svc
+            - --namespace=ingress-nginx
+            - --secret-name=ingress-nginx-admission
+      restartPolicy: OnFailure
+      serviceAccountName: ingress-nginx-admission
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 2000
+---
+# Source: ingress-nginx/templates/admission-webhooks/job-patch/job-patchWebhook.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ingress-nginx-admission-patch
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    helm.sh/chart: ingress-nginx-2.4.0
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 0.33.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: admission-webhook
+  namespace: ingress-nginx
+spec:
+  template:
+    metadata:
+      name: ingress-nginx-admission-patch
+      labels:
+        helm.sh/chart: ingress-nginx-2.4.0
+        app.kubernetes.io/name: ingress-nginx
+        app.kubernetes.io/instance: ingress-nginx
+        app.kubernetes.io/version: 0.33.0
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/component: admission-webhook
+    spec:
+      containers:
+        - name: patch
+          image: jettech/kube-webhook-certgen:v1.2.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - patch
+            - --webhook-name=ingress-nginx-admission
+            - --namespace=ingress-nginx
+            - --patch-mutating=false
+            - --secret-name=ingress-nginx-admission
+            - --patch-failure-policy=Fail
+      restartPolicy: OnFailure
+      serviceAccountName: ingress-nginx-admission
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 2000
+---
+# Source: ingress-nginx/templates/admission-webhooks/job-patch/role.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ingress-nginx-admission
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade,post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    helm.sh/chart: ingress-nginx-2.4.0
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 0.33.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: admission-webhook
+  namespace: ingress-nginx
+rules:
+  - apiGroups:
+      - ''
+    resources:
+      - secrets
+    verbs:
+      - get
+      - create
+---
+# Source: ingress-nginx/templates/admission-webhooks/job-patch/rolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ingress-nginx-admission
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade,post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    helm.sh/chart: ingress-nginx-2.4.0
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 0.33.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: admission-webhook
+  namespace: ingress-nginx
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: ingress-nginx-admission
+subjects:
+  - kind: ServiceAccount
+    name: ingress-nginx-admission
+    namespace: ingress-nginx
+---
+# Source: ingress-nginx/templates/admission-webhooks/job-patch/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ingress-nginx-admission
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade,post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+  labels:
+    helm.sh/chart: ingress-nginx-2.4.0
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/version: 0.33.0
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: admission-webhook
+  namespace: ingress-nginx
+
+  
+6.4.6.9 metrics server部署、hpa控制器
+hpa控制器用metrics server收集到的指标数据当作条件来自动伸缩pod
+hpa控制器伸缩pod需要deploy控制器使用资源限制(limit,request)才可进行自动伸缩
+root@k8s-master01:~/k8s/yaml/ingress# kube-controller-manager --help | grep horizontal-pod-autoscaler-sync-period
+--horizontal-pod-autoscaler-sync-period duration      #定义pod数量水平伸缩的间隔周期，默认15秒
+--horizontal-pod-autoscaler-cpu-initialization-period	#用于设置 pod 的初始化时间， 在此时间内的 pod，CPU 资源指标将不会被采纳，默认为5分钟
+--horizontal-pod-autoscaler-initial-readiness-delay duration The period after pod	#用于设置 pod 准备时间， 在此时间内的 pod 统统被认为未就绪及不采集数据,默认为30秒
+
+
+6.4.6.9.1 部署metrics server 
+root@k8s-master01:~/k8s/yaml/metrics-server# cat metrics-server-v0.4.4.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: metrics-server
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    k8s-app: metrics-server
+    rbac.authorization.k8s.io/aggregate-to-admin: "true"
+    rbac.authorization.k8s.io/aggregate-to-edit: "true"
+    rbac.authorization.k8s.io/aggregate-to-view: "true"
+  name: system:aggregated-metrics-reader
+rules:
+- apiGroups:
+  - metrics.k8s.io
+  resources:
+  - pods
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: system:metrics-server
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - nodes
+  - nodes/stats
+  - namespaces
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: metrics-server-auth-reader
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: extension-apiserver-authentication-reader
+subjects:
+- kind: ServiceAccount
+  name: metrics-server
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: metrics-server:system:auth-delegator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:auth-delegator
+subjects:
+- kind: ServiceAccount
+  name: metrics-server
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: system:metrics-server
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system:metrics-server
+subjects:
+- kind: ServiceAccount
+  name: metrics-server
+  namespace: kube-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: metrics-server
+  namespace: kube-system
+spec:
+  ports:
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: https
+  selector:
+    k8s-app: metrics-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: metrics-server
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      k8s-app: metrics-server
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        k8s-app: metrics-server
+    spec:
+      containers:
+      - args:
+        - --cert-dir=/tmp
+        - --secure-port=4443
+        - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+        - --kubelet-use-node-status-port
+        image: 192.168.13.197:8000/baseimages/metrics-server:v0.4.4
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /livez
+            port: https
+            scheme: HTTPS
+          periodSeconds: 10
+        name: metrics-server
+        ports:
+        - containerPort: 4443
+          name: https
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /readyz
+            port: https
+            scheme: HTTPS
+          periodSeconds: 10
+        securityContext:
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+        volumeMounts:
+        - mountPath: /tmp
+          name: tmp-dir
+      nodeSelector:
+        kubernetes.io/os: linux
+      priorityClassName: system-cluster-critical
+      serviceAccountName: metrics-server
+      volumes:
+      - emptyDir: {}
+        name: tmp-dir
+---
+apiVersion: apiregistration.k8s.io/v1
+kind: APIService
+metadata:
+  labels:
+    k8s-app: metrics-server
+  name: v1beta1.metrics.k8s.io
+spec:
+  group: metrics.k8s.io
+  groupPriorityMinimum: 100
+  insecureSkipTLSVerify: true
+  service:
+    name: metrics-server
+    namespace: kube-system
+  version: v1beta1
+  versionPriority: 100
+root@k8s-master01:~/k8s/yaml/metrics-server# kubectl apply -f metrics-server-v0.4.4.yaml
+root@k8s-master01:~/k8s/yaml/metrics-server# kubectl top nodes	#部署完metrics server后就可以查看node和pod的资源使用情况了， 此时dashboard也有node和pod的资源图标显示了
+W0326 23:18:07.870056    7197 top_node.go:119] Using json format to get metrics. Next release will switch to protocol-buffers, switch early by passing --use-protocol-buffers flag
+NAME            CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%
+172.168.2.21    391m         19%    1276Mi          100%
+172.168.2.22    297m         14%    1182Mi          93%
+172.168.2.23    516m         25%    1180Mi          92%
+172.168.2.24    250m         12%    846Mi           66%
+172.168.2.25    176m         8%     1126Mi          88%
+172.168.2.26    1069m        53%    576Mi           45%
+192.168.13.63   572m         7%     4284Mi          37%
+root@k8s-master01:~/k8s/yaml/metrics-server# kubectl top pods -A
+W0326 23:19:04.471483    8139 top_pod.go:140] Using json format to get metrics. Next release will switch to protocol-buffers, switch early by passing --use-protocol-buffers flag
+NAMESPACE              NAME                                             CPU(cores)   MEMORY(bytes)
+ingress-nginx          ingress-nginx-controller-645b99897d-6rm9l        2m           64Mi
+kube-system            calico-kube-controllers-647f956d86-m5ds9         10m          14Mi
+kube-system            calico-node-fl565                                53m          41Mi
+kube-system            calico-node-ldrjs                                59m          48Mi
+kube-system            calico-node-qnvt9                                68m          35Mi
+kube-system            calico-node-t9rh6                                103m         37Mi
+kube-system            calico-node-vbvts                                35m          55Mi
+kube-system            calico-node-x9tjb                                57m          43Mi
+kube-system            calico-node-zknjn                                34m          123Mi
+kube-system            coredns-5fc7c5b494-nj8zj                         7m           12Mi
+kube-system            metrics-server-6557798c77-cl9x2                  4m           25Mi
+kubernetes-dashboard   dashboard-metrics-scraper-67d4cf4b45-q9568       1m           6Mi
+kubernetes-dashboard   kubernetes-dashboard-7df675bc5f-8phww            1m           30Mi
+magedu                 deploy-devops-redis-749878f59d-gf856             1m           12Mi
+magedu                 magedu-consumer-deployment-84547497d4-999wr      2m           307Mi
+magedu                 magedu-dubboadmin-deployment-bbd4b4966-sts92     306m         685Mi
+magedu                 magedu-jenkins-deployment-5f94c58f86-kc2hg       2m           539Mi
+magedu                 magedu-nginx-deployment-769d4567ff-8sm6c         0m           9Mi
+magedu                 magedu-provider-deployment-7656dfd74f-fq652      2m           334Mi
+magedu                 magedu-provider-deployment-7656dfd74f-vpjkl      1m           346Mi
+magedu                 magedu-tomcat-app1-deployment-65747746b9-dfzfl   1m           486Mi
+magedu                 mysql-0                                          23m          221Mi
+magedu                 wordpress-app-deployment-7d6d5c4c97-5tbrt        1m           433Mi
+magedu                 zookeeper1-749d87b7c5-stk5w                      1m           135Mi
+magedu                 zookeeper2-5f5fcb7f4d-s5pgp                      1m           139Mi
+magedu                 zookeeper3-c857bb585-txchq                       1m           128Mi
+
+
+6.4.6.9.2 yaml文件创建hpa控制器，一般每个项目下都会放一个hpa文件，可选用或者不用
+root@k8s-master01:~/k8s/yaml/magedu/tomcat-app1# kubectl get pods -n magedu | grep tomcat
+magedu-tomcat-app1-deployment-65747746b9-dfzfl   1/1     Running       1          3d5h
+root@k8s-master01:~/k8s/yaml/magedu/tomcat-app1# kubectl apply -f hpa.yaml
+root@k8s-master01:~/k8s/yaml/magedu/tomcat-app1# kubectl get hpa -n magedu
+NAME                               REFERENCE                                  TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+magedu-tomcat-app1-podautoscaler   Deployment/magedu-tomcat-app1-deployment   <unknown>/60%   2         5         0          6s
+root@k8s-master01:~/k8s/yaml/magedu/tomcat-app1# kubectl get hpa -n magedu		#此时有一个副本了，因为最小为2个pod
+NAME                               REFERENCE                                  TARGETS         MINPODS   MAXPODS   REPLICAS   AGE
+magedu-tomcat-app1-podautoscaler   Deployment/magedu-tomcat-app1-deployment   <unknown>/60%   2         5         1          23s
+root@k8s-master01:~/k8s/yaml/magedu/tomcat-app1# kubectl get pods -n magedu | grep tomcat
+magedu-tomcat-app1-deployment-65747746b9-dfzfl   1/1     Running       1          3d5h
+magedu-tomcat-app1-deployment-65747746b9-zdj9l   1/1     Running       0          18s
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

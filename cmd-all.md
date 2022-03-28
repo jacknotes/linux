@@ -2914,8 +2914,30 @@ cat json.txt | jq "[.[] | {name:.arrayBrowser[1].name,city:.address.city}]"
 
 
 
+#vim命令
+----多个文件之间复制
+vim test1.txt test2.txt
+:n 切换下一个文件
+:N 切换上一个文件
+:f 或 :file 或 :ls 查看当前文件名
 
+----指定行范围内匹配的行前或行后添加内容信息。
+--计算修改区间行号1417到
+:set nu
+--行后增加多行
+:.,$s/location.*$/&\r^I^I^Iallow 192.168.3.1;\r^I^I^Iallow 192.168.1.1;\r^I^I^Iallow 222.66.21.210;\r^I^I^Iallow 58.246.78.150;\r^I^I^Ideny all;/g
+--行前增加多行
+:.,+7s/\}/        allow 192.168.3.1;\r^I^I^Iallow 192.168.1.1;\r^I^I^Iallow 222.66.21.210;\r^I^I^Iallow 58.246.78.150;\r^I^I&/g
+注：.,+7表示行范围，&表示匹配的内容，\r表示在匹配的内容前或内容后增加新行，^I表示table键缩进
 
+--非空行前添加注释
+:.,+5s/^./# &
 
+--删除有空格的行
+:.,+10g/ /d 
+
+--非空行必添加分号
+:.,+10s/.$/&;
+  
 
 </pre>

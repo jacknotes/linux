@@ -154,3 +154,37 @@ net.ipv4.tcp_window_scaling = 0
 net.ipv4.tcp_sack = 0
 #Turn off tcp_timestamps
 net.ipv4.tcp_timestamps = 0
+
+
+#centos7内核升级
+--安装elrepo源
+rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+rpm -Uvh  https://www.elrepo.org/elrepo-release-7.el7.elrepo.noarch.rpm
+yum --disablerepo="*" --enablerepo="elrepo-kernel" repolist
+--查看可用的内核版本:
+kernel-lt 和 kernel-ml 二者的区别：在 ELRepo中有两个内核选项，一个是kernel-lt（长期支持版），一个是 kernel-ml（主线最新版本），采用长期支持版本（kernel-lt），更加稳定一些。
+yum --disablerepo="*" --enablerepo="elrepo-kernel" list available
+yum --enablerepo="elrepo-kernel" install kernel-lt -y
+--查看安装的内核版本
+[root@k8s-node04 ~]# awk -F \' '$1=="menuentry " {print $2}' /boot/grub2/grub.cfg
+CentOS Linux (5.4.187-1.el7.elrepo.x86_64) 7 (Core)
+CentOS Linux (3.10.0-1160.59.1.el7.x86_64) 7 (Core)
+CentOS Linux (3.10.0-957.el7.x86_64) 7 (Core)
+CentOS Linux (0-rescue-cb390effac4d4aeab81a3217e9a295d9) 7 (Core)
+--设置开机启动哪个版本
+方法1：
+[root@k8s-node04 ~]# grub2-set-default 0
+方法2：
+编辑配置文件 vim /etc/default/grub
+将GRUB_DEFAULT=saved改为GRUB_0=saved，保存退出vim
+--运行grub2-mkconfig命令来重新创建内核配置
+[root@k8s-node04 ~]# grub2-mkconfig -o /boot/grub2/grub.cfg
+[root@k8s-node04 ~]# reboot
+[root@k8s-node04 ~]# uname  -a
+Linux k8s-node04 5.4.187-1.el7.elrepo.x86_64 #1 SMP Mon Mar 21 17:34:42 EDT 2022 x86_64 x86_64 x86_64 GNU/Linux
+
+
+
+
+
+
