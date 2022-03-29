@@ -2541,7 +2541,7 @@ Error: no repositories to show
 2. 添加helm仓库
 [root@master02 ~/k8s-manifests/helm/linux-amd64]# helm repo add stable http://mirror.azure.cn/kubernetes/charts
 "stable" has been added to your repositories
-[root@master02 ~/k8s-manifests/helm/linux-amd64]# helm repo add aliyun https://kubernetes.oss-cn-hangzhou.aliyuncs.com/charts 
+[root@master02 ~/k8s-manifests/helm/linux-amd64]# helm repo add aliyun https://kubernetes.oss-cn-hangzhou.aliyuncs.com/charts   #(helm3使用不了，有坑未更新)
 "aliyun" has been added to your repositories
 [root@master02 ~/k8s-manifests/helm/linux-amd64]# helm repo list 
 NAME  	URL                                                   
@@ -2641,7 +2641,7 @@ resources:
 方式二：使用 --set 配置参数进行安装
 --set 参数是在使用 helm 命令时候添加的参数，可以在执行 helm 安装与更新应用时使用，多个参数间用","隔开，使用如下：
 如果配置文件和 --set 同时使用，则 --set 设置的参数会覆盖配置文件中的参数配置
-helm install nginx --set 'registry.registry=docker.io,registry.repository=bitnami/nginx' bitnami/nginx -n default
+helm install nginx --set 'image.registry=docker.io,image.repository=bitnami/nginx' bitnami/nginx -n default
 --卸载应用，不保留安装记录:
 [root@master02 ~/k8s-manifests/helm]# helm uninstall nginx
 release "nginx" uninstalled

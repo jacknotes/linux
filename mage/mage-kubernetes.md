@@ -3641,6 +3641,7 @@ mysql> create database wordpress;
 mysql> grant all on wordpress.* to wordpress@'%' identified by 'wordpress';
 
 6.4.6.6.3 进入web页面配置wordpress
+注：在web访问http://172.168.2.21:30031 地址后，需要将需要立即将172.168.2.21:30031  IP地址配置成域名，后面在进行配置数据库等信息。因为现在不配置成域名的话，后面再通过添加域名来反向代理wordpress的service接口时会不正常，这个问题非常麻烦，就是这个问题困扰了我很久，一度以为是nginx代理有问题
 注：一定要在之前创建的主从数据库中主库进行创建写入，从库造成不能进行操作，即数据库:mysql-0.mysql
 > mysql-0.mysql.magedu.svc.homsom.local		#此为无关service所以可以解析
 Server:         10.68.0.2
