@@ -2552,15 +2552,15 @@ HTTPGetAction    #对指定的端口和路径上的容器的IP地址执行HTTPGe
 失败：容器未通过诊断。
 未知：诊断失败，因此不会采取任何行动。
 --探针类型：
-livenessProbe    #存活探针，检测容器容器是否正在运行，如果存活探测失败，则kubelet会杀死容器，并且容器将受到其重启策略的影响，如果容器不提供存活探针，则默认状态为 Success，livenessProbe⽤于控制是否重启pod。
+livenessProbe    #存活探针，检测容器容器是否正在运行，如果存活探测失败，则kubelet会杀死容器，并且容器将受到其重启策略的影响，如果容器不提供存活探针，则默认状态为 Success，livenessProbe?于控制是否重启pod。
 readinessProbe    #就绪探针，如果就绪探测失败，端点控制器将从与Pod匹配的所有Service的端点中删除该Pod的IP地址，初始延迟之前的就绪状态默认为Failure(失败)，如果容器不提供就绪探针，则默认状态为Success，readinessProbe用于控制pod是否添加至service。
 
 6.3.0.2 Pod重启策略：
-k8s在Pod出现异常的时候会⾃动将Pod重启以恢复Pod中的服务。
+k8s在Pod出现异常的时候会自动将Pod重启以恢复Pod中的服务。
 restartPolicy：
 Always：当容器异常时，k8s自动重启该容器，ReplicationController/Replicaset/Deployment。
 OnFailure：当容器失败时(容器停止运行且退出码不为0)，k8s自动重启该容器。
-Never：不论容器运⾏状态如何都不会重启该容器,Job或CronJob。
+Never：不论容器运行状态如何都不会重启该容器,Job或CronJob。
 
 6.3.0.3 探针配置：
 initialDelaySeconds: 120
@@ -2577,20 +2577,20 @@ failureThreshold： 3
 host:
 #连接使用的主机名，默认是Pod的 IP，也可以在HTTP头中设置 “Host” 来代替。
 scheme: http
-#用于设置连接主机的⽅式（HTTP 还是 HTTPS），默认是 HTTP。
+#用于设置连接主机的?式（HTTP 还是 HTTPS），默认是 HTTP。
 path: /monitor/index.html
 #访问 HTTP 服务的路径。
 httpHeaders:
 #请求中自定义的 HTTP 头,HTTP 头字段允许重复。
 port: 80
-#访问容器的端⼝号或者端口名，如果数字必须在 1 ～ 65535 之间。
+#访问容器的端?号或者端口名，如果数字必须在 1 ～ 65535 之间。
 
 6.3.0.4 livenessProbe和readinessProbe的对比：
 配置参数一样
-livenessProbe #连续探测失败会重启、重建pod，readinessProbe不会执⾏重启或者重建Pod操作
+livenessProbe #连续探测失败会重启、重建pod，readinessProbe不会执行重启或者重建Pod操作
 livenessProbe #连续检测指定次数失败后会将容器置于(Crash Loop BackOff)且不可用，readinessProbe不会
 readinessProbe #连续探测失败会从service的endpointd中删除该Pod，livenessProbe不具备此功能，但是会将容器挂起livenessProbe
-livenessProbe用户控制是否重启pod，readinessProbe⽤于控制pod是否添加⾄service
+livenessProbe用户控制是否重启pod，readinessProbe用于控制pod是否添加到service
 建议：
 两个探针都配置
 
@@ -3642,6 +3642,7 @@ mysql> grant all on wordpress.* to wordpress@'%' identified by 'wordpress';
 
 6.4.6.6.3 进入web页面配置wordpress
 注：在web访问http://172.168.2.21:30031 地址后，需要将需要立即将172.168.2.21:30031  IP地址配置成域名，后面在进行配置数据库等信息。因为现在不配置成域名的话，后面再通过添加域名来反向代理wordpress的service接口时会不正常，这个问题非常麻烦，就是这个问题困扰了我很久，一度以为是nginx代理有问题
+注：如果后期添加域名那么访问会一直跳转到某个IP地址，可以尝试通过更改mysql数据库中的表wp_users,wp_options，看是否可以改变，此方法示尝试。
 注：一定要在之前创建的主从数据库中主库进行创建写入，从库造成不能进行操作，即数据库:mysql-0.mysql
 > mysql-0.mysql.magedu.svc.homsom.local		#此为无关service所以可以解析
 Server:         10.68.0.2
@@ -4885,20 +4886,1479 @@ magedu-tomcat-app1-deployment-65747746b9-zdj9l   1/1     Running       0        
 
 
 
+6.4.6.7 Kubernetes for CICD
+
+6.4.6.7.1 运行nginx pod 
+root@k8s-master01:~/k8s/yaml/magedu/nginx# cat nginx.yaml
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: magedu-nginx-deployment-label
+  name: magedu-nginx-deployment
+  namespace: magedu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: magedu-nginx-selector
+  template:
+    metadata:
+      labels:
+        app: magedu-nginx-selector
+    spec:
+      containers:
+      - name: magedu-nginx-container
+        image: 192.168.13.197:8000/magedu/nginx-web1:v3
+        #command: ["/apps/tomcat/bin/run_tomcat.sh"]
+        #imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+          protocol: TCP
+          name: http
+        - containerPort: 443
+          protocol: TCP
+          name: https
+        env:
+        - name: "password"
+          value: "123456"
+        - name: "age"
+          value: "20"
+        resources:
+          limits:
+            cpu: 2
+            memory: 2Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+
+        volumeMounts:
+        - name: magedu-images
+          mountPath: /usr/local/nginx/html/webapp/images
+          readOnly: false
+        - name: magedu-static
+          mountPath: /usr/local/nginx/html/webapp/static
+          readOnly: false
+      volumes:
+      - name: magedu-images
+        nfs:
+          server: 192.168.13.67
+          path: /data/k8sdata/magedu/images
+      - name: magedu-static
+        nfs:
+          server: 192.168.13.67
+          path: /data/k8sdata/magedu/static
+      #nodeSelector:
+      #  group: magedu
+---
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: magedu-nginx-service-label
+  name: magedu-nginx-service
+  namespace: magedu
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 80
+    nodePort: 40002
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 443
+    nodePort: 40443
+  selector:
+    app: magedu-nginx-selector
+---
+root@k8s-master01:~/k8s/yaml/magedu/nginx# kubectl apply -f nginx.yaml
+deployment.apps/magedu-nginx-deployment created
+service/magedu-nginx-service created
+root@k8s-master01:~/k8s/yaml/magedu/nginx# kubectl get pod -n magedu | grep nginx
+magedu-nginx-deployment-769d4567ff-4mht9         1/1     Running   0          10s
+
+6.4.6.7.2 金丝雀/灰度
+业务镜像版本升级及回滚：
+在指定的deployment中通过kubectl set image指定新版本的 镜像:tag 来实现更新代码的目的。构建三个不同版本的nginx镜像，第一次使用v1版本，后组逐渐升级到v2与v3，测试镜像版本升级与回滚操作
+
+更新策略：
+1. recreate(全部删除再全部安装新版本pod)   2. rollingUpdate(增加1个新pod，删除一个旧pod，直至全部更新，99%使用策略)
+
+deployment控制器保持两种更新策略：默认为滚动更新
+1.滚动更新(rolling update)：
+滚动更新是默认的更新策略，滚动更新是基于新版本镜像创建新版本pod，然后删除⼀部分旧版本pod，然后再创建新版本pod，再删除⼀部分旧版本pod，直到就版本pod删除完成，滚动更新优势是在升级过程当中不会导致服务不可用，缺点是升级过程中会导致两个版本在短时间内会并存。具体升级过程是在执行更新操作后k8s会再创建一个新版本的ReplicaSet控制器，在删除旧版本的ReplicaSet控制器下的pod的同时会在新版本的ReplicaSet控制器下创建新的pod，直到旧版本的pod全部被删除完后再把旧版本的ReplicaSet控制器也回收掉。
+
+在执行滚动更新的同时，为了保证服务的可用性，当前控制器内不可用的pod(pod需要拉取镜像执行创建和执行探针探测期间是不可用的)不能超出指定范围，因为需要多少保留指定数量的pod以保证服务可以被客户端正常访问，可以通过以下参数指定： 
+#kubectl explain deployment.spec.strategy 
+deployment.spec.strategy.rollingUpdate.maxSurge #指定在升级期间pod总数可以超出定义好的期望的pod数的个数或者百分比，默认为25%，如果设置为10%，假如当前是100个pod，那么升级时最多将创建110个pod即额外有10%的pod临时会超出当前(replicas)指定的副本数限制。
+deployment.spec.strategy.rollingUpdate.maxUnavailable #指定在升级期间最大不可用的pod数，可以是整数或者当前pod的百分比，默认是25%，假如当前是100个pod，那么升级时最多可以有25个(25%)pod不可用即还要75个(75%)pod是可用的。
+#注意：以上两个值不能同时为0，如果maxUnavailable最大不可用pod为0，maxSurge超出pod数也为0，那么将会导致pod无法进行滚动更新。
+
+2.重建更新(recreate):
+先删除现有的pod，然后基于新版本的镜像重建，优势是同时只有⼀个版本在线，不会产⽣多版本在线问题，缺点是pod删除后到pod重建成功中间的时间会导致服务无法访问，因此较少使用。
+
+3. 暂停更新与恢复更新
+root@k8s-master01:~# kubectl patch deployment magedu-nginx-deployment -p '{"spec": {"replicas": 3}}' -n magedu		#伸缩pod
+root@k8s-master01:~# kubectl get pod -n magedu -o wide | grep nginx
+magedu-nginx-deployment-769d4567ff-2vc2m         1/1     Running   0          32s     172.20.217.76    192.168.13.63   <none>           <none>
+magedu-nginx-deployment-769d4567ff-4mht9         1/1     Running   0          11m     172.20.217.119   192.168.13.63   <none>           <none>
+magedu-nginx-deployment-769d4567ff-q4zzg         1/1     Running   0          32s     172.20.217.75    192.168.13.63   <none>           <none>
+root@k8s-master01:~# docker tag nginx:1.16.1 192.168.13.197:8000/magedu/nginx:1.16.1
+root@k8s-master01:~# docker push 192.168.13.197:8000/magedu/nginx:1.16.1
+root@k8s-master01:~# kubectl describe deployment magedu-nginx-deployment -n magedu | grep RollingUpdateStrategy
+RollingUpdateStrategy:  25% max unavailable, 25% max surge
+root@k8s-master01:~# kubectl set image deployment magedu-nginx-deployment magedu-nginx-container=192.168.13.197:8000/magedu/nginx:1.16.1 -n magedu && kubectl rollout pause deployment magedu-nginx-deployment -n magedu		#更新镜像并立即暂停，实现灰度发布
+deployment.apps/magedu-nginx-deployment image updated
+deployment.apps/magedu-nginx-deployment paused
+root@k8s-master01:~/k8s/yaml/magedu/nginx# kubectl get pods -n magedu -w | grep magedu-nginx-deployment   	#pod的生成状态
+magedu-nginx-deployment-769d4567ff-2vc2m         1/1     Running   0          116m
+magedu-nginx-deployment-769d4567ff-4mht9         1/1     Running   0          127m
+magedu-nginx-deployment-769d4567ff-q4zzg         1/1     Running   0          116m
+magedu-nginx-deployment-866644b4bf-s5k8z         0/1     Pending   0          0s
+magedu-nginx-deployment-866644b4bf-s5k8z         0/1     Pending   0          0s
+magedu-nginx-deployment-866644b4bf-s5k8z         0/1     ContainerCreating   0          1s
+magedu-nginx-deployment-866644b4bf-s5k8z         1/1     Running             0          17s
+root@k8s-master01:~#  kubectl get pods -n magedu | grep magedu-nginx-deployment		#此时有4个pod
+magedu-nginx-deployment-769d4567ff-2vc2m         1/1     Running   0          118m
+magedu-nginx-deployment-769d4567ff-4mht9         1/1     Running   0          129m
+magedu-nginx-deployment-769d4567ff-q4zzg         1/1     Running   0          118m
+magedu-nginx-deployment-866644b4bf-s5k8z         1/1     Running   0          90s
+root@k8s-master01:~# kubectl rollout resume deployment magedu-nginx-deployment -n magedu		#恢复更新
+deployment.apps/magedu-nginx-deployment resumed
+root@k8s-master01:~/k8s/yaml/magedu/nginx# kubectl get pods -n magedu -w | grep magedu-nginx-deployment
+magedu-nginx-deployment-769d4567ff-2vc2m         1/1     Running   0          116m
+magedu-nginx-deployment-769d4567ff-4mht9         1/1     Running   0          127m
+magedu-nginx-deployment-769d4567ff-q4zzg         1/1     Running   0          116m
+magedu-nginx-deployment-866644b4bf-s5k8z         0/1     Pending   0          0s
+magedu-nginx-deployment-866644b4bf-s5k8z         0/1     Pending   0          0s
+magedu-nginx-deployment-866644b4bf-s5k8z         0/1     ContainerCreating   0          1s
+magedu-nginx-deployment-866644b4bf-s5k8z         1/1     Running             0          17s		#增加一个
+magedu-nginx-deployment-769d4567ff-2vc2m         1/1     Terminating         0          119m	#从这里继续开始升级pod步骤，#删除一个
+magedu-nginx-deployment-866644b4bf-r5fvs         0/1     Pending             0          1s
+magedu-nginx-deployment-866644b4bf-r5fvs         0/1     Pending             0          1s
+magedu-nginx-deployment-866644b4bf-r5fvs         0/1     ContainerCreating   0          1s
+magedu-nginx-deployment-769d4567ff-2vc2m         0/1     Terminating         0          119m
+magedu-nginx-deployment-866644b4bf-r5fvs         1/1     Running             0          5s		#增加一个
+magedu-nginx-deployment-769d4567ff-q4zzg         1/1     Terminating         0          119m	#删除一个
+magedu-nginx-deployment-866644b4bf-sv5vx         0/1     Pending             0          1s
+magedu-nginx-deployment-866644b4bf-sv5vx         0/1     Pending             0          1s
+magedu-nginx-deployment-866644b4bf-sv5vx         0/1     ContainerCreating   0          2s
+magedu-nginx-deployment-769d4567ff-2vc2m         0/1     Terminating         0          119m
+magedu-nginx-deployment-769d4567ff-2vc2m         0/1     Terminating         0          119m
+magedu-nginx-deployment-769d4567ff-q4zzg         0/1     Terminating         0          119m
+magedu-nginx-deployment-866644b4bf-sv5vx         1/1     Running             0          5s		#增加一个
+magedu-nginx-deployment-769d4567ff-4mht9         1/1     Terminating         0          130m	#删除一个
+magedu-nginx-deployment-769d4567ff-4mht9         0/1     Terminating         0          130m
+magedu-nginx-deployment-769d4567ff-q4zzg         0/1     Terminating         0          119m
+magedu-nginx-deployment-769d4567ff-q4zzg         0/1     Terminating         0          119m
+magedu-nginx-deployment-769d4567ff-4mht9         0/1     Terminating         0          131m
+magedu-nginx-deployment-769d4567ff-4mht9         0/1     Terminating         0          131m
+root@k8s-master01:~# kubectl get pods -n magedu | grep magedu-nginx-deployment		#pod生成完成后最终为3个
+magedu-nginx-deployment-866644b4bf-r5fvs         1/1     Running   0          41s
+magedu-nginx-deployment-866644b4bf-s5k8z         1/1     Running   0          2m57s
+magedu-nginx-deployment-866644b4bf-sv5vx         1/1     Running   0          35s
+
+
+4. 另外一种滚动升级的方式就是写yaml文件
+root@k8s-master01:~/k8s/yaml/deplooy-upgrade-case# cat tomcat-app1.yaml
+kind: Deployment
+#apiVersion: extensions/v1beta1
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: magedu-tomcat-app1-deployment-label
+  name: magedu-tomcat-app1-deployment
+  namespace: magedu
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: magedu-tomcat-app1-selector
+  template:
+    metadata:
+      labels:
+        app: magedu-tomcat-app1-selector
+    spec:
+      containers:
+      - name: magedu-tomcat-app1-container
+        image: 192.168.13.197:8000/magedu/tomcat-app1:v2
+        #command: ["/apps/tomcat/bin/run_tomcat.sh"]
+        #imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+          name: http
+        env:
+        - name: "password"
+          value: "123456"
+        - name: "age"
+          value: "18"
+        resources:
+          limits:
+            cpu: 1
+            memory: "512Mi"
+          requests:
+            cpu: 500m
+            memory: "512Mi"
+        volumeMounts:
+        - name: magedu-images
+          mountPath: /usr/local/nginx/html/webapp/images
+          readOnly: false
+        - name: magedu-static
+          mountPath: /usr/local/nginx/html/webapp/static
+          readOnly: false
+      volumes:
+      - name: magedu-images
+        nfs:
+          server: 192.168.13.67
+          path: /data/k8sdata/magedu/images
+      - name: magedu-static
+        nfs:
+          server: 192.168.13.67
+          path: /data/k8sdata/magedu/static
+#      nodeSelector:
+#        project: magedu
+#        app: tomcat
+---
+root@k8s-master01:~/k8s/yaml/deplooy-upgrade-case# kubectl apply -f tomcat-app1.yaml --record
+root@k8s-master01:~/k8s/yaml/deplooy-upgrade-case# kubectl get pods -n magedu -o wide  | grep tomcat
+magedu-tomcat-app1-deployment-65747746b9-9wkt5   1/1     Running   0          29s     172.20.217.66    192.168.13.63   <none>           <none>
+magedu-tomcat-app1-deployment-65747746b9-cmb6d   1/1     Running   0          34s     172.20.217.77    192.168.13.63   <none>           <none>
+magedu-tomcat-app1-deployment-65747746b9-pgq5j   1/1     Running   0          39s     172.20.217.101   192.168.13.63   <none>           <none>
+root@k8s-master01:~/k8s/yaml/deplooy-upgrade-case# cat tomcat-service.yaml
+---
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: magedu-tomcat-app1-service-label
+  name: magedu-tomcat-app1-service
+  namespace: magedu
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+    nodePort: 40003
+  selector:
+    app: magedu-tomcat-app1-selector
+root@k8s-master01:~/k8s/yaml/deplooy-upgrade-case# kubectl apply -f tomcat-service.yaml
+---
+root@k8s-master01:~/k8s/yaml/deplooy-upgrade-case# kubectl get svc -n magedu | grep tomcat
+magedu-tomcat-app1-service   NodePort    10.68.168.250   <none>        80:40003/TCP                                   5m54s
+[root@NFSServer ~]# while true;do date; curl http://172.168.2.24:40003/myapp/index.html;sleep 0.2;done
+--小插曲，经过一会儿，deployment自动由3个副本变成2个，找到原因是hpa导致
+root@k8s-master01:~/k8s/yaml/deplooy-upgrade-case# kubectl get hpa -n magedu
+NAME                               REFERENCE                                  TARGETS   MINPODS   MAXPODS   REPLICAS   AGE
+magedu-tomcat-app1-podautoscaler   Deployment/magedu-tomcat-app1-deployment   0%/60%    2         5         2          3d22h
+root@k8s-master01:~/k8s/yaml/deplooy-upgrade-case# kubectl apply -f tomcat-app1.yaml
+
+
+--新建一个deployment，增加version标签
+root@k8s-master01:~/k8s/yaml/deplooy-upgrade-case# cat tomcat-app1-v2.yaml
+kind: Deployment
+#apiVersion: extensions/v1beta1
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: magedu-tomcat-app1-deployment-label-v2
+    version: v2
+  name: magedu-tomcat-app1-deployment-v2
+  namespace: magedu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: magedu-tomcat-app1-selector
+      version: v2
+  template:
+    metadata:
+      labels:
+        app: magedu-tomcat-app1-selector
+        version: v2
+    spec:
+      containers:
+      - name: magedu-tomcat-app1-container
+        image: 192.168.13.197:8000/magedu/tomcat-app2:v1
+        #command: ["/apps/tomcat/bin/run_tomcat.sh"]
+        #imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+          name: http
+        env:
+        - name: "password"
+          value: "123456"
+        - name: "age"
+          value: "18"
+        resources:
+          limits:
+            cpu: 1
+            memory: "512Mi"
+          requests:
+            cpu: 500m
+            memory: "512Mi"
+        volumeMounts:
+        - name: magedu-images
+          mountPath: /usr/local/nginx/html/webapp/images
+          readOnly: false
+        - name: magedu-static
+          mountPath: /usr/local/nginx/html/webapp/static
+          readOnly: false
+      volumes:
+      - name: magedu-images
+        nfs:
+          server: 192.168.13.67
+          path: /data/k8sdata/magedu/images
+      - name: magedu-static
+        nfs:
+          server: 192.168.13.67
+          path: /data/k8sdata/magedu/static
+#      nodeSelector:
+#        project: magedu
+#        app: tomcat
+---
+root@k8s-master01:~/k8s/yaml/deplooy-upgrade-case# kubectl apply -f tomcat-app1-v2.yaml
+root@k8s-master01:~/k8s/yaml/deplooy-upgrade-case# kubectl get pods -n magedu -o wide  | grep tomcat
+magedu-tomcat-app1-deployment-65747746b9-9pbcq      1/1     Running   0          69s     172.20.217.93    192.168.13.63   <none>           <none>
+magedu-tomcat-app1-deployment-65747746b9-rxlp7      1/1     Running   0          43m     172.20.217.92    192.168.13.63   <none>           <none>
+magedu-tomcat-app1-deployment-65747746b9-vg44j      1/1     Running   0          43m     172.20.217.91    192.168.13.63   <none>           <none>
+magedu-tomcat-app1-deployment-v2-797df58f6c-d225k   1/1     Running   0          25s     172.20.217.89    192.168.13.63   <none>           <none>
+root@k8s-master01:~/k8s/yaml/deplooy-upgrade-case# cat tomcat-service-v2.yaml
+---
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: magedu-tomcat-app1-service-label
+  name: magedu-tomcat-app1-service
+  namespace: magedu
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+    nodePort: 40003
+  selector:
+    app: magedu-tomcat-app1-selector
+    version: v2
+[root@NFSServer ~]# while true;do date; curl http://172.168.2.24:40003/myapp/index.html;sleep 0.2;done	#此时service已经切换到v2了
+Wed Mar 30 22:52:34 CST 2022
+tomcat app2 for v2
+Wed Mar 30 22:52:35 CST 2022
+tomcat app2 for v2
+
+root@k8s-master01:~/k8s/yaml/deplooy-upgrade-case# kubectl delete -f tomcat-app1.yaml	#此时无问题可以删除v1，若是有问题回滚v1，若是升级则更改此文件镜像版本为v3并且增加一个label version: v3，然后更改service yaml文件删除version: v2的标签，如果v3版本无问题，则增加version: v3 label，使service选择v3的deployment
 
 
 
+6.4.6.8 jenkins,gitlab集成Kubernetes CICD
+1. 下载jenkins和gitlab
+wget https://mirrors.tuna.tsinghua.edu.cn/jenkins/debian-stable/jenkins_2.319.3_all.deb
+wget https://mirrors.tuna.tsinghua.edu.cn/gitlab-ce/ubuntu/pool/bionic/main/g/gitlab-ce/gitlab-ce_14.8.4-ce.0_amd64.deb
+
+2. 安装jdk
+root@jenkins:~# apt install -y openjdk-11-jdk
+
+3. 安装jenkins
+root@jenkins:/etc/apt# apt update		#仓库源尽量用http协议，如果https有时会报证书错误
+root@jenkins:~# dpkg -c jenkins_2.319.3_all.deb		#查看jenkins deb包中的文件
+drwxr-xr-x root/root         0 2022-02-09 20:14 ./
+drwxr-xr-x root/root         0 2022-02-09 20:14 ./etc/
+drwxr-xr-x root/root         0 2022-02-09 20:14 ./etc/default/
+-rw-r--r-- root/root      2775 2022-02-09 20:14 ./etc/default/jenkins
+drwxr-xr-x root/root         0 2022-02-09 20:14 ./etc/init.d/
+-rwxr-xr-x root/root      8184 2022-02-09 20:14 ./etc/init.d/jenkins
+drwxr-xr-x root/root         0 2022-02-09 20:14 ./etc/logrotate.d/
+-rw-r--r-- root/root       191 2022-02-09 20:14 ./etc/logrotate.d/jenkins
+drwxr-xr-x root/root         0 2022-02-09 20:14 ./usr/
+drwxr-xr-x root/root         0 2022-02-09 20:14 ./usr/share/
+drwxr-xr-x root/root         0 2022-02-09 20:14 ./usr/share/doc/
+drwxr-xr-x root/root         0 2022-02-09 20:14 ./usr/share/doc/jenkins/
+-rw-r--r-- root/root       165 2022-02-09 20:14 ./usr/share/doc/jenkins/changelog.gz
+-rw-r--r-- root/root      1498 2022-02-09 20:14 ./usr/share/doc/jenkins/copyright
+drwxr-xr-x root/root         0 2022-02-09 20:14 ./usr/share/jenkins/
+-rw-r--r-- root/root  72258627 2022-02-09 20:14 ./usr/share/jenkins/jenkins.war
+drwxr-xr-x root/root         0 2022-02-09 20:14 ./var/
+drwxr-xr-x root/root         0 2022-02-09 20:14 ./var/cache/
+drwxr-xr-x root/root         0 2022-02-09 20:14 ./var/cache/jenkins/
+drwxr-xr-x root/root         0 2022-02-09 20:14 ./var/lib/
+drwxr-xr-x root/root         0 2022-02-09 20:14 ./var/lib/jenkins/
+drwxr-xr-x root/root         0 2022-02-09 20:14 ./var/log/
+drwxr-xr-x root/root         0 2022-02-09 20:14 ./var/log/jenkins/
+root@jenkins:~# mv jenkins_2.319.3_all.deb /tmp/
+root@jenkins:~# apt install -y /tmp/jenkins_2.319.3_all.deb
+root@jenkins:~# systemctl stop jenkins.service
+root@jenkins:~# grep -Ev '#|^$' /etc/default/jenkins
+NAME=jenkins
+JAVA_ARGS="-Djava.awt.headless=true -Dhudson.security.csrf.GlobalCrumbIssuerConfiguration.DISABLE_CSRF_PROTECTION=true"		#增加参数-Dhudson.security.csrf.GlobalCrumbIssuerConfiguration.DISABLE_CSRF_PROTECTION=true 使推送到gitlab后自动触发jenkins进行构建，新版本jenkins默认不支持，需要加此参数开启
+PIDFILE=/var/run/$NAME/$NAME.pid
+JENKINS_USER=root		#为了方便测试将用户和组改为root
+JENKINS_GROUP=root
+JENKINS_WAR=/usr/share/$NAME/$NAME.war
+JENKINS_HOME=/var/lib/$NAME
+RUN_STANDALONE=true
+JENKINS_LOG=/var/log/$NAME/$NAME.log
+JENKINS_ENABLE_ACCESS_LOG="no"
+MAXOPENFILES=8192
+HTTP_PORT=8080
+PREFIX=/$NAME
+JENKINS_ARGS="--webroot=/var/cache/$NAME/war --httpPort=$HTTP_PORT"
+---
+root@jenkins:~# systemctl start jenkins
+root@jenkins:~# systemctl status jenkins | grep Active
+   Active: active (exited) since Thu 2022-03-31 17:04:29 CST; 14s ago
+root@jenkins:~# ss -tnl
+State                Recv-Q                Send-Q                                Local Address:Port                               Peer Address:Port
+LISTEN               0                     128                                   127.0.0.53%lo:53                                      0.0.0.0:*
+LISTEN               0                     128                                         0.0.0.0:22                                      0.0.0.0:*
+LISTEN               0                     50                                                *:8080                                          *:*
+LISTEN               0                     128                                            [::]:22                                         [::]:*
+-- WEB访问jenkins: http://172.168.2.13:8080/
+复制其它jenkins安装好插件到新安装的jenkins目录/var/lib/jenkins/plubins/下，并重启jenkins即可
 
 
+4. 安装gitlab
+root@gitlab:~# dpkg -i gitlab-ce_14.8.4-ce.0_amd64.deb	#这个没有依赖关系
+root@gitlab:~# grep -Ev '#|^$' /etc/gitlab/gitlab.rb
+external_url 'http://172.168.2.14'		#配置外部URL 
+root@gitlab:~# sudo gitlab-ctl reconfigure		#报如下错，原因是语言环境没有配置对
+Running handlers:
+There was an error running gitlab-ctl reconfigure:
+
+execute[/opt/gitlab/embedded/bin/initdb -D /var/opt/gitlab/postgresql/data -E UTF8] (postgresql::enable line 49) had an error: Mixlib::ShellOut::ShellCommandFailed: Expected process to exit with [0], but received '1'
+---- Begin output of /opt/gitlab/embedded/bin/initdb -D /var/opt/gitlab/postgresql/data -E UTF8 ----
+STDOUT: The files belonging to this database system will be owned by user "gitlab-psql".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "en_US".
+STDERR: initdb: error: encoding mismatch
+The encoding you selected (UTF8) and the encoding that the
+selected locale uses (LATIN1) do not match.  This would lead to
+misbehavior in various character string processing functions.
+Rerun initdb and either do not specify an encoding explicitly,
+or choose a matching combination.
+---- End output of /opt/gitlab/embedded/bin/initdb -D /var/opt/gitlab/postgresql/data -E UTF8 ----
+Ran /opt/gitlab/embedded/bin/initdb -D /var/opt/gitlab/postgresql/data -E UTF8 returned 1
+--解决方法
+export LC_CTYPE=en_US.UTF-8 export LC_ALL=en_US.UTF-8	
+root@gitlab:~# cat /etc/default/locale
+LANG=en_US.UTF-8
+LANGUAGE="en_US:"
+root@gitlab:~# sudo gitlab-ctl reconfigure		#再次执行
+root@gitlab:~# cat /etc/gitlab/initial_root_password | grep '^Password'		#成功后生成初始密码在这
+Password: sPvtRnjSqF/u6cFmSfvSMy9VeSb6Bv65IJlA//avX9I=
+root@gitlab:~# systemctl restart gitlab-runsvdir.service	#再重启下gitlab
+WEB访问http://172.168.2.14/更改密码    	#root | 12345678   # user1   |  12345678
 
 
+5. 测试pull gitlab项目
+root@jenkins:~# apt install -y git
+root@jenkins:~/gitlabrepo# git clone http://172.168.2.14/magedu/app1.git	#经过测试是可以clone
+Cloning into 'app1'...
+Username for 'http://172.168.2.14': user1
+Password for 'http://user1@172.168.2.14':
+remote: Enumerating objects: 6, done.
+remote: Counting objects: 100% (6/6), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 6 (delta 0), reused 0 (delta 0), pack-reused 0
+Unpacking objects: 100% (6/6), done.
+
+6. 配置gitlab部署key
+root@jenkins:~/gitlabrepo# ssh-keygen  -t rsa
+root@jenkins:~/gitlabrepo# cat /root/.ssh/id_rsa.pub
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCi9mOxMCBwYdDGjBBxspldclkN9l0PxQIZbUBGoNI3OIJnIkMC0maZdMcnbm0wwLVsmnx2lOfOfoRzRrMeZ5cf04IjZMj56qU3SMebVsMk0KSafhj9noxzyhLP2k1QqyK8rH7fEQTekd/aG7DfTPTHUVftfVgiW7RpgW4MESwmO3UaU51ZfstgcHdlx6Q1sP+T2LL7zwJxLho5U47rOTyGW3yz7hU6TKGxG8aMz1ibf4wzkmTFcNTwKnWeIbTuSC7z63s8J7DdeyrKid2pMd+TyVpXzD8hjAbOlsU8mIeVQ3TGzS0zd6hvXFXRwx2vuXEkr62dYDuzFTUCfZdydKEn root@jenkins
+root@jenkins:~/gitlabrepo# git clone git@172.168.2.14:magedu/app1.git	#测试是否可以直接clone
+Cloning into 'app1'...
+remote: Enumerating objects: 9, done.
+remote: Counting objects: 100% (9/9), done.
+remote: Compressing objects: 100% (5/5), done.
+remote: Total 9 (delta 0), reused 0 (delta 0), pack-reused 0
+Receiving objects: 100% (9/9), done.
+root@jenkins:~/gitlabrepo# mkdir -p /data/scripts
+root@jenkins:~/gitlabrepo# cd /data/scripts
+root@jenkins:/data/scripts# cat deploy.sh
+#!/bin/sh
+echo '123'
+
+7. 部署脚本
+root@jenkins:/data# mkdir -p /data/gitdata/magedu
+root@k8s-master01:~# mkdir -p /opt/k8s-data/dockerfile/web/magedu/tomcat-app1
+---部署脚本示例----
+#!/bin/bash
+#Author: ZhangShiJie
+#Date: 2018-10-24
+#Version: v1
+
+#记录脚本开始执行时间
+starttime=`date +'%Y-%m-%d %H:%M:%S'`
+
+#变量
+SHELL_DIR="/root/scripts"
+SHELL_NAME="$0"
+K8S_CONTROLLER1="172.31.7.101"
+K8S_CONTROLLER2="172.31.7.102"
+DATE=`date +%Y-%m-%d_%H_%M_%S`
+METHOD=$1
+Branch=$2
 
 
+if test -z $Branch;then
+  Branch=develop
+fi
 
 
+function Code_Clone(){
+  Git_URL="git@172.31.5.101:magedu/app1.git"
+  DIR_NAME=`echo ${Git_URL} |awk -F "/" '{print $2}' | awk -F "." '{print $1}'`
+  DATA_DIR="/data/gitdata/magedu"
+  Git_Dir="${DATA_DIR}/${DIR_NAME}"
+  cd ${DATA_DIR} &&  echo "即将清空上一版本代码并获取当前分支最新代码" && sleep 1 && rm -rf ${DIR_NAME}
+  echo "即将开始从分支${Branch} 获取代码" && sleep 1
+  git clone -b ${Branch} ${Git_URL} 
+  echo "分支${Branch} 克隆完成，即将进行代码编译!" && sleep 1
+  #cd ${Git_Dir} && mvn clean package
+  #echo "代码编译完成，即将开始将IP地址等信息替换为测试环境"
+  #####################################################
+  sleep 1
+  cd ${Git_Dir}
+  tar czf ${DIR_NAME}.tar.gz  ./*
+}
+
+#将打包好的压缩文件拷贝到k8s 控制端服务器
+function Copy_File(){
+  echo "压缩文件打包完成，即将拷贝到k8s 控制端服务器${K8S_CONTROLLER1}" && sleep 1
+  scp ${Git_Dir}/${DIR_NAME}.tar.gz root@${K8S_CONTROLLER1}:/opt/k8s-data/dockerfile/web/magedu/tomcat-app1
+  echo "压缩文件拷贝完成,服务器${K8S_CONTROLLER1}即将开始制作Docker 镜像!" && sleep 1
+}
+
+#到控制端执行脚本制作并上传镜像
+function Make_Image(){
+  echo "开始制作Docker镜像并上传到Harbor服务器" && sleep 1
+  ssh root@${K8S_CONTROLLER1} "cd /opt/k8s-data/dockerfile/web/magedu/tomcat-app1 && bash build-command.sh ${DATE}"
+  echo "Docker镜像制作完成并已经上传到harbor服务器" && sleep 1
+}
+
+#到控制端更新k8s yaml文件中的镜像版本号,从而保持yaml文件中的镜像版本号和k8s中版本号一致
+function Update_k8s_yaml(){
+  echo "即将更新k8s yaml文件中镜像版本" && sleep 1
+  ssh root@${K8S_CONTROLLER1} "cd /opt/k8s-data/yaml/magedu/tomcat-app1 && sed -i 's/image: harbor.magedu.*/image: harbor.magedu.net\/magedu\/tomcat-app1:${DATE}/g' tomcat-app1.yaml"
+  echo "k8s yaml文件镜像版本更新完成,即将开始更新容器中镜像版本" && sleep 1
+}
+
+#到控制端更新k8s中容器的版本号,有两种更新办法，一是指定镜像版本更新，二是apply执行修改过的yaml文件
+function Update_k8s_container(){
+  #第一种方法
+  ssh root@${K8S_CONTROLLER1} "kubectl set image deployment/magedu-tomcat-app1-deployment  magedu-tomcat-app1-container=harbor.magedu.net/magedu/tomcat-app1:${DATE} -n magedu" 
+  #第二种方法,推荐使用第一种
+  #ssh root@${K8S_CONTROLLER1} "cd  /opt/k8s-data/yaml/magedu/tomcat-app1  && kubectl  apply -f tomcat-app1.yaml --record" 
+  echo "k8s 镜像更新完成" && sleep 1
+  echo "当前业务镜像版本: harbor.magedu.net/magedu/tomcat-app1:${DATE}"
+  #计算脚本累计执行时间，如果不需要的话可以去掉下面四行
+  endtime=`date +'%Y-%m-%d %H:%M:%S'`
+  start_seconds=$(date --date="$starttime" +%s);
+  end_seconds=$(date --date="$endtime" +%s);
+  echo "本次业务镜像更新总计耗时："$((end_seconds-start_seconds))"s"
+}
+
+#基于k8s 内置版本管理回滚到上一个版本
+function rollback_last_version(){
+  echo "即将回滚之上一个版本"
+  ssh root@${K8S_CONTROLLER1}  "kubectl rollout undo deployment/magedu-tomcat-app1-deployment  -n magedu"
+  sleep 1
+  echo "已执行回滚至上一个版本"
+}
+
+#使用帮助
+usage(){
+  echo "部署使用方法为 ${SHELL_DIR}/${SHELL_NAME} deploy "
+  echo "回滚到上一版本使用方法为 ${SHELL_DIR}/${SHELL_NAME} rollback_last_version"
+}
+
+#主函数
+main(){
+  case ${METHOD}  in
+  deploy)
+    Code_Clone;
+    Copy_File;
+    Make_Image; 
+    Update_k8s_yaml;
+    Update_k8s_container;
+  ;;
+  rollback_last_version)
+    rollback_last_version;
+  ;;
+  *)
+    usage;
+  esac;
+}
+
+main $1 $2
+---------------
+灰度发布：需要在脚本中增加判断、编写灰度发布函数、通过灰度发布变量调用灰度发布函数，
+灰度发布方法：1. 通过kubectl rollout pause/resume来实现   2. 通过创建两个service来实现
 
 
+6.4.7 日志收集 
+k8s结合ELK实现日志收集-elasticsearch v7.6.2
+系统日志
+  /var/log/syslog
+应用程序的日志
+    error.log 
+    accesslog.log-访问统计、分析
 
+1.在k8s运行daemonset，收集每一个node节点/var/lib/docker/的日志
+  优点：
+    配置简单
+    后期维护简单
+  缺点：
+    日志类型不好分类
+2.每一个pod启动一个日志收集工具
+  filebeat 
+  两个实现方式：
+    1.在一个pod的同一个容器里面，先启动filebeat进程。然后启动web服务
+    2.在一个pod里面启动两个容器。一个容器是web服务，另外一个容器是filebeat。共同挂载emptyDir卷
+
+
+--部署ES集群
+ Elasticsearch for ubuntu: https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.6.2-amd64.deb
+ Elasticsearch for centos: https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.6.2-x86_64.rpm
+[root@elk ~]# rpm -ivh elasticsearch-7.6.2-x86_64.rpm	#此版本是包括jdk的，elasticsearch-no-jdk是没有jdk需要自己安装jdk的
+[root@elk ~]# grep -Ev '#|^$' /etc/elasticsearch/elasticsearch.yml	#集群配置文件示例
+cluster.name: magedu-elk-cluster1		#集群名称，所有节点必须一样
+node.name: node1						#节点名称，每个节点不一样
+path.data: /var/lib/elasticsearch		#数据存储目录，生产应该放在单独的固态硬盘上，内存最少8G以上
+path.logs: /var/log/elasticsearch
+#bootstrap.memory_lock: true				#是否在elasticsearch启动之后立即锁定内存，[root@elk ~]# cat /etc/elasticsearch/jvm.options文件配置内存大小，默认1G
+network.host: 172.168.2.13				#本机绑定的IP地址
+http.port: 9200							#本机对外的服务端口
+discovery.seed_hosts: ["172.168.2.13", "172.168.2.14", "172.168.2.15"]				#集群中通告的节点ip地址，应是全部节点IP地址
+cluster.initial_master_nodes: ["172.168.2.13", "172.168.2.14", "172.168.2.15"]		#哪些节点竞争master节点
+gateway.recover_after_nodes: 2			#多少个节点启动后恢复elasticsearch数据，此节点数量最少是节点一半以上，3/2=1.5=2
+action.destructive_requires_name: true	#是否启用在删除索引时需要索引名称，不能使用all或*代替索引名称
+------由于机器少，这里部署单节点-----
+[root@elk ~]# grep -Ev '#|^$' /etc/elasticsearch/elasticsearch.yml
+node.name: k8s-elk
+path.data: /var/lib/elasticsearch
+path.logs: /var/log/elasticsearch
+network.host: 172.168.2.13
+http.port: 9200
+cluster.initial_master_nodes: ["k8s-elk"]
+action.destructive_requires_name: true
+[root@elk ~]# systemctl restart elasticsearch.service		#启动elasticsearch服务
+[root@elk ~]# tail -f /var/log/elasticsearch/magedu-elk-cluster1.log	#启动时输出日志在/var/log/elasticsearch/下，日志名称是集群名称，可以当做排错日志
+[root@elk ~]# systemctl status elasticsearch.service | grep Active
+   Active: active (running) since Fri 2022-04-01 18:04:45 CST; 57s ago
+[root@elk ~]# curl http://172.168.2.13:9200/_cat/health
+1648809937 10:45:37 elasticsearch green 1 1 0 0 0 0 0 0 - 100.0%
+
+--安装zookeeper集群环境，kafka集群需要zookeeper集群
+--先安装java环境
+[root@centos7-node02 yum.repos.d]# yum install -y java-1.8.0-openjdk
+--安装zookeeper
+downloadURL: https://dlcdn.apache.org/zookeeper/zookeeper-3.5.9/apache-zookeeper-3.5.9-bin.tar.gz
+[root@centos7-node02 apps]# tar xf apache-zookeeper-3.5.9-bin.tar.gz
+[root@centos7-node02 apps]# cp -a apache-zookeeper-3.5.9-bin zookeeper01
+[root@centos7-node02 apps]# cp -a apache-zookeeper-3.5.9-bin zookeeper02
+[root@centos7-node02 apps]# mv apache-zookeeper-3.5.9-bin zookeeper03
+[root@centos7-node02 apps]# ll
+-rw-r--r-- 1 root root 9623007 Apr  1 19:35 apache-zookeeper-3.5.9-bin.tar.gz
+drwxr-xr-x 6 root root     134 Apr  1 19:47 zookeeper01
+drwxr-xr-x 6 root root     134 Apr  1 19:47 zookeeper02
+drwxr-xr-x 6 root root     134 Apr  1 19:47 zookeeper03
+--zookeeper01配置
+[root@centos7-node02 conf]# cd /apps/zookeeper01/conf/
+[root@centos7-node02 conf]# cp zoo_sample.cfg  zoo.cfg
+[root@centos7-node02 conf]# grep -Ev '#|^$' zoo.cfg
+tickTime=2000		#票据时间单位，默认2秒
+initLimit=10		#初始化集群时需要在10个票据时间(10X2=20秒)内完成，否则初始化失败
+syncLimit=5			#集群节点同步数据时间为5个票据时间(5X2=2=10秒)内完成
+dataDir=/data/zookeeper01		#数据存放目录
+dataLogDir=/data/zookeeper01/zookeeper	#zookeeper日志目录位置
+clientPort=2181				#对外客户端访问端口
+maxClientCnxns=200			#每个IP最大连接数为200
+autopurge.snapRetainCount=3	#自动删除快照时保留的快照数，默认为3个
+autopurge.purgeInterval=1	#自动删除快照的间隔，默认为1小时
+server.1=172.168.2.14:2287:3387		#zookeeper节点的id、节点IP地址、当为leader时监听的端口、集群通告端口，用于选举，监听心跳
+server.2=172.168.2.14:2288:3388
+server.3=172.168.2.14:2289:3389
+[root@centos7-node02 conf]# mkdir -p /data/zookeeper01/zookeeper
+[root@centos7-node02 conf]# echo 1 > /data/zookeeper01/myid
+[root@centos7-node02 conf]# cat /data/zookeeper01/myid
+1
+--zookeeper02配置
+[root@centos7-node02 conf]# cd /apps/zookeeper02/conf/
+[root@centos7-node02 conf]# cp zoo_sample.cfg  zoo.cfg
+[root@centos7-node02 conf]# grep -Ev '#|^$' zoo.cfg
+tickTime=2000
+initLimit=10
+syncLimit=5
+dataDir=/data/zookeeper02
+dataLogDir=/data/zookeeper02/zookeeper
+clientPort=2182
+maxClientCnxns=200
+autopurge.snapRetainCount=3
+autopurge.purgeInterval=1
+server.1=172.168.2.14:2287:3387
+server.2=172.168.2.14:2288:3388
+server.3=172.168.2.14:2289:3389
+[root@centos7-node02 conf]# mkdir -p /data/zookeeper02/zookeeper
+[root@centos7-node02 conf]# echo 2 > /data/zookeeper02/myid
+[root@centos7-node02 conf]# cat /data/zookeeper02/myid
+2
+--zookeeper03配置
+[root@centos7-node02 conf]# cd /apps/zookeeper03/conf/
+[root@centos7-node02 conf]# cp zoo_sample.cfg  zoo.cfg
+[root@centos7-node02 conf]# grep -Ev '#|^$' zoo.cfg
+tickTime=2000
+initLimit=10
+syncLimit=5
+dataDir=/data/zookeeper03
+dataLogDir=/data/zookeeper03/zookeeper
+clientPort=2183
+maxClientCnxns=200
+autopurge.snapRetainCount=3
+autopurge.purgeInterval=1
+server.1=172.168.2.14:2287:3387
+server.2=172.168.2.14:2288:3388
+server.3=172.168.2.14:2289:3389
+[root@centos7-node02 conf]# mkdir -p /data/zookeeper03/zookeeper
+[root@centos7-node02 conf]# echo 3 > /data/zookeeper03/myid
+[root@centos7-node02 conf]# cat /data/zookeeper03/myid
+3
+--启动zookeeper节点
+[root@centos7-node02 conf]# /apps/zookeeper01/bin/zkServer.sh start
+[root@centos7-node02 conf]# /apps/zookeeper02/bin/zkServer.sh start
+[root@centos7-node02 conf]# /apps/zookeeper03/bin/zkServer.sh start
+--错误可看日志
+[root@centos7-node02 zookeeper01]# tail /apps/zookeeper01/logs/zookeeper-root-server-centos7-node02.out
+--查看zookeeper状态
+[root@centos7-node02 zookeeper01]# /apps/zookeeper01/bin/zkServer.sh status
+/usr/bin/java
+ZooKeeper JMX enabled by default
+Using config: /apps/zookeeper01/bin/../conf/zoo.cfg
+Client port found: 2181. Client address: localhost. Client SSL: false.
+Mode: follower
+[root@centos7-node02 zookeeper01]# /apps/zookeeper02/bin/zkServer.sh status
+/usr/bin/java
+ZooKeeper JMX enabled by default
+Using config: /apps/zookeeper02/bin/../conf/zoo.cfg
+Client port found: 2182. Client address: localhost. Client SSL: false.
+Mode: leader
+[root@centos7-node02 zookeeper01]# /apps/zookeeper03/bin/zkServer.sh status
+/usr/bin/java
+ZooKeeper JMX enabled by default
+Using config: /apps/zookeeper03/bin/../conf/zoo.cfg
+Client port found: 2183. Client address: localhost. Client SSL: false.
+Mode: follower
+[root@kafka apps]# ss -tnl
+State       Recv-Q Send-Q                  Local Address:Port                                 Peer Address:Port
+LISTEN      0      128                                 *:111                                             *:*
+LISTEN      0      128                                 *:22                                              *:*
+LISTEN      0      50                               [::]:2181                                         [::]:*
+LISTEN      0      50                               [::]:2182                                         [::]:*
+LISTEN      0      50                               [::]:2183                                         [::]:*
+LISTEN      0      50                               [::]:40328                                        [::]:*
+LISTEN      0      50                               [::]:33418                                        [::]:*
+LISTEN      0      128                              [::]:111                                          [::]:*
+LISTEN      0      50              [::ffff:172.168.2.14]:2288                                         [::]:*
+LISTEN      0      50                               [::]:8080                                         [::]:*
+LISTEN      0      50                               [::]:46641                                        [::]:*
+LISTEN      0      128                              [::]:22                                           [::]:*
+LISTEN      0      50              [::ffff:172.168.2.14]:3387                                         [::]:*
+LISTEN      0      50              [::ffff:172.168.2.14]:3388                                         [::]:*
+LISTEN      0      50              [::ffff:172.168.2.14]:3389                                         [::]:*
+
+  
+--部署kafka集群
+--下载安装kafka集群
+curl -LO https://mirrors.cnnic.cn/apache/kafka/2.2.2/kafka_2.12-2.2.2.tgz
+[root@kafka apps]# tar xf kafka_2.13-2.4.1.tgz
+[root@kafka apps]# \cp -a kafka_2.13-2.4.1 kafka01
+[root@kafka apps]# \cp -a kafka_2.13-2.4.1 kafka02
+[root@kafka apps]# mv kafka_2.13-2.4.1 kafka03
+[root@kafka apps]# ll
+-rw-r--r-- 1 root root  9623007 Apr  1 19:35 apache-zookeeper-3.5.9-bin.tar.gz
+drwxr-xr-x 6 root root       89 Mar  3  2020 kafka01
+drwxr-xr-x 6 root root       89 Mar  3  2020 kafka02
+drwxr-xr-x 6 root root       89 Mar  3  2020 kafka03
+-rw-r--r-- 1 root root 62127579 Apr  2 10:25 kafka_2.13-2.4.1.tgz
+drwxr-xr-x 7 root root      146 Apr  1 20:00 zookeeper01
+drwxr-xr-x 7 root root      146 Apr  1 20:00 zookeeper02
+drwxr-xr-x 7 root root      146 Apr  1 20:00 zookeeper03
+[root@kafka config]# grep -Ev '#|^$' /apps/kafka01/config/server.properties
+broker.id=0											#kafka节点id，必须不一样，是int类型
+listeners=PLAINTEXT://172.168.2.14:9092				#kafka监听的地址
+num.network.threads=3								#kafka网络线程数，大并发下可以提高此值
+num.io.threads=8									#kafkaio线程数，大并发下可以提高此值，前提是数据写在固态盘上
+socket.send.buffer.bytes=102400
+socket.receive.buffer.bytes=102400
+socket.request.max.bytes=104857600
+log.dirs=/data/kafka01-logs							#kafka的日志目录，也就是kafka的数据存储目录
+num.partitions=1									#分区数
+num.recovery.threads.per.data.dir=1
+offsets.topic.replication.factor=1
+transaction.state.log.replication.factor=1
+transaction.state.log.min.isr=1
+log.retention.hours=168
+log.segment.bytes=1073741824
+log.retention.check.interval.ms=300000
+zookeeper.connect=172.168.2.14:2181,172.168.2.14:2182,172.168.2.14:2183			#zookeeper集群地址
+zookeeper.connection.timeout.ms=6000
+group.initial.rebalance.delay.ms=0
+[root@kafka config]# mkdir -p /data/kafka01-logs
+[root@kafka config]# grep -Ev '#|^$' /apps/kafka02/config/server.properties
+broker.id=1
+listeners=PLAINTEXT://172.168.2.14:9093
+num.network.threads=3
+num.io.threads=8
+socket.send.buffer.bytes=102400
+socket.receive.buffer.bytes=102400
+socket.request.max.bytes=104857600
+log.dirs=/data/kafka02-logs
+num.partitions=1
+num.recovery.threads.per.data.dir=1
+offsets.topic.replication.factor=1
+transaction.state.log.replication.factor=1
+transaction.state.log.min.isr=1
+log.retention.hours=168
+log.segment.bytes=1073741824
+log.retention.check.interval.ms=300000
+zookeeper.connect=172.168.2.14:2181,172.168.2.14:2182,172.168.2.14:2183
+zookeeper.connection.timeout.ms=6000
+group.initial.rebalance.delay.ms=0
+[root@kafka config]# mkdir -p /data/kafka02-logs
+[root@kafka config]# grep -Ev '#|^$' /apps/kafka03/config/server.properties
+broker.id=2
+listeners=PLAINTEXT://172.168.2.14:9094
+num.network.threads=3
+num.io.threads=8
+socket.send.buffer.bytes=102400
+socket.receive.buffer.bytes=102400
+socket.request.max.bytes=104857600
+log.dirs=/data/kafka03-logs
+num.partitions=1
+num.recovery.threads.per.data.dir=1
+offsets.topic.replication.factor=1
+transaction.state.log.replication.factor=1
+transaction.state.log.min.isr=1
+log.retention.hours=168
+log.segment.bytes=1073741824
+log.retention.check.interval.ms=300000
+zookeeper.connect=172.168.2.14:2181,172.168.2.14:2182,172.168.2.14:2183
+zookeeper.connection.timeout.ms=6000
+group.initial.rebalance.delay.ms=0
+[root@kafka config]# mkdir -p /data/kafka03-logs
+--调整kafka脚本内存参数，因为本机是测试机器，内存太小
+[root@kafka ~]# vim /apps/kafka01/bin/kafka-server-start.sh
+if [ "x$KAFKA_HEAP_OPTS" = "x" ]; then
+    export KAFKA_HEAP_OPTS="-Xmx256M -Xms256M"			#最小256M
+fi
+[root@kafka ~]# \cp -a /apps/kafka01/bin/kafka-server-start.sh /apps/kafka02/bin/kafka-server-start.sh
+[root@kafka ~]# \cp -a /apps/kafka01/bin/kafka-server-start.sh /apps/kafka03/bin/kafka-server-start.sh
+
+--启动kafka集群
+/apps/kafka01/bin/kafka-server-start.sh -daemon /apps/kafka01/config/server.properties
+/apps/kafka02/bin/kafka-server-start.sh -daemon /apps/kafka02/config/server.properties
+/apps/kafka03/bin/kafka-server-start.sh -daemon /apps/kafka03/config/server.properties
+[root@kafka ~]# for i in 01 02 03;do /apps/kafka$i/bin/kafka-server-start.sh -daemon /apps/kafka$i/config/server.properties;done
+[root@kafka ~]# ss -tnl | grep 90
+LISTEN     0      50       [::ffff:172.168.2.14]:9092                  [::]:*
+LISTEN     0      50       [::ffff:172.168.2.14]:9093                  [::]:*
+LISTEN     0      50       [::ffff:172.168.2.14]:9094                  [::]:*
+--排错日志
+[root@kafka logs]# tail -f /apps/kafka01/logs/kafkaServer.out
+
+
+--filebeat在Pod中预先安装好，采用一个pod一个容器两个进程(filebeat和业务镜像)
+--将filebeat安装在基础镜像中，之前安装过
+---之前基础dockerfile----
+root@k8s-master01:~/k8s/dockerfile/system/centos# ls
+build-command.sh  Dockerfile  filebeat-7.6.2-x86_64.rpm
+root@k8s-master01:~/k8s/dockerfile/system/centos# cat ~/k8s/dockerfile/system/centos/Dockerfile
+FROM centos:7.8.2003
+MAINTAINER Jack.Zhang  2973707860@qq.com
+
+ADD filebeat-7.6.2-x86_64.rpm /tmp
+RUN yum install -y /tmp/filebeat-7.6.2-x86_64.rpm vim wget tree  lrzsz gcc gcc-c++ automake pcre pcre-devel zlib zlib-devel openssl openssl-devel iproute net-tools iotop &&  rm -rf /etc/localtime /tmp/filebeat-7.6.2-x86_64.rpm && ln -snf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && useradd  www -u 2020 && useradd nginx -u 2021
+----------
+[root@magedu-tomcat-app1-deployment-v2-797df58f6c-d225k /]# filebeat version		#所有基于此镜像的容器就有filebeat,logstash、filebeat、elasticsearch版本最好都一样，这里都是7.6.2
+filebeat version 7.6.2 (amd64), libbeat 7.6.2 [d57bcf8684602e15000d65b75afcd110e2b12b59 built 2020-03-26 05:23:38 +0000 UTC]
+--在dockerfile构建时添加filebeat.yml配置文件
+root@k8s-master01:~/k8s/dockerfile/web/magedu/tomcat-app2# cat filebeat.yml
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /apps/tomcat/logs/catalina.out
+  fields:
+    type: tomcat-catalina
+- type: log
+  enabled: true
+  paths:
+    - /apps/tomcat/logs/localhost_access_log.*.txt
+  fields:
+    type: tomcat-accesslog
+filebeat.config.modules:
+  path: ${path.config}/modules.d/*.yml
+  reload.enabled: false
+setup.template.settings:
+  index.number_of_shards: 1
+setup.kibana:
+output.kafka:
+   hosts: ["172.168.2.14:9092","172.168.2.14:9093","172.168.2.14:9094"]
+   topic: "magedu-n56-app1"			#kafka topic名称
+   required_acks: 1
+   compression: gzip
+   max_message_bytes: 1000000
+#output.redis:
+#  hosts: ["172.31.2.105:6379"]
+#  key: "k8s-magedu-app1"
+#  db: 1
+#  timeout: 5
+#  password: "123456"
+-------
+root@k8s-master01:~/k8s/dockerfile/web/magedu/tomcat-app2# cat run_tomcat.sh
+#!/bin/bash
+#echo "nameserver 223.6.6.6" > /etc/resolv.conf
+#echo "192.168.7.248 k8s-vip.example.com" >> /etc/hosts
+
+/usr/share/filebeat/bin/filebeat -e -c /etc/filebeat/filebeat.yml -path.home /usr/share/filebeat -path.config /etc/filebeat -path.data /var/lib/filebeat -path.logs /var/log/filebeat &				#先运行filebeat，后运行tomcat
+su - nginx -c "/apps/tomcat/bin/catalina.sh start"
+tail -f /etc/hosts
+------Dockerfile-------
+root@k8s-master01:~/k8s/dockerfile/web/magedu/tomcat-app2# cat Dockerfile
+#tomcat web1
+FROM 192.168.13.197:8000/pub-images/tomcat-base:v8.5.43
+
+ADD catalina.sh /apps/tomcat/bin/catalina.sh
+ADD server.xml /apps/tomcat/conf/server.xml
+ADD myapp/* /data/tomcat/webapps/myapp/
+#ADD app1.tar.gz /data/tomcat/webapps/myapp/
+ADD run_tomcat.sh /apps/tomcat/bin/run_tomcat.sh
+ADD filebeat.yml /etc/filebeat/filebeat.yml
+RUN chown  -R nginx.nginx /data/ /apps/
+#ADD filebeat-7.5.1-x86_64.rpm /tmp/
+#RUN cd /tmp && yum localinstall -y filebeat-7.5.1-amd64.deb
+
+EXPOSE 8080 8443
+
+CMD ["/apps/tomcat/bin/run_tomcat.sh"]
+-----------------------
+root@k8s-master01:~/k8s/dockerfile/web/magedu/tomcat-app2# ./build-command.sh 20211024_16-57-30		#添加filebeat配置文件，并配置filebeat启动
+root@k8s-master01:~/k8s/yaml/magedu/tomcat-app1# cat tomcat-app1.yaml
+kind: Deployment
+#apiVersion: extensions/v1beta1
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: magedu-tomcat-app1-deployment-label
+  name: magedu-tomcat-app1-deployment
+  namespace: magedu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: magedu-tomcat-app1-selector
+  template:
+    metadata:
+      labels:
+        app: magedu-tomcat-app1-selector
+    spec:
+      containers:
+      - name: magedu-tomcat-app1-container
+        image: 192.168.13.197:8000/magedu/tomcat-app2:20211024_16-57-30		#将此镜像更改为启动filebeat的镜像
+        #command: ["/apps/tomcat/bin/run_tomcat.sh"]
+        #imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          protocol: TCP
+          name: http
+        env:
+        - name: "password"
+          value: "123456"
+        - name: "age"
+          value: "18"
+        resources:
+          limits:
+            cpu: 1
+            memory: "512Mi"
+          requests:
+            cpu: 500m
+            memory: "512Mi"
+        volumeMounts:
+        - name: magedu-images
+          mountPath: /usr/local/nginx/html/webapp/images
+          readOnly: false
+        - name: magedu-static
+          mountPath: /usr/local/nginx/html/webapp/static
+          readOnly: false
+      volumes:
+      - name: magedu-images
+        nfs:
+          server: 192.168.13.67
+          path: /data/k8sdata/magedu/images
+      - name: magedu-static
+        nfs:
+          server: 192.168.13.67
+          path: /data/k8sdata/magedu/static
+#      nodeSelector:
+#        project: magedu
+#        app: tomcat
+---
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: magedu-tomcat-app1-service-label
+  name: magedu-tomcat-app1-service
+  namespace: magedu
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+    nodePort: 40003
+  selector:
+    app: magedu-tomcat-app1-selector
+--------------------
+root@k8s-master01:~/k8s/yaml/magedu/tomcat-app1# kubectl apply -f tomcat-app1.yaml
+root@k8s-master01:~/k8s/yaml/magedu/tomcat-app1# kubectl get pods -n magedu | grep magedu-tomcat-app1-deployment
+magedu-tomcat-app1-deployment-7d89cf4c79-g7fs7      1/1     Running   0          2m3s
+--进容器查看filtbeat是否起来
+[root@magedu-tomcat-app1-deployment-7d89cf4c79-g7fs7 /]# ps -ef | grep filebeat		#有进程表示启动了
+root         6     1  0 13:56 ?        00:00:00 /usr/share/filebeat/bin/filebeat -e -c /etc/filebeat/filebeat.yml -path.home /usr/share/filebeat -path.config /etc/filebeat -path.data /var/lib/filebeat -path.logs /var/log/filebeat
+--下载kafkatool可视化工具测试kafka是否有预期的日志写入
+DownloadURL: https://www.kafkatool.com/download.html
+
+
+----安装配置logstash
+--安装jdk
+[root@elk ~]# yum install java-11-openjdk
+--安装logstash7.6.2
+DownloadURL: https://artifacts.elastic.co/downloads/logstash/logstash-7.6.2.rpm
+[root@elk ~]# yum install -y ./logstash-7.6.2.rpm
+[root@elk ~]# cd /etc/logstash
+[root@elk /etc/logstash]# ls
+conf.d  jvm.options  log4j2.properties  logstash-sample.conf  logstash.yml  pipelines.yml  startup.options
+[root@elk /etc/logstash]# cd conf.d/
+[root@elk ~]# cat /etc/logstash/conf.d/kafka-to-es.conf
+input {
+  kafka {
+    bootstrap_servers => "172.168.2.14:9092,172.168.2.14:9093,172.168.2.14:9094"
+    topics => ["magedu-n56-app1","magedu-n56-app2"]
+    codec => "json"
+  }
+}
+
+
+output {
+  stdout {
+    codec => rubydebug
+  }
+}
+-----------
+[root@elk ~]# /usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/kafka-to-es.conf -t		#测试配置文件语法是否有问题
+Configuration OK
+[root@elk ~]# /usr/share/logstash/bin/logstash -f /etc/logstash/conf.d/kafka-to-es.conf		#就可以运行输出到控制台了
+#[root@elk ~]# systemctl restart logstash.service
+[root@elk ~]# cat /etc/logstash/conf.d/kafka-to-es.conf
+input {
+  kafka {
+    bootstrap_servers => "172.168.2.14:9092,172.168.2.14:9093,172.168.2.14:9094"
+    topics => ["magedu-n56-app1","magedu-n56-app2"]
+    codec => "json"
+  }
+}
+
+
+output {
+  if [fields][type] == "tomcat-accesslog" {
+    elasticsearch {
+      hosts => ["172.168.2.13:9200"]
+      index => "magedu-n56-app1-accesslog-%{+YYYY.MM.dd}"
+    }
+  }
+
+  if [fields][type] == "tomcat-catalina" {
+    elasticsearch {
+      hosts => ["172.168.2.13:9200"]
+      index => "magedu-n56-app1-catalinalog-%{+YYYY.MM.dd}"
+    }
+  }
+#  stdout {
+#    codec => rubydebug
+#  }
+}
+-----
+
+----安装kibana7.6.2，版本必须跟elasticsearch版本一致，否则后续使用会有问题
+[root@elk ~]# rpm -ivh kibana-7.6.2-x86_64.rpm
+[root@elk ~]# grep -Ev '#|^$' /etc/kibana/kibana.yml		#更改配置文件
+server.port: 5601
+server.host: "172.168.2.13"
+elasticsearch.hosts: ["http://172.168.2.13:9200"]
+i18n.locale: "zh-CN"
+[root@elk ~]# systemctl restart kibana.service		#重启kibana服务
+[root@elk ~]# ss -tnl | grep 5601
+LISTEN     0      128    172.168.2.13:5601                     *:*
+
+---------k8s和ceph工作经验简历优化-------------
+1.kubernetes 高可用集群规划和部署
+  master节点
+  etcd 
+    SSD
+2.harbor 的镜像分发
+  P2P
+  蜻蜓
+3.制定镜像构建方式和标准，基于Dockerfile结合shell脚本实现镜像自动构建
+  分层构建
+4.编写yaml文件，运行无状态服务
+  nginx tomcat 微服务 java
+5.制定探针探测机制，基于存活和就绪探针对容器中的服务探测
+6.对k8s中的容器进行业务数据持久化
+  NFS：cephfs  nginx 
+  rbd mysql elasticsearch 
+7.编写脚本，结合Jenkins与gitlab实现代码部署和回滚
+8.部署ELK环境，实现日志收集
+  统一收集
+  统一存储
+  统一展示
+9.对部分pod配置HPA控制器，实现pod的弹性伸缩
+10.通过nodeport及ingress对k8s中的访问进行暴露
+11.对container、pod和namespace进行资源限制
+  nginx 1c 2g
+  java 1c 3g 
+  微服务 0.5c 1g 
+12.通过prometheus对容器进行监控
+13.编写yaml文件，运行有状态服务
+  mysql 
+  数据持久化
+14.编写k8s 运维手册
+15.对kubernetes配置多账户并进行权限控制，避免由于权限误操作导致的问题
+
+ceph：
+  1.负责ceph集群的规划、服务器选型SSD/PCI-E/万兆网卡、部署和后期维护
+  2.编写ceph使用手册以及内部培训
+  3.启用rbd块存储，用于kubernetes中有状态的服务数据持久化
+    pv pvc 
+  4.启用cephfs文件存储，用于对kubernetes中多个无状态服务的数据持久化和共享
+  5.启用radosgw对象存储，用于kubernetes对象存储数据的访问
+  6.基于prometheus对ceph进行监控
+  7.ceph集群的后期维护
+    增加node节点
+    处理OSD故障
+      临时2副本
+      关闭数据整理
+    对ceph数据的PG进行后期的调整
+-------------------------------------------
+
+
+6.4.8 资源限制 
+容器限制、pod限制、namespace限制
+常用业务资源分配：
+  nginx: 2c 2g 
+  微服务： 2c 2g/2c 3g 
+  mysql/ES  4c/6G  4c/8G
+  
+6.4.8.1 容器限制 
+root@k8s-master01:~/k8s/yaml/limit-rbac/limit-case# cat case1-pod-memory-limit.yml
+#apiVersion: extensions/v1beta1
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: limit-test-deployment
+  namespace: magedu
+spec:
+  replicas: 1
+  selector:
+    matchLabels: #rs or deployment
+      app: limit-test-pod
+#    matchExpressions:
+#      - {key: app, operator: In, values: [ng-deploy-80,ng-rs-81]}
+  template:
+    metadata:
+      labels:
+        app: limit-test-pod
+    spec:
+      containers:
+      - name: limit-test-container
+        image: lorel/docker-stress-ng
+        resources:
+          limits:
+            memory: "200Mi"
+            cpu: 200m
+          requests:
+            memory: "100Mi"
+        #command: ["stress"]
+        args: ["--vm", "2", "--vm-bytes", "256M"]		#压测程序在没有资源限制时会占用2000毫核CPU，512M内存
+      #nodeSelector:
+      #  env: group1
+
+6.4.8.2 pod限制 
+root@k8s-master01:~/k8s/yaml/limit-rbac/limit-case# cat case3-LimitRange.yaml		#仅针对limitrangs对象应用后，后续的pod创建会受此限制，已创建的不会受此限制
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: limitrange-magedu
+  namespace: magedu
+spec:
+  limits:
+  - type: Container       #限制的资源类型
+    max:
+      cpu: "2"            #限制单个容器的最大CPU
+      memory: "2Gi"       #限制单个容器的最大内存
+    min:
+      cpu: "100m"         #限制单个容器的最小CPU
+      memory: "100Mi"     #限制单个容器的最小内存
+    default:
+      cpu: "500m"         #默认单个容器的CPU限制
+      memory: "512Mi"     #默认单个容器的内存限制
+    defaultRequest:
+      cpu: "500m"         #默认单个容器的CPU创建请求
+      memory: "512Mi"     #默认单个容器的内存创建请求
+    maxLimitRequestRatio:
+      cpu: 2              #限制CPU limit/request比值最大为2
+      memory: 2         #限制内存limit/request比值最大为1.5
+  - type: Pod
+    max:
+      cpu: "4"            #限制单个Pod的最大CPU
+      memory: "4Gi"       #限制单个Pod最大内存
+  - type: PersistentVolumeClaim
+    max:
+      storage: 50Gi        #限制PVC最大的requests.storage
+    min:
+      storage: 5Gi        #限制PVC最小的requests.storage
+---
+root@k8s-master01:~/k8s/yaml/limit-rbac/limit-case# kubectl apply -f case3-LimitRange.yaml
+limitrange/limitrange-magedu created
+root@k8s-master01:~/k8s/yaml/limit-rbac/limit-case# kubectl get limitranges -n magedu
+NAME                CREATED AT
+limitrange-magedu   2022-04-02T12:38:23Z
+root@k8s-master01:~/k8s/yaml/limit-rbac/limit-case# kubectl describe limitranges -n magedu
+Name:                  limitrange-magedu
+Namespace:             magedu
+Type                   Resource  Min    Max   Default Request  Default Limit  Max Limit/Request Ratio
+----                   --------  ---    ---   ---------------  -------------  -----------------------
+Container              cpu       100m   2     500m             500m           2
+Container              memory    100Mi  2Gi   512Mi            512Mi          2
+Pod                    cpu       -      4     -                -              -
+Pod                    memory    -      4Gi   -                -              -
+PersistentVolumeClaim  storage   5Gi    50Gi  -                -              -
+---------pod示例--------
+root@k8s-master01:~/k8s/yaml/magedu/nginx# cat nginx-limit.yaml
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  labels:
+    app: magedu-nginx-deployment-label
+  name: magedu-nginx-deployment
+  namespace: magedu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: magedu-nginx-selector
+  template:
+    metadata:
+      labels:
+        app: magedu-nginx-selector
+    spec:
+      containers:
+      - name: magedu-nginx-container
+        image: 192.168.13.197:8000/magedu/nginx-web1:v3
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+          protocol: TCP
+          name: http
+        - containerPort: 443
+          protocol: TCP
+          name: https
+        env:
+        - name: "password"
+          value: "123456"
+        - name: "age"
+          value: "20"
+        resources:
+          limits:
+            cpu: 2					#cpu比值为1:4，会受上面limitranges影响，不会创建成功，直接在调度前被拒绝
+            memory: 2Gi
+          requests:
+            cpu: 500m
+            memory: 1Gi
+        volumeMounts:
+        - name: magedu-images
+          mountPath: /usr/local/nginx/html/webapp/images
+          readOnly: false
+        - name: magedu-static
+          mountPath: /usr/local/nginx/html/webapp/static
+          readOnly: false
+      volumes:
+      - name: magedu-images
+        nfs:
+          server: 192.168.13.67
+          path: /data/k8sdata/magedu/images
+      - name: magedu-static
+        nfs:
+          server: 192.168.13.67
+          path: /data/k8sdata/magedu/static
+---
+kind: Service
+apiVersion: v1
+metadata:
+  labels:
+    app: magedu-nginx-service-label
+  name: magedu-nginx-service
+  namespace: magedu
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 80
+    nodePort: 40002
+  - name: https
+    port: 443
+    protocol: TCP
+    targetPort: 443
+    nodePort: 40443
+  selector:
+    app: magedu-nginx-selector
+--------------------------
+root@k8s-master01:~/k8s/yaml/magedu/nginx# kubectl apply -f nginx-limit.yaml	#应用比值为1:4的cpu pod，此时应用成功
+deployment.apps/magedu-nginx-deployment configured
+service/magedu-nginx-service unchanged
+root@k8s-master01:~/k8s/yaml/magedu/nginx# kubectl get pods -n magedu			#但是通过查看pod却始终看不到
+NAME                                                READY   STATUS    RESTARTS   AGE
+deploy-devops-redis-749878f59d-gf856                1/1     Running   0          8d
+magedu-consumer-deployment-84547497d4-999wr         1/1     Running   0          7d3h
+magedu-dubboadmin-deployment-bbd4b4966-sts92        1/1     Running   0          7d
+magedu-jenkins-deployment-5f94c58f86-kc2hg          1/1     Running   0          7d8h
+magedu-provider-deployment-7656dfd74f-fq652         1/1     Running   0          7d
+magedu-provider-deployment-7656dfd74f-vpjkl         1/1     Running   0          7d3h
+magedu-tomcat-app1-deployment-7d89cf4c79-5m6sn      1/1     Running   0          5h24m
+magedu-tomcat-app1-deployment-7d89cf4c79-g7fs7      1/1     Running   0          6h46m
+magedu-tomcat-app1-deployment-v2-797df58f6c-rdhk8   1/1     Running   0          3h37m
+mysql-0                                             2/2     Running   0          7d22h
+wordpress-app-deployment-7d6d5c4c97-jx4kf           2/2     Running   0          4d4h
+zookeeper1-749d87b7c5-stk5w                         1/1     Running   1          10d
+zookeeper2-5f5fcb7f4d-s5pgp                         1/1     Running   1          10d
+zookeeper3-c857bb585-txchq                          1/1     Running   1          10d
+root@k8s-master01:~/k8s/yaml/magedu/nginx# kubectl get deployment -n magedu
+NAME                               READY   UP-TO-DATE   AVAILABLE   AGE
+deploy-devops-redis                1/1     1            1           8d
+magedu-consumer-deployment         1/1     1            1           7d3h
+magedu-dubboadmin-deployment       1/1     1            1           7d
+magedu-jenkins-deployment          1/1     1            1           7d8h
+magedu-nginx-deployment            0/1     0            0           87s		#此时需要查看deployment，此deployoment就是上面pod的控制器，这样还看不出报错
+magedu-provider-deployment         2/2     2            2           7d3h
+magedu-tomcat-app1-deployment      2/2     2            2           6h47m
+magedu-tomcat-app1-deployment-v2   1/1     1            1           2d22h
+wordpress-app-deployment           1/1     1            1           4d4h
+zookeeper1                         1/1     1            1           10d
+zookeeper2                         1/1     1            1           10d
+zookeeper3                         1/1     1            1           10d
+root@k8s-master01:~/k8s/yaml/magedu/nginx# kubectl get deployment/magedu-nginx-deployment -n magedu -o json		#此时能过输出json或yaml来查看报错
+            {
+                "lastTransitionTime": "2022-04-02T12:42:37Z",
+                "lastUpdateTime": "2022-04-02T12:42:37Z",
+                "message": "pods \"magedu-nginx-deployment-769d4567ff-mhz7j\" is forbidden: cpu max limit to request ratio per Container is 2, but provided ratio is 4.000000",
+                "reason": "FailedCreate",
+                "status": "True",
+                "type": "ReplicaFailure"
+            }
+----此时将nginx-limit.yaml资源限制改成这个就正常起来了
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+          requests:
+            cpu: 500m
+            memory: 512Mi
+root@k8s-master01:~/k8s/yaml/magedu/nginx# kubectl get pods -n magedu | grep magedu-nginx-deployment-849cbbbb9c-bjjln
+magedu-nginx-deployment-849cbbbb9c-bjjln            1/1     Running   0          61s
+
+
+6.4.8.3 namespace限制
+root@k8s-master01:~/k8s/yaml/limit-rbac/limit-case# cat case6-ResourceQuota-magedu.yaml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: quota-magedu
+  namespace: magedu
+spec:
+  hard:
+    requests.cpu: "8			#namespace下请求资源最多使用8核cpu
+    limits.cpu: "8"				#namespace下限制资源最多使用8核cpu
+    requests.memory: 4Gi		#namespace下请求资源最多使用4核内存
+    limits.memory: 4Gi			#namespace下限制资源最多使用4核内存
+    requests.nvidia.com/gpu: 4	#namespace下限制GPU最多使用4核GPU
+    pods: "2"					#namespace下最多创建2个pod
+    services: "6"				#namespace下最多创建6个service
+root@k8s-master01:~/k8s/yaml/limit-rbac/limit-case# kubectl apply -f case6-ResourceQuota-magedu.yaml	#只在应用后生效
+root@k8s-master01:~/k8s/yaml/limit-rbac/limit-case# kubectl get resourcequotas -n magedu
+NAME           AGE   REQUEST                                                                                                        LIMIT
+quota-magedu   7s    pods: 15/2, requests.cpu: 2600m/8, requests.memory: 3172Mi/4Gi, requests.nvidia.com/gpu: 0/4, services: 15/6   limits.cpu: 4/8, limits.memory: 2560Mi/4Gi
+root@k8s-master01:~/k8s/yaml/limit-rbac/limit-case# kubectl describe resourcequotas quota-magedu -n magedu
+Name:                    quota-magedu
+Namespace:               magedu
+Resource                 Used    Hard
+--------                 ----    ----
+limits.cpu               4       8
+limits.memory            2560Mi  4Gi
+pods                     15      2
+requests.cpu             2600m   8
+requests.memory          3172Mi  4Gi
+requests.nvidia.com/gpu  0       4
+services                 15      6
+root@k8s-master01:~/k8s/yaml/limit-rbac/limit-case# cat case6-ResourceQuota-magedu.yaml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: quota-magedu
+  namespace: magedu
+spec:
+  hard:
+    requests.cpu: "16"
+    limits.cpu: "16"
+    requests.memory: 16Gi
+    limits.memory: 16Gi
+    requests.nvidia.com/gpu: 4
+    pods: "100"
+    services: "50"
+root@k8s-master01:~/k8s/yaml/limit-rbac/limit-case# kubectl describe resourcequotas quota-magedu -n magedu
+Name:                    quota-magedu
+Namespace:               magedu
+Resource                 Used    Hard
+--------                 ----    ----
+limits.cpu               4       16
+limits.memory            2560Mi  16Gi
+pods                     15      100
+requests.cpu             2600m   16
+requests.memory          3172Mi  16Gi
+requests.nvidia.com/gpu  0       4
+services                 15      50
+
+示例：
+kind: resourcequota
+namespace: magedu
+resourcequota: 48C96G
+例如: 有2个节点，每个节点为24C64G，并且每个pod为2C4G，共创建了24个pod，此时资源已经全部分配出去，当再创建第25个pod时将会失败。即使24个pod实际使用资源不足48C96G，此时第25个pod也会创建失败，因为namespace资源额度已经使用使用完，此时需要调整resourcequota或者调整yaml文件中的requset和limit值。
 
 
 
