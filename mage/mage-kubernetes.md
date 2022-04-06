@@ -7462,7 +7462,7 @@ global:
 scrape_configs:
 - job_name: 'kubernetes-node'
   kubernetes_sd_configs:
-  - role: node
+  - role: node								
   relabel_configs:
   - source_labels: [__address__]
     regex: '(.*):10250'
@@ -7473,7 +7473,7 @@ scrape_configs:
     regex: __meta_kubernetes_node_label_(.+)
 - job_name: 'kubernetes-node-cadvisor'
   kubernetes_sd_configs:
-  - role:  node
+  - role:  node					#kubernetes服务发现
   scheme: https		#如果是https，则需要指定证书
   tls_config:
     ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt		#访问https时验证证书的CA文件地址，因为是kubernetes_sd发现，所以需要kubernetes的CA证书
@@ -7708,7 +7708,7 @@ tcp    LISTEN   0        128                     *:8600                *:*
 -----------------------------------------------
 
 
---1111prometheus配置consul自动发现
+--prometheus配置consul自动发现
 root@prometheus01:/usr/local/prometheus# cat prometheus.yml
 global:
   scrape_interval: 15s
@@ -7718,9 +7718,7 @@ alerting:
   alertmanagers:
     - static_configs:
         - targets:
-
 rule_files:
-
 scrape_configs:
   - job_name: "prometheus"
     static_configs:
@@ -7729,7 +7727,7 @@ scrape_configs:
   - job_name: 'consul-node_exporter'
     metrics_path: /metrics
     scrape_interval: 15s
-    consul_sd_configs:
+    consul_sd_configs:				#consul服务发现
     - server: '172.168.2.27:8500'
       services: []
     - server: '172.168.2.28:8500'
@@ -7743,6 +7741,675 @@ scrape_configs:
       - regex: __meta_consul_service_metadata_(.+)
         action: labelmap
 ----------
+
+---#文件服务发现
+
+---#DNS服务发现
+172.168.2.21	master01.k8s.hs.com
+172.168.2.22	master02.k8s.hs.com
+172.168.2.23	master03.k8s.hs.com
+172.168.2.24	node01.k8s.hs.com
+172.168.2.25	node02.k8s.hs.com
+
+> set type=srv
+> _k8s._tcp.k8s.hs.com
+服务器:  homsom-dc01.hs.com
+Address:  192.168.10.250
+_k8s._tcp.k8s.hs.com    SRV service location:
+          priority       = 10
+          weight         = 10
+          port           = 9100
+          svr hostname   = 192.168.13.63
+root@prometheus01:/usr/local/prometheus# cat prometheus.yml
+  - job_name: 'dns-node_exporter'
+    metrics_path: /metrics
+    dns_sd_configs:
+    - names: ["master01.k8s.hs.com","master02.k8s.hs.com","master03.k8s.hs.com","node01.k8s.hs.com","node02.k8s.hs.com"]
+      type: A
+      port: 9100
+      refresh_interval: 10s
+    - names: ["_k8s._tcp.k8s.hs.com"]
+      type: SRV
+      refresh_interval: 10s
+root@prometheus01:/usr/local/prometheus# systemcel restart prometheus
+--ubuntu下使用systemd-resolve需要刷新缓存
+root@prometheus01:/usr/local/prometheus# systemd-resolve --flush-caches
+--去prometheusUI验证是否成功
+
+#-------kube-state-metrics组件
+URL: https://github.com/kubernetes/kube-state-metrics
+Kube-state-metrics:通过监听 API Server 生成有关资源对象的状态指标，比如 Deployment、Node、Pod，需要注意的是 kube-state-metrics 只是简单的提供一个 metrics 数据，并不会存储这些指标数据，所以我们 可 以 使 用 Prometheus 来 抓 取 这 些 数 据 然 后 存 储 ， 主 要 关 注 的 是 业 务 相 关 的 一 些 元 数 据 ， 比 如Deployment 、 Pod 、 副 本 状 态 等 ； 调 度 了 多 少 个 replicas ？ 现 在 可 用 的 有 几 个 ？ ； 多 少 个 Pod 是running/stopped/terminated 状态？；Pod 重启了多少次？；我有多少 job 在运行中。
+
+1. 使用rolebinding去绑定role和user,此时user有了名称空间级别的role权限
+2. 使用clusterrolebinding去绑定clusterrole和user，此时user有了集群级别的clusterrole权限
+3. 使用rolebinding绑定clusterrole和user，此时user有了名称空间的clusterrole权限，也就是user有了自己所在名称空间的所有关于clusterrole角色当中的权限
+--部署kube-state-metrics 2.2.4，跟kubernetes版本有要求
+root@k8s-master01:~/k8s/yaml/prometheus-case# cat case5-kube-state-metrics-deploy.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-state-metrics
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-state-metrics
+  template:
+    metadata:
+      labels:
+        app: kube-state-metrics
+    spec:
+      serviceAccountName: kube-state-metrics
+      containers:
+      - name: kube-state-metrics
+        image: bitnami/kube-state-metrics:2.2.4
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-state-metrics
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kube-state-metrics
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "pods", "services", "resourcequotas", "replicationcontrollers", "limitranges", "persistentvolumeclaims", "persistentvolumes", "namespaces", "endpoints"]
+  verbs: ["list", "watch"]
+- apiGroups: ["extensions"]
+  resources: ["daemonsets", "deployments", "replicasets"]
+  verbs: ["list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["statefulsets"]
+  verbs: ["list", "watch"]
+- apiGroups: ["batch"]
+  resources: ["cronjobs", "jobs"]
+  verbs: ["list", "watch"]
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kube-state-metrics
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kube-state-metrics
+subjects:
+- kind: ServiceAccount
+  name: kube-state-metrics
+  namespace: kube-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    prometheus.io/scrape: 'true'
+  name: kube-state-metrics
+  namespace: kube-system
+  labels:
+    app: kube-state-metrics
+spec:
+  type: NodePort
+  ports:
+  - name: kube-state-metrics
+    port: 8080
+    targetPort: 8080
+    nodePort: 31666
+    protocol: TCP
+  selector:
+    app: kube-state-metrics
+---
+root@k8s-master01:~/k8s/yaml/prometheus-case# kubectl apply -f case5-kube-state-metrics-deploy.yaml
+root@k8s-master01:~/k8s/yaml/prometheus-case# kubectl get svc/kube-state-metrics -n kube-system
+NAME                 TYPE       CLUSTER-IP     EXTERNAL-IP   PORT(S)          AGE
+kube-state-metrics   NodePort   10.68.16.146   <none>        8080:31666/TCP   87s
+root@k8s-master01:~/k8s/yaml/prometheus-case# kubectl get pod -n kube-system | grep kube-state-metrics
+kube-state-metrics-6f7b48c7bc-lf7mv        1/1     Running   0          110s
+curl http://172.168.2.21:31666/healthz	#这个url是监控apiservre的健康状态的
+curl http://172.168.2.21:31666/metrics	#所有deploy,pod,node的状态
+
+--配置prometheus-server
+  - job_name: 'kube-state-metrics'
+    static_configs:
+    - targets: ["172.168.2.21:31666"]
+root@prometheus01:/usr/local/prometheus# systemctl restart prometheus.service
+
+--安装grafana
+sudo apt-get install -y adduser libfontconfig1
+wget https://dl.grafana.com/enterprise/release/grafana-enterprise_8.4.5_amd64.deb
+sudo dpkg -i grafana-enterprise_8.4.5_amd64.deb
+root@prometheus01:/usr/local/src# systemctl start grafana-server.service
+root@prometheus01:/usr/local/src# systemctl enable grafana-server.service
+WEB访问：http://172.168.2.27:3000
+--grafana模板
+13332/13824-kube-state-metrics 
+
+
+
+#--监控扩展
+#----监控tomcat
+root@k8s-master01:~/k8s/yaml/prometheus-case/app-monitor-case/tomcat/tomcat-image# cat Dockerfile
+#FROM tomcat:8.5.73-jdk11-corretto
+FROM tomcat:8.5.73
+
+ADD server.xml /usr/local/tomcat/conf/server.xml	#tomcat配置文件，指定了站点目录/data/tomcat/webapps
+RUN mkdir /data/tomcat/webapps -p
+ADD myapp /data/tomcat/webapps/myapp
+ADD metrics.war /data/tomcat/webapps		#metrics.war包放到站点目录，会暴露/metrics URL，主要看内存异常，session信息
+ADD simpleclient-0.8.0.jar  /usr/local/tomcat/lib/		#下面的所有jar包放到tomcat lib目录或者java的lib目录，metrics.war运行的时候需要加载，这些jar可以去gitlab上查找
+ADD simpleclient_common-0.8.0.jar /usr/local/tomcat/lib/
+ADD simpleclient_hotspot-0.8.0.jar /usr/local/tomcat/lib/
+ADD simpleclient_servlet-0.8.0.jar /usr/local/tomcat/lib/
+ADD tomcat_exporter_client-0.0.12.jar /usr/local/tomcat/lib/
+EXPOSE 8080 8443 8009
+---
+root@k8s-master01:~/k8s/yaml/prometheus-case/app-monitor-case/tomcat/tomcat-image# cat run_tomcat.sh
+#!/bin/bash
+echo "1.1.1.1 www.a.com" >> /etc/hosts
+su - magedu -c "/apps/tomcat/bin/catalina.sh start"
+tail -f /etc/hosts
+---
+root@k8s-master01:~/k8s/yaml/prometheus-case/app-monitor-case/tomcat/tomcat-image# cat build-command.sh
+#!/bin/bash
+docker build -t 192.168.13.197:8000/magedu/tomcat-app1:v1 .
+docker push 192.168.13.197:8000/magedu/tomcat-app1:v1
+---
+root@k8s-master01:~/k8s/yaml/prometheus-case/app-monitor-case/tomcat/tomcat-image# ./build-command.sh		#构建镜像
+
+--在k8s运行tomcat
+root@k8s-master01:~/k8s/yaml/prometheus-case/app-monitor-case/tomcat/yaml# cat tomcat-deploy.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tomcat-deployment
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+     app: tomcat
+  replicas: 1 # tells deployment to run 2 pods matching the template
+  template: # create pods using pod definition in this template
+    metadata:
+      labels:
+        app: tomcat
+      annotations:
+        prometheus.io/scrape: 'true'
+    spec:
+      containers:
+      - name: tomcat
+        image: 192.168.13.197:8000/magedu/tomcat-app1:v1
+        ports:
+        - containerPort: 8080
+        securityContext:
+          privileged: true
+root@k8s-master01:~/k8s/yaml/prometheus-case/app-monitor-case/tomcat/yaml# cat tomcat-svc.yaml
+kind: Service  #service 类型
+apiVersion: v1
+metadata:
+#  annotations:
+#    prometheus.io/scrape: 'true'
+  name: tomcat-service
+spec:
+  selector:
+    app: tomcat
+  ports:
+  - nodePort: 31080
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+  type: NodePort
+---
+root@k8s-master01:~/k8s/yaml/prometheus-case/app-monitor-case/tomcat/yaml# kubectl apply -f .
+
+--配置prometheus增加tomcat的监控
+root@prometheus01:/usr/local/prometheus# cat prometheus.yml
+  - job_name: 'kubernetes-tomcat-metrics'
+    static_configs:
+    - targets: ["172.168.2.21:31080"]
+root@prometheus01:/usr/local/prometheus# systemctl restart prometheus
+导入tomcat-模板
+
+
+
+----k8s部署redis和reddis_exporter
+root@k8s-master01:~/k8s/yaml/prometheus-case/app-monitor-case/redis/yaml# cat redis-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: studylinux-net
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:4.0.14
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        ports:
+        - containerPort: 6379
+      - name: redis-exporter
+        image: oliver006/redis_exporter:latest
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        ports:
+        - containerPort: 9121
+root@k8s-master01:~/k8s/yaml/prometheus-case/app-monitor-case/redis/yaml# cat redis-redis-svc.yaml
+kind: Service  #service 类型
+apiVersion: v1
+metadata:
+#  annotations:
+#    prometheus.io/scrape: 'false'
+  name: redis-redis-service
+  namespace: studylinux-net
+spec:
+  selector:
+    app: redis
+  ports:
+  - nodePort: 31081
+    name: redis
+    port: 6379
+    protocol: TCP
+    targetPort: 6379
+  type: NodePort
+root@k8s-master01:~/k8s/yaml/prometheus-case/app-monitor-case/redis/yaml# cat redis-exporter-svc.yaml
+kind: Service  #service 类型
+apiVersion: v1
+metadata:
+  annotations:
+    prometheus.io/scrape: 'true'
+    prometheus.io/port: "9121"
+  name: redis-exporter-service
+  namespace: studylinux-net
+spec:
+  selector:
+    app: redis
+  ports:
+  - nodePort: 31082
+    name: prom
+    port: 9121
+    protocol: TCP
+    targetPort: 9121
+  type: NodePort
+---
+--配置prometheus增加redis的监控
+root@prometheus01:/usr/local/prometheus# cat prometheus.yml
+  - job_name: 'kubernetes-redis-metrics'
+    static_configs:
+    - targets: ["172.168.2.21:31082"]
+root@prometheus01:/usr/local/prometheus# systemctl restart prometheus
+--redis模板14615
+
+
+
+----#监控haproxy
+--下载配置haproxy_exporter
+https://github.com/prometheus/haproxy_exporter/releases/download/v0.13.0/haproxy_exporter-0.13.0.linux-amd64.tar.gz
+--有两种方式配置haproxy_exporter监控haproxy
+1. 通过socket	2. 通过haproxy状态页，haproxy_exporter再转换为prometheus能识别的格式
+
+--安装配置haproxy，通过socket方式监控haproxy
+root@ha:~# cat /etc/haproxy/haproxy.cfg
+global
+        log /dev/log    local0
+        log /dev/log    local1 notice
+        chroot /var/lib/haproxy
+        #stats socket /run/haproxy/admin.sock mode 660 level admin expose-fd listeners
+        stats socket /run/lib/haproxy/haproxy.sock mode 660 level admin		#此行就是socket
+        stats timeout 30s
+        user haproxy
+        group haproxy
+        daemon
+        ca-base /etc/ssl/certs
+        crt-base /etc/ssl/private
+        ssl-default-bind-ciphers ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:RSA+AESGCM:RSA+AES:!aNULL:!MD5:!DSS
+        ssl-default-bind-options no-sslv3
+defaults
+        log     global
+        mode    http
+        option  httplog
+        #mode tcp
+        option  dontlognull
+        timeout connect 5000
+        timeout client  50000
+        timeout server  50000
+        errorfile 400 /etc/haproxy/errors/400.http
+        errorfile 403 /etc/haproxy/errors/403.http
+        errorfile 408 /etc/haproxy/errors/408.http
+        errorfile 500 /etc/haproxy/errors/500.http
+        errorfile 502 /etc/haproxy/errors/502.http
+        errorfile 503 /etc/haproxy/errors/503.http
+        errorfile 504 /etc/haproxy/errors/504.http
+
+listen k8s-apiserver-6443
+  bind 172.168.2.12:6443
+  mode tcp
+  server k8s-master01 172.168.2.21:6443 check inter 3s fall 3 rise 5
+  server k8s-master02 172.168.2.22:6443 check inter 3s fall 3 rise 5
+  server k8s-master03 172.168.2.23:6443 check inter 3s fall 3 rise 5
+
+listen prometheus-server-80
+  bind 172.168.2.12:80
+  mode http
+  server 172.168.2.27 172.168.2.27:9090 check inter 3s fall 3 rise 5
+---
+root@ha:~# systemctl restart haproxy
+
+
+--方式1：启动haproxy_exporter
+root@ha:/apps/haproxy_exporter-0.13.0.linux-amd64# ./haproxy_exporter --haproxy.scrape-uri=unix:/run/lib/haproxy/haproxy.sock
+
+--方式2：启动haproxy_exporter
+root@ha:/apps/haproxy_exporter-0.13.0.linux-amd64# cat /etc/haproxy/haproxy.cfg
+listen stats
+  bind :9009
+  stats enable
+  #stats hide-version
+  stats uri /haproxy-status
+  stats realm HAPorxy\ Stats\ Page
+  stats auth haadmin:123456
+  stats auth admin:123456
+root@ha:/apps/haproxy_exporter-0.13.0.linux-amd64# systemctl restart haproxy
+root@ha:/apps/haproxy_exporter-0.13.0.linux-amd64# ./haproxy_exporter --haproxy.scrape-uri="http://haadmin:123456@127.0.0.1:9009/haproxy-status;csv" &
+root@ha:/apps/haproxy_exporter-0.13.0.linux-amd64# ss -tnl | grep 9009
+LISTEN   0         128                 0.0.0.0:9009             0.0.0.0:*
+
+--配置prometheus-server
+root@prometheus01:/usr/local/prometheus# cat prometheus.yml
+  - job_name: 'kubernetes-haproxy-server-metrics'
+    static_configs:
+    - targets: ["172.168.2.12:9101"]
+root@prometheus01:/usr/local/prometheus# systemctl restart prometheus
+
+--haproxy模板367/2428
+
+
+
+
+----#监控nginx
+要在编译安装 nginx 的时候添加 nginx-module-vts 模块，github 地址：https://github.com/vozlt/nginx-module-vts
+[root@tengine /usr/local/nginx/sbin]# 
+./configure --prefix=/usr/local/nginx --user=nginx --group=nginx --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --with-stream --add-module=modules/ngx_http_upstream_session_sticky_module --with-stream_ssl_module --add-module=modules/ngx_http_upstream_check_module --with-http_auth_request_module --with-http_gzip_static_module --with-http_random_index_module --add-module=/download/nginx-module-vts-0.1.17
+
+[root@tengine /usr/local/nginx/sbin]# cat ../conf/nginx.conf
+http {
+    vhost_traffic_status_zone;
+    vhost_traffic_status_filter_by_host on;
+
+	server{
+        listen 8089;
+        #server_name 192.168.13.50;
+		server_name 127.0.0.1
+        location /status {
+                vhost_traffic_status_display;
+                vhost_traffic_status_display_format html;		#还可以是json和prometheus格式
+        }
+	}
+}
+--下载nginx-vts-exporter进行监控
+[root@tengine /usr/local/nginx/sbin]# /usr/local/nginx-vts-exporter-0.10.3.linux-amd64/nginx-vts-exporter -nginx.scrape_timeout 10 -nginx.scrape_uri http://127.0.0.1:8089/status/format/json -telemetry.address 192.168.13.50:9913 -telemetry.endpoint /metrics
+
+
+
+----#prometheus联绑集群
+环境：
+172.168.2.27	prometheus-server
+172.168.2.28	prometheus-federate01
+172.168.2.29	prometheus-federate02
+172.168.2.21 172.168.2.22 172.168.2.23	node-exporter for prometheus-federate01
+172.168.2.24 172.168.2.25 172.168.2.26	192.168.13.63	node-exporter for prometheus-federate02
+
+--------安装
+----prometheus-server
+root@prometheus01:/usr/local/src# tar xf prometheus-2.33.4.linux-amd64.tar.gz -C /usr/local/
+root@prometheus01:/usr/local/src# ln -sv /usr/local/prometheus-2.33.4.linux-amd64/ /usr/local/prometheus
+root@prometheus01:/usr/local/src# groupadd -r prometheus
+root@prometheus01:/usr/local/src# useradd  -r -g prometheus -s /sbin/nologin -M prometheus
+root@prometheus01:/usr/local/src# mkdir -p /var/lib/prometheus
+root@prometheus01:/usr/local/src# chown -R prometheus.prometheus /usr/local/prometheus-2.33.4.linux-amd64/ /var/lib/prometheus
+root@prometheus01:/usr/local/src# cat >> /lib/systemd/system/prometheus.service << EOF
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/prometheus/prometheus \
+--config.file /usr/local/prometheus/prometheus.yml \
+--storage.tsdb.path /var/lib/prometheus/ \
+--storage.tsdb.retention.time=90d \
+--storage.tsdb.retention.size=100GB \
+--storage.tsdb.wal-compression \
+--web.external-url=http://172.169.2.27:9090 \
+--web.enable-admin-api \
+--web.enable-lifecycle \
+--web.page-title=HomsomMonitor
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
+EOF
+------
+root@prometheus01:/usr/local/src# systemctl daemon-reload
+sroot@prometheus01:/usr/local/src# systemctl restart prometheus.service
+root@prometheus01:/usr/local/src# systemctl status prometheus.service | grep Active
+   Active: active (running) since Wed 2022-04-06 22:10:55 CST; 19s ago
+
+----prometheus-federate01
+root@prometheus02:/usr/local/src# tar xf prometheus-2.33.4.linux-amd64.tar.gz -C /usr/local/
+root@prometheus02:/usr/local/src# ln -sv /usr/local/prometheus-2.33.4.linux-amd64/ /usr/local/prometheus
+root@prometheus02:/usr/local/src# groupadd -r prometheus
+root@prometheus02:/usr/local/src# useradd  -r -g prometheus -s /sbin/nologin -M prometheus
+root@prometheus02:/usr/local/src# mkdir -p /var/lib/prometheus
+root@prometheus02:/usr/local/src# chown -R prometheus.prometheus /usr/local/prometheus-2.33.4.linux-amd64/ /var/lib/prometheus
+root@prometheus02:/usr/local/src# cat >> /lib/systemd/system/prometheus.service << EOF
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/prometheus/prometheus \
+--config.file /usr/local/prometheus/prometheus.yml \
+--storage.tsdb.path /var/lib/prometheus/ \
+--storage.tsdb.retention.time=90d \
+--storage.tsdb.retention.size=100GB \
+--storage.tsdb.wal-compression \
+--web.external-url=http://172.169.2.28:9090 \
+--web.enable-admin-api \
+--web.enable-lifecycle \
+--web.page-title=HomsomMonitor
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
+EOF
+------
+root@prometheus02:/usr/local/src# systemctl daemon-reload
+sroot@prometheus02:/usr/local/src# systemctl restart prometheus.service
+root@prometheus02:/usr/local/src# systemctl status prometheus.service | grep Active
+   Active: active (running) since Wed 2022-04-06 22:16:55 CST; 19s ago
+
+
+----prometheus-federate02
+root@prometheus03:/usr/local/src# tar xf prometheus-2.33.4.linux-amd64.tar.gz -C /usr/local/
+root@prometheus03:/usr/local/src# ln -sv /usr/local/prometheus-2.33.4.linux-amd64/ /usr/local/prometheus
+root@prometheus03:/usr/local/src# groupadd -r prometheus
+root@prometheus03:/usr/local/src# useradd  -r -g prometheus -s /sbin/nologin -M prometheus
+root@prometheus03:/usr/local/src# mkdir -p /var/lib/prometheus
+root@prometheus03:/usr/local/src# chown -R prometheus.prometheus /usr/local/prometheus-2.33.4.linux-amd64/ /var/lib/prometheus
+root@prometheus03:/usr/local/src# cat >> /lib/systemd/system/prometheus.service << EOF
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/prometheus/prometheus \
+--config.file /usr/local/prometheus/prometheus.yml \
+--storage.tsdb.path /var/lib/prometheus/ \
+--storage.tsdb.retention.time=90d \
+--storage.tsdb.retention.size=100GB \
+--storage.tsdb.wal-compression \
+--web.external-url=http://172.169.2.29:9090 \
+--web.enable-admin-api \
+--web.enable-lifecycle \
+--web.page-title=HomsomMonitor
+Restart=on-failure
+[Install]
+WantedBy=multi-user.target
+EOF
+root@prometheus03:/usr/local/src# systemctl daemon-reload
+root@prometheus03:/usr/local/src# systemctl restart prometheus.service
+root@prometheus03:/usr/local/src# systemctl status prometheus.service | grep Active
+   Active: active (running) since Wed 2022-04-06 22:21:32 CST; 4s ago
+
+
+-------配置
+----prometheus-federate01
+root@prometheus02:/usr/local/prometheus# cat prometheus.yml
+global:
+  scrape_interval: 15s 
+  evaluation_interval: 15s 
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+rule_files:
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "kubernetes-master-metrics"
+    file_sd_configs:
+    - files:
+      - /usr/local/prometheus/file_sd_configs/*.json
+      refresh_interval: 10s
+---
+root@prometheus02:/usr/local/prometheus# mkdir -p /usr/local/prometheus/file_sd_configs
+root@prometheus02:/usr/local/prometheus# cat /usr/local/prometheus/file_sd_configs/kubernetes-master.json
+[
+  {
+    "targets": ["172.168.2.21:9100","172.168.2.22:9100"]
+  }
+]
+root@prometheus02:/usr/local/prometheus# curl -X POST http://localhost:9090/-/reload
+
+----prometheus-federate02
+root@prometheus03:/usr/local/prometheus# cat prometheus.yml
+global:
+  scrape_interval: 15s 
+  evaluation_interval: 15s 
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+rule_files:
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "kubernetes-node-metrics"
+    file_sd_configs:
+    - files:
+      - /usr/local/prometheus/file_sd_configs/*.json
+      refresh_interval: 10s
+---
+root@prometheus03:/usr/local/prometheus# mkdir -p /usr/local/prometheus/file_sd_configs
+root@prometheus03:/usr/local/prometheus# cat /usr/local/prometheus/file_sd_configs/kubernetes-node.json
+[
+  {
+    "targets": ["172.168.2.24:9100","172.168.2.25:9100"]
+  }
+]
+root@prometheus03:/usr/local/prometheus# curl -X POST http://localhost:9090/-/reload
+
+----prometheus-server
+root@prometheus01:/usr/local/prometheus# cat prometheus.yml | head -n 40
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+rule_files:
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "prometheus-federate01-172.168.2.28"
+    scrape_interval: 15s
+    honor_labels: true
+    metrics_path: '/federate'
+    params:
+      'match[]':
+      - '{job="prometheus"}'			#这个是匹配job="prometheus"的，本机有所以不会覆盖本机，没有才会抓取
+      - '{__name__=~"job:.*"}'			这个是匹配指标是job:开头的
+      - '{__name__=~"node.*"}'			#这个是匹配指标是node开头的
+    static_configs:
+    - targets: ["172.168.2.28:9090"]
+
+  - job_name: "prometheus-federate02-172.168.2.29"
+    scrape_interval: 15s
+    honor_labels: true
+    metrics_path: '/federate'
+    params:
+      'match[]':
+      - '{job="prometheus"}'
+      - '{__name__=~"job:.*"}'
+      - '{__name__=~"node.*"}'
+    static_configs:
+    - targets: ["172.168.2.29:9090"]
+---
+root@prometheus01:/usr/local/prometheus# curl -X POST http://localhost:9090/-/reload
+
+----grafana导入模板11074(node-exporter for EN)/8919(node-exporter for CN)
+
+----prometheus-federate01和prometheus-federate02增加主机，prometheus-server不用配置自动发现主机
+root@prometheus02:/usr/local/prometheus/file_sd_configs# cat kubernetes-master.json
+[
+  {
+    "targets": ["172.168.2.21:9100","172.168.2.22:9100","172.168.2.23:9100"]			#再增加一个master
+  }
+]
+root@prometheus03:/usr/local/prometheus/file_sd_configs# cat kubernetes-node.json
+[
+  {
+    "targets": ["172.168.2.24:9100","172.168.2.25:9100","172.168.2.26:9100","192.168.13.63:9100"]
+  }
+]
+root@prometheus02:/usr/local/prometheus/file_sd_configs# curl -XPOST http://localhost:9090/-/reload  		 #此时联绑server(prometheus-server)最大等待10s+15s=25s时间就可以查看到增加的master节点
+
 
 
 </pre>
