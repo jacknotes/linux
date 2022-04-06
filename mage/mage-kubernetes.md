@@ -298,8 +298,10 @@ bin_dir="/usr/local/bin"		--二进制存放路径
 base_dir="/etc/kubeasz"
 cluster_dir="{{ base_dir }}/clusters/k8s-01"
 ca_dir="/etc/kubernetes/ssl"
+----注-----
+SERVICE_CIDR="10.68.0.0/16"		#service网络，每个IP地址都是32位掩码，没有子网划分，所以有2^16=65536个service地址
+CLUSTER_CIDR="172.20.0.0/16"	#pod网络，如果是calico每个子网掩码是255.255.255.192，也就是可以运行2^10=1024个节点，每个节点只能运行62个pod。如果是flannel每个子网掩码是255.255.255.0，也就是可以运行2^8=256个节点，每个节点可以运行254个pod。
 -------------
-
 4.2.2 编辑配置config.yml
 root@ansible:/etc/kubeasz/clusters/k8s-01# vim config.yml
 # default: ca will expire in 100 years
@@ -312,6 +314,10 @@ ETCD_DATA_DIR: "/var/lib/etcd"
 CONTAINERD_STORAGE_DIR: "/var/lib/containerd"
 # [docker]信任的HTTP仓库
 INSECURE_REG: '["127.0.0.1/8","192.168.13.235:8000","192.168.13.197:8000"]'
+MASTER_CERT_HOSTS:
+  - "10.1.1.1"
+  - "k8s.test.io"
+  - "k8s-api.hs.com"	#增加apiserver信任主机名，用于外部访问apiserver时的高可用域名或ip地址，可写多个备用，否则后续会报"Unable to connect to the server: x509: certificate is valid for 127.0.0.1, 172.168.2.23, 172.168.2.21, 172.168.2.22, 10.6, 10.1.1.1, not 192.168.13.50"
 # node节点最大pod 数
 MAX_PODS: 300
 # role:network [flannel,calico,cilium,kube-ovn,kube-router]，我们选择的是calico，所以配置calico就可以了
@@ -6362,6 +6368,1381 @@ resourcequota: 48C96G
 
 
 
+
+6.5 访问控制，RBAC
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl create serviceaccount magedu -n  magedu
+serviceaccount/magedu created
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# cat magedu-role.yaml
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: magedu
+  name: magedu-role
+rules:
+- apiGroups: ["*"]			#表示apiversion和版本号，例如v1beta1,v1等
+  resources: ["pods/exec"]		#资源类型
+  #verbs: ["*"]
+  ##RO-Role
+  verbs: ["get", "list", "watch", "create"]		#只读权限，一般给开发就给这样的权限即可，对象有pods,pods/exec,deployments,replicasets等
+
+- apiGroups: ["*"]
+  resources: ["pods"]
+  #verbs: ["*"]
+  ##RO-Role
+  verbs: ["get", "list", "watch"]
+
+- apiGroups: ["*"]
+  resources: ["deployments", "replicasets", "deployments/scale"]
+  #verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  ##RO-Role
+  verbs: ["get", "watch", "list"]
+
+- apiGroups: ["*"]
+  resources: ["events"]
+  ##RO-Role
+  verbs: ["get", "watch", "list"]
+---
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl apply -f magedu-role.yaml
+role.rbac.authorization.k8s.io/magedu-role created
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# cat magedu-role-bind.yaml
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: role-bind-magedu
+  namespace: magedu
+subjects:
+- kind: ServiceAccount
+  name: magedu
+  namespace: magedu
+roleRef:
+  kind: Role
+  name: magedu-role
+  apiGroup: rbac.authorization.k8s.io
+---
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl apply -f magedu-role-bind.yaml
+rolebinding.rbac.authorization.k8s.io/role-bind-magedu created
+
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl get secret -n magedu
+NAME                  TYPE                                  DATA   AGE
+default-token-b4vg9   kubernetes.io/service-account-token   3      11d
+magedu-token-qvnbb    kubernetes.io/service-account-token   3      2m44s
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl describe secret magedu-token-qvnbb -n magedu
+Name:         magedu-token-qvnbb
+Namespace:    magedu
+Labels:       <none>
+Annotations:  kubernetes.io/service-account.name: magedu
+              kubernetes.io/service-account.uid: 2fafcf0e-4dc5-45f8-b9f8-191b197b75c8
+Type:  kubernetes.io/service-account-token
+
+Data
+====
+ca.crt:     1350 bytes
+namespace:  6 bytes
+token:      eyJhbGciOiJSUzI1NiIsImtpZCI6ImQ3UV9STlJ4TEpQRS1XWmNHblFmaHJOUmdUaW5jMVJvSERqeE9VajR1LWcifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJtYWdlZHUiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlY3JldC5uYW1lIjoibWFnZWR1LXRva2VuLXF2bmJiIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6Im1hZ2VkdSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjJmYWZjZjBlLTRkYzUtNDVmOC1iOWY4LTE5MWIxOTdiNzVjOCIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDptYWdlZHU6bWFnZWR1In0.woEJpQGXMqDsp_RjcQrga-UoZ1NFAMcwgVhFaVInobrWIClEykQvrfFChFSwNWYvlgIWB5EqfnviQWUSATiqp5r1hH2sIY50HSQBFKuZKmXQuLf_NB2Y-4rF-paVuX6VxtnlmYz6wMWMCAsid7gBA_G7qF73oFJF5d8n2JHsIlUyrPh9BK0HJ3_vC7YxNBfC5OAH3knWcysVS1iEoN_y9RVHFytYgQqL2659S4XSBc76A7cneyQJ6ZsZEbZRyDJ6FxJs4cTJNPuaIcyMcIB1goX5bLIrj3LrHcd5A3rawXM4WEjdk4YbZVuMCCEeGXSHh1h6rPKnEkAjusoVQJIlzw
+---
+--当访问没有权限时会报错
+pods "magedu-tomcat-app1-deployment-v2-797df58f6c-rdhk8" is forbidden: User "system:serviceaccount:magedu:magedu" cannot create resource "pods/exec" in API group "" in the namespace "magedu"
+
+
+--用kubernetes.pem或者ca.pem生成k8s超级管理员权限kubeconfig
+kubectl config set-cluster cluster1 --certificate-authority=/etc/kubernetes/ssl/ca.pem --embed-certs=true --server=https://192.168.13.50:6443 --kubeconfig=user1.kubeconfig
+kubectl config set-credentials user1 \
+--client-certificate=/etc/kubernetes/ssl/kubernetes.pem \
+--client-key=/etc/kubernetes/ssl/kubernetes-key.pem \
+--embed-certs=true \
+--kubeconfig=user1.kubeconfig
+kubectl config set-context cluster1 --cluster=cluster1 --user=user1 --kubeconfig=user1.kubeconfig
+kubectl config use-context cluster1 --kubeconfig=user1.kubeconfig
+
+
+root@k8s-master01:~/k8s/yaml/limit-rbac/limit-case# kubectl get clusterrolebinding cluster-admin -o yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+  creationTimestamp: "2022-03-04T13:45:03Z"
+  labels:
+    kubernetes.io/bootstrapping: rbac-defaults
+  name: cluster-admin
+  resourceVersion: "148"
+  uid: ba619883-3399-48b8-b325-6101f5a07494
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group			#O,        Subject: C = CN, ST = HangZhou, L = XS, O = k8s, OU = System, CN = kubernetes
+  name: system:masters		
+root@k8s-master01:~/k8s/yaml/limit-rbac/limit-case# kubectl get clusterrolebinding kubernetes-crb -o yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  creationTimestamp: "2022-03-04T13:45:04Z"
+  name: kubernetes-crb
+  resourceVersion: "214"
+  uid: 6b6bfccb-c554-4e0f-a517-a878a65329d0
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: User			#CN,        Subject: C = CN, ST = HangZhou, L = XS, O = k8s, OU = System, CN = kubernetes  #kubernetes.pem和ca.pem CN都是kubernetes
+  name: kubernetes
+root@k8s-master01:~/k8s/yaml/limit-rbac/limit-case# kubectl get clusterrolebinding admin-user -o yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"ClusterRoleBinding","metadata":{"annotations":{},"name":"admin-user"},"roleRef":{"apiGroup":"rbac.authorization.k8s.io","kind":"ClusterRole","name":"cluster-admin"},"subjects":[{"kind":"ServiceAccount","name":"admin-user","namespace":"kubernetes-dashboard"}]}
+  creationTimestamp: "2022-03-06T03:54:44Z"
+  name: admin-user
+  resourceVersion: "227520"
+  uid: d031510b-3e5c-4745-9033-236fa0e00f0f
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: admin-user
+  namespace: kubernetes-dashboard
+
+----创建kubeconfig文件，普通用户jack，只有magedu名称空间下只读权限
+RoleBinding 或者 ClusterRoleBinding 可绑定角色到某 *主体（Subject）*上。 主体可以是组(O)，用户(CN)或者 服务账户(servuceaccount)。groups, users or ServiceAccounts
+
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# cat jack-csr.json	#创建用户为Jack，组为k8s的证书签署请求文件
+{
+  "CN": "Jack",
+  "hosts": [],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CN",
+      "ST": "Shanghai",
+      "L": "Shanghai",
+      "O": "k8s",
+      "OU": "System"
+    }
+  ]
+}
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# scp jack-csr.json root@172.168.2.11:~			#复制到目标机器
+root@ansible:/etc/kubeasz/clusters/k8s-01/ssl# cp /etc/kubeasz/bin/cfssl* /usr/local/bin/			#准备证书生成工具，kubeasz自带
+root@ansible:/etc/kubeasz/clusters/k8s-01/ssl# cat ca-config.json
+{
+  "signing": {
+    "default": {
+      "expiry": "438000h"
+    },
+    "profiles": {
+      "kubernetes": {
+        "usages": [
+            "signing",
+            "key encipherment",
+            "server auth",
+            "client auth"
+        ],
+        "expiry": "438000h"
+      }
+    },
+    "profiles": {
+      "kcfg": {
+        "usages": [
+            "signing",
+            "key encipherment",
+            "client auth"
+        ],
+        "expiry": "438000h"
+      }
+    }
+  }
+}
+-----
+#cfssl gencert -ca=/etc/kubeasz/clusters/k8s-01/ssl/ca.pem  -ca-key=/etc/kubeasz/clusters/k8s-01/ssl/ca-key.pem -config=/etc/kubeasz/clusters/k8s-01/ssl/ca-config.json -profile=kubernetes /root/Jack-csr.json | cfssljson -bare Jack
+root@ansible:/etc/kubeasz/clusters/k8s-01/ssl/custom-ssl# cfssl gencert -ca=/etc/kubeasz/clusters/k8s-01/ssl/ca.pem  -ca-key=/etc/kubeasz/clusters/k8s-01/ssl/ca-key.pem -config=/etc/kubeasz/clusters/k8s-01/ssl/ca-config.json -profile=kubernetes /root/Jack-csr.json | cfssljson -bare Jack
+2022/04/03 15:03:21 [INFO] generate received request
+2022/04/03 15:03:21 [INFO] received CSR
+2022/04/03 15:03:21 [INFO] generating key: rsa-2048
+2022/04/03 15:03:22 [INFO] encoded CSR
+2022/04/03 15:03:22 [INFO] signed certificate with serial number 423342455757237043378896963793677996952171777953
+2022/04/03 15:03:22 [WARNING] This certificate lacks a "hosts" field. This makes it unsuitable for
+websites. For more information see the Baseline Requirements for the Issuance and Management
+of Publicly-Trusted Certificates, v.1.1.6, from the CA/Browser Forum (https://cabforum.org);
+specifically, section 10.2.3 ("Information Requirements").
+root@ansible:/etc/kubeasz/clusters/k8s-01/ssl/custom-ssl# ll
+total 16
+drwxr-xr-x 2 root root   58 4月   3 15:03 ./
+drwxr-xr-x 3 root root 4096 4月   3 15:03 ../
+-rw-r--r-- 1 root root  997 4月   3 15:03 Jack.csr
+-rw------- 1 root root 1675 4月   3 15:03 Jack-key.pem
+-rw-r--r-- 1 root root 1383 4月   3 15:03 Jack.pem
+root@ansible:/etc/kubeasz/clusters/k8s-01/ssl/custom-ssl# scp Jack.pem Jack-key.pem root@172.168.2.21:~/k8s/yaml/limit-rbac/role/
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl config set-cluster cluster1 --certificate-authority=/etc/kubernetes/ssl/ca.pem --embed-certs=true --server=https://192.168.13.50:6443 --kubeconfig=Jack.kubeconfig
+Cluster "cluster1" set.
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl config set-credentials Jack --client-certificate=/root/k8s/yaml/limit-rbac/role/Jack.pem --client-key=/root/k8s/yaml/limit-rbac/role/Jack-key.pem --embed-certs=true --kubeconfig=Jack.kubeconfig
+User "Jack" set.
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl config set-context cluster1 --cluster=cluster1 --user=Jack --namespace=magedu --kubeconfig=Jack.kubeconfig
+Context "cluster1" created.
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl config use-context cluster1 --kubeconfig=Jack.kubeconfig
+Switched to context "cluster1".
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# cat Jack.kubeconfig
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# cat Jack.kubeconfig
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR1RENDQXFDZ0F3SUJBZ0lVWTkvWDRUM3N6T0FsZktmbm1jV3I0MzdpdDUwd0RRWUpLb1pJaHZjTkFRRUwKQlFBd1lURUxNQWtHQTFVRUJoTUNRMDR4RVRBUEJnTlZCQWdUQ0VoaGJtZGFhRzkxTVFzd0NRWURWUVFIRXdKWQpVekVNTUFvR0ExVUVDaE1EYXpoek1ROHdEUVlEVlFRTEV3WlRlWE4wWlcweEV6QVJCZ05WQkFNVENtdDFZbVZ5CmJtVjBaWE13SUJjTk1qSXdNekEwTVRFeU1qQXdXaGdQTWpFeU1qQXlNRGd4TVRJeU1EQmFNR0V4Q3pBSkJnTlYKQkFZVEFrTk9NUkV3RHdZRFZRUUlFd2hJWVc1bldtaHZkVEVMTUFrR0ExVUVCeE1DV0ZNeEREQUtCZ05WQkFvVApBMnM0Y3pFUE1BMEdBMVVFQ3hNR1UzbHpkR1Z0TVJNd0VRWURWUVFERXdwcmRXSmxjbTVsZEdWek1JSUJJakFOCkJna3Foa2lHOXcwQkFRRUZBQU9DQVE4QU1JSUJDZ0tDQVFFQTNtYm0zaHM3WlJ3WEdEUktkUW9rR25QVjVNbUQKYUEzNnpaZ0VXWUJNSkIvZDBOSEFkQkZDY1dLb3ArNUF2SFk3elBjeGdNelpRZ1B4TU9DcU9CS09NUVJYNG4ydApENmYxbUZrMzFNRDBEMXJGVTBXcGYwanRiampNMmNEOW5wU2trcmZ4dDliWlh2NHRHNFpDUlB4U1RJbkxDU0RkClVNYnN6OUFXVkZNamtnSndUa3FpU2NIZitod1FvOWZVdVduekZTWWdGUUppUWtWRVZqaGErYU5DK2oyUjNOQjUKN1hDS1RHMFBUNS9JVVFEL2t2V0doL0NoZEZUQmREV0plL0d4cnpkYlAxejRQbnBvSTBvaThDN1MwakErVlJKRApMcS9WcE5TY2d1WFB6ZXNPZSs3Tk9Ub0hwZURyVGJxTER5aVRMbEVWNmRWWG5ScE9tdG9XdjI2OU13SURBUUFCCm8yWXdaREFPQmdOVkhROEJBZjhFQkFNQ0FRWXdFZ1lEVlIwVEFRSC9CQWd3QmdFQi93SUJBakFkQmdOVkhRNEUKRmdRVXhxbndaUFpNTEZUeUhJVzNzcWNyaGJmZEl0QXdId1lEVlIwakJCZ3dGb0FVeHFud1pQWk1MRlR5SElXMwpzcWNyaGJmZEl0QXdEUVlKS29aSWh2Y05BUUVMQlFBRGdnRUJBTFpndlVIOEh1SDRIYnJtUW80ejFOTWJKamZVCmlHaFYzdmpFRitIVHlhejByOU1HSlo5b1p3M2hpK0ZpUUJEaUFGSjNvTEVtWVEweDFLd2VlUnorQUlwOVV6QUEKaE5ETVB2YmlqTXl3b3JRNTdzN3BSWlMzejB5RHJ1MEh2R21WRkl6WjRzcm05TjZ2SnVORGUvbklBc0o5eitzbwpKN2doQ3k3Z0dqL2w5dXV2dmovNk8vNVJTVVc4WGE3NWZPR2ZESjFVdUdyemMzbE1mTkNwVUJwMFFXTXVtWHFRClJReHZuKzdRQWdQcitQRk9OLzZMSVkxYlZwNmkvUHhaZ2xjcHFnRjV4QUZ4VEFJYmRXdjVxTjVVQUNsWTFwOE8KVEwyeG9LQVdsQ1IydkdpVS8zbWJTZ2prd3JzRTRRZ3hweHdMdklUc2FNNWtINVF3YUMvalNIR0V3SlE9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    server: https://192.168.13.50:6443
+  name: cluster1
+contexts:
+- context:
+    cluster: cluster1
+    namespace: magedu
+    user: Jack
+  name: cluster1
+current-context: cluster1
+kind: Config
+preferences: {}
+users:
+- name: Jack
+  user:
+    client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUQwVENDQXJtZ0F3SUJBZ0lVU2lkVkR3UEJJNnl6SzR0NkVYNUVoWTJqRDZFd0RRWUpLb1pJaHZjTkFRRUwKQlFBd1lURUxNQWtHQTFVRUJoTUNRMDR4RVRBUEJnTlZCQWdUQ0VoaGJtZGFhRzkxTVFzd0NRWURWUVFIRXdKWQpVekVNTUFvR0ExVUVDaE1EYXpoek1ROHdEUVlEVlFRTEV3WlRlWE4wWlcweEV6QVJCZ05WQkFNVENtdDFZbVZ5CmJtVjBaWE13SUJjTk1qSXdOREF6TURZMU9EQXdXaGdQTWpBM01qQXpNakV3TmpVNE1EQmFNR0V4Q3pBSkJnTlYKQkFZVEFrTk9NUkV3RHdZRFZRUUlFd2hUYUdGdVoyaGhhVEVSTUE4R0ExVUVCeE1JVTJoaGJtZG9ZV2t4RERBSwpCZ05WQkFvVEEyczRjekVQTUEwR0ExVUVDeE1HVTNsemRHVnRNUTB3Q3dZRFZRUURFd1JLWVdOck1JSUJJakFOCkJna3Foa2lHOXcwQkFRRUZBQU9DQVE4QU1JSUJDZ0tDQVFFQXQwRS9lcVUyL3pZYm5xSU9hOGNWb0ppbjJVVlkKb2NBSGlBTlZzMEtBUm5RcENiM0Vsc1NzL3JKbDd3REUxaHFyNDJDQTBVK3V4UG54cWp2UHBzTlZIRnBoeW4rbwpQNEJvWENPMjNkaVcrM20rbVFIMmNac2JJL2JnNWlNcWUxWlYzNEFhZm9jZFhlNlYrNWxpci9CVGlNSDJGaWNkClF5aWJKRzFPOExlb3ltUHJKakxCMHRSWXNGQnR5QWtMQkgvTCtVU0ozbEtJSGRSc2l0NFpvVkVRdUV4WW4vb2IKN3RwdjFpaHRBR29UUUNvKzI2ZEQvYmYyWWdQWjBXeXppNXJLNWM1ZlpZQW51T2NKcDNCenpQdnZvMXNKOGN4MApOOXlYQVh6aWVaSVlxTDJIVStiK2xOR3dDZUJ2dStsWlRrQXNRSmVMcU1nK01KRFNmZERkdVl4T2pRSURBUUFCCm8zOHdmVEFPQmdOVkhROEJBZjhFQkFNQ0JhQXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0VHQ0NzR0FRVUYKQndNQ01Bd0dBMVVkRXdFQi93UUNNQUF3SFFZRFZSME9CQllFRlB0QXAxR2VTc3VzSGlwOVZMd1pDdnZFQUwwdQpNQjhHQTFVZEl3UVlNQmFBRk1hcDhHVDJUQ3hVOGh5RnQ3S25LNFczM1NMUU1BMEdDU3FHU0liM0RRRUJDd1VBCkE0SUJBUUJZWXdkNzJJSjFST1RwS3NaeHJxN2pZb0h3Wkk5VDNHaGZQaktpRVVpNlBNT2hoamd2NUE3cG8yZGgKMG91aUhINmNBc0dLdGNkcnpTYXhuRUh1aFVtMXlYYTZjRXZYMWxzMms1eHB4azNwczBzVkZPSi80cFZxWnR1cgpVdllIVXdvaXpmZkwvN3h4ektUOGFqMUh0VTVJL3pxclI2MWR1U2kzQ0VoK2NhVVF4MnNiZlJnUWp5RjNMWDJKCkhZWkc0bEhZM2l1R2VjR25hdmFqcllIUFJGUDFLRnF1akhJeWhpL3l4UGpMUzgvRStxQSt2aXhNbzRyQUpRdkEKc280enREVm9oU05WeXVCK2J3aVpBaUl6a0E5cG1CQUl0dEhrcXdEclk2OXI4UnovbEk1dkhkclNxZ0VnV1M4awpMT1FhVkVJTFltQ2cweUJ1bC9aTVBFbXFvUDl4Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    client-key-data: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdDBFL2VxVTIvellibnFJT2E4Y1ZvSmluMlVWWW9jQUhpQU5WczBLQVJuUXBDYjNFCmxzU3MvckpsN3dERTFocXI0MkNBMFUrdXhQbnhxanZQcHNOVkhGcGh5bitvUDRCb1hDTzIzZGlXKzNtK21RSDIKY1pzYkkvYmc1aU1xZTFaVjM0QWFmb2NkWGU2Vis1bGlyL0JUaU1IMkZpY2RReWliSkcxTzhMZW95bVBySmpMQgowdFJZc0ZCdHlBa0xCSC9MK1VTSjNsS0lIZFJzaXQ0Wm9WRVF1RXhZbi9vYjd0cHYxaWh0QUdvVFFDbysyNmRECi9iZjJZZ1BaMFd5emk1cks1YzVmWllBbnVPY0pwM0J6elB2dm8xc0o4Y3gwTjl5WEFYemllWklZcUwySFUrYisKbE5Hd0NlQnZ1K2xaVGtBc1FKZUxxTWcrTUpEU2ZkRGR1WXhPalFJREFRQUJBb0lCQVFDTTcrYUZTYmxSY0dpdgppUTAwUU1uV1dIR0d2VG1jTk5iVitWS1k2a1ZEYWlVQnMrd1UxREFFTm1vRTlYOXM5dGhKcURlS1F4RXp0dEx3CnpNMDRBVFJjK1BvS3hrRThqV0kxc3RYNktwQjcyYmNIY0NYOFc0RDFHUE1BcS8wSkhHNHcxUklMUzVqL1cvWUgKcVlEbnRScFpyR3E1d04xVmdFNUpKclEybDlsOXhTc2ROazE3eEt3K2srNHhxcWdFRTJUTmsxRDlJeVpsYkhnYQpOQUgvcEVObmxuL1VTa0dyVjZtWTMzT0V1OFFWV2RTclo1bGw5Y05pY3gxUEtZMHRLMEw2QmZoRnNYU0RKUUkyCitpSFRvZWoraWR2dng1YUJQWDJaS3QyQTNmMVV3R1huRXM1SmE3QzUvcm5vME9FWmhsOVJydS93VG1CTG55Z2kKdGdJQmt1K0JBb0dCQU13VDZuWTVFWVZSTWx0elVJNDNYUkJVTUJLU201NnVqdzJvM0U3aUZqam4zSGRlMDBMQQpCQWRlSk1OWWg2UElFWDhzUURLNzhqTGRnN3kzMmd1UmNIRDQxUi96dGxvSDlHMlpHNnZHbkp1YU5SLzE5MzJqCi9Fa3ZDK3pXZU5GbWdLY2MzcUJHMTFqUUU5OHdYVFRrSjl3YTVYTkV3NE5BMWJBVk1xeU1ZREF0QW9HQkFPWGgKRmFETk1pZFJLTWpWZUhld0pHNFZKMmgxSDVhd1VHdUZiaXhPc21JMFJZWUNuT0dEd0xDNGlJeWd4YnJBR2wwaQppZHdvVmZPVnNoUGYraDF0UjdrR1RGQjhpQ3ByODNpaExONytYVEVldHV5Rkh4SUNzajkwZ2JlT25NVHFnM3ROClAvOWRtSnZRcG1mM09ZR2VSbDJnZGQxVno0eWtDNnRVcVZ6RnJUUGhBb0dBVEtDdHlQWmt2Y3BmUGpkdVovZ2gKMlovQzdUWmZlSlhTNFM0bWl2Z1pvQVJ2bytMWE1Ka282aHRQY29vclpEUWJYY1VmMWV6OFpGMEl1alBPaThsdwpqdnJnQzc5WEdUY2pjSU90QURMeld2bnNPTFFDMmdwWkVLRzV1SlJQaVZFVHZhdjVhL1V0cHd0NmFyT2VTOTNmCm1hWC93ZWh3QVRpM0JBYnhvQmlWaFlFQ2dZQi9FVFlsVm9kOG1DNFZKWHFibmkvazhhaUE0d3o4L0tUWGFrQUcKR2RJYzJvdjdrWUlxWGV1clE3V25GazkxOVM0ZGdUUDNFQXpDd21KVy9oMkJHcURrczRpSGpPNnZsRkJXdzdETAo2b3FVMWtlQzRlclV4OHpEcXFEeFY5RnNQNzFCOE9lSlByRlduN1Q4RHZvb25kYURkbWp3V2JpS0l6dVlEd28zCkQ4VzN3UUtCZ0Jyc1dKcFoxMGw3dVUrMnhTUkQ5QzhlNjNVRU5tcG93bjBQODNraStxOGhGVmZLdW5KTU9Od1cKRTJYdWovVWJrUnNQZmVxcGN2UFZkR1g0TUNJNVc1M094dW5PbExxQkZvS1hUd1gzTzR2MTRrMVdhWFdzdm15aQpxbS8zcmRSTkk1OStaM09aZm5WR3lWZkcyMm55amJzMkJTeTZ1cVNMQVZvcS9pczNzY0doCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
+
+----此时这个kubeconfig文件创建完成，但是没有任何权限绑定，所以此文件是没有权限的
+[root@k8s-node04 .kube]# kubectl get pods -A
+Error from server (Forbidden): pods is forbidden: User "Jack" cannot list resource "pods" in API group "" at the cluster scope
+
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# cat magedu-role.yaml		#创建role
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  namespace: magedu
+  name: magedu-role
+rules:
+- apiGroups: ["*"]
+  resources: ["pods/exec"]
+  #verbs: ["*"]
+  ##RO-Role
+  verbs: ["get", "list", "watch", "create"]
+
+- apiGroups: ["*"]
+  resources: ["pods"]
+  #verbs: ["*"]
+  ##RO-Role
+  verbs: ["get", "list", "watch"]
+
+- apiGroups: ["*"]
+  resources: ["deployments", "replicasets", "deployments/scale"]
+  #verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  ##RO-Role
+  verbs: ["get", "watch", "list"]
+
+- apiGroups: ["*"]
+  resources: ["events"]
+  ##RO-Role
+  verbs: ["get", "watch", "list"]
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl apply -f magedu-role.yaml
+role.rbac.authorization.k8s.io/magedu-role configured
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# cat magedu-role-user-bind.yaml	#创建rolebinding
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: role-bind-user-magedu
+  namespace: magedu
+subjects:
+- kind: User		#这里是用户绑定，还可以是Group，ServiceAccount
+  name: Jack
+  namespace: magedu
+roleRef:
+  kind: Role
+  name: magedu-role
+  apiGroup: rbac.authorization.k8s.io
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl apply -f magedu-role-user-bind.yaml
+rolebinding.rbac.authorization.k8s.io/role-bind-user-magedu created
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl describe rolebinding role-bind-user-magedu -n magedu
+Name:         role-bind-user-magedu
+Labels:       <none>
+Annotations:  <none>
+Role:
+  Kind:  Role
+  Name:  magedu-role
+Subjects:
+  Kind  Name  Namespace
+  ----  ----  ---------
+  User  Jack  magedu
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl describe role magedu-role -n magedu
+Name:         magedu-role
+Labels:       <none>
+Annotations:  <none>
+PolicyRule:
+  Resources            Non-Resource URLs  Resource Names  Verbs
+  ---------            -----------------  --------------  -----
+  pods.*/exec          []                 []              [get list watch create]
+  pods.*               []                 []              [get list watch]
+  deployments.*/scale  []                 []              [get watch list]
+  deployments.*        []                 []              [get watch list]
+  events.*             []                 []              [get watch list]
+  replicasets.*        []                 []              [get watch list]
+
+[root@k8s-node04 .kube]# kubectl get pods -n magedu			#查看magedu名称空间下pod
+NAME                                                READY   STATUS    RESTARTS   AGE
+deploy-devops-redis-749878f59d-gf856                1/1     Running   0          8d
+magedu-consumer-deployment-84547497d4-999wr         1/1     Running   0          7d22h
+magedu-dubboadmin-deployment-bbd4b4966-sts92        1/1     Running   0          7d20h
+magedu-jenkins-deployment-5f94c58f86-kc2hg          1/1     Running   0          8d
+magedu-nginx-deployment-849cbbbb9c-kfw45            1/1     Running   0          3h25m
+magedu-nginx-deployment-849cbbbb9c-kp59d            1/1     Running   0          61m
+magedu-provider-deployment-7656dfd74f-fq652         1/1     Running   0          7d19h
+magedu-provider-deployment-7656dfd74f-vpjkl         1/1     Running   0          7d23h
+magedu-tomcat-app1-deployment-7d89cf4c79-g7fs7      1/1     Running   0          26h
+magedu-tomcat-app1-deployment-v2-797df58f6c-rdhk8   1/1     Running   0          23h
+mysql-0                                             2/2     Running   0          8d
+wordpress-app-deployment-7d6d5c4c97-jx4kf           2/2     Running   0          4d23h
+zookeeper1-749d87b7c5-stk5w                         1/1     Running   1          10d
+zookeeper2-5f5fcb7f4d-s5pgp                         1/1     Running   1          10d
+zookeeper3-c857bb585-txchq                          1/1     Running   1          10d
+[root@k8s-node04 .kube]# kubectl get all -n magedu			#查看magedu名称空间下所有资源
+NAME                                                    READY   STATUS    RESTARTS   AGE
+pod/deploy-devops-redis-749878f59d-gf856                1/1     Running   0          8d
+pod/magedu-consumer-deployment-84547497d4-999wr         1/1     Running   0          7d22h
+pod/magedu-dubboadmin-deployment-bbd4b4966-sts92        1/1     Running   0          7d20h
+pod/magedu-jenkins-deployment-5f94c58f86-kc2hg          1/1     Running   0          8d
+pod/magedu-nginx-deployment-849cbbbb9c-kfw45            1/1     Running   0          3h25m
+pod/magedu-nginx-deployment-849cbbbb9c-kp59d            1/1     Running   0          61m
+pod/magedu-provider-deployment-7656dfd74f-fq652         1/1     Running   0          7d19h
+pod/magedu-provider-deployment-7656dfd74f-vpjkl         1/1     Running   0          7d23h
+pod/magedu-tomcat-app1-deployment-7d89cf4c79-g7fs7      1/1     Running   0          26h
+pod/magedu-tomcat-app1-deployment-v2-797df58f6c-rdhk8   1/1     Running   0          23h
+pod/mysql-0                                             2/2     Running   0          8d
+pod/wordpress-app-deployment-7d6d5c4c97-jx4kf           2/2     Running   0          4d23h
+pod/zookeeper1-749d87b7c5-stk5w                         1/1     Running   1          10d
+pod/zookeeper2-5f5fcb7f4d-s5pgp                         1/1     Running   1          10d
+pod/zookeeper3-c857bb585-txchq                          1/1     Running   1          10d
+
+NAME                                               READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/deploy-devops-redis                1/1     1            1           8d
+deployment.apps/magedu-consumer-deployment         1/1     1            1           7d22h
+deployment.apps/magedu-dubboadmin-deployment       1/1     1            1           7d20h
+deployment.apps/magedu-jenkins-deployment          1/1     1            1           8d
+deployment.apps/magedu-nginx-deployment            2/2     2            2           19h
+deployment.apps/magedu-provider-deployment         2/2     2            2           7d23h
+deployment.apps/magedu-tomcat-app1-deployment      1/1     1            1           26h
+deployment.apps/magedu-tomcat-app1-deployment-v2   1/1     1            1           3d17h
+deployment.apps/wordpress-app-deployment           1/1     1            1           4d23h
+deployment.apps/zookeeper1                         1/1     1            1           10d
+deployment.apps/zookeeper2                         1/1     1            1           10d
+deployment.apps/zookeeper3                         1/1     1            1           10d
+
+NAME                                                          DESIRED   CURRENT   READY   AGE
+replicaset.apps/deploy-devops-redis-749878f59d                1         1         1       8d
+replicaset.apps/magedu-consumer-deployment-84547497d4         1         1         1       7d22h
+replicaset.apps/magedu-dubboadmin-deployment-bbd4b4966        1         1         1       7d20h
+replicaset.apps/magedu-jenkins-deployment-5f94c58f86          1         1         1       8d
+replicaset.apps/magedu-nginx-deployment-849cbbbb9c            2         2         2       19h
+replicaset.apps/magedu-provider-deployment-7656dfd74f         2         2         2       7d23h
+replicaset.apps/magedu-tomcat-app1-deployment-7d89cf4c79      1         1         1       26h
+replicaset.apps/magedu-tomcat-app1-deployment-v2-797df58f6c   1         1         1       3d17h
+replicaset.apps/wordpress-app-deployment-7d6d5c4c97           1         1         1       4d23h
+replicaset.apps/zookeeper1-749d87b7c5                         1         1         1       10d
+replicaset.apps/zookeeper2-5f5fcb7f4d                         1         1         1       10d
+replicaset.apps/zookeeper3-c857bb585                          1         1         1       10d
+Error from server (Forbidden): replicationcontrollers is forbidden: User "Jack" cannot list resource "replicationcontrollers" in API group "" in the namespace "magedu"
+Error from server (Forbidden): services is forbidden: User "Jack" cannot list resource "services" in API group "" in the namespace "magedu"
+Error from server (Forbidden): daemonsets.apps is forbidden: User "Jack" cannot list resource "daemonsets" in API group "apps" in the namespace "magedu"
+Error from server (Forbidden): statefulsets.apps is forbidden: User "Jack" cannot list resource "statefulsets" in API group "apps" in the namespace "magedu"
+Error from server (Forbidden): horizontalpodautoscalers.autoscaling is forbidden: User "Jack" cannot list resource "horizontalpodautoscalers" in API group "autoscaling" in the namespace "magedu"
+Error from server (Forbidden): cronjobs.batch is forbidden: User "Jack" cannot list resource "cronjobs" in API group "batch" in the namespace "magedu"
+Error from server (Forbidden): jobs.batch is forbidden: User "Jack" cannot list resource "jobs" in API group "batch" in the namespace "magedu"
+-----
+--此时访问dashboard，需要创建添加secret中的token到kubeconfig中才行，否则单单使用上面的kubeconfig是登录不了dashboard的
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl describe secrets magedu-token-qvnbb -n magedu | grep '^token'
+token:      eyJhbGciOiJSUzI1NiIsImtpZCI6ImQ3UV9STlJ4TEpQRS1XWmNHblFmaHJOUmdUaW5jMVJvSERqeE9VajR1LWcifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJtYWdlZHUiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlY3JldC5uYW1lIjoibWFnZWR1LXRva2VuLXF2bmJiIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6Im1hZ2VkdSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjJmYWZjZjBlLTRkYzUtNDVmOC1iOWY4LTE5MWIxOTdiNzVjOCIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDptYWdlZHU6bWFnZWR1In0.woEJpQGXMqDsp_RjcQrga-UoZ1NFAMcwgVhFaVInobrWIClEykQvrfFChFSwNWYvlgIWB5EqfnviQWUSATiqp5r1hH2sIY50HSQBFKuZKmXQuLf_NB2Y-4rF-paVuX6VxtnlmYz6wMWMCAsid7gBA_G7qF73oFJF5d8n2JHsIlUyrPh9BK0HJ3_vC7YxNBfC5OAH3knWcysVS1iEoN_y9RVHFytYgQqL2659S4XSBc76A7cneyQJ6ZsZEbZRyDJ6FxJs4cTJNPuaIcyMcIB1goX5bLIrj3LrHcd5A3rawXM4WEjdk4YbZVuMCCEeGXSHh1h6rPKnEkAjusoVQJIlzw
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl describe secrets magedu-token-qvnbb -n magedu | grep '^token'
+token:      eyJhbGciOiJSUzI1NiIsImtpZCI6ImQ3UV9STlJ4TEpQRS1XWmNHblFmaHJOUmdUaW5jMVJvSERqeE9VajR1LWcifQ.eyJpc3MiOiJrdWJlcmzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJtYWdlZHUiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhW50L3NlY3JldC5uYW1lIjoibWFnZWR1LXRva2VuLXF2bmJiIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImkdSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjJmYWZjZjBlLTRkYzUtNDVmOC1iOWY4LTE5MWIxOTdiNzVjnN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDptYWdlZHU6bWFnZWR1In0.woEJpQGXMqDsp_RjcQrga-UoZ1NFAMcwgVhFaVInobrWIClEykQvrfFChFSwNWWB5EqfnviQWUSATiqp5r1hH2sIY50HSQBFKuZKmXQuLf_NB2Y-4rF-paVuX6VxtnlmYz6wMWMCAsid7gBA_G7qF73oFJF5d8n2JHsIlUyrPh9BK0HJ3_vC7YxOAH3knWcysVS1iEoN_y9RVHFytYgQqL2659S4XSBc76A7cneyQJ6ZsZEbZRyDJ6FxJs4cTJNPuaIcyMcIB1goX5bLIrj3LrHcd5A3rawXM4WEjdk4YbZVuMCCHh1h6rPKnEkAjusoVQJIlzw
+root@k8s-master01:~/k8s/yaml/limit-rbac/role# cat Jack.kubeconfig
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR1RENDQXFDZ0F3SUJBZ0lVWTkvWDRUM3N6T0FsZktmbm1jV3I0MzdpdDUwd0RRWUpLb1pJaHZjTkFRRUwKQlFBd1lURUxNQWtHQTFVRUJoTUNRMDR4RVRBUEJnTlZCQWdUQ0VoaGJtZGFhRzkxTVFzd0NRWURWUVFIRXdKWQpVekVNTUFvR0ExVUVDaE1EYXpoek1ROHdEUVlEVlFRTEV3WlRlWE4wWlcweEV6QVJCZ05WQkFNVENtdDFZbVZ5CmJtVjBaWE13SUJjTk1qSXdNekEwTVRFeU1qQXdXaGdQTWpFeU1qQXlNRGd4TVRJeU1EQmFNR0V4Q3pBSkJnTlYKQkFZVEFrTk9NUkV3RHdZRFZRUUlFd2hJWVc1bldtaHZkVEVMTUFrR0ExVUVCeE1DV0ZNeEREQUtCZ05WQkFvVApBMnM0Y3pFUE1BMEdBMVVFQ3hNR1UzbHpkR1Z0TVJNd0VRWURWUVFERXdwcmRXSmxjbTVsZEdWek1JSUJJakFOCkJna3Foa2lHOXcwQkFRRUZBQU9DQVE4QU1JSUJDZ0tDQVFFQTNtYm0zaHM3WlJ3WEdEUktkUW9rR25QVjVNbUQKYUEzNnpaZ0VXWUJNSkIvZDBOSEFkQkZDY1dLb3ArNUF2SFk3elBjeGdNelpRZ1B4TU9DcU9CS09NUVJYNG4ydApENmYxbUZrMzFNRDBEMXJGVTBXcGYwanRiampNMmNEOW5wU2trcmZ4dDliWlh2NHRHNFpDUlB4U1RJbkxDU0RkClVNYnN6OUFXVkZNamtnSndUa3FpU2NIZitod1FvOWZVdVduekZTWWdGUUppUWtWRVZqaGErYU5DK2oyUjNOQjUKN1hDS1RHMFBUNS9JVVFEL2t2V0doL0NoZEZUQmREV0plL0d4cnpkYlAxejRQbnBvSTBvaThDN1MwakErVlJKRApMcS9WcE5TY2d1WFB6ZXNPZSs3Tk9Ub0hwZURyVGJxTER5aVRMbEVWNmRWWG5ScE9tdG9XdjI2OU13SURBUUFCCm8yWXdaREFPQmdOVkhROEJBZjhFQkFNQ0FRWXdFZ1lEVlIwVEFRSC9CQWd3QmdFQi93SUJBakFkQmdOVkhRNEUKRmdRVXhxbndaUFpNTEZUeUhJVzNzcWNyaGJmZEl0QXdId1lEVlIwakJCZ3dGb0FVeHFud1pQWk1MRlR5SElXMwpzcWNyaGJmZEl0QXdEUVlKS29aSWh2Y05BUUVMQlFBRGdnRUJBTFpndlVIOEh1SDRIYnJtUW80ejFOTWJKamZVCmlHaFYzdmpFRitIVHlhejByOU1HSlo5b1p3M2hpK0ZpUUJEaUFGSjNvTEVtWVEweDFLd2VlUnorQUlwOVV6QUEKaE5ETVB2YmlqTXl3b3JRNTdzN3BSWlMzejB5RHJ1MEh2R21WRkl6WjRzcm05TjZ2SnVORGUvbklBc0o5eitzbwpKN2doQ3k3Z0dqL2w5dXV2dmovNk8vNVJTVVc4WGE3NWZPR2ZESjFVdUdyemMzbE1mTkNwVUJwMFFXTXVtWHFRClJReHZuKzdRQWdQcitQRk9OLzZMSVkxYlZwNmkvUHhaZ2xjcHFnRjV4QUZ4VEFJYmRXdjVxTjVVQUNsWTFwOE8KVEwyeG9LQVdsQ1IydkdpVS8zbWJTZ2prd3JzRTRRZ3hweHdMdklUc2FNNWtINVF3YUMvalNIR0V3SlE9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    server: https://172.168.2.21:6443
+  name: cluster1
+contexts:
+- context:
+    cluster: cluster1
+    namespace: magedu
+    user: Jack
+  name: cluster1
+current-context: cluster1
+kind: Config
+preferences: {}
+users:
+- name: Jack
+  user:
+    client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUQwVENDQXJtZ0F3SUJBZ0lVU2lkVkR3UEJJNnl6SzR0NkVYNUVoWTJqRDZFd0RRWUpLb1pJaHZjTkFRRUwKQlFBd1lURUxNQWtHQTFVRUJoTUNRMDR4RVRBUEJnTlZCQWdUQ0VoaGJtZGFhRzkxTVFzd0NRWURWUVFIRXdKWQpVekVNTUFvR0ExVUVDaE1EYXpoek1ROHdEUVlEVlFRTEV3WlRlWE4wWlcweEV6QVJCZ05WQkFNVENtdDFZbVZ5CmJtVjBaWE13SUJjTk1qSXdOREF6TURZMU9EQXdXaGdQTWpBM01qQXpNakV3TmpVNE1EQmFNR0V4Q3pBSkJnTlYKQkFZVEFrTk9NUkV3RHdZRFZRUUlFd2hUYUdGdVoyaGhhVEVSTUE4R0ExVUVCeE1JVTJoaGJtZG9ZV2t4RERBSwpCZ05WQkFvVEEyczRjekVQTUEwR0ExVUVDeE1HVTNsemRHVnRNUTB3Q3dZRFZRUURFd1JLWVdOck1JSUJJakFOCkJna3Foa2lHOXcwQkFRRUZBQU9DQVE4QU1JSUJDZ0tDQVFFQXQwRS9lcVUyL3pZYm5xSU9hOGNWb0ppbjJVVlkKb2NBSGlBTlZzMEtBUm5RcENiM0Vsc1NzL3JKbDd3REUxaHFyNDJDQTBVK3V4UG54cWp2UHBzTlZIRnBoeW4rbwpQNEJvWENPMjNkaVcrM20rbVFIMmNac2JJL2JnNWlNcWUxWlYzNEFhZm9jZFhlNlYrNWxpci9CVGlNSDJGaWNkClF5aWJKRzFPOExlb3ltUHJKakxCMHRSWXNGQnR5QWtMQkgvTCtVU0ozbEtJSGRSc2l0NFpvVkVRdUV4WW4vb2IKN3RwdjFpaHRBR29UUUNvKzI2ZEQvYmYyWWdQWjBXeXppNXJLNWM1ZlpZQW51T2NKcDNCenpQdnZvMXNKOGN4MApOOXlYQVh6aWVaSVlxTDJIVStiK2xOR3dDZUJ2dStsWlRrQXNRSmVMcU1nK01KRFNmZERkdVl4T2pRSURBUUFCCm8zOHdmVEFPQmdOVkhROEJBZjhFQkFNQ0JhQXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0VHQ0NzR0FRVUYKQndNQ01Bd0dBMVVkRXdFQi93UUNNQUF3SFFZRFZSME9CQllFRlB0QXAxR2VTc3VzSGlwOVZMd1pDdnZFQUwwdQpNQjhHQTFVZEl3UVlNQmFBRk1hcDhHVDJUQ3hVOGh5RnQ3S25LNFczM1NMUU1BMEdDU3FHU0liM0RRRUJDd1VBCkE0SUJBUUJZWXdkNzJJSjFST1RwS3NaeHJxN2pZb0h3Wkk5VDNHaGZQaktpRVVpNlBNT2hoamd2NUE3cG8yZGgKMG91aUhINmNBc0dLdGNkcnpTYXhuRUh1aFVtMXlYYTZjRXZYMWxzMms1eHB4azNwczBzVkZPSi80cFZxWnR1cgpVdllIVXdvaXpmZkwvN3h4ektUOGFqMUh0VTVJL3pxclI2MWR1U2kzQ0VoK2NhVVF4MnNiZlJnUWp5RjNMWDJKCkhZWkc0bEhZM2l1R2VjR25hdmFqcllIUFJGUDFLRnF1akhJeWhpL3l4UGpMUzgvRStxQSt2aXhNbzRyQUpRdkEKc280enREVm9oU05WeXVCK2J3aVpBaUl6a0E5cG1CQUl0dEhrcXdEclk2OXI4UnovbEk1dkhkclNxZ0VnV1M4awpMT1FhVkVJTFltQ2cweUJ1bC9aTVBFbXFvUDl4Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    client-key-data: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdDBFL2VxVTIvellibnFJT2E4Y1ZvSmluMlVWWW9jQUhpQU5WczBLQVJuUXBDYjNFCmxzU3MvckpsN3dERTFocXI0MkNBMFUrdXhQbnhxanZQcHNOVkhGcGh5bitvUDRCb1hDTzIzZGlXKzNtK21RSDIKY1pzYkkvYmc1aU1xZTFaVjM0QWFmb2NkWGU2Vis1bGlyL0JUaU1IMkZpY2RReWliSkcxTzhMZW95bVBySmpMQgowdFJZc0ZCdHlBa0xCSC9MK1VTSjNsS0lIZFJzaXQ0Wm9WRVF1RXhZbi9vYjd0cHYxaWh0QUdvVFFDbysyNmRECi9iZjJZZ1BaMFd5emk1cks1YzVmWllBbnVPY0pwM0J6elB2dm8xc0o4Y3gwTjl5WEFYemllWklZcUwySFUrYisKbE5Hd0NlQnZ1K2xaVGtBc1FKZUxxTWcrTUpEU2ZkRGR1WXhPalFJREFRQUJBb0lCQVFDTTcrYUZTYmxSY0dpdgppUTAwUU1uV1dIR0d2VG1jTk5iVitWS1k2a1ZEYWlVQnMrd1UxREFFTm1vRTlYOXM5dGhKcURlS1F4RXp0dEx3CnpNMDRBVFJjK1BvS3hrRThqV0kxc3RYNktwQjcyYmNIY0NYOFc0RDFHUE1BcS8wSkhHNHcxUklMUzVqL1cvWUgKcVlEbnRScFpyR3E1d04xVmdFNUpKclEybDlsOXhTc2ROazE3eEt3K2srNHhxcWdFRTJUTmsxRDlJeVpsYkhnYQpOQUgvcEVObmxuL1VTa0dyVjZtWTMzT0V1OFFWV2RTclo1bGw5Y05pY3gxUEtZMHRLMEw2QmZoRnNYU0RKUUkyCitpSFRvZWoraWR2dng1YUJQWDJaS3QyQTNmMVV3R1huRXM1SmE3QzUvcm5vME9FWmhsOVJydS93VG1CTG55Z2kKdGdJQmt1K0JBb0dCQU13VDZuWTVFWVZSTWx0elVJNDNYUkJVTUJLU201NnVqdzJvM0U3aUZqam4zSGRlMDBMQQpCQWRlSk1OWWg2UElFWDhzUURLNzhqTGRnN3kzMmd1UmNIRDQxUi96dGxvSDlHMlpHNnZHbkp1YU5SLzE5MzJqCi9Fa3ZDK3pXZU5GbWdLY2MzcUJHMTFqUUU5OHdYVFRrSjl3YTVYTkV3NE5BMWJBVk1xeU1ZREF0QW9HQkFPWGgKRmFETk1pZFJLTWpWZUhld0pHNFZKMmgxSDVhd1VHdUZiaXhPc21JMFJZWUNuT0dEd0xDNGlJeWd4YnJBR2wwaQppZHdvVmZPVnNoUGYraDF0UjdrR1RGQjhpQ3ByODNpaExONytYVEVldHV5Rkh4SUNzajkwZ2JlT25NVHFnM3ROClAvOWRtSnZRcG1mM09ZR2VSbDJnZGQxVno0eWtDNnRVcVZ6RnJUUGhBb0dBVEtDdHlQWmt2Y3BmUGpkdVovZ2gKMlovQzdUWmZlSlhTNFM0bWl2Z1pvQVJ2bytMWE1Ka282aHRQY29vclpEUWJYY1VmMWV6OFpGMEl1alBPaThsdwpqdnJnQzc5WEdUY2pjSU90QURMeld2bnNPTFFDMmdwWkVLRzV1SlJQaVZFVHZhdjVhL1V0cHd0NmFyT2VTOTNmCm1hWC93ZWh3QVRpM0JBYnhvQmlWaFlFQ2dZQi9FVFlsVm9kOG1DNFZKWHFibmkvazhhaUE0d3o4L0tUWGFrQUcKR2RJYzJvdjdrWUlxWGV1clE3V25GazkxOVM0ZGdUUDNFQXpDd21KVy9oMkJHcURrczRpSGpPNnZsRkJXdzdETAo2b3FVMWtlQzRlclV4OHpEcXFEeFY5RnNQNzFCOE9lSlByRlduN1Q4RHZvb25kYURkbWp3V2JpS0l6dVlEd28zCkQ4VzN3UUtCZ0Jyc1dKcFoxMGw3dVUrMnhTUkQ5QzhlNjNVRU5tcG93bjBQODNraStxOGhGVmZLdW5KTU9Od1cKRTJYdWovVWJrUnNQZmVxcGN2UFZkR1g0TUNJNVc1M094dW5PbExxQkZvS1hUd1gzTzR2MTRrMVdhWFdzdm15aQpxbS8zcmRSTkk1OStaM09aZm5WR3lWZkcyMm55amJzMkJTeTZ1cVNMQVZvcS9pczNzY0doCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
+    token: eyJhbGciOiJSUzI1NiIsImtpZCI6ImQ3UV9STlJ4TEpQRS1XWmNHblFmaHJOUmdUaW5jMVJvSERqeE9VajR1LWcifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJtYWdlZHUiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlY3JldC5uYW1lIjoibWFnZWR1LXRva2VuLXF2bmJiIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6Im1hZ2VkdSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjJmYWZjZjBlLTRkYzUtNDVmOC1iOWY4LTE5MWIxOTdiNzVjOCIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDptYWdlZHU6bWFnZWR1In0.woEJpQGXMqDsp_RjcQrga-UoZ1NFAMcwgVhFaVInobrWIClEykQvrfFChFSwNWYvlgIWB5EqfnviQWUSATiqp5r1hH2sIY50HSQBFKuZKmXQuLf_NB2Y-4rF-paVuX6VxtnlmYz6wMWMCAsid7gBA_G7qF73oFJF5d8n2JHsIlUyrPh9BK0HJ3_vC7YxNBfC5OAH3knWcysVS1iEoN_y9RVHFytYgQqL2659S4XSBc76A7cneyQJ6ZsZEbZRyDJ6FxJs4cTJNPuaIcyMcIB1goX5bLIrj3LrHcd5A3rawXM4WEjdk4YbZVuMCCEeGXSHh1h6rPKnEkAjusoVQJIlzw
+#token前面有四个空格
+
+
+
+6.6 k8s网络，容器网络
+1. overlay网络模型--性能最差，扩展性最好
+2. 路由网络模型--性能其次，扩展性其次
+3. underlay网络模型--性能最好，扩展性最差，依赖物理网络。
+
+--underlay网络
+每个pod都使用的是物理网络的IP地址，维护起来非常困难。较为觉的解决方案有MAC VLAN,IP VLAN,和直接路由等。
+	MAC VLAN: 每个容器都有一个独立的MAC和IP地址，主机跟交换机之间连接需要使用trunk模式
+	IP VLAN: 
+		IP VLAN L2: 类似MAC VLAN,在内核4.2以后才支持。
+		IP VLAN L3: 每个容器都有一个独立的IP地址，共享宿主机网络接口上的MAC地址，在内核4.2以后才支持。
+
+--overlay网络/路由网络
+flannel插件：
+	1. vxlan: 
+		1.1 vxlan，可以跨三层网络，overlay网络模型（4层），vxlan会监听upd 8472端口(linux)/4789端口(windows)，可抓包分析 tcpdump -i eth0 udp port 8472 -nnnn -vvvv
+		1.2.vxlan Directrouting，类似host-gw，不能跨三层网络，只能二层，属于路由模型
+	2. host-gw: HOST Gateway（性能比VxLAN好，但是不能跨三层网络），属于路由模型
+	3. UDP: 基于普通UDP转发，性能最差，在以上两种不能使用时才使用这种。
+calico插件：
+calico封装类型：VXLAN（非BGP非议）和IP-in-IP（BGP协议）
+	1. BGP模式：将节点做为虚拟路由器通过 BGP 路由协议来实现集群内容器之间的网络访问。只能在同一个子网，属于路由网络，性能较好，但扩展性差
+	2. IPIP模式：在原有IP报文中封装一个新的IP报文，新的IP报文中将源地址IP和目的地址IP都修改为对端宿主机IP。使用遂道技术，属于overlay网络模型（三层）
+	3. cross-subnet模式：Calico-ipip模式和calico-bgp模式都有对应的局限性，对于一些主机跨子网而又无法使网络设备使用BGP的场景可以使用cross-subnet 模式，实现同子网机器使用calico-BGP模式，跨子网机器使用calico-ipip模式。
+
+
+
+默认情况下calico在集群层面分配一个10.42.0.0/16的CIDR网段，在这基础上在单独为每个主机划分一个单独子网采用26位子网掩码对应的集群支持的节点数为 2^10=1024 节点，单个子网最大支持 64 个 POD，当单个子网对应 IP 消耗后，calico 会重新在本机上划分一个新的子网
+注意：块大小将影响节点POD的IP地址分配和路由条目数量，如果主机在一个CIDR中分配所有地址，则将为其分配一个附加CIDR。如果没有更多可用的块，则主机可以从分配给其他主机的 CIDR 中获取地址。为借用的地址添加了特定的路由，这会影响路由表的大小。
+
+SERVICE_CIDR="10.68.0.0/16"		#service网络，每个IP地址都是32位掩码，没有子网划分，所以有2^16=65536个service地址
+CLUSTER_CIDR="172.20.0.0/16"	#pod网络，如果是calico每个子网掩码是255.255.255.192，也就是可以运行2^10=1024个节点，每个节点只能运行62个pod。如果是flannel每个子网掩码是255.255.255.0，也就是可以运行2^8=256个节点，每个节点可以运行254个pod。
+
+--calico网络配置
+calico 允许用户修改对应的 IP 池和集群 CIDR，创建和替换步骤注意：删除Pod时，应用程序会出现暂时不可用，pod就使用控制器进行管理，并运行多个副本
+	1. 添加一个新的 IP 池。
+	2. 注意：新 IP 池必须在同一群集 CIDR 中。
+	3. 禁用旧的 IP 池（注意：禁用 IP 池只会阻止分配新的 IP 地址。它不会影响现有 POD 的联网）
+	4. 从旧的 IP 池中删除 Pod。
+	5. 验证新的 Pod 是否从新的 IP 池中获取地址。
+	6. 删除旧的 IP 池。
+--查看calico ip池配置
+root@k8s-master01:~# calicoctl get ipPool -o yaml
+apiVersion: projectcalico.org/v3
+items:
+- apiVersion: projectcalico.org/v3
+  kind: IPPool
+  metadata:
+    creationTimestamp: "2022-03-04T13:51:46Z"
+    name: default-ipv4-ippool
+    resourceVersion: "1194"
+    uid: bc2c260c-18b3-4d48-9f01-fe47b08943ef
+  spec:
+    blockSize: 26
+    cidr: 172.20.0.0/16
+    ipipMode: Always
+    natOutgoing: true
+    nodeSelector: all()
+    vxlanMode: Never
+kind: IPPoolList
+metadata:
+  resourceVersion: "5014664"
+
+--定义 ippool 资源
+apiVersion: projectcalico.org/v3
+items:
+- apiVersion: projectcalico.org/v3
+  kind: IPPool
+  metadata:
+    name: my-ippool
+  spec:
+    blockSize: 24
+    cidr: 192.0.0.0/16
+    ipipMode: Always
+    natOutgoing: true
+    nodeSelector: all()
+    vxlanMode: Never
+calicoctl apply -f pool.yaml		#创建新的
+calicoctl patch ippool default-ipv4-ippool -p '{"spec": {"disabled": "true"}}'		#将旧的 ippool 禁用，最后创建 workload 测试
+
+
+
+6.7 k8s监控，prometheus
+开源监控解决方案：cacti,nagios,zabbix,smokeping,open-falcon,Nightingale(滴滴基于open-falcon开发开源),prometheus
+商业监控解决方案：监控宝，听云
+
+--在k8s中部署prometheus
+--prometheus operator部署
+DownnloadURL: https://github.com/prometheus-operator/kube-prometheus
+-------对k8s版本依赖------
+kube-prometheus stack	Kubernetes 1.19	Kubernetes 1.20	Kubernetes 1.21	Kubernetes 1.22	Kubernetes 1.23
+release-0.7	✔	✔	✗	✗	✗
+release-0.8	✗	✔	✔	✗	✗
+release-0.9	✗	✗	✔	✔	✗
+release-0.10	✗	✗	✗	✔	✔
+main	✗	✗	✗	✔	✔
+-------------------------
+kubroot@k8s-master01:~# kubectl get nodes		#k8s版本为v1.21.5
+NAME            STATUS                     ROLES    AGE   VERSION
+172.168.2.21    Ready,SchedulingDisabled   master   30d   v1.21.5
+172.168.2.22    Ready,SchedulingDisabled   master   30d   v1.21.5
+172.168.2.23    Ready,SchedulingDisabled   master   29d   v1.21.5
+172.168.2.24    Ready                      node     30d   v1.21.5
+172.168.2.25    Ready                      node     30d   v1.21.5
+172.168.2.26    Ready                      node     29d   v1.21.5
+192.168.13.63   Ready                      node     14d   v1.21.5
+--clone kube-prometheus源代码，主要是manifests目录的yaml文件
+root@k8s-master01:~/k8s/yaml# git clone -b release-0.9 https://github.com/prometheus-operator/kube-prometheus.git
+root@k8s-master01:~/k8s/yaml# cd kube-prometheus/manifests/
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests# cd setup/
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests/setup# ll
+total 1080
+drwxr-xr-x 2 root root   4096 Apr  4 14:47 ./
+drwxr-xr-x 3 root root   4096 Apr  4 14:47 ../
+-rw-r--r-- 1 root root     60 Apr  4 14:47 0namespace-namespace.yaml
+-rw-r--r-- 1 root root 122054 Apr  4 14:47 prometheus-operator-0alertmanagerConfigCustomResourceDefinition.yaml
+-rw-r--r-- 1 root root 247084 Apr  4 14:47 prometheus-operator-0alertmanagerCustomResourceDefinition.yaml
+-rw-r--r-- 1 root root  26989 Apr  4 14:47 prometheus-operator-0podmonitorCustomResourceDefinition.yaml
+-rw-r--r-- 1 root root  26119 Apr  4 14:47 prometheus-operator-0probeCustomResourceDefinition.yaml
+-rw-r--r-- 1 root root 350889 Apr  4 14:47 prometheus-operator-0prometheusCustomResourceDefinition.yaml
+-rw-r--r-- 1 root root   3899 Apr  4 14:47 prometheus-operator-0prometheusruleCustomResourceDefinition.yaml
+-rw-r--r-- 1 root root  28287 Apr  4 14:47 prometheus-operator-0servicemonitorCustomResourceDefinition.yaml
+-rw-r--r-- 1 root root 253551 Apr  4 14:47 prometheus-operator-0thanosrulerCustomResourceDefinition.yaml
+-rw-r--r-- 1 root root    471 Apr  4 14:47 prometheus-operator-clusterRoleBinding.yaml
+-rw-r--r-- 1 root root   1377 Apr  4 14:47 prometheus-operator-clusterRole.yaml
+-rw-r--r-- 1 root root   2350 Apr  4 14:47 prometheus-operator-deployment.yaml
+-rw-r--r-- 1 root root    285 Apr  4 14:47 prometheus-operator-serviceAccount.yaml
+-rw-r--r-- 1 root root    515 Apr  4 14:47 prometheus-operator-service.yaml
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests/setup# grep -ri image: ./*
+./prometheus-operator-0alertmanagerCustomResourceDefinition.yaml:              baseImage:
+./prometheus-operator-0alertmanagerCustomResourceDefinition.yaml:                    image:
+./prometheus-operator-0alertmanagerCustomResourceDefinition.yaml:              image:
+./prometheus-operator-0alertmanagerCustomResourceDefinition.yaml:                    image:
+./prometheus-operator-0alertmanagerCustomResourceDefinition.yaml:                        image:
+./prometheus-operator-0prometheusCustomResourceDefinition.yaml:              baseImage:
+./prometheus-operator-0prometheusCustomResourceDefinition.yaml:                    image:
+./prometheus-operator-0prometheusCustomResourceDefinition.yaml:              image:
+./prometheus-operator-0prometheusCustomResourceDefinition.yaml:                    image:
+./prometheus-operator-0prometheusCustomResourceDefinition.yaml:                  baseImage:
+./prometheus-operator-0prometheusCustomResourceDefinition.yaml:                  image:
+./prometheus-operator-0prometheusCustomResourceDefinition.yaml:                        image:
+./prometheus-operator-0thanosrulerCustomResourceDefinition.yaml:                    image:
+./prometheus-operator-0thanosrulerCustomResourceDefinition.yaml:              image:
+./prometheus-operator-0thanosrulerCustomResourceDefinition.yaml:                    image:
+./prometheus-operator-0thanosrulerCustomResourceDefinition.yaml:                        image:
+./prometheus-operator-deployment.yaml:        image: quay.io/prometheus-operator/prometheus-operator:v0.49.0		#提前下载好放到自己的harbor
+./prometheus-operator-deployment.yaml:        image: quay.io/brancz/kube-rbac-proxy:v0.11.0							#提前下载好放到自己的harbor
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests/setup# docker pull quay.io/prometheus-operator/prometheus-operator:v0.49.0
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests/setup# docker tag quay.io/prometheus-operator/prometheus-operator:v0.49.0 192.168.13.197:8000/baseimages/prometheus-operator:v0.49.0
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests/setup# docker push 192.168.13.197:8000/baseimages/prometheus-operator:v0.49.0
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests/setup# docker pull  quay.io/brancz/kube-rbac-proxy:v0.11.0
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests/setup# docker tag quay.io/brancz/kube-rbac-proxy:v0.11.0 192.168.13.197:8000/baseimages/kube-rbac-proxy:v0.11.0
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests/setup# docker push 192.168.13.197:8000/baseimages/kube-rbac-proxy:v0.11.0
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests/setup# vim ./prometheus-operator-deployment.yaml		#更改配置文件更换镜像地址为本地镜像地址
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests/setup# kubectl apply -f .	#应用setup中的yaml基本文件，其实是运行prometheus-operator
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests/setup# cd ..
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests# ll
+total 1812
+drwxr-xr-x  3 root root    4096 Apr  4 15:44 ./
+drwxr-xr-x 12 root root    4096 Apr  4 14:47 ../
+-rw-r--r--  1 root root     875 Apr  4 14:47 alertmanager-alertmanager.yaml
+-rw-r--r--  1 root root     515 Apr  4 14:47 alertmanager-podDisruptionBudget.yaml
+-rw-r--r--  1 root root    6855 Apr  4 14:47 alertmanager-prometheusRule.yaml
+-rw-r--r--  1 root root    1169 Apr  4 14:47 alertmanager-secret.yaml
+-rw-r--r--  1 root root     301 Apr  4 14:47 alertmanager-serviceAccount.yaml
+-rw-r--r--  1 root root     540 Apr  4 14:47 alertmanager-serviceMonitor.yaml
+-rw-r--r--  1 root root     577 Apr  4 14:47 alertmanager-service.yaml
+-rw-r--r--  1 root root     278 Apr  4 14:47 blackbox-exporter-clusterRoleBinding.yaml
+-rw-r--r--  1 root root     287 Apr  4 14:47 blackbox-exporter-clusterRole.yaml
+-rw-r--r--  1 root root    1392 Apr  4 14:47 blackbox-exporter-configuration.yaml
+-rw-r--r--  1 root root    3081 Apr  4 14:47 blackbox-exporter-deployment.yaml
+-rw-r--r--  1 root root      96 Apr  4 14:47 blackbox-exporter-serviceAccount.yaml
+-rw-r--r--  1 root root     680 Apr  4 14:47 blackbox-exporter-serviceMonitor.yaml
+-rw-r--r--  1 root root     540 Apr  4 14:47 blackbox-exporter-service.yaml
+-rw-r--r--  1 root root     721 Apr  4 14:47 grafana-dashboardDatasources.yaml
+-rw-r--r--  1 root root 1448205 Apr  4 14:47 grafana-dashboardDefinitions.yaml
+-rw-r--r--  1 root root     625 Apr  4 14:47 grafana-dashboardSources.yaml
+-rw-r--r--  1 root root    8098 Apr  4 14:47 grafana-deployment.yaml
+-rw-r--r--  1 root root      86 Apr  4 14:47 grafana-serviceAccount.yaml
+-rw-r--r--  1 root root     398 Apr  4 14:47 grafana-serviceMonitor.yaml
+-rw-r--r--  1 root root     452 Apr  4 14:47 grafana-service.yaml
+-rw-r--r--  1 root root    3380 Apr  4 14:47 kube-prometheus-prometheusRule.yaml
+-rw-r--r--  1 root root   64451 Apr  4 14:47 kubernetes-prometheusRule.yaml
+-rw-r--r--  1 root root    6912 Apr  4 14:47 kubernetes-serviceMonitorApiserver.yaml
+-rw-r--r--  1 root root     425 Apr  4 14:47 kubernetes-serviceMonitorCoreDNS.yaml
+-rw-r--r--  1 root root    6431 Apr  4 14:47 kubernetes-serviceMonitorKubeControllerManager.yaml
+-rw-r--r--  1 root root    7629 Apr  4 14:47 kubernetes-serviceMonitorKubelet.yaml
+-rw-r--r--  1 root root     530 Apr  4 14:47 kubernetes-serviceMonitorKubeScheduler.yaml
+-rw-r--r--  1 root root     464 Apr  4 14:47 kube-state-metrics-clusterRoleBinding.yaml
+-rw-r--r--  1 root root    1712 Apr  4 14:47 kube-state-metrics-clusterRole.yaml
+-rw-r--r--  1 root root    2959 Apr  4 15:43 kube-state-metrics-deployment.yaml
+-rw-r--r--  1 root root    3082 Apr  4 14:47 kube-state-metrics-prometheusRule.yaml
+-rw-r--r--  1 root root     280 Apr  4 14:47 kube-state-metrics-serviceAccount.yaml
+-rw-r--r--  1 root root    1011 Apr  4 14:47 kube-state-metrics-serviceMonitor.yaml
+-rw-r--r--  1 root root     580 Apr  4 14:47 kube-state-metrics-service.yaml
+-rw-r--r--  1 root root     444 Apr  4 14:47 node-exporter-clusterRoleBinding.yaml
+-rw-r--r--  1 root root     461 Apr  4 14:47 node-exporter-clusterRole.yaml
+-rw-r--r--  1 root root    3047 Apr  4 14:47 node-exporter-daemonset.yaml
+-rw-r--r--  1 root root   13986 Apr  4 14:47 node-exporter-prometheusRule.yaml
+-rw-r--r--  1 root root     270 Apr  4 14:47 node-exporter-serviceAccount.yaml
+-rw-r--r--  1 root root     850 Apr  4 14:47 node-exporter-serviceMonitor.yaml
+-rw-r--r--  1 root root     492 Apr  4 14:47 node-exporter-service.yaml
+-rw-r--r--  1 root root     482 Apr  4 14:47 prometheus-adapter-apiService.yaml
+-rw-r--r--  1 root root     576 Apr  4 14:47 prometheus-adapter-clusterRoleAggregatedMetricsReader.yaml
+-rw-r--r--  1 root root     494 Apr  4 14:47 prometheus-adapter-clusterRoleBindingDelegator.yaml
+-rw-r--r--  1 root root     471 Apr  4 14:47 prometheus-adapter-clusterRoleBinding.yaml
+-rw-r--r--  1 root root     378 Apr  4 14:47 prometheus-adapter-clusterRoleServerResources.yaml
+-rw-r--r--  1 root root     409 Apr  4 14:47 prometheus-adapter-clusterRole.yaml
+-rw-r--r--  1 root root    2204 Apr  4 14:47 prometheus-adapter-configMap.yaml
+-rw-r--r--  1 root root    2525 Apr  4 15:44 prometheus-adapter-deployment.yaml
+-rw-r--r--  1 root root     506 Apr  4 14:47 prometheus-adapter-podDisruptionBudget.yaml
+-rw-r--r--  1 root root     515 Apr  4 14:47 prometheus-adapter-roleBindingAuthReader.yaml
+-rw-r--r--  1 root root     287 Apr  4 14:47 prometheus-adapter-serviceAccount.yaml
+-rw-r--r--  1 root root     677 Apr  4 14:47 prometheus-adapter-serviceMonitor.yaml
+-rw-r--r--  1 root root     501 Apr  4 14:47 prometheus-adapter-service.yaml
+-rw-r--r--  1 root root     447 Apr  4 14:47 prometheus-clusterRoleBinding.yaml
+-rw-r--r--  1 root root     394 Apr  4 14:47 prometheus-clusterRole.yaml
+-rw-r--r--  1 root root    5000 Apr  4 14:47 prometheus-operator-prometheusRule.yaml
+-rw-r--r--  1 root root     715 Apr  4 14:47 prometheus-operator-serviceMonitor.yaml
+-rw-r--r--  1 root root     499 Apr  4 14:47 prometheus-podDisruptionBudget.yaml
+-rw-r--r--  1 root root   14021 Apr  4 14:47 prometheus-prometheusRule.yaml
+-rw-r--r--  1 root root    1184 Apr  4 14:47 prometheus-prometheus.yaml
+-rw-r--r--  1 root root     471 Apr  4 14:47 prometheus-roleBindingConfig.yaml
+-rw-r--r--  1 root root    1547 Apr  4 14:47 prometheus-roleBindingSpecificNamespaces.yaml
+-rw-r--r--  1 root root     366 Apr  4 14:47 prometheus-roleConfig.yaml
+-rw-r--r--  1 root root    2047 Apr  4 14:47 prometheus-roleSpecificNamespaces.yaml
+-rw-r--r--  1 root root     271 Apr  4 14:47 prometheus-serviceAccount.yaml
+-rw-r--r--  1 root root     531 Apr  4 14:47 prometheus-serviceMonitor.yaml
+-rw-r--r--  1 root root     558 Apr  4 14:47 prometheus-service.yaml
+drwxr-xr-x  2 root root    4096 Apr  4 15:28 setup/
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests# grep -ri image: . | grep gcr
+./kube-state-metrics-deployment.yaml:        image: k8s.gcr.io/kube-state-metrics/kube-state-metrics:v2.1.1
+./prometheus-adapter-deployment.yaml:        image: k8s.gcr.io/prometheus-adapter/prometheus-adapter:v0.9.0
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests# docker pull bitnami/kube-state-metrics:2.1.1
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests# docker tag bitnami/kube-state-metrics:2.1.1 192.168.13.197:8000/baseimages/kube-state-metrics:2.1.1
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests# docker push 192.168.13.197:8000/baseimages/kube-state-metrics:2.1.1
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests# docker pull willdockerhub/prometheus-adapter:v0.9.0
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests# docker tag willdockerhub/prometheus-adapter:v0.9.0 192.168.13.197:8000/baseimages/prometheus-adapter:v0.9.0
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests# docker push 192.168.13.197:8000/baseimages/prometheus-adapter:v0.9.0
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests# vim ./kube-state-metrics-deployment.yaml		#更改配置文件更换镜像地址为本地镜像地址
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests# vim ./prometheus-adapter-deployment.yaml		#更改配置文件更换镜像地址为本地镜像地址
+root@k8s-master01:~/k8s/yaml/kube-prometheus/manifests# kubectl apply -f .		#应用
+#kube-operator跟metrics-server有configmap冲突，删除kube-prometheus后需要重新应用metrics-server
+
+
+###black_exporter模板——9719
+###alertmanager抑制
+inhibit_rules: #抑制的规则
+  - source_match: #源匹配级别，当匹配成功发出通知，但是其他的通知将被抑制
+      everity: 'critical' #严重级别
+	target_match:
+	  severity: 'warning' #警告级别
+	equal: ['alertname', 'dev', 'instance']
+###prometheus远程写入VictoriaMetrics，甚至可以替代prometheus
+
+
+#k8s手动部署prometheus
+---------------k8s以daemonset方式部署node-exporter,cadvisor
+root@k8s-master01:~/k8s/yaml/prometheus-case# kubectl taint node 172.168.2.21 172.168.2.22 172.168.2.23 node-role.kubernetes.io/master:NoSchedule
+root@k8s-master01:~/k8s/yaml/prometheus-case# kubectl describe node 172.168.2.21 172.168.2.22 172.168.2.23 | grep -A 5 Taints
+Taints:             node-role.kubernetes.io/master:NoSchedule
+                    node.kubernetes.io/unschedulable:NoSchedule
+Unschedulable:      true
+Lease:
+  HolderIdentity:  172.168.2.21
+  AcquireTime:     <unset>
+--
+Taints:             node-role.kubernetes.io/master:NoSchedule
+                    node.kubernetes.io/unschedulable:NoSchedule
+Unschedulable:      true
+Lease:
+  HolderIdentity:  172.168.2.22
+  AcquireTime:     <unset>
+--
+Taints:             node-role.kubernetes.io/master:NoSchedule
+                    node.kubernetes.io/unschedulable:NoSchedule
+Unschedulable:      true
+Lease:
+  HolderIdentity:  172.168.2.23
+  AcquireTime:     <unset>
+---
+root@k8s-master01:~/k8s/yaml/prometheus-case# cat case1-daemonset-deploy-cadvisor.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: cadvisor
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: cAdvisor
+  template:
+    metadata:
+      labels:
+        app: cAdvisor
+    spec:
+      tolerations:    #污点容忍,忽略master的NoSchedule
+      - effect: ""
+        key: node-role.kubernetes.io/master
+        operator: "Exists"
+      hostNetwork: true
+      restartPolicy: Always   # 重启策略
+      containers:
+      - name: cadvisor
+        image: 192.168.13.197:8000/baseimages/prometheus/cadvisor:v0.39.2
+        imagePullPolicy: IfNotPresent  # 镜像策略
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+          - name: root
+            mountPath: /rootfs
+          - name: run
+            mountPath: /var/run
+          - name: sys
+            mountPath: /sys
+          - name: docker
+            mountPath: /var/lib/docker
+      volumes:
+      - name: root
+        hostPath:
+          path: /
+      - name: run
+        hostPath:
+          path: /var/run
+      - name: sys
+        hostPath:
+          path: /sys
+      - name: docker
+        hostPath:
+          path: /var/lib/docker
+root@k8s-master01:~/k8s/yaml/prometheus-case# kubectl apply -f case1-daemonset-deploy-cadvisor.yaml
+root@k8s-master01:~/k8s/yaml/prometheus-case# cat case2-daemonset-deploy-node-exporter-new.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-exporter
+  namespace: monitoring
+  labels:
+    k8s-app: node-exporter
+spec:
+  selector:
+    matchLabels:
+        k8s-app: node-exporter
+  template:
+    metadata:
+      labels:
+        k8s-app: node-exporter
+    spec:
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+      containers:
+      - image: prom/node-exporter:v1.3.1
+        imagePullPolicy: IfNotPresent
+        name: prometheus-node-exporter
+        ports:
+        - containerPort: 9100
+          hostPort: 9100
+          protocol: TCP
+          name: metrics
+        volumeMounts:
+        - mountPath: /host/proc
+          name: proc
+        - mountPath: /host/sys
+          name: sys
+        - mountPath: /host
+          name: rootfs
+        args:
+        - --path.procfs=/host/proc
+        - --path.sysfs=/host/sys
+        - --path.rootfs=/host
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: rootfs
+          hostPath:
+            path: /
+      hostNetwork: true
+      hostPID: true
+root@k8s-master01:~/k8s/yaml/prometheus-case# kubectl apply -f case2-daemonset-deploy-node-exporter-new.yaml
+root@k8s-master01:~/k8s/yaml/prometheus-case# kubectl get pods -A
+NAMESPACE              NAME                                         READY   STATUS      RESTARTS   AGE
+ingress-nginx          ingress-nginx-admission-create-krlqb         0/1     Completed   0          9d
+ingress-nginx          ingress-nginx-admission-patch-xpxp8          0/1     Completed   0          9d
+ingress-nginx          ingress-nginx-controller-645b99897d-6rm9l    1/1     Running     12         9d
+kube-system            calico-kube-controllers-647f956d86-m5ds9     1/1     Running     4          24d
+kube-system            calico-node-fl565                            1/1     Running     41         29d
+kube-system            calico-node-ldrjs                            1/1     Running     49         29d
+kube-system            calico-node-qnvt9                            1/1     Running     56         29d
+kube-system            calico-node-t9rh6                            1/1     Running     39         29d
+kube-system            calico-node-vbvts                            1/1     Running     37         29d
+kube-system            calico-node-x9tjb                            1/1     Running     46         29d
+kube-system            calico-node-zknjn                            1/1     Running     1          14d
+kube-system            coredns-5fc7c5b494-nj8zj                     1/1     Running     4          24d
+kube-system            metrics-server-6557798c77-qv29m              1/1     Running     3          5h24m
+kubernetes-dashboard   dashboard-metrics-scraper-67d4cf4b45-q9568   1/1     Running     2          24d
+kubernetes-dashboard   kubernetes-dashboard-7df675bc5f-8phww        1/1     Running     20         12d
+monitoring             cadvisor-8qkft                               1/1     Running     0          7m22s
+monitoring             cadvisor-ct6px                               1/1     Running     0          6m51s
+monitoring             cadvisor-jd7xc                               1/1     Running     0          7m27s
+monitoring             cadvisor-m5st9                               1/1     Running     0          7m5s
+monitoring             cadvisor-npdj6                               1/1     Running     0          7m10s
+monitoring             cadvisor-q4555                               1/1     Running     0          6m41s
+monitoring             cadvisor-zplt5                               1/1     Running     0          7m13s
+monitoring             node-exporter-4pkrr                          1/1     Running     0          72s
+monitoring             node-exporter-5xvvv                          1/1     Running     0          72s
+monitoring             node-exporter-f77fj                          1/1     Running     0          72s
+monitoring             node-exporter-pl2lt                          1/1     Running     0          72s
+monitoring             node-exporter-r7f9z                          1/1     Running     0          72s
+monitoring             node-exporter-t64p8                          1/1     Running     0          72s
+monitoring             node-exporter-zq6wk                          1/1     Running     0          72s
+
+--------------在k8s中部署prometheus-server
+----新建prometheus configmap
+root@k8s-master01:~/k8s/yaml/prometheus-case# cat case3-1-prometheus-cfg.yaml
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  labels:
+    app: prometheus
+  name: prometheus-config
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      scrape_timeout: 10s
+      evaluation_interval: 1m
+    scrape_configs:
+    - job_name: 'kubernetes-node'
+      kubernetes_sd_configs:
+      - role: node
+      relabel_configs:
+      - source_labels: [__address__]
+        regex: '(.*):10250'
+        replacement: '${1}:9100'
+        target_label: __address__
+        action: replace
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+    - job_name: 'kubernetes-node-cadvisor'
+      kubernetes_sd_configs:
+      - role:  node
+      scheme: https
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - target_label: __address__
+        replacement: kubernetes.default.svc:443
+      - source_labels: [__meta_kubernetes_node_name]
+        regex: (.+)
+        target_label: __metrics_path__
+        replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+    - job_name: 'kubernetes-apiserver'
+      kubernetes_sd_configs:
+      - role: endpoints
+      scheme: https
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: default;kubernetes;https
+    - job_name: 'kubernetes-service-endpoints'
+      kubernetes_sd_configs:
+      - role: endpoints
+      relabel_configs:
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+        action: keep
+        regex: true
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
+        action: replace
+        target_label: __scheme__
+        regex: (https?)
+      - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+        action: replace
+        target_label: __metrics_path__
+        regex: (.+)
+      - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+        action: replace
+        target_label: __address__
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+      - action: labelmap
+        regex: __meta_kubernetes_service_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_service_name]
+        action: replace
+        target_label: kubernetes_name
+root@k8s-master01:~/k8s/yaml/prometheus-case# kubectl apply -f case3-1-prometheus-cfg.yaml
+
+----配置serviceaccount
+root@k8s-master01:~/k8s/yaml/prometheus-case# cat case3-1-prometheus-serviceaccount.yml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: monitoring
+  name: monitor
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: monitor-clusterrolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- namespace: monitoring
+  kind: ServiceAccount
+  name: monitor
+root@k8s-master01:~/k8s/yaml/prometheus-case# kubectl apply -f case3-1-prometheus-serviceaccount.yml
+
+----配置prometheus-server
+root@k8s-master01:~/k8s/yaml/prometheus-case# cat case3-2-prometheus-deployment.yaml
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-server
+  namespace: monitoring
+  labels:
+    app: prometheus
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus
+      component: server
+    #matchExpressions:
+    #- {key: app, operator: In, values: [prometheus]}
+    #- {key: component, operator: In, values: [server]}
+  template:
+    metadata:
+      labels:
+        app: prometheus
+        component: server
+      annotations:
+        prometheus.io/scrape: 'false'
+    spec:
+      nodeName: 192.168.13.63
+      serviceAccountName: monitor
+      containers:
+      - name: prometheus
+        image: 192.168.13.197:8000/baseimages/prometheus/prometheus:v2.31.2
+        imagePullPolicy: IfNotPresent
+        command:
+          - prometheus
+          - --config.file=/etc/prometheus/prometheus.yml
+          - --storage.tsdb.path=/prometheus
+          - --storage.tsdb.retention=720h
+        ports:
+        - containerPort: 9090
+          protocol: TCP
+        volumeMounts:
+        - mountPath: /etc/prometheus/prometheus.yml
+          name: prometheus-config
+          subPath: prometheus.yml
+        - mountPath: /prometheus/
+          name: prometheus-storage-volume
+      volumes:
+        - name: prometheus-config
+          configMap:
+            name: prometheus-config
+            items:
+              - key: prometheus.yml
+                path: prometheus.yml
+                mode: 0644
+        - name: prometheus-storage-volume
+          hostPath:
+           path: /data/prometheusdata
+           type: Directory
+---
+[root@k8s-node04 ~]# mkdir -p /data/prometheusdata
+[root@k8s-node04 ~]# chmod -R 777 /data/prometheusdata
+root@k8s-master01:~/k8s/yaml/prometheus-case# kubectl apply -f case3-2-prometheus-deployment.yaml
+root@k8s-master01:~/k8s/yaml/prometheus-case# kubectl get pods -n monitoring
+NAME                                 READY   STATUS    RESTARTS   AGE
+cadvisor-8qkft                       1/1     Running   0          43m
+cadvisor-ct6px                       1/1     Running   0          42m
+cadvisor-jd7xc                       1/1     Running   0          43m
+cadvisor-m5st9                       1/1     Running   0          42m
+cadvisor-npdj6                       1/1     Running   0          42m
+cadvisor-q4555                       1/1     Running   0          42m
+cadvisor-zplt5                       1/1     Running   0          42m
+node-exporter-4pkrr                  1/1     Running   0          36m
+node-exporter-5xvvv                  1/1     Running   0          36m
+node-exporter-f77fj                  1/1     Running   0          36m
+node-exporter-pl2lt                  1/1     Running   0          36m
+node-exporter-r7f9z                  1/1     Running   0          36m
+node-exporter-t64p8                  1/1     Running   0          36m
+node-exporter-zq6wk                  1/1     Running   0          36m
+prometheus-server-7989d5f6c4-nlbln   1/1     Running   0          36s
+
+-----创建service
+root@k8s-master01:~/k8s/yaml/prometheus-case# cat case3-3-prometheus-svc.yaml
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app: prometheus
+spec:
+  type: NodePort
+  ports:
+    - port: 9090
+      targetPort: 9090
+      nodePort: 30090
+      protocol: TCP
+  selector:
+    app: prometheus
+    component: server
+---
+root@k8s-master01:~/k8s/yaml/prometheus-case# kubectl apply -f case3-3-prometheus-svc.yaml
+root@k8s-master01:~/k8s/yaml/prometheus-case# kubectl get svc -n monitoring
+NAME         TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+prometheus   NodePort   10.68.252.108   <none>        9090:30090/TCP   19s
+
+----web访问prometheus-server: http://192.168.13.63:30090/targets
+
+----k8s默认情况下会在每个名称空间下生成ca公钥证书(可通过configmap查看)、默认token(可通过secret查看)，ca公钥证书默认会挂载到所有pod里面(/ /var/run/secrets/kubernetes.io/serviceaccount/ca.crt)，默认token会根据用户创建pod时是否指定serviceaccount，如若无指定则使用默认的secret进行挂载，如若指定则使用用户指定的serviceaccount挂载
+root@k8s-master01:~# kubectl get configmap -A | grep kube-root
+default                kube-root-ca.crt                     1      31d
+ingress-nginx          kube-root-ca.crt                     1      9d
+kube-node-lease        kube-root-ca.crt                     1      31d
+kube-public            kube-root-ca.crt                     1      31d
+kube-system            kube-root-ca.crt                     1      31d
+kubernetes-dashboard   kube-root-ca.crt                     1      30d
+monitoring             kube-root-ca.crt                     1      18h
+root@k8s-master01:~# kubectl get secret -A | grep default
+default                default-token-qghvn                              kubernetes.io/service-account-token   3      31d
+ingress-nginx          default-token-jxvtb                              kubernetes.io/service-account-token   3      9d
+kube-node-lease        default-token-h8pdm                              kubernetes.io/service-account-token   3      31d
+kube-public            default-token-9v2gl                              kubernetes.io/service-account-token   3      31d
+kube-system            default-token-fxm9x                              kubernetes.io/service-account-token   3      31d
+kubernetes-dashboard   default-token-sc55p                              kubernetes.io/service-account-token   3      30d
+monitoring             default-token-mqj24                              kubernetes.io/service-account-token   3      18h
+
+root@k8s-master01:~# kubectl get configmap prometheus-config -n monitoring
+NAME                DATA   AGE
+prometheus-config   1      18h
+root@k8s-master01:~# kubectl describe configmap prometheus-config -n monitoring
+Name:         prometheus-config
+Namespace:    monitoring
+Labels:       app=prometheus
+Annotations:  <none>
+
+Data
+====
+prometheus.yml:
+----
+global:
+  scrape_interval: 15s
+  scrape_timeout: 10s
+  evaluation_interval: 1m
+scrape_configs:
+- job_name: 'kubernetes-node'
+  kubernetes_sd_configs:
+  - role: node
+  relabel_configs:
+  - source_labels: [__address__]
+    regex: '(.*):10250'
+    replacement: '${1}:9100'
+    target_label: __address__
+    action: replace
+  - action: labelmap
+    regex: __meta_kubernetes_node_label_(.+)
+- job_name: 'kubernetes-node-cadvisor'
+  kubernetes_sd_configs:
+  - role:  node
+  scheme: https		#如果是https，则需要指定证书
+  tls_config:
+    ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt		#访问https时验证证书的CA文件地址，因为是kubernetes_sd发现，所以需要kubernetes的CA证书
+  bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token	#访问kubernetes的token，会有相应的权限，如若token权限受限，将不会成功发现kuberentes的资源
+  relabel_configs:
+  - action: labelmap
+    regex: __meta_kubernetes_node_label_(.+)
+  - target_label: __address__
+    replacement: kubernetes.default.svc:443
+  - source_labels: [__meta_kubernetes_node_name]
+    regex: (.+)
+    target_label: __metrics_path__
+    replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+- job_name: 'kubernetes-apiserver'
+  kubernetes_sd_configs:
+  - role: endpoints
+  scheme: https
+  tls_config:
+    ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+  bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+  relabel_configs:
+  - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+    action: keep
+    regex: default;kubernetes;https
+- job_name: 'kubernetes-service-endpoints'
+  kubernetes_sd_configs:
+  - role: endpoints
+  relabel_configs:
+  - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+    action: keep
+    regex: true
+  - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
+    action: replace
+    target_label: __scheme__
+    regex: (https?)
+  - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+    action: replace
+    target_label: __metrics_path__
+    regex: (.+)
+  - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+    action: replace
+    target_label: __address__
+    regex: ([^:]+)(?::\d+)?;(\d+)
+    replacement: $1:$2
+  - action: labelmap
+    regex: __meta_kubernetes_service_label_(.+)
+  - source_labels: [__meta_kubernetes_namespace]
+    action: replace
+    target_label: kubernetes_namespace
+  - source_labels: [__meta_kubernetes_service_name]
+    action: replace
+    target_label: kubernetes_name
+
+
+#-----安装consul集群 
+-----------------------------------------------
+----自动加入集群方式部署consul集群
+--配置consul agent server
+--创建目录
+root@ansible:~# ansible prometheus -m shell -a 'mkdir -p /etc/consul.d /data/consul'
+--配置consul agent server配置文件
+cat <<EOF > /etc/consul.d/consul.json
+{
+  "datacenter": "prometheus",
+  "bind_addr": "172.168.2.27",
+  "client_addr": "0.0.0.0",
+  "data_dir": "/data/consul",
+  "log_level": "INFO",
+  "server": true,
+  "ui": true,
+  "bootstrap_expect": 3,
+  "retry_join": ["172.168.2.27","172.168.2.28","172.168.2.29"],
+  "rejoin_after_leave": true,
+  "advertise_addr_wan": "172.168.2.27"
+}
+EOF
+
+--配置consul agent server配置文件
+cat <<EOF > /etc/consul.d/consul.json
+{
+  "datacenter": "prometheus",
+  "bind_addr": "172.168.2.28",
+  "client_addr": "0.0.0.0",
+  "data_dir": "/data/consul",
+  "log_level": "INFO",
+  "server": true,
+  "ui": true,
+  "bootstrap_expect": 3,
+  "retry_join": ["172.168.2.27","172.168.2.28","172.168.2.29"],
+  "rejoin_after_leave": true,
+  "advertise_addr_wan": "172.168.2.28"
+}
+EOF
+
+--配置consul agent server配置文件
+cat <<EOF > /etc/consul.d/consul.json
+{
+  "datacenter": "prometheus",
+  "bind_addr": "172.168.2.29",
+  "client_addr": "0.0.0.0",
+  "data_dir": "/data/consul",
+  "log_level": "INFO",
+  "server": true,
+  "ui": true,
+  "bootstrap_expect": 3,
+  "retry_join": ["172.168.2.27","172.168.2.28","172.168.2.29"],
+  "rejoin_after_leave": true,
+  "advertise_addr_wan": "172.168.2.29"
+}
+EOF
+
+--测试服务是否可以启动
+consul agent -config-dir=/etc/consul.d
+
+--添加consul agent server服务启动文件，3台consul agent server都是一样
+cat <<EOF > /etc/systemd/system/consul.service
+[Unit]
+Description=consul agent
+Requires=network-online.target
+After=network-online.target
+
+[Service]
+User=root
+ExecStart=/usr/local/bin/consul agent -config-dir=/etc/consul.d/
+ExecReload=/usr/local/bin/consul reload
+KillMode=process
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+--配置开机自动动并启动服务
+root@prometheus01:/apps# systemctl daemon-reload
+root@prometheus01:/apps# systemctl start consul.service
+root@prometheus01:/apps# systemctl status consul.service
+
+
+--consul agent client
+--添加consul agent client启动配置文件
+mkdir -p /etc/consul.d /data/consul
+cat <<EOF > /etc/consul.d/consul.json
+{
+  "datacenter": "prometheus",
+  "bind_addr": "172.168.2.11",
+  "client_addr": "172.168.2.11",
+  "data_dir": "/data/consul",
+  "log_level": "INFO",
+  "server": false,
+  "retry_join": ["172.168.2.27","172.168.2.28","172.168.2.29"]
+}
+EOF
+
+--添加consul agent client服务启动文件
+cat <<EOF > /etc/systemd/system/consul.service
+[Unit]
+Description=consul agent
+Requires=network-online.target
+After=network-online.target
+
+[Service]
+User=root
+ExecStart=/usr/local/bin/consul agent -config-dir=/etc/consul.d/
+ExecReload=/usr/local/bin/consul reload
+KillMode=process
+Restart=on-failure
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+--启动consul agent client
+systemctl daemon-reload && systemctl start consul.service && systemctl status consul.service
+
+--命令
+--查看consul agent成员，包括server和client
+root@prometheus01:/apps# consul members
+Node          Address            Status  Type    Build   Protocol  DC          Partition  Segment
+prometheus01  172.168.2.27:8301  alive   server  1.11.4  2         prometheus  default    <all>
+prometheus02  172.168.2.28:8301  alive   server  1.11.4  2         prometheus  default    <all>
+prometheus03  172.168.2.29:8301  alive   server  1.11.4  2         prometheus  default    <all>
+ansible       172.168.2.11:8301  alive   client  1.11.4  2         prometheus  default    <default>
+--列出raft协议的成功以及角色，就是查看server的角色 
+root@prometheus01:/apps#  consul operator raft list-peers
+Node          ID                                    Address            State     Voter  RaftProtocol
+prometheus03  6ea130e8-f32e-fcb9-7f44-f6a2dff08a86  172.168.2.29:8300  follower  true   3
+prometheus02  92376e65-258d-fff8-24b0-a7a7d6f6e66d  172.168.2.28:8300  leader    true   3
+prometheus01  f72ec6ca-69a7-03ae-52f3-3880dbb1edc7  172.168.2.27:8300  follower  true   3
+--测试停止consul agent server
+root@prometheus02:/apps# systemctl stop consul
+root@prometheus01:/apps# consul members
+Node          Address            Status  Type    Build   Protocol  DC          Partition  Segment
+prometheus01  172.168.2.27:8301  alive   server  1.11.4  2         prometheus  default    <all>
+prometheus02  172.168.2.28:8301  left    server  1.11.4  2         prometheus  default    <all>
+prometheus03  172.168.2.29:8301  alive   server  1.11.4  2         prometheus  default    <all>
+ansible       172.168.2.11:8301  alive   client  1.11.4  2         prometheus  default    <default>
+root@prometheus01:/apps# consul operator raft list-peers
+Node          ID                                    Address            State     Voter  RaftProtocol
+prometheus03  6ea130e8-f32e-fcb9-7f44-f6a2dff08a86  172.168.2.29:8300  follower  true   3
+prometheus01  f72ec6ca-69a7-03ae-52f3-3880dbb1edc7  172.168.2.27:8300  leader    true   3
+
+--端口监听状态
+root@prometheus01:/usr/local/prometheus# ss -tunl  | grep :8
+udp    UNCONN   0        0            172.168.2.27:8301          0.0.0.0:*
+udp    UNCONN   0        0            172.168.2.27:8302          0.0.0.0:*
+udp    UNCONN   0        0                       *:8600                *:*
+tcp    LISTEN   0        128          172.168.2.27:8300          0.0.0.0:*
+tcp    LISTEN   0        128          172.168.2.27:8301          0.0.0.0:*
+tcp    LISTEN   0        128          172.168.2.27:8302          0.0.0.0:*
+tcp    LISTEN   0        128                     *:8500                *:*
+tcp    LISTEN   0        128                     *:8600                *:*
+root@prometheus02:/apps# ss -tunl  | grep :8
+udp    UNCONN   0        0            172.168.2.28:8301          0.0.0.0:*
+udp    UNCONN   0        0            172.168.2.28:8302          0.0.0.0:*
+udp    UNCONN   0        0                       *:8600                *:*
+tcp    LISTEN   0        128          172.168.2.28:8300          0.0.0.0:*
+tcp    LISTEN   0        128          172.168.2.28:8301          0.0.0.0:*
+tcp    LISTEN   0        128          172.168.2.28:8302          0.0.0.0:*
+tcp    LISTEN   0        128                     *:8500                *:*
+tcp    LISTEN   0        128                     *:8600                *:*
+root@prometheus03:/apps# ss -tunl  | grep :8
+udp    UNCONN   0        0            172.168.2.29:8301          0.0.0.0:*
+udp    UNCONN   0        0            172.168.2.29:8302          0.0.0.0:*
+udp    UNCONN   0        0                       *:8600                *:*
+tcp    LISTEN   0        128          172.168.2.29:8300          0.0.0.0:*
+tcp    LISTEN   0        128          172.168.2.29:8301          0.0.0.0:*
+tcp    LISTEN   0        128          172.168.2.29:8302          0.0.0.0:*
+tcp    LISTEN   0        128                     *:8500                *:*
+tcp    LISTEN   0        128                     *:8600                *:*
+-----------------------------------------------
+
+
+--1111prometheus配置consul自动发现
+root@prometheus01:/usr/local/prometheus# cat prometheus.yml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+
+rule_files:
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: 'consul-node_exporter'
+    metrics_path: /metrics
+    scrape_interval: 15s
+    consul_sd_configs:
+    - server: '172.168.2.27:8500'
+      services: []
+    - server: '172.168.2.28:8500'
+      services: []
+    - server: '172.168.2.29:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_service]
+        regex: node.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+----------
 
 
 </pre>
