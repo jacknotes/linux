@@ -306,4 +306,81 @@ SkyWalking Web Application started successfully!
 
 
 
+
+####202204091700
+#链路追踪模型：
+黑盒法：结果不太精确，不需要更改代理，需要使用agent
+标记法：结果精确，需要更改少量代码
+
+ES服务器生产最低8C16G
+
+read:   skywalkingUI Port: 8080 -->  skywalkingOAP Port: 12800  -->   Elasticsearch7: 9200
+write:  skywalking agent    -->   skywalking Port: 11800    -->   Elasticsearch7: 9200
+
+案例：
+1. halo.run（halo博客）	java -javaagent:/tmp/skywalking-agent.jar Dskywalking.agent.service_name=service_name -Dskywalking.collector.backend_service=172.168.2.13:11800 -jar app.jar
+2. tomcat运行jenkins    需要更改tomcat配置文件，并在第一行增加配置： CATALINA_OPTS="$CATALINA_OPTS -javaagent:/path/to/skywalking-agent/skywalking-agent.jar"; export CATALINA_OPTS   。然后将jar或者war包移动到tomcat目录/webapps/，再启动catalina.sh run
+
+
+###skywalking单节点部署
+1. 部署elasticsearch7
+[root@elk ~]# grep -Ev '#|^$' /etc/elasticsearch/elasticsearch.yml
+cluster.name: skywalking-clusster
+node.name: node01
+path.data: /var/lib/elasticsearch
+path.logs: /var/log/elasticsearch
+network.host: 172.168.2.13
+http.port: 9200
+discovery.seed_hosts: ["172.168.2.13"]
+cluster.initial_master_nodes: ["172.168.2.13"]
+action.destructive_requires_name: true
+[root@elk ~]# ss -tnl | grep :9
+LISTEN     0      128    172.168.2.13:9200                     *:*
+LISTEN     0      128    172.168.2.13:9300                     *:*
+
+2. 部署skywalking单机
+2.1安装
+[root@elk /download]# axel -n 30 https://archive.apache.org/dist/skywalking/8.7.0/apache-skywalking-apm-es7-8.7.0.tar.gz
+[root@elk /download]# tar xf apache-skywalking-apm-es7-8.7.0.tar.gz  -C /usr/local/
+[root@elk /usr/local]# ln -sv apache-skywalking-apm-bin-es7/ skywalking
+[root@elk /usr/local]# cd /usr/local/skywalking/
+[root@elk /usr/local/skywalking]# vim config/application.yml
+storage:
+  selector: ${SW_STORAGE:elasticsearch7}
+  elasticsearch7:
+    nameSpace: ${SW_NAMESPACE:""}
+    clusterNodes: ${SW_STORAGE_ES_CLUSTER_NODES:172.168.2.13:9200}
+2.2 启动oap
+[root@elk /usr/local/skywalking]# /usr/local/skywalking/bin/oapService.sh
+[root@elk /usr/local/skywalking]# ss -tnl | grep :1
+LISTEN     0      128          *:11800                    *:*
+LISTEN     0      50           *:12800                    *:*
+2.2 启动webUI
+[root@elk /usr/local/skywalking]# cat webapp/webapp.yml
+server:
+  port: 8080
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: oap-route
+          uri: lb://oap-service
+          predicates:
+            - Path=/graphql/**
+    discovery:
+      client:
+        simple:
+          instances:
+            oap-service:
+              - uri: http://127.0.0.1:12800
+[root@elk /usr/local/skywalking]# /usr/local/skywalking/bin/webappService.sh
+
+curl http://172.168.2.13:9200/_cat/indices			#skywalking索引默认前缀是sw，可通过nameSpace: ${SW_NAMESPACE:"skywalking"}来配置
+yellow open sw_top_n_database_statement-20220409              1tMNwXZ-RqqBPLsx2fpz1A 1 1  0 0   283b   283b
+yellow open sw_profile_task-20220409                          X8Xm2dTaTyW4ZG-hSPIrgQ 1 1  0 0   283b   283b
+yellow open sw_metrics-apdex-20220409                         MLd06qN5Se2PLmx3PgR4_g 1 1  0 0   230b   230b
+yellow open sw_instance_traffic-20220409                      WGIWCHc1THq40pXsYdqTAQ 1 1  0 0   283b   283b
+
+
+
 </pre>
