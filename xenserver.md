@@ -266,4 +266,127 @@ o(原始点，父vhd)----o(旧当前点快照状态，子vhd)-----o(新当前点
 o(原始点，父vhd)--------o(新当前点，子vhd)
 
 
+
+
+
+
 </pre>
+
+--查看sr
+[root@homsom-xen02 ~]# xe sr-list 
+--查看vbd，可以看出所属VM
+[root@homsom-xen02 ~]# xe vbd-list params=all
+--查看vdi
+[root@homsom-xen02 ~]# xe vdi-list | grep 'c373679adec5'
+uuid ( RO)                : 33b45e2d-1bd0-412d-837f-c373679adec5
+[root@homsom-xen02 ~]# xe vdi-list uuid=33b45e2d-1bd0-412d-837f-c373679adec5 params=all
+
+[root@Xen07 ~]# xe sr-list uuid=3828a230-7009-569b-5135-9a70e14ee235 params=all
+uuid ( RO)                    : 3828a230-7009-569b-5135-9a70e14ee235
+              name-label ( RW): Local storage
+        name-description ( RW): 
+                    host ( RO): Xen07.rack05.idc01.hs.com
+      allowed-operations (SRO): unplug; plug; PBD.create; update; PBD.destroy; VDI.resize; VDI.clone; scan; VDI.snapshot; VDI.create; VDI.destroy
+      current-operations (SRO): 
+                    VDIs (SRO): 9efd85d9-b9fa-4111-9e1b-9fa08763e801; 7e114764-1cd4-4014-b099-4fd270ab312b; 833251ae-50e4-4b61-9b24-7c197c6b70dc; 21f3681a-61c3-4ecd-a1f5-a098057184b3; c623713d-fd2a-4978-a09f-e57a5acbc84c; 7f9ee488-1169-4b92-ad12-027383e1cfe4; 78fd3206-3b43-4c44-bd81-87637e18c138; 7a42f601-3c4d-42c5-8b9c-f86dba3b9aec; 615a37d7-fd09-432f-811e-1c6409e08e68; 5c9736b1-bb61-4cec-ba85-d31f4300abe6; fb466d15-e997-4f62-9f85-026d87c3ae90; 1469dfb6-a7dd-44e9-a4fa-8216d4804931; f4962308-120d-42fd-9fc5-f688417c02ff; 96d692e2-65bf-4b30-be7d-26e170d42dfd; 549d6f6b-8d11-405a-b5f9-c2b9b3d56b51; 6f017c88-58ed-4e09-96ed-b280d6035ef7; 730ac751-4df0-4162-80de-78eb25c33679; f7473fd6-c9d1-477e-b614-241c06704495; 992416ee-4a5b-4531-a7d0-1c2e4b675d40; b09e407e-3396-4d0d-8069-83488d74e9da; 55116021-4fb3-4747-a641-cb43eb412a4c
+                    PBDs (SRO): 4ddca929-5c4f-dd2a-6fec-076b155f442b
+      virtual-allocation ( RO): 5497558138880
+    physical-utilisation ( RO): 823705546752
+           physical-size ( RO): 1135087456256
+                    type ( RO): ext
+            content-type ( RO): user
+                  shared ( RW): false
+           introduced-by ( RO): <not in database>
+             is-tools-sr ( RO): false
+            other-config (MRW): i18n-original-value-name_label: Local storage; i18n-key: local-storage
+               sm-config (MRO): last-coalesce-error: 1615371039; devserial: scsi-361866da0bcfcd400211b52f306011d06
+                   blobs ( RO): 
+     local-cache-enabled ( RO): true
+                    tags (SRW): 
+               clustered ( RO): false
+
+
+[root@Xen07 ~]# xe pbd-list uuid=4ddca929-5c4f-dd2a-6fec-076b155f442b params=all
+uuid ( RO)                  : 4ddca929-5c4f-dd2a-6fec-076b155f442b
+     host ( RO) [DEPRECATED]: 5f2572ba-4aee-4c4e-8342-ce7fda9725a9
+             host-uuid ( RO): 5f2572ba-4aee-4c4e-8342-ce7fda9725a9
+       host-name-label ( RO): Xen07.rack05.idc01.hs.com
+               sr-uuid ( RO): 3828a230-7009-569b-5135-9a70e14ee235
+         sr-name-label ( RO): Local storage
+         device-config (MRO): device: /dev/disk/by-id/scsi-361866da0bcfcd400211b52f306011d06-part3
+    currently-attached ( RO): true
+          other-config (MRW): storage_driver_domain: OpaqueRef:316b74cd-39e7-5708-d0c4-ab12f7850d28
+
+
+[root@Xen07 ~]# xe vdi-list uuid=55116021-4fb3-4747-a641-cb43eb412a4c params=all
+uuid ( RO)                    : 55116021-4fb3-4747-a641-cb43eb412a4c
+              name-label ( RW): Homsom-server190 disk D
+        name-description ( RW): 
+           is-a-snapshot ( RO): false
+             snapshot-of ( RO): <not in database>
+               snapshots ( RO): 
+           snapshot-time ( RO): 20200715T10:52:28Z
+      allowed-operations (SRO): clone; snapshot
+      current-operations (SRO): 
+                 sr-uuid ( RO): 3828a230-7009-569b-5135-9a70e14ee235
+           sr-name-label ( RO): Local storage
+               vbd-uuids (SRO): aa9dc11e-8ff5-11c7-31ac-a4bb833af1cf
+         crashdump-uuids (SRO): 
+            virtual-size ( RO): 21474836480
+    physical-utilisation ( RO): 67285504
+                location ( RO): 55116021-4fb3-4747-a641-cb43eb412a4c
+                    type ( RO): User
+                sharable ( RO): false
+               read-only ( RO): false
+            storage-lock ( RO): false
+                 managed ( RO): true
+                  parent ( RO): <not in database>
+                 missing ( RO): false
+            is-tools-iso ( RO): false
+            other-config (MRW): 
+           xenstore-data (MRO): 
+               sm-config (MRO): host_OpaqueRef:52745089-d670-a71a-c5b2-9aa3cf2fa15f: RW; read-caching-reason-5f2572ba-4aee-4c4e-8342-ce7fda9725a9: LICENSE_RESTRICTION; read-caching-enabled-on-5f2572ba-4aee-4c4e-8342-ce7fda9725a9: false; vhd-parent: 549d6f6b-8d11-405a-b5f9-c2b9b3d56b51
+                 on-boot ( RW): persist
+           allow-caching ( RW): false
+         metadata-latest ( RO): false
+        metadata-of-pool ( RO): <not in database>
+                    tags (SRW): 
+            
+
+
+[root@Xen07 ~]# xe vbd-list uuid=aa9dc11e-8ff5-11c7-31ac-a4bb833af1cf params=all
+uuid ( RO)                        : aa9dc11e-8ff5-11c7-31ac-a4bb833af1cf
+                     vm-uuid ( RO): 436c3d59-e53d-5862-ad2f-3f6a26d7a430
+               vm-name-label ( RO): lunxun.Xen07.rack05.idc01.hs.com-192.168.13.194-备用服务器
+                    vdi-uuid ( RO): 55116021-4fb3-4747-a641-cb43eb412a4c
+              vdi-name-label ( RO): Homsom-server190 disk D
+          allowed-operations (SRO): attach; unpause; unplug; unplug_force; pause
+          current-operations (SRO): 
+                       empty ( RO): false
+                      device ( RO): xvdb
+                  userdevice ( RW): 1
+                    bootable ( RW): false
+                        mode ( RW): RW
+                        type ( RW): Disk
+                 unpluggable ( RW): true
+          currently-attached ( RO): true
+                  attachable ( RO): <expensive field>
+                storage-lock ( RO): false
+                 status-code ( RO): 0
+               status-detail ( RO): 
+          qos_algorithm_type ( RW): 
+        qos_algorithm_params (MRW): 
+    qos_supported_algorithms (SRO): 
+                other-config (MRW): owner: true
+                 io_read_kbs ( RO): <expensive field>
+
+
+[root@Xen07 ~]# xe vm-list uuid=436c3d59-e53d-5862-ad2f-3f6a26d7a430
+uuid ( RO)           : 436c3d59-e53d-5862-ad2f-3f6a26d7a430
+     name-label ( RW): lunxun.Xen07.rack05.idc01.hs.com-192.168.13.194-备用服务器
+    power-state ( RO): running
+
+
+
+
+
