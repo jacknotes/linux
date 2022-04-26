@@ -8768,11 +8768,62 @@ Hello from App behind Envoy (service green)! hostname: 3dc0e0583053 resolved hos
   - Node attestor插件同Server端的node attestor插件一起完成对agent程序所在节点的身份验证
   - Workload attestor插件通过从节点操作系统查询相关进程的信息，并将其与使用selector注册workload属性时提供给server的信息进行比较，比而验证节点上workload进程的身份
   - Key manager插件，负责让agent用来为发布给workload的X.509-SVID生成私钥
+
+#服务网格间的认证
+- 服务间认证(可以通过SPIRE自动下发证书，在Istio中可以全自动)
+  - TLS,mTLS
+- 最终用户认证
+  - JWT
+#SPIRE两次认证
+1. agent通过node API(server暴露)注册取sever，需要借助底层的云平台来达到agent和server的信任。
+2. Workload通过workload API(agent暴露)注册到agent，需要借助kernel等达到workload和agent的信任
+
+----docker-compose spire示例路径~/servicemesh_in_practise/Security/tls-spire/
+
+
+###JWT认证
+- 传统Session认证的弊端
+  - 服务器端通常将Session存储于内存中，数量较大时，session存储具有相当程度的开销
+  - Session成为了应用的状态数据，影响服务器的横向扩展
+  - 用户的cookie被截获后，易导致CSRF攻击
+- JWT: JSON Web Token
+  - JWS令牌格式：Header.Payload.Signature，但要编码为base64，也可以进行加密码(JWE)
+  - 在分布式环境中实现跨域认证时，无需服务器端存储session
+    - 服务器认证以后生成一个JSON对象返回给客户端，而后客户端的每次请求都要附加此对象
+	- 为了防上客户端篡改此JSON对象，通常需要对其进行签名
+	
   
+#Service Mesh Authorization
+- RBAC, ABAC
+不管是Kubernetes还是Envoy要想支持ABAC需要借助OPA(Open Policy Agent)，两者对RBAC不需要额外借助插件
+- OPA: Open Policy Agent
+  - 开源的通用策略引擎，用于统一整个堆栈中的策略应用
+  - 使用高级声明性语言Rego（也称为policy language）定义策略
+  - 常用于在微服务、Kubernetes、CI/CD pipeline、API网关等中实施策略
+#RBAC配置速览
+- RBAC过滤器配置语法
+action:						#策略匹配时的操作行为，支持ALLOW和DENY两个
+policies: {...}				#授权策略
+  ROLE_NAME:				#角色名称
+    permissions: []			#应用于一个角色之上的权限许可列表，各列表项之间为"或"关系
+	  any:					#布尔型值，是否匹配所有操作
+	  header: {...}			#核验传入的HTTP请求报文的指定标头；仅适用于HTTP请求
+	  destination_ip:		#针对目标ip的CIDR地址块的操作权限 
+	  destination_port:		#针对 于目标端口的操作权限 
+	  metadata: {...}		#针对于指定的元数据的操作权限 
+	  requested_server_name:		#针对于客户端请求的目标服务器的操作权限 
+	  and_rules: {...}		#以"与"关系定义的一组操作权限
+	  or_rules: {...}		#以"或"关系定义的一组操作权限
+	  not_rules: {...}		#以"非"关系定义的一组操作权限
+	principals: []
+	  authenticated: {...}			#经过认证的
+	  header: {...}					#传入HTTP请求报文的指定标头
+	  metadata: {...}				#描述有关Subject的其它信息的元数据
+	  and_ids: {...}				#"与"关系的一组主体
+	  or_ids: {...}					#"或"关系的一组主体
+	  not_ids: {...}				#"非"关系主体，即指定主体之外的其它主体
   
-  
-  
-  
+#docker-compose示例路径：~/servicemesh_in_practise/Security/ext_authz
   
   
 
