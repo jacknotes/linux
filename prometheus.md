@@ -1962,9 +1962,11 @@ built by gcc 4.8.5 20150623 (Red Hat 4.8.5-44) (GCC)
 built with OpenSSL 1.0.2k-fips  26 Jan 2017
 TLS SNI support enabled
 configure arguments: --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --lock-path=/usr/local/tengine/lock/tengine.lock --user=nginx --group=nginx --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --with-stream --add-module=modules/ngx_http_upstream_session_sticky_module --with-stream_ssl_module --add-module=modules/ngx_http_upstream_check_module --with-http_auth_request_module --with-http_gzip_static_module --with-http_random_index_module --with-http_sub_module
+
 [root@tengine /download]# /usr/local/tengine/sbin/nginx -v
 Tengine version: Tengine/2.3.2
 nginx version: nginx/1.17.3
+
 [root@tengine /download]# curl -OL https://github.com/vozlt/nginx-module-vts/archive/refs/tags/v0.1.17.tar.gz
 [root@tengine /download]# tar -xf nginx-module-vts-0.1.17.tar.gz 
 [root@tengine /download]# cd tengine-2.3.2/
@@ -2074,6 +2076,25 @@ prometheus:
 [root@prometheus prometheus]# curl -X POST http://localhost:9090/-/reload
 5. 最后在grafana上配置nginx_exporter，dashboard ID: 2949
 
+#20220426--nginx生产编译参数
+[root@reverse01 tengine-2.3.2]# ./configure --prefix=/usr/local/nginx --user=nginx --group=nginx --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --with-stream --with-http_realip_module  --with-stream_ssl_module  --with-http_auth_request_module --with-http_gzip_static_module --with-http_random_index_module --add-module=modules/ngx_http_upstream_session_sticky_module --add-module=modules/ngx_http_upstream_check_module --add-module=/download/ngx_http_substitutions_filter_module --add-module=/download/nginx-module-vts-0.1.17
+
+
+[root@reverse01 /usr/local/nginx/conf]# cat /usr/lib/systemd/system/nginx_exporter.service
+[Unit]
+Description=https://github.com/hnlq715/nginx-vts-exporter
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/nginx-vts-exporter/nginx-vts-exporter -nginx.scrape_timeout 10 -nginx.scrape_uri http://127.0.0.1:8089/status/format/json -telemetry.address 192.168.13.215:9913 -telemetry.endpoint '/metrics'
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+---
 
 
 
@@ -2822,6 +2843,8 @@ root@prometheus03:/usr/local/prometheus/file_sd_configs# cat kubernetes-node.jso
   }
 ]
 root@prometheus02:/usr/local/prometheus/file_sd_configs# curl -XPOST http://localhost:9090/-/reload  		 #此时联绑server(prometheus-server)最大等待10s+15s=25s时间就可以查看到增加的master节点
+
+
 
 
 

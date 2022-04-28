@@ -384,7 +384,7 @@ jackDB=# select * from posts;
 
 
 #权限管理
-注：postgresql中用户跟角色是绑定的，当你创建角色或者用户时会一起创建，是如果是纯角色可以不授予登录，如果是普通用户需要授予登录 
+注：postgresql中用户跟角色是绑定的，当你创建角色或者用户时会一起创建，如果是纯角色可以不授予登录，如果是普通用户需要授予登录 
 --创建角色 
 CREATE ROLE "jack" LOGIN PASSWORD 'jack';
 --更改角色密码
@@ -553,12 +553,33 @@ postgres=# alter user postgres with password 'postgres';
 
 
 
+#postgresql 数据库备份恢复
+"DB_TYPE=postgres",
+                "DB_HOST=192.168.13.201",
+                "DB_PORT=5432",
+                "DB_USER=faq",
+                "DB_PASS=wiki01HS",
+"Image": "requarks/wiki:2",
+
+
+--备份数据到文本
+homsom@faq:~$ pg_dump -U postgres faq > faq.sql
+--恢复数据文本
+homsom@faq:~$ psql -U postgres jackDB < faq.sql
 
 
 
 
+#docker运行postgresql
+[root@harbor ~]# docker run -d --name faq-postgresql -p 5432:5432 -v /home/dockerdata/faq-postgresql:/var/lib/postgresql/data -e POSTGRES_PASSWORD=Homsom+4006 postgres:12.9-alpine  
+f5d4290898aa:~$ createdb faq
+f5d4290898aa:~$ psql faq
+faq=# create user faq password 'wiki01HS';
+faq=# grant all on database faq to faq;
+f5d4290898aa:~$ psql faq < faq.sql
 
-
+#docker运行wiki
+[root@harbor /tmp]# docker run -d -p 3000:3000 --name faq-homsom --restart unless-stopped -e "DB_TYPE=postgres" -e "DB_HOST=192.168.13.235" -e "DB_PORT=5432" -e "DB_USER=faq" -e "DB_PASS=wiki01HS" -e "DB_NAME=faq" requarks/wiki:2
 
 
 </pre>
