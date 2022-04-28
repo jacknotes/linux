@@ -1992,7 +1992,7 @@ TLS SNI support enabled
 configure arguments: --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --lock-path=/usr/local/tengine/lock/tengine.lock --user=nginx --group=nginx --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --with-stream --add-module=modules/ngx_http_upstream_session_sticky_module --with-stream_ssl_module --add-module=modules/ngx_http_upstream_check_module --with-http_auth_request_module --with-http_gzip_static_module --with-http_random_index_module --add-module=/download/nginx-module-vts-0.1.17
 2. 配置nginx
 http {
-    vhost_traffic_status_zone;
+    vhost_traffic_status_zone shared:vhost_traffic_status:64m;		#增加共享内存，否则会nginx会异常报错，如下线服务器失败
     vhost_traffic_status_filter_by_host on;
 
 server{
@@ -2006,6 +2006,15 @@ server{
     	}
 }
 }
+注：后期生产nginx监控报错
+2022/04/28 17:15:52 [crit] 20484#0: ngx_slab_alloc() failed: no memory in vhost_traffic_status_zone "ngx_http_vhost_traffic_status"
+2022/04/28 17:15:52 [error] 20484#0: *7810808 shm_add_node::ngx_slab_alloc_locked() failed: used_size[886785], used_node[251] while logging request, client: 172.168.2.219, server: interhotelrm.hs.com, request: "POST /supplier/Getlist HTTP/1.1", upstream: "http://192.168.13.239:12890/supplier/Getlist", host: "interhotelrm.hs.com", referrer: "http://interhotelrm.hs.com/Supplier"
+2022/04/28 17:15:52 [error] 20484#0: *7810808 shm_add_upstream::shm_add_node("UGinterhotelrm_loop192.168.13.239:12890") failed while logging request, client: 172.168.2.219, server: interhotelrm.hs.com, request: "POST /supplier/Getlist HTTP/1.1", upstream: "http://192.168.13.239:12890/supplier/Getlist", host: "interhotelrm.hs.com", referrer: "http://interhotelrm.hs.com/Supplier"
+注：解决报错方法
+        vhost_traffic_status_zone shared:vhost_traffic_status:64m;		#增加共享内存大小
+        vhost_traffic_status_filter_by_host on;
+
+
 [root@tengine /usr/local/tengine/conf]# service tengine reload
 3. 配置nginx-vts-exporter
 [root@tengine /download]# curl -OL https://github.com/hnlq715/nginx-vts-exporter/releases/download/v0.10.3/nginx-vts-exporter-0.10.3.linux-amd64.tar.gz
