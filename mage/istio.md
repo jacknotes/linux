@@ -2461,19 +2461,1788 @@ x-envoy-decorator-operation: demoapp.default.svc.cluster.local:8080/*
 
 
 
+#istio核心功能：
+- 流量治理
+  - VirtualService
+  - DestinationRule
+- 安全
+- 可观测性
+
+####Sidecar及流量拦截机制
+
+#Istio环境中运行Pod的要求
+- Service association(服务关联)
+  - Pod必须从属于某个Service，哪怕Pod不需要暴露任何端口
+  - 同时从属于多个Service时，这些Service不能为该类Pod的同一端口标识使用不同的协议
+- Application UIDs
+  - UID 1337预留给了Sidecar Proxy使用，业务应用不能以这一UID运行
+- NET_ADMIN and NET_RAW capabilities
+  - 强制启用了PSP（Pod Security Policy）的Kubernetes环境中，必须允许在网格内的Pod上使用NET_ADMIN和NET_RAW这两个capability，以确保Sidecar Envoy依赖的初始化Pod能够正常运行
+  - 未启用PSP，或者启用了PSP但使用了专用的Istio CNI Plugin的场景，可以不用
+- Pods with app and version labels
+  - 显示地为Pod使用app和version标签
+  - app标签用于为分布式追踪生成context，而label则用于指示应用的版本化
+- Named service ports
+  - Service Port应该明确指定使用的协议
+  - 命令格式：
+    - <protocol>[-<suffix>]
+	- Kubernetes v1.18及之后的版本中，可以直接使用appProtocol字段进行标识。(推荐使用此新格式)
+
+#协议选择
+- Istio支持代理的协议
+  - 支持代理任何类型的TCP流量，包括HTTP、HTTPS、gRPC及原始TCP（raw tcp）协议
+  - 但为了提供额外的能力，比如路由和更加丰富的指标，Istio需要确定更具体的协议（应用层协议）
+  - Istio不会代理UDP协议
+- 协议选择
+  - Istio能够自动检测并识别HTTP和HTTP/2的流量，未检测出的协议类型将一律视为普通的TCP流量
+  - 也支持由用户手动指定
+- 手动指定协议
+  - Service Port应该明确指定使用的协议
+  - 命令格式：
+    - <protocol>[-<suffix>]，通过name定义
+	- Kubernetes v1.18及之后的版本中，可以直接使用appProtocol字段进行标识。(推荐使用此新格式)
+- Istio支持的协议类型如下：
+  - http, http2 可以自动识别
+  - https, tcp, tls, grpc
+  - grpc-web, mongo, mysql, redis
+  
+#Sidecar代理方式简介
+- Kubernetes平台上，Envoy Sidecar容器与application容器于同一个Pod中共存，它们共享NETWORK、UTS、和IPC等名称空间，因此也共用同一个网络协议栈
+  - Envoy Sidecar基于init容器（需要使用NET_ADMIN和NET_RAW Capability于Pod启动时设置Iptables规则以实现流量拦截）
+    - 入站流量由Iptables拦截后转发给Envoy Sidecar
+	- Envoy Sidecar根据配置完成入站流量代理
+	- 后端应用程序生成的出站流量依然由Iptables拦截并转发给Envoy Sidecar
+	- Envoy Sidecar根据配置完成出站流量代理
+- 流量拦截模式
+  - REDIRECT: 重定向模式
+  - TPROXY: 透明代理模式
+ 
+#Istio注入的Envoy Sidecar
+- Istio基于Kubernetes Admission Controller webhook完成sidecar自动注入，它会为每个微服务分别添加两个相关的容器
+  - istio-init: 隶属于Init Containers，即初始化容器，负责在微服务相关的Pod中生成iptables规则以进行流量拦截并向Envoy Proxy进行转发；运行完成后退出；
+  - istio-proxy: 隶属于Containers，即Pod中的正常窗口，程序为Envoy Proxy；
+#Istio初始化容器
+- istio-init初始化容器基于istio/proxyv2镜像启动，它运行istio-iptables程序以生成流量拦截规则
+  - 拦截的流量将转发至两个相关的端口
+    - 15006：由z选项定义，指定用于接收拦截所有发往当前Pod/VM的入站流量的目标商品，该配置仅用于REDIRECT转发模式
+	- 15001：由p选项定义，指定用于接收拦截的所有TCP流量的目标端口
+  - 流量拦截模式由-m选项指定，目前支持REDIRECT和TPROXY两种模式
+  - 流量拦截时要包含的目标端口列表使用-o选项指定，而要排除的目标端口列表则使用-d选项指定
+  - 流量拦截时要包含的目标CIDR地址列表可使用-i选项指定，而要排除的目标CIDR格式的地址列表则使用-x选项指定
+- 此前版本中，该初始化容器会运行一个用于生成iptables规则的相关脚本来生成iptables规则，脚本地址为：https://github.com/istio/cni/blob/master/tools/packaging/common/istio-iptables.sh 
+  
+#istio-init初始化容器配置的iptables规则 
+[root@k8s-node04 ~]# nsenter -t 25088 -n iptables -t nat -S
+-P PREROUTING ACCEPT
+-P INPUT ACCEPT
+-P OUTPUT ACCEPT
+-P POSTROUTING ACCEPT
+-N ISTIO_INBOUND
+-N ISTIO_IN_REDIRECT
+-N ISTIO_OUTPUT
+-N ISTIO_REDIRECT
+-A PREROUTING -p tcp -j ISTIO_INBOUND
+-A OUTPUT -p tcp -j ISTIO_OUTPUT
+-A ISTIO_INBOUND -p tcp -m tcp --dport 15008 -j RETURN
+-A ISTIO_INBOUND -p tcp -m tcp --dport 22 -j RETURN
+-A ISTIO_INBOUND -p tcp -m tcp --dport 15090 -j RETURN
+-A ISTIO_INBOUND -p tcp -m tcp --dport 15021 -j RETURN
+-A ISTIO_INBOUND -p tcp -m tcp --dport 15020 -j RETURN
+-A ISTIO_INBOUND -p tcp -j ISTIO_IN_REDIRECT
+-A ISTIO_IN_REDIRECT -p tcp -j REDIRECT --to-ports 15006			#入向流量重写向端口
+-A ISTIO_OUTPUT -s 127.0.0.6/32 -o lo -j RETURN
+-A ISTIO_OUTPUT ! -d 127.0.0.1/32 -o lo -m owner --uid-owner 1337 -j ISTIO_IN_REDIRECT
+-A ISTIO_OUTPUT -o lo -m owner ! --uid-owner 1337 -j RETURN
+-A ISTIO_OUTPUT -m owner --uid-owner 1337 -j RETURN
+-A ISTIO_OUTPUT ! -d 127.0.0.1/32 -o lo -m owner --gid-owner 1337 -j ISTIO_IN_REDIRECT
+-A ISTIO_OUTPUT -o lo -m owner ! --gid-owner 1337 -j RETURN
+-A ISTIO_OUTPUT -m owner --gid-owner 1337 -j RETURN
+-A ISTIO_OUTPUT -d 127.0.0.1/32 -j RETURN
+-A ISTIO_OUTPUT -j ISTIO_REDIRECT
+-A ISTIO_REDIRECT -p tcp -j REDIRECT --to-ports 15001				#出向流量重写向端口
+#istio-proxy使用的端口
+[root@k8s-node04 ~]# nsenter -t 25088 -n ss -tnl
+State       Recv-Q Send-Q                    Local Address:Port                                   Peer Address:Port
+LISTEN      0      4096                                  *:15090                                             *:*	#Envoy prometheus telemetry
+LISTEN      0      4096                                  *:15090                                             *:*
+LISTEN      0      4096                          127.0.0.1:15000                                             *:*	#envoy admin port
+LISTEN      0      4096                                  *:15001                                             *:*	#envoy outbound
+LISTEN      0      4096                                  *:15001                                             *:*
+LISTEN      0      4096                          127.0.0.1:15004                                             *:*	#debut port
+LISTEN      0      4096                                  *:15006                                             *:*	#envoy inbound
+LISTEN      0      4096                                  *:15006                                             *:*
+LISTEN      0      4096                                  *:15021                                             *:*	#Health checks
+LISTEN      0      4096                                  *:15021                                             *:*	
+LISTEN      0      128                                   *:8080                                              *:*
+LISTEN      0      4096                               [::]:15020                                          [::]:*	#merged prometheus telemetry from istio agent,Envoy, and application
+注：另外端口:
+- 15008 HBONE mTLS tunnel port 
+- 15009	HBONE port for secure networks
+- 15053	DNS port,if capture is enabled 
+注：流量拦截规则只在sidecar envoy上应用，在gateway envoy上不是应用的
+#控制平面使用的端点
+443 	HTTPS			Webhooks service port
+8080	HTTP			Debug interface(deprecated, container port only)
+15010	GRPC			XDS and CA services(Plaintext, only for secure networks)
+15012	GRPC 			XDS and CA services(TLS and mTLS, recommended for production use)
+15014	HTTP			Control plane monitoring
+15017	HTTPS			Webhook container port, forwarded from 443
 
 
 
 
+#istio-proxy容器
+- istio-proxy即所谓的sidecar容器，它运行两个进程
+  - pilot-agent
+    - 基于k8s api server为envoy初始化出可用的bootstrap配置文件并启动envoy
+	- 监控并管理envoy的运行状态，包括envoy出错时重启envoy，以及envoy配置变更后将其重载等
+  - envoy
+    - envoy由pilot-agent进程基于生成bootstrap配置进行启动，而后根据配置中指定的pilot地址，通过xDS API获取动态配置信息
+	- Sidecar形式的Envoy通过流量拦截机制为应用程序实现入站和出站代理功能
+root@k8s-master01:~# kubectl exec demoappv10-5c497c6f7c-fgb4n -c istio-proxy -- ps -ef
+UID        PID  PPID  C STIME TTY          TIME CMD
+istio-p+     1     0  0 Apr23 ?        00:11:59 /usr/local/bin/pilot-agent proxy sidecar --domain default.svc.cluster.local --proxyLogLevel=warning --proxyComponentLogLevel=misc:error --log_output_level=default:info --concurrency 2
+istio-p+    18     1  0 Apr23 ?        00:16:30 /usr/local/bin/envoy -c etc/istio/proxy/envoy-rev0.json --restart-epoch 0 --drain-time-s 45 --drain-strategy immediate --parent-shutdown-time-s 60 --local-address-ip-version v4 --file-flush-interval-msec 1000 --disable-hot-restart --log-format %Y-%m-%dT%T.%fZ.%l.envoy %n.%v -l warning --component-log-level misc:error --concurrency 2
+istio-p+    36     0  0 10:05 ?        00:00:00 ps -ef
+----以后可以通过pilot-agent命令进行调试
+root@k8s-master01:~# kubectl exec demoappv10-5c497c6f7c-fgb4n -c istio-proxy -- pilot-agent --help
+root@k8s-master01:~# kubectl exec demoappv10-5c497c6f7c-fgb4n -c istio-proxy -- pilot-agent request GET /listeners		
+6c3eeea6-af8f-4539-9570-6b0e5af640ea::0.0.0.0:15090
+28a0e75b-1a73-4a25-8696-a9d88fab7758::0.0.0.0:15021
+172.168.2.22_10250::172.168.2.22:10250
+172.168.2.21_10250::172.168.2.21:10250
+192.168.13.63_10250::192.168.13.63:10250
+10.68.73.229_31400::10.68.73.229:31400
+172.168.2.23_10250::172.168.2.23:10250
+10.68.72.41_443::10.68.72.41:443
+10.68.155.123_443::10.68.155.123:443
+10.68.24.41_15012::10.68.24.41:15012
+10.68.24.41_443::10.68.24.41:443
+10.68.147.77_443::10.68.147.77:443
+10.68.73.229_443::10.68.73.229:443
+10.68.0.2_53::10.68.0.2:53
+10.68.230.242_443::10.68.230.242:443
+172.168.2.26_10250::172.168.2.26:10250
+172.168.2.25_10250::172.168.2.25:10250
+10.68.73.229_15443::10.68.73.229:15443
+10.68.0.1_443::10.68.0.1:443
+172.168.2.24_10250::172.168.2.24:10250
+0.0.0.0_8080::0.0.0.0:8080
+10.68.16.146_8080::10.68.16.146:8080
+0.0.0.0_9411::0.0.0.0:9411
+0.0.0.0_10255::0.0.0.0:10255
+172.168.2.22_4194::172.168.2.22:4194
+192.168.13.63_4194::192.168.13.63:4194
+10.68.20.27_8000::10.68.20.27:8000
+
+#istio-proxy Listener
+- Envoy Listener支持绑定于IP Socket或Unix Domain Socket之上，也可以不予绑定，而是接收由其它的Listener转发来的数据
+  - VirtualOutboundListener通过一个端口接收所有的出向流量(此端口也可以不绑定在套接字之上，通过netstat看不到)，而后再按照请求的端口分别转发给相应的Listener进行处理
+  - VirtualInboundListener的功能相似，但它主要用于处理入向流量
+- VirtualOutbound Listener
+  - iptables将其所在的Pod中的外发流量拦截后转发至监听于15001的Listener，而该Listener通过在配置中将"use_origin_dest参数"设置为true，从而实现将接收到的请求转交给同请求原目标地址关联的Listener之上
+  - 若不存在可接收转发报文的Listener，则Envoy将根据istio的全局配置选项outboundTrafficPolicy参数的值决定如何进行处理
+    - ALLOW_ANY：允许外发至任何服务的请求，无论目标服务是否存在于Pilot的注册表中；此时，没有匹配的目标Listener的流量将由该侦听器上tcp_proxy过滤器指向的PassthroughCluster进行透传
+	- REGISTRY_ONLY：仅允许外发请求至注册Pilot中的服务；此时，没有匹配的目标Listener的流量将由该侦听器上tcp_proxy过滤器指向的BlackHoleCluster将流量直接丢弃
+  - Envoy将按需为其所处网格中的各外部服务按端口创建多个Listener以处理出站流量，以productpage为例，它将存在：
+    - 0.0.0.0_9080: 处理发往details, reviews和rating等服务的流量;实际就是类似demoapp的微服务程序
+    - 0.0.0.0_9411: 处理发往zipkin的流量
+    - 0.0.0.0_3000: 处理发往grafana的流量
+    - 0.0.0.0_9090: 处理发往prometheus的流量
+    ...
+- VirtualInbound Listener 
+  - 入向流量劫持
+    - 较早版本的Istio基于同一个VirtualListener在15001端口上同时处理入站和出站流量
+	- 自1.4版本起，Istio引入了REDIRECT代理模式，它通过监听于15006端口的专用VirtualInboundListener处理入向流量代理以规避潜在的死循环问题
+  - 入向流量处理
+    - 对于进入到侦听器"0.0.0.0:15006"的流量，VirtualInboundListener会在filterChains中，通过一系列的filter_chain_match对流量进行匹配检测，以确定应该由哪个或哪些过滤器进行流量处理
+- 注：不管是VirtualOutbound Listener或VirtualInbound Listener，sidecar都不会监听本地套接字的(除开自身提供服务的套接字)，都是由15001和15006 Listener接收并去匹配条目后到达目标地址的
+  
+root@k8s-master01:~# istioctl pc listeners demoappv10-5c497c6f7c-fgb4n
+0.0.0.0       15006 Addr: *:15006                                                                                   Non-HTTP/Non-TCP
+0.0.0.0       15006 Trans: tls; App: istio-http/1.0,istio-http/1.1,istio-h2; Addr: 0.0.0.0/0                        InboundPassthroughClusterIpv4
+0.0.0.0       15006 Trans: raw_buffer; App: HTTP; Addr: 0.0.0.0/0                                                   InboundPassthroughClusterIpv4
+0.0.0.0       15006 Trans: tls; App: TCP TLS; Addr: 0.0.0.0/0                                                       InboundPassthroughClusterIpv4
+0.0.0.0       15006 Trans: raw_buffer; Addr: 0.0.0.0/0                                                              InboundPassthroughClusterIpv4
+0.0.0.0       15006 Trans: tls; Addr: 0.0.0.0/0                                                                     InboundPassthroughClusterIpv4
+0.0.0.0       15006 Trans: tls; App: istio,istio-peer-exchange,istio-http/1.0,istio-http/1.1,istio-h2; Addr: *:8080 Cluster: inbound|8080||
+0.0.0.0       15006 Trans: raw_buffer; Addr: *:8080                                                                 Cluster: inbound|8080||
+注：tls表示https加密，raw_buffer表示http明文
+
+#Istio-proxy上的动态集群
+- 动态集群类型
+  - Inbound Cluster: Sidecar Envoy直接代理的应用，同一Pod中，由Sidecar Envoy反向代理的应用容器
+  - Outbound Cluster：网格中的所有服务，包括当前Sidecar Envoy直接代理的服务，该类Cluster占了Envoy可用集群中的绝大多数
+  - PassthroughCluster和InboundPassthroughClusterv4：发往此类集群的请求报文会被直接透传至其请求中的原始目标地址，Envoy不会进行重新路由
+  - BlackHoleCluster：Envoy的一个特殊集群，它没有任何可用的endpoint，接收到的请求会被直接丢弃；未能正确匹配到目标服务的请求通常会被发往此Cluster
+  
+
+###流量劫持
+
+#Sidecar CR
+- Sidecar CR
+  - 默认情况下，Istio会配置每一个Sidecar Envoy能够与同一网格内所有的workload实例通信，并且能够在与其代理的workload相关的所有端口上接收流量
+  - 从实际通信需求来说，网格内的每个workload未必需要同当前网格内的所有其它workload通信，于是，Sidecar CR提供了"为Sidecar Envoy微调其用于workload间通信时支持的端口集和协议"等配置的方式
+  - 另外，转发来自其代理的workload实例的出向流量时，Sidecar CR资源对象还能够限制Sidecar Envoy可以访问的外部服务集
+- Sidecar CR的生效机制
+  - Sidecar CR通过workloadSelector字段挑选同一名称空间中的一个或多个workload实例来应用其提供的配置
+  - 对于未提供workloadSelector字段Sidecar资源，其配置将应用于同一名称空间中的所有workload实例
+  - namespace中同时存在带有workloadSelector字段以及未附带此字段的Sidecar资源对象时，workload实例将优先应用带有此字段的Sidecar对象
+  - 每个namespace中仅应该提供一个未附带workloadSelector字段的Sidecar资源，否则其配置结果将难以确定
+  - 另外，每个workload也应该仅应用一个带有workloadSelector字段Sidecar资源，否则其行为同样难以明确
+  
+#sidecar示例
+root@client # curl 127.0.0.1:15000/listeners		#没有配置任何sidecar时，所有service将自动配置为Egress
+97a71e13-18b6-4fa0-a169-1ff8ed5d5cf1::0.0.0.0:15090
+b12160f3-31ca-4934-8b0c-3496d5f183c8::0.0.0.0:15021
+10.68.0.2_53::10.68.0.2:53
+10.68.73.229_443::10.68.73.229:443
+10.68.73.229_15443::10.68.73.229:15443
+10.68.147.77_443::10.68.147.77:443
+172.168.2.25_10250::172.168.2.25:10250
+10.68.73.229_31400::10.68.73.229:31400
+10.68.155.123_443::10.68.155.123:443
+10.68.24.41_443::10.68.24.41:443
+10.68.72.41_443::10.68.72.41:443
+10.68.0.1_443::10.68.0.1:443
+172.168.2.26_10250::172.168.2.26:10250
+10.68.230.242_443::10.68.230.242:443
+172.168.2.23_10250::172.168.2.23:10250
+172.168.2.24_10250::172.168.2.24:10250
+192.168.13.63_10250::192.168.13.63:10250
+172.168.2.21_10250::172.168.2.21:10250
+10.68.24.41_15012::10.68.24.41:15012
+172.168.2.22_10250::172.168.2.22:10250
+0.0.0.0_15014::0.0.0.0:15014
+10.68.113.201_3000::10.68.113.201:3000
+10.68.53.65_14250::10.68.53.65:14250
+0.0.0.0_8080::0.0.0.0:8080
+0.0.0.0_15010::0.0.0.0:15010
+10.68.252.108_9090::10.68.252.108:9090
+10.68.16.146_8080::10.68.16.146:8080
+0.0.0.0_9411::0.0.0.0:9411
+10.68.53.65_14268::10.68.53.65:14268
+172.168.2.23_4194::172.168.2.23:4194
+0.0.0.0_10255::0.0.0.0:10255
+172.168.2.24_4194::172.168.2.24:4194
+192.168.13.63_4194::192.168.13.63:4194
+0.0.0.0_16685::0.0.0.0:16685
+10.68.0.2_9153::10.68.0.2:9153
+10.68.127.217_443::10.68.127.217:443
+172.168.2.21_4194::172.168.2.21:4194
+172.168.2.22_4194::172.168.2.22:4194
+172.168.2.26_4194::172.168.2.26:4194
+0.0.0.0_20001::0.0.0.0:20001
+0.0.0.0_80::0.0.0.0:80
+0.0.0.0_9090::0.0.0.0:9090
+172.168.2.25_4194::172.168.2.25:4194
+10.68.73.229_15021::10.68.73.229:15021
+10.68.20.27_8000::10.68.20.27:8000
+virtualOutbound::0.0.0.0:15001
+virtualInbound::0.0.0.0:15006
+0.0.0.0_8082::0.0.0.0:8082
+--配置sidecar
+root@k8s-master01:~/istio/istio-in-practise# cat sidecar-demo.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: Sidecar
+metadata:
+  name: client
+  namespace: default
+spec:
+  workloadSelector:
+    labels:
+      run: client			#在default名称空间匹配标签run: client的pod生效以下配置，这里匹配到的是client
+  egress:
+  - port:
+      number: 8080
+      name: demoapp
+      protocol: HTTP	
+    hosts:					#生成egress配置的目标，在当前名称空间下(default)/所有service(*)中，service名称为demoapp、端口为8080、协议是HTTP的service将会被映射为egerss
+    - "./*"
+  outboundTrafficPolicy:	#service名称不是demoapp、端口为8080、协议是HTTP的service的出方向流量策略，REGISTRY_ONLY将会被丢弃(BlackHoleCluster)，如果是ALLOW_ANY则会使用透传功能(PassthroughCluster)
+    mode: REGISTRY_ONLY
+root@k8s-master01:~/istio/istio-in-practise# kubectl apply -f sidecar-demo.yaml		#应用sidecar
+
+--客户端查看是否只有demoapp相关的listener
+root@client # curl 127.0.0.1:15000/listeners
+97a71e13-18b6-4fa0-a169-1ff8ed5d5cf1::0.0.0.0:15090		#prometheus相关接口
+b12160f3-31ca-4934-8b0c-3496d5f183c8::0.0.0.0:15021		#health check相关接口
+0.0.0.0_8080::0.0.0.0:8080				#此是我们定义demoapp的service
+virtualOutbound::0.0.0.0:15001							#OutBoundListener
+virtualInbound::0.0.0.0:15006							#InBoundListener
+
+--测试sidecar配置是否如预期一样
+root@client # curl demoapp:8080		#访问成功
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-5c497c6f7c-fgb4n, ServerIP: 172.20.217.72!
+root@client # curl proxy			#因为没有egress，将会使用REGISTRY_ONLY流量策略
+curl: (56) Recv failure: Connection reset by peer
+
+--调整流量策略为ALLOW_ANY
+root@k8s-master01:~/istio/istio-in-practise# cat sidecar-demo.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: Sidecar
+metadata:
+  name: client
+  namespace: default
+spec:
+  workloadSelector:
+    labels:
+      run: client
+  egress:
+  - port:
+      number: 8080
+      name: demoapp
+      protocol: HTTP
+    hosts:
+    - "./*"
+  outboundTrafficPolicy:
+   #mode: REGISTRY_ONLY
+    mode: ALLOW_ANY			
+root@k8s-master01:~/istio/istio-in-practise# kubectl apply -f sidecar-demo.yaml
+
+--调整流量策略为ALLOW_ANY
+root@client # curl demoapp:8080
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-5c497c6f7c-fgb4n, ServerIP: 172.20.217.72!
+root@client # curl proxy		#因为流量策略为ALLOW_ANY，所以使用透传，这里的流量将不会经过sidecar envoy，所以也无法通过istio实现高级流量治理
+Proxying value: iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-5c497c6f7c-l9pnf, ServerIP: 172.20.135.157!
+ - Took 8 milliseconds.
+
+#访问网格外部目标--ServiceEntry
+##出向流量治理、出向流量网关
+- Sidecar Egress Listener如何处理访问外部目标的流量？
+  - 在默认"ALLOW_ANY"外部流量策略下，Sidecar Envoy支持将这些流量直接Passthrough到外部的端口之上
+  - 但这些外部目标流量无法纳入到治理体系中，实施如retry, timeout, fault injection一类的功能
+- ServiceEntry CR就用于向Istio内部维护的服务注册表(Registry)上手动添加注册项（即Entry）从而将那些未能自动添加至网格中的服务，以手动形式添加至网格中
+  - 向Istio的服务注册表添加一个ServiceEntry后，网格中的Envoy可以流量发送给该Service，其行为与访问网格中原有的服务并无本质上的不同
+  - 于是，有了ServiceEntry，用户也就能像治理网格内部流量一样来治理那些访问到网格外部的服务的流量
+#ServiceEntry
+- ServiceEntry的功能
+  - 重定向和转发访问外部目标的流量，例如那些访问网格外部的传统服务的流量
+  - 为外部的目标添加retry, timeout, fault injection, circuit breaker等一类的功能
+  - 将VM（Virtual Machine）添加至网格中，从而能够在VM上运行网格的服务
+  - 将不同集群中的服务添加至网格中，从而在Kubernetes上配置多集群的Istio网格
+- 注意事项
+  - 访问外部服务时，Sidecar Envoy本身就支持将这些流量直接Passthrough到外部的端点之上，因此，定义ServiceEntry并非必须进行的操作
+  - ServiceEntry主要是为更好地治理这些流量而设计
+  - 但ServiceEntry只是为更好地治理这些访问到外部的流量提供了接口，具体的治理机制还要靠VirtualService和DestinationRule进行定义
+- ServiceEntry用于将未能自动添加至网格中的服务，以手动形式添加网格中，以使得网格内的自动发现机制能够访问或路由到这些服务
+  - 未能自动添加至网格中的服务的类型
+    - 网格外部的服务
+	  - 运行行Kubernetes上，但却不是Istio网格管理的名称空间中的Pod，或者是Kuberentes集群外部的VM或裸服务器上
+	  - 在ServiceEntry中，这类服务称为MESH_EXTERNAL
+- ServiceEntry CR资源的定义
+  - ServiceEntry本身用于描述要引入的外部服务的属性，主要包括服务的DNS名称、IP地址、端口、协议和相关的端点等
+  - 端点的获取方式有三种：
+    - DNS名称解析
+	- 静态指定：直接指定要使用端点
+	- 使用workloadSelector：基于标签选择器匹配Kubernetes Pod，或者由WorkloadEntry CR引入到网格中的外部端点
+#ServiceEntry如何定义外部服务
+- 关键配置项
+  - hosts: 用于在VirtualServices和DestinationRules中选择匹配的主机，通常需要指定外部服务对应的主机名或DNS域名
+    - HTTP流量中，对应于HTTP标头中的Host/Authority
+	- HTTPS/TLS流量中，对应于SNI
+  - location: 服务的位置
+    - MESH_EXTERNAL: 表示服务在网格外部，需要通过API进行访问接口
+	- MESH_INTERNAL: 表示服务是网格中的一部分，通常用于在扩展风格时显式进行服务添加
+  - ports: 服务使用的端口
+  - resolution: 服务的解析方式，用于指定如何解析与服务关联的各端点的IP地址
+    - NONE: 假设传入的连接已经被解析到特定的IP地址
+	- STATIC：使用endpoints字段中指定的静态IP地址作为与服务关系的实例
+	- DNS：通过异步查询DNS来解析IP地址；类似于Envoy Cluster发现Endpoint的STRICT_DNS
+	- DNS_ROUND_ROBIN: 通过异步查询DNS来解析IP地址，但与前者不同的是，仅在需要启动新连接时使用返回的第一个IP地址，而不依赖于DNS解析的完整结果；类似于Envoy Cluster发现Endpoint的LOGICAL_DNS
+  - endpoints: 静态指定的各端点，定义端点的关键字段为address和ports
+  - workloadSelector：使用标签选择器动态选择ServiceEntry要用到的端点，但不能与endpoints同时使用；劫持选择
+    - 由WorkloadEntry CR定义的外部端点对象
+	- Kubernetes集群上特定Pod对象
+#ServiceEntry的逻辑意义
+- ServiceEntry之于Istio来说，其功能类似于自动发现并注册的Service对象，主要负责于网格中完成如下功能
+  - 基于指定的端口创建Listener，若已存在相应的侦听器，则于侦听器上基于hosts的定义，生成VirtualHost
+  - 基于解析(resolution)得到的端点创建Cluster
+  - 生成Route Rule，设定侦听器将接收到的发往相应VirtualHost的流量，路由至生成的Cluster
+- 自定义流量管理机制
+  - 可自定义VirtualService修改ServiceEntry默认生成的Routes
+    - 通过指定的hosts(主机名)适配到要修改的Route的位置
+    - 路由目标配置等可按需进行定义，包括将流量路由至其它目标
+  - 可自定义DestinationRule修改ServiceEntry默认生成的Cluster
+    - 通过指定的hosts(主机名)适配到要修改的Cluster
+    - 常用于集群添加各种高级设定，例如subset, circuit breaker, traffic policy等
+
+#模拟外部服务引入网格示例
+1. 配置多个地址
+root@front-envoy:~# ip a s eth0
+eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 00:0c:29:f8:c8:91 brd ff:ff:ff:ff:ff:ff
+    inet 172.168.2.32/24 brd 172.168.2.255 scope global eth0
+       valid_lft forever preferred_lft forever
+    inet 172.168.2.33/24 brd 172.168.2.255 scope global secondary eth0
+       valid_lft forever preferred_lft forever
+    inet 172.168.2.34/24 brd 172.168.2.255 scope global secondary eth0
+       valid_lft forever preferred_lft forever
+    inet 172.168.2.35/24 brd 172.168.2.255 scope global secondary eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::20c:29ff:fef8:c891/64 scope link
+       valid_lft forever preferred_lft forever
+
+2. 运行nginx服务，模拟集群外3个实例
+root@front-envoy:~/istio-in-practise/ServiceEntry-and-WorkloadEntry/00-Deploy-Nginx# cat docker-compose.yml
+version: '3.3'
+
+services:
+  nginx2001:
+    image: nginx:1.20-alpine
+    volumes:
+      - ./html/nginx2001:/usr/share/nginx/html/
+    networks:
+      envoymesh:
+        ipv4_address: 172.31.201.11
+        aliases:
+        - nginx
+    expose:
+      - "80"
+    ports:
+      - "172.168.2.33:8091:80"
+
+  nginx2002:
+    image: nginx:1.20-alpine
+    volumes:
+      - ./html/nginx2002:/usr/share/nginx/html/
+    networks:
+      envoymesh:
+        ipv4_address: 172.31.201.12
+        aliases:
+        - nginx
+    expose:
+      - "80"
+    ports:
+      - "172.168.2.34:8091:80"
+
+  nginx2101:
+    image: nginx:1.21-alpine
+    volumes:
+      - ./html/nginx2101:/usr/share/nginx/html/
+    networks:
+      envoymesh:
+        ipv4_address: 172.31.201.13
+        aliases:
+        - nginx
+        - canary
+    expose:
+      - "80"
+    ports:
+      - "172.168.2.35:8091:80"
+
+networks:
+  envoymesh:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.31.201.0/24
+root@front-envoy:~/istio-in-practise/ServiceEntry-and-WorkloadEntry# cat 00-Deploy-Nginx/html/nginx2*/*
+<title>nginx.magedu.com</title>
+Nginx 2001 ~~
+<title>nginx.magedu.com</title>
+Nginx 2002 ~~
+<title>nginx.magedu.com</title>
+Nginx 2101 ~~
+root@front-envoy:~/istio-in-practise/ServiceEntry-and-WorkloadEntry/00-Deploy-Nginx# docker-compose up -d
+--本机测试	
+root@front-envoy:~/istio-in-practise/ServiceEntry-and-WorkloadEntry/00-Deploy-Nginx# curl 172.168.2.33:8091
+<title>nginx.magedu.com</title>
+Nginx 2001 ~~
+root@front-envoy:~/istio-in-practise/ServiceEntry-and-WorkloadEntry/00-Deploy-Nginx# curl 172.168.2.34:8091
+<title>nginx.magedu.com</title>
+Nginx 2002 ~~
+root@front-envoy:~/istio-in-practise/ServiceEntry-and-WorkloadEntry/00-Deploy-Nginx# curl 172.168.2.35:8091
+<title>nginx.magedu.com</title>
+Nginx 2101 ~~
+
+3. 移除之前定义的sidecar，以免混乱
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/01-Service-Entry# kubectl delete sidecar --all
+sidecar.networking.istio.io "client" deleted
+
+4. 部署ServiceEntry，将外部流量引入网格内，
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/01-Service-Entry# cat 01-serviceentry-nginx.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: nginx-external
+spec:
+  hosts:
+  - nginx.magedu.com		#引入网格内访问的域名主机头名称，如果不能解析可使用下面的IP地址当做主机头
+  addresses:
+  - "172.168.2.33"			#将IP地址当做主机头
+  - "172.168.2.34"
+  - "172.168.2.35"
+  ports:
+  - number: 8091			#指定服务端口，以及协议和名称，此端口是Listener上监听的端口
+    name: http
+    protocol: HTTP
+ #location: MESH_INTERNAL
+  location: MESH_EXTERNAL	#服务所在位置为网格外部
+  resolution: STATIC		#解析方法为静态指定
+  endpoints:
+  - address: "172.168.2.33"		#后端端点信息，ports可以省略，表示使用前面ports的定义
+    ports:
+      http: 8091				#如若不省略则使用这里的端口
+  - address: "172.168.2.34"
+    ports:
+      http: 8091
+  - address: "172.168.2.35"
+    ports:
+      http: 8091
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/01-Service-Entry# kubectl apply -f 01-serviceentry-nginx.yaml
+
+5. 测试是否如K8s集群service一样自动添加相关信息到网格内
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/01-Service-Entry# istioctl pc listeners client | grep 8091	--listener
+0.0.0.0       8091  Trans: raw_buffer; App: HTTP                                             Route: 8091
+0.0.0.0       8091  ALL                                                                      PassthroughCluster
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/01-Service-Entry# istioctl pc routes client | grep 8091		--routes
+8091                                                                      nginx.magedu.com, 172.168.2.35                            /*
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/01-Service-Entry# istioctl pc clusters client | grep 8091
+nginx.magedu.com                                                       8091      -          outbound      EDS
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/01-Service-Entry# istioctl pc endpoints client | grep 8091	--endpoints
+172.168.2.33:8091                HEALTHY     OK                outbound|8091||nginx.magedu.com
+172.168.2.34:8091                HEALTHY     OK                outbound|8091||nginx.magedu.com
+172.168.2.35:8091                HEALTHY     OK                outbound|8091||nginx.magedu.com
+
+6. 在client中测试访问外部服务
+root@client # curl nginx.magedu.com:8091		#因为不能解析所以访问失败
+curl: (6) Could not resolve host: nginx.magedu.com
+root@client # curl nginx.magedu.com:8091		#增加主机头后就访问成功了
+<title>nginx.magedu.com</title>
+Nginx 2002 ~~
+root@client # curl 172.168.2.35:8091
+<title>nginx.magedu.com</title>
+Nginx 2002 ~~
+root@client # curl 172.168.2.34:8091
+<title>nginx.magedu.com</title>
+Nginx 2002 ~~
+root@client # curl 172.168.2.33:8091
+<title>nginx.magedu.com</title>
+Nginx 2001 ~~
+注：经过测试得知，主机头有四个，分别为：nginx.magedu.com，172.168.2.33，172.168.2.34，172.168.2.35
+注：此时流量到达网格后，在kiali上可以看到istio已经识别外部服务从tcp变成http流量了，说明可以做高级流量治理功能了
+
+7. 为引入外部的服务配置destinationrule实现基于head的负载均衡算法(下面是一致性哈希)、异常探测检查等
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/01-Service-Entry# cat 02-destinationrule-nginx.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: nginx-external
+spec:
+  host: nginx.magedu.com
+  trafficPolicy:
+    loadBalancer:
+      consistentHash:
+        httpHeaderName: X-User
+    connectionPool:
+      tcp:
+        maxConnections: 10000
+        connectTimeout: 10ms
+        tcpKeepalive:
+          time: 7200s
+          interval: 75s
+      http:
+        http2MaxRequests: 1000
+        maxRequestsPerConnection: 10
+    outlierDetection:
+      maxEjectionPercent: 50
+      consecutive5xxErrors: 5
+      interval: 2m
+      baseEjectionTime: 1m
+      minHealthPercent: 40
+
+8. 测试destination是否如预期一样，例如一致性哈希
+root@client # curl nginx.magedu.com:8091
+<title>nginx.magedu.com</title>
+Nginx 2001 ~~
+root@client # curl nginx.magedu.com:8091
+<title>nginx.magedu.com</title>
+Nginx 2002 ~~
+root@client # curl nginx.magedu.com:8091
+<title>nginx.magedu.com</title>
+Nginx 2101 ~~
+root@client # curl -H 'X-User: true' nginx.magedu.com:8091		#基于Head的一致性哈希算法如预期一样
+<title>nginx.magedu.com</title>
+Nginx 2002 ~~
+root@client # curl -H 'X-User: true' nginx.magedu.com:8091
+<title>nginx.magedu.com</title>
+Nginx 2002 ~~
+root@client # curl -H 'X-User: true' nginx.magedu.com:8091
+root@client # curl -H 'X-User: abc' nginx.magedu.com:8091
+<title>nginx.magedu.com</title>
+Nginx 2001 ~~
+root@client # curl -H 'X-User: abc' nginx.magedu.com:8091
+<title>nginx.magedu.com</title>
+Nginx 2001 ~~
+
+9. 配置VitualService实现故障注入（中断、延迟）等高级功能
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/01-Service-Entry# cat 03-virtualservice-nginx.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: nginx-external
+spec:
+  hosts:
+  - nginx.magedu.com
+  http:
+  - name: falut-injection
+    match:
+    - headers:
+        X-Testing:
+          exact: "true"
+    route:
+    - destination:
+        host: nginx.magedu.com
+    fault:
+      delay:
+        percentage:
+          value: 5
+        fixedDelay: 2s
+      abort:
+        percentage:
+          value: 5
+        httpStatus: 555
+  - name: nginx-external
+    route:
+    - destination:
+        host: nginx.magedu.com
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/01-Service-Entry# kubectl apply -f 03-virtualservice-nginx.yaml
+
+10. 进行测试故障注入是否如预期
+root@client # while true; do curl -H 'X-Testing: true' nginx.magedu.com:8091;sleep 0.$RANDOM;done
+<title>nginx.magedu.com</title>
+Nginx 2002 ~~
+<title>nginx.magedu.com</title>
+Nginx 2101 ~~
+<title>nginx.magedu.com</title>
+Nginx 2101 ~~
+fault filter abortfault filter abort<title>nginx.magedu.com</title>		#有中断，符合预期
+Nginx 2002 ~~
+fault filter abort<title>nginx.magedu.com</title>
+Nginx 2002 ~~
+<title>nginx.magedu.com</title>
+Nginx 2002 ~~
+<title>nginx.magedu.com</title>
+Nginx 2101 ~~
+<title>nginx.magedu.com</title>
+
+#WorkloadEntry和WorkloadGroup
+- 为什么需要WorkloadEntry CR？
+  - 自v1.6开始，Istio在其流量管理功能组中引入了WorkloadEntry这一新的资源类型
+  - WorkloadEntry CR用于抽象非Kubernetes托管的工作负载，例如虚拟机(VM)实例和裸服务器等，从而将虚拟机加入到网格中
+  - 于是，这些VM或裸服务器，亦可作为与Kubernetes集群上的Pod等同的工作负载，并具备流量管理、安全管理、可视化等能力
+  - ServiceEntry对象可根据指定的标签器筛选VM，从而让ServiceEntry专注于服务定义，而由WorkloadEntry负责定义各端点
+  - 因此：WorkloadEntry CR的引入，大大简化了将VM加入Isito网格的复杂度
+- Istio在其v1.8版本中对VM的支持有了进一步的增强
+  - VM自动注册：使用WorkloadGroup CR，将VM实例自动注册为Istio上的WorkloadEntry
+  - 智能DNS代理：使用Sidecar DNS Proxy，缓存网格中的endpoint，以及由ServiceEntry创建的endpoint
+    - 虚拟机访问网格内的服务无需再配置/etc/hosts
+  - 因此：WorkloadGroup和WorkloadEntry能够方便用户将虚拟机上的服务注册到网格内
+  
+#WorkloadEntry示例
+##意图：使用WorkloadEntry创建两个endpoint，然后使用ServiceEntry通过标准选择workload，实现对外部服务的负载均衡，流量比为50:50
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/02-Workload-Entry# cat 01-workloadentry-nginx.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: WorkloadEntry			#使用WorkloadEntry创建两个endpoint
+metadata:
+  name: workload-nginx2001
+  labels:
+    version: v1.20
+spec:
+  address: "172.168.2.33"
+  ports:
+    http: 8091		#endpoint IP地址及port
+  labels:
+    app: nginx			#标签，标准应至少定义app和version两个标签
+    version: v1.20
+    instance-id: Nginx2001
+---
+apiVersion: networking.istio.io/v1beta1
+kind: WorkloadEntry
+metadata:
+  name: workload-nginx2002
+  labels:
+    version: v1.20
+spec:
+  address: "172.168.2.34"
+  ports:
+    http: 8091
+  labels:
+    app: nginx
+    version: v1.20
+    instance-id: Nginx2002
+---
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/02-Workload-Entry# cat 02-serviceentry-nginx.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: nginx-external
+spec:
+  hosts:
+  - nginx.magedu.com		#创建serviceEntry,访问的主机名名称，同名称的workload只能允许有一个ServiceEntry，如果创建2个后，则不能删除其中一个，否则会致使流量异常
+  ports:
+  - number: 80				#网格内部访问的端口为80
+    name: http
+    protocol: HTTP
+  location: MESH_INTERNAL
+  resolution: STATIC
+  workloadSelector:
+    labels:
+      app: nginx		#标签选择app=nginx的端点
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/02-Workload-Entry# kubectl apply -f 01-workloadentry-nginx.yaml -f 02-serviceentry-nginx.yaml
+root@client # while true;do curl nginx.magedu.com;sleep 0.$RANDOM;done	#客户端测试
+<title>nginx.magedu.com</title>
+Nginx 2001 ~~
+<title>nginx.magedu.com</title>
+Nginx 2002 ~~
+<title>nginx.magedu.com</title>
+Nginx 2002 ~~
+<title>nginx.magedu.com</title>
+Nginx 2001 ~~
+<title>nginx.magedu.com</title>
+Nginx 2001 ~~
+
+##意图：再增加一个endpoint 172.168.2.35，使流量平均到3个endpoint，流量比：33:33:33
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/03-WorkloadEntry-Subsets# cat 01-workloadentry-nginx.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: WorkloadEntry
+metadata:
+  name: workload-nginx2001
+spec:
+  address: "172.168.2.33"
+  ports:
+    http: 8091
+  labels:
+    app: nginx
+    version: "v1.20"
+    instance-id: Nginx2001
+---
+apiVersion: networking.istio.io/v1beta1
+kind: WorkloadEntry
+metadata:
+  name: workload-nginx2002
+spec:
+  address: "172.168.2.34"
+  ports:
+    http: 8091
+  labels:
+    app: nginx
+    version: "v1.20"
+    instance-id: Nginx2002
+---
+apiVersion: networking.istio.io/v1beta1
+kind: WorkloadEntry
+metadata:
+  name: workload-nginx2101
+spec:
+  address: "172.168.2.35"
+  ports:
+    http: 8091
+  labels:
+    app: nginx
+    version: "v1.21"
+    instance-id: Nginx2101
+---
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/03-WorkloadEntry-Subsets# kubectl apply -f 01-workloadentry-nginx.yaml
+
+#意图：创建子集，nginx1.20为一个子集，nginx1.21为一个子集，实现高级流量功能
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/03-WorkloadEntry-Subsets# cat 03-destinationrule-subsets.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: nginx-external
+spec:
+  host: nginx.magedu.com
+  trafficPolicy:
+    loadBalancer:
+      simple: RANDOM
+    connectionPool:
+      tcp:
+        maxConnections: 10000
+        connectTimeout: 10ms
+        tcpKeepalive:
+          time: 7200s
+          interval: 75s
+      http:
+        http2MaxRequests: 1000
+        maxRequestsPerConnection: 10
+    outlierDetection:
+      maxEjectionPercent: 50
+      consecutive5xxErrors: 5
+      interval: 2m
+      baseEjectionTime: 1m
+      minHealthPercent: 40
+  subsets:
+  - name: v20
+    labels:
+      version: "v1.20"
+  - name: v21
+    labels:
+      version: "v1.21"
+---注：子集会在kiali上报错，报在网格中未匹配查找到相关子集，其实已经匹配到外部endpoint定义的子集，此错误可忽略
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/03-WorkloadEntry-Subsets# kubectl apply -f 03-destinationrule-subsets.yaml
+--实现基于权重的流量颁发，v21流量为5，v20流量为95
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/03-WorkloadEntry-Subsets# cat 04-virtualservice-wegit-based-routing.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: nginx-external
+spec:
+  hosts:
+  - nginx.magedu.com
+  http:
+  - name: default
+    route:
+    - destination:
+        host: nginx.magedu.com
+        subset: v21
+      weight: 5
+    - destination:
+        host: nginx.magedu.com
+        subset: v20
+      weight: 95
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/03-WorkloadEntry-Subsets# kubectl apply -f 04-virtualservice-wegit-based-routing.yaml
+----实现基于head来实现流量治理，并注入故障中断、延迟
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/03-WorkloadEntry-Subsets# cat 05-virtualservice-headers-based-routing.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: nginx-external
+spec:
+  hosts:
+  - nginx.magedu.com
+  http:
+  - name: falut-injection
+    match:
+    - headers:
+        X-Canary:
+          exact: "true"
+    route:
+    - destination:
+        host: nginx.magedu.com
+        subset: v21
+    fault:
+      delay:
+        percentage:
+          value: 5
+        fixedDelay: 2s
+  - name: default
+    route:
+    - destination:
+        host: nginx.magedu.com
+        subset: v20
+    fault:
+      abort:
+        percentage:
+          value: 5
+        httpStatus: 555
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/03-WorkloadEntry-Subsets# kubectl apply -f 05-virtualservice-headers-based-routing.yaml
+
+##Egress Gateway示例，重新定义
+1. 部署WorkloadEntry
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/04-Egress-Gateway# cat 01-workloadentry-nginx.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: WorkloadEntry
+metadata:
+  name: workload-nginx2001
+spec:
+  address: "172.168.2.33"
+  ports:
+    http: 8091
+  labels:
+    app: nginx
+    version: "v1.20"
+    instance-id: Nginx2001
+---
+apiVersion: networking.istio.io/v1beta1
+kind: WorkloadEntry
+metadata:
+  name: workload-nginx2002
+spec:
+  address: "172.168.2.34"
+  ports:
+    http: 8091
+  labels:
+    app: nginx
+    version: "v1.20"
+    instance-id: Nginx2002
+---
+apiVersion: networking.istio.io/v1beta1
+kind: WorkloadEntry
+metadata:
+  name: workload-nginx2101
+spec:
+  address: "172.168.2.35"
+  ports:
+    http: 8091
+  labels:
+    app: nginx
+    version: "v1.21"
+    instance-id: Nginx2101
+---
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/04-Egress-Gateway# kubectl apply -f 01-workloadentry-nginx.yaml
+
+2. 部署serviceEntry
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/04-Egress-Gateway# kubectl delete se nginx-external
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/04-Egress-Gateway# cat 02-serviceentry-nginx.yaml
+---
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: nginx-external
+spec:
+  hosts:
+  - nginx.magedu.com
+  ports:
+  - number: 80
+    name: http
+    protocol: HTTP
+  location: MESH_EXTERNAL
+  resolution: STATIC
+  workloadSelector:
+    labels:
+      app: nginx
+---
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/04-Egress-Gateway# kubectl apply -f 02-serviceentry-nginx.yaml
+
+3. 配置集群子集
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/04-Egress-Gateway# cat 03-destinationrule-subsets.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: nginx-external
+spec:
+  host: nginx.magedu.com
+  trafficPolicy:
+    loadBalancer:
+      simple: RANDOM
+    connectionPool:
+      tcp:
+        maxConnections: 10000
+        connectTimeout: 10ms
+        tcpKeepalive:
+          time: 7200s
+          interval: 75s
+      http:
+        http2MaxRequests: 1000
+        maxRequestsPerConnection: 10
+    outlierDetection:
+      maxEjectionPercent: 50
+      consecutive5xxErrors: 5
+      interval: 2m
+      baseEjectionTime: 1m
+      minHealthPercent: 40
+  subsets:
+  - name: v20
+    labels:
+      version: "v1.20"
+  - name: v21
+    labels:
+      version: "v1.21"
+---
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/04-Egress-Gateway# kubectl apply -f 03-destinationrule-subsets.yaml
+
+4. 配置egress gateway
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/04-Egress-Gateway# cat 04-gateway-egress.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: egress
+  namespace: istio-system
+spec:
+  selector:
+    app: istio-egressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "*"		#创建一个egress gateway，匹配所有主机域名
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/04-Egress-Gateway# kubectl get svc/istio-egressgateway -n istio-system
+NAME                  TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)          AGE
+istio-egressgateway   ClusterIP   10.68.72.41   <none>        80/TCP,443/TCP   7d
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/04-Egress-Gateway# kubectl apply -f 04-gateway-egress.yaml
+
+5. 部署VirtualService
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/04-Egress-Gateway# cat 05-virtualservice-wegit-based-routing.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: nginx-external
+spec:
+  hosts:
+  - nginx.magedu.com		#当匹配主机名为nginx.magedu.com的动作
+  gateways:
+  - istio-system/egress		#实现位置为istio-system/egress和mesh
+  - mesh
+  http:
+  - match:
+    - gateways:
+      - mesh					#当gateway是mesh时的动作
+    route:
+    - destination:
+        host: istio-egressgateway.istio-system.svc.cluster.local	#路由到istio-egressgateway.istio-system.svc.homsom.local此svc，也就是egress gateway的svc地址，注意的是：我部署K8s集群后缀是homsom.local，但是此处应写cluster.local，否则会访问服务失败
+  - match:
+    - gateways:
+      - istio-system/egress		#当gateway是istio-system/egress时的动作
+    route:
+    - destination:
+        host: nginx.magedu.com		#当流量到达egress gateway后，主机名匹配到为nginx.magedu.com时，5%流量发往子集v21，95%流量发往子集v20
+        subset: v21
+      weight: 5
+    - destination:
+        host: nginx.magedu.com
+        subset: v20
+      weight: 95
+--
+root@k8s-master01:~# istioctl pc cluster istio-egressgateway-7f4864f59c-npp42 -n istio-system | grep istio-egressgateway	#此为istio-egressgateway地址
+istio-egressgateway.istio-system.svc.cluster.local                     80        -          outbound      EDS
+istio-egressgateway.istio-system.svc.cluster.local                     443       -          outbound      EDS
+root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/04-Egress-Gateway# kubectl apply -f 05-virtualservice-wegit-based-routing.yaml
+
+--查看virtualservice匹配的域名
+root@k8s-master01:~# istioctl pc routes istio-egressgateway-7f4864f59c-npp42 -n istio-system
+NAME          DOMAINS              MATCH                  VIRTUAL SERVICE
+http.8080     nginx.magedu.com     /*                     nginx-external.default
+              *                    /stats/prometheus*
+              *                    /healthz/ready*
+#ServiceEntry和Egress Gateway区别
+- ServiceEntry：过于分散不利于集中管理，client -> virtualservice -> destinationrule -> cluster(serviceentry引入) -> endpoint(workloadentry引入)
+- Egress Gateway：利于集中管理，client -> Egress-Gateway(集中配置) -> virtualservice -> destinationrule -> cluster(serviceentry引入) -> endpoint(workloadentry引入)
 
 
 
+###Envoy Filter
+
+#Istio的功能及其相关实现组件
+- istio提供了如下开箱即用(Out Of The Box)的功能
+  - Service Discovery / Load Balancing				->			ServiceEntry + DestinationRule
+  - Secure service-to-service communication(mTLS)	->			DestinationRule
+  - Traffic control / shaping /shifting				->			VirtualService
+  - Policy / Intention based access control 		->			AuthorizationPolicy
+  - Traffic metric collection						->			(built in)
+- 以下功能不能做到OOTB，在一定程序上，依赖用户自行定义
+  - Cross-cluster Networking						->			EnvoyFilter + ServiceEntry + Gateway
+  - External Auth / Rate Limiting					->			EnvoyFilter
+  - Traffic Failover								->			EnvoyFilter
+  - WASM Filters									->			EnvoyFilter
+  - Access Logging / many unexposed Envoy features	->			EnvoyFilter + ?
+  
+ #EnvoyFilter CR
+ - EnvoyFilter
+  - EnvoyFilter CR提供了自定义Sidecar Envoy配置的接口，其支持的配置功能包括修改指定字段的值、添加特定的过滤器甚至是新增Listener和Cluster等
+  - 常在Istio原生的各CR未能提供足够的配置机制，或者无法支持到的配置场景中使用
+    - 简单来说，EnvoyFilter提供的是直接向Envoy配置文件打补丁的接口，从而为网格中的各Envoy实例提供了以Envoy原生方式进行配置的机制
+  - 同Sidecar等其它几个位于同一API群组(networking.istio.io/v1beta1)内的CR不同的是，EnvoyFilter CR资源对象通过自适应的方式应用于workload之上
+    - 一个名称空间当中可同时存在多个应用于同一workload实例的EnvoyFilter CR资源对象
+	- 多个EnvoyFilter资源对象在应用时会有着特定的次序：首先是root namespace中的所有EnvoyFilter，而后才是workload实例当前名称空间中所有匹配到的各EnvoyFilter资源对象
+- 注意事项
+  - 对于不同的Istio发行版来说，EnvoyFilter提供的配置可能不具有向后兼容性
+  - Istio Proxy版本升级时，需要仔细识别配置字段的废弃和添加等所产生的影响
+  - 多个EnvoyFilter资源对象在应用于同一个workload时，它们会根据创建的时间顺次生效，而配置冲突时其结果将无从预料
+  - 切记要谨慎使用该功能，不当的配置定义，可能会破坏网格的稳定性；（EnvoyFilter基本不用，当做了解即可）
+
+root@k8s-master01:~# kubectl get envoyfilter -n istio-system		#系统内置的6个filter
+NAME                    AGE
+stats-filter-1.10       7d5h
+stats-filter-1.11       7d5h
+stats-filter-1.12       7d5h
+tcp-stats-filter-1.10   7d5h
+tcp-stats-filter-1.11   7d5h
+tcp-stats-filter-1.12   7d5h
+
+#使用EnvoyFilter配置Envoy
+- EnvoyFilter的关键组成部分
+  - 使用workloadSelector指定要配置的Envoy实例
+    - 省略该字段，意味着将配置到同一个名称空间下的所有Envoy实例
+	- 若EnvoyFilter定义在了根名称空间，且省略了该字段，则意味着配置到网格中所有名称空间中的Envoy实例
+  - 由configPatches给出配置补丁
+  - 补丁排序
+    - 多个补丁间存在依赖关系时，其应用次序举足轻重
+	- EnvoyFilter API内置了两种应用次序
+	  - 根名称空间下的EnvoyFilter将先于名称空间下的EnvoyFilter资源
+	  - 补丁集中的多个补丁以它们定义的顺序完成打补丁操作
+	- 也可以为EnvoyFilter使用priority字段定义其优先级，可用的取值范围是0至2^32-1
+	  - 负数优先级，表示将于default EnvoyFilter之前应用
+- 补丁及其位置
+  - applyTo指定补丁在Envoy配置文件中要应用到的位置(配置段)
+  - match指定补丁在Envoy配置文件中相应的位置上要应用到的具体配置对象（Listener、RouteConfiguration或Cluster）
+  - 补丁的内容及相应的操作则由patch字段定义
+  
+  
+###Telemetry V2(可观测性)
+#Istio的可观测性
+- Metrics：Istio会为所有服务的流量和自身控制平面的各组件生成详细的指标；但究竟要收集哪些指标则由运维人员通过配置来确定
+  - Proxy-level metrics: 代理级指标，数据平面指标(envoy stats指标提供)
+    - Envoy Proxy会为出入的所有流量生成丰富的一组指标
+	- Envoy Proxy还会生成自身管理功能的详细统计信息，包括配置和运行状态等
+  - Service-level metrics: 服务指标，用于监控服务通信，数据平面指标(istio通过WASM插件动静态装载从envoy得到)
+    - 面向服务的指标主要包括服务监视的四个基本需要：延迟、流量、错误和饱和度
+  - Control plane metrics, 控制平面指标(istio自己输出)
+    - istiod还提供了一组自我监控的指标，这些指标允许监控Istio自身的行为
+- Distributed Traces
+  - Istio支持通过代理程序Envoy进行分布式跟踪
+  - 这意味着被代理的应用程序只需要转发适当的context即可，实现了"近零侵入"
+  - 支持Zipkin、Jaeger、LightStep和Datadog等后端系统
+  - 支持运维人员自定义采样频率
+- Access Log
+  - 访问日志提供了从单个workload级别监视和了解服务行为的方法
+  - 日志格式可由运维人员按需进行定义，且可把日志导出到自定义的后端，例如Fluentd等
+- Istio的可观测性功能主要发生网格中的数据平面上
+  - 因为数据平面代理istio-proxy(Envoy)位于服务间的请求路径上
+  - Istio需要通过Envoy捕获与请求处理和服务交互相关的重要指标
+  - Istio还附带了一些OOTB工具，例如Prometheus、Grafana和Kiali等
+- Istio在网格代理上启用的可观测机制，可以在部署Istio时进行配置，也可随后通过MeshConfig或者Telemetry CR定义(目前推荐Telemetry CR定义，这样才符合声明式API)
+
+#启用网格的可观测性配置
+- 配置网格的观测功能
+  - 部署网格时，通过IstioOperator配置中的MeshConfig段进行全局配置
+  - 部署网格后，通过IstioOperator配置中的MeshConfig段进行全局配置
+  - 通过Telemetry API（Telemetry CR资源）定义
+    - 在root namespace(例如istio-system)中配置、
+	- 为特定的namespace进行配置
+	- 为namespace中的特定workload进行配置
+  - 在工作负载的podTemplate资源上，通过"proxy.istio.io/config"注解进行配置
+
+Telemetry V1:对于Envoy来说是主动式指标
+Telemetry V２:对于Envoy来说是被动式指标
+服务级指标: stats、metadata exchange输出
+代理级指标：proxy本身支持
+-- istio日志收集跟收集k8s日志一样
+  
+#Istio可测性产品部署位置
+- Metrics：依赖isito提供的指标，prometheus一般部署在服务网格之内，然后通过外部高可用prometheus集群作为主联绑节点将服务网格中的prometheus进行监控
+- Tracing: 可以直接使用外部链路追踪集群
+- Log: 可以直接使用外部ELK集群
+
+  
+#代理级指标--如何开启未开启指标
+#root@k8s-master01:~/istio/istio-in-practise/Observability/Proxy-Level# istioctl manifest generate --set profile=default  #这是生成kubernetes声明式ymal文件
+root@k8s-master01:~/istio/istio-in-practise/Observability/Proxy-Level# istioctl profile dump default > default-2022.yaml  #这是生成istio配置文件
+vim default-2022.yaml
+  meshConfig:
+    accessLogFile: /dev/stdout
+    defaultConfig:
+      proxyMetadata: {}		#更新此处，完成后使用命令：istioctl install default-2022.yaml，此命令跟kubectl apply一样，并不会拆出网格，而是apply上去的
+或者
+root@k8s-master01:~/istio/istio-in-practise/Observability/Proxy-Level# cat demo-meshConfig.yaml	#这是生成istio配置文件片段，基于全局的指标开关
+apiVersion: install.istio.io/v1alpha1
+kind: istioOperator
+spec:
+  profile: demo
+  meshConfig:
+    defaultConfig:
+      proxyStatsMatcher:
+        inclusionRegexps:			#基于正则匹配的指标
+        - ".*circuit_breakers.*"
+        inclusionPrefixes:			#基于前缀匹配的指标，inclusionSuffixes是基于后缀匹配的指标
+        - "upstream_rq_retry"
+        - "upstream_cx"
+root@k8s-master01:~/istio/istio-in-practise/Observability/Proxy-Level# istioctl install -f demo-meshConfig.yaml		#进行重新应用配置
+This will install the Istio 1.12.0 demo profile with ["Istio core" "Istiod" "Ingress gateways" "Egress gateways"] components into the cluster. Proceed? (y/N) y
+✔ Istio core installed
+✔ Istiod installed
+✔ Ingress gateways installed
+✔ Egress gateways installed
+✔ Installation complete                                                                                                                                            Making this installation the default for injection and validation.
+----测试启用的代理级指标是否变多
+root@k8s-master01:~/istio/istio-in-practise/Observability/Proxy-Level# curl -sS 172.20.217.87:15020/stats/prometheus | grep 'circuit_breakers'                
+# TYPE envoy_cluster_circuit_breakers_default_cx_open gauge
+envoy_cluster_circuit_breakers_default_cx_open{cluster_name="xds-grpc"} 0
+# TYPE envoy_cluster_circuit_breakers_default_cx_pool_open gauge
+envoy_cluster_circuit_breakers_default_cx_pool_open{cluster_name="xds-grpc"} 0
+# TYPE envoy_cluster_circuit_breakers_default_rq_open gauge
+envoy_cluster_circuit_breakers_default_rq_open{cluster_name="xds-grpc"} 0
+# TYPE envoy_cluster_circuit_breakers_default_rq_pending_open gauge
+envoy_cluster_circuit_breakers_default_rq_pending_open{cluster_name="xds-grpc"} 0
+# TYPE envoy_cluster_circuit_breakers_default_rq_retry_open gauge
+envoy_cluster_circuit_breakers_default_rq_retry_open{cluster_name="xds-grpc"} 0
+# TYPE envoy_cluster_circuit_breakers_high_cx_open gauge
+envoy_cluster_circuit_breakers_high_cx_open{cluster_name="xds-grpc"} 0
+# TYPE envoy_cluster_circuit_breakers_high_cx_pool_open gauge
+envoy_cluster_circuit_breakers_high_cx_pool_open{cluster_name="xds-grpc"} 0
+# TYPE envoy_cluster_circuit_breakers_high_rq_open gauge
+envoy_cluster_circuit_breakers_high_rq_open{cluster_name="xds-grpc"} 0
+# TYPE envoy_cluster_circuit_breakers_high_rq_pending_open gauge
+envoy_cluster_circuit_breakers_high_rq_pending_open{cluster_name="xds-grpc"} 0
+# TYPE envoy_cluster_circuit_breakers_high_rq_retry_open gauge
+envoy_cluster_circuit_breakers_high_rq_retry_open{cluster_name="xds-grpc"} 0
+
+
+#服务级指标
+- Istio默认启用的服务级指标，是在首次部署Istio时由通过自动创建的EnvoyFilter资源定义的
+  - 这些EnvoyFilter资源定义在网格名称空间（例如istio-system）下
+    - 获取命令：~$ kubectl get envoyfilter -n istio-system
+  - 以envoyfilter/stats-filter-1.12资源为例
+    - 该EnvoyFilter用于配置名为envoy.wasm.stats的过滤器
+	- 各指标为自动添加一个istio前缀
+  - 三种类型的Envoy实例需要经context匹配后分别进行配置
+    - SIDECAR_OUTBOUND
+	- SIDECAR_INBOUND
+	- GATEWAY
+- 注意
+  - 出于性能的考虑，该Wasm插件是直接编译进Envoy的，而非运行于Wasm VM中
+  - 但Istio也提供独立的stats Wasm插件，或要Istio将之运行为独立插件，可在部署istio时使用如下选项进行启用
+    - --set values.telemetry.v2.prometheus.wasmEnabled=true
+	
+root@k8s-master01:~/istio/istio-in-practise/Observability/Proxy-Level# curl -s 172.20.217.77:15020/stats/prometheus | grep -o 'istio_[a-zA-Z_]*' | sort -u
+istio_agent_process_start_time_seconds
+istio_agent_process_virtual_memory_bytes
+istio_agent_process_virtual_memory_max_bytes
+istio_agent_scrapes_total
+istio_agent_startup_duration_seconds
+istio_agent_wasm_cache_entries
+istio_build
+istio_request_bytes
+istio_request_bytes_bucket
+istio_request_bytes_count
+istio_request_bytes_sum
+istio_request_duration_milliseconds
+istio_request_duration_milliseconds_bucket
+istio_request_duration_milliseconds_count
+istio_request_duration_milliseconds_sum
+istio_requests_total
+istio_response_bytes
+istio_response_bytes_bucket
+istio_response_bytes_count
+istio_response_bytes_sum
+istio_tcp_connections_closed_total
+istio_tcp_connections_opened_total
+istio_tcp_received_bytes_total
+istio_tcp_sent_bytes_total
+	
+#增加、删除服务级指标方法一，不太稳定，建议测试通过在生产使用
+root@k8s-master01:~/istio/istio-in-practise/Observability/Service-Level# cat istio-operator-new-dimesions.yaml	#新版本不好用且不稳定，建议不要用
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  profile: demo
+  values:
+    telemetry:
+      v2:
+        prometheus:
+          configOverride:
+            inboundSidecar:					#针对入向流量
+              metrics:
+                - name: requests_total		#针对metics名称
+                  dimensions:				#增加标签
+                    request_host: request.host			#request_host的标签值为request.host	
+                    request_method: request.method
+                  tags_to_remove:			#移除指定标签
+                  - request_protocol
+            outboundSidecar:				#针对出入流量
+              metrics:
+                - name: requests_total
+                  dimensions:
+                    request_host: request.host
+                    request_method: request.method
+                  tags_to_remove:
+                  - request_protocol
+            gateway:						#针对gateway
+              metrics:
+                - name: requests_total
+                  dimensions:
+                    request_host: request.host
+                    request_method: request.method
+                  tags_to_remove:
+                  - request_protocol
+注：如果单独应用此配置清单，那么会清除之前的配置(:~/istio/istio-in-practise/Observability/Proxy-Level/demo-meshConfig.yaml)，如不想清除之前的配置，应将此前的配置和本配置放在一个配置文件再进行应用
+root@k8s-master01:~/istio/istio-in-practise/Observability/Service-Level# istioctl install -f istio-operator-new-dimesions.yaml	#应用
+root@k8s-master01:~/istio/istio-in-practise/Observability/Service-Level# istioctl install --set profile=demo	#移除所有额外配置，恢复到默认配置
+
+#增加、删除服务级指标方法二之telemetry
+root@k8s-master01:~/istio/istio-in-practise/Observability/Service-Level# cat namespace-metrics.yaml
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: namespace-metrics
+  namespace: default
+spec:
+  # no selector specified, applies to all workloads in the namespace
+  metrics:
+  - providers:
+    - name: prometheus
+    overrides:
+    # match clause left off matches all istio metrics, client and server
+    - tagOverrides:
+        request_method:					#针对default整个名称空间生效，针对所有指标增加request_method标签
+          value: "request.method"		
+        request_host:	
+          value: "request.host"			#针对所有指标增加request_host标签
+root@k8s-master01:~/istio/istio-in-practise/Observability/Service-Level# cat deploy-demoapp.yaml	#针对特定workload生效
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: demoappv10
+    version: v1.0
+  name: demoappv10
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 3
+  selector:
+    matchLabels:
+      app: demoapp
+      version: v1.0
+  template:
+    metadata:
+      labels:
+        app: demoapp
+        version: v1.0
+      annotations:
+        sidecar.istio.io/extraStatTags: request_method, request_host		#针对
+    spec:
+      containers:
+      - image: ikubernetes/demoapp:v1.0
+        imagePullPolicy: IfNotPresent
+        name: demoapp
+        env:
+        - name: "PORT"
+          value: "8080"
+        ports:
+        - containerPort: 8080
+          name: web
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 50m
+---
+root@k8s-master01:~/istio/istio-in-practise/Observability/Service-Level# cat namespace-root-metrics.yaml	#针对所有网格生效
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: namespace-metrics
+  namespace: istio-system
+spec:
+  # no selector specified, applies to all workloads in the namespace
+  metrics:
+  - providers:
+    - name: prometheus
+    overrides:
+    # match clause left off matches all istio metrics, client and server
+    - tagOverrides:
+        request_method:
+          value: "request.method"
+        request_host:
+          value: "request.host"
+注：telemetry方法测试后，和上面一样，目前对服务级指标进行增加和删除难度很大，无法生效，建议使用默认指标即可
+
+#控制平面指标
+root@k8s-master01:~/istio/istio-in-practise/Observability/Service-Level# kubectl get pods -o wide -n istio-system | grep istiod
+istiod-555d47cb65-c2vc4                1/1     Running   0          9d    172.20.217.81    192.168.13.63   <none>           <none>
+root@k8s-master01:~/istio/istio-in-practise/Observability/Service-Level# curl 172.20.217.81:15014/metrics
+#注：istio metric监控，使用自带的附件部署，也就是部署自带的prometheus，然后通过自己外部的高可用prometheus联绑集群将网格内的istio prometheus服务纳入即可管理。
+
+
+#启用网格访问日志
+- 在istioOpertor中，通过MeshConfig启用
+  - accessLogFile: 访问日志的日志文件路径，例如/dev/stdout，空值表示禁用该日志
+  - accessLogFormat: 访问日志的日志格式，空值表示使用默认的日志格式
+  - accessLogEncoding: 访问日志编码格式，支持TEXT和JSON两种，默认为TEXT
+- 通过Telemetry API启用
+  - 可以实现更为精细粒度的控制，例如，仅在指定的名称空间，甚至是仅在特定的工作负责上启用
+----通过istioOperator启用日志功能
+root@k8s-master01:~/istio/istio-in-practise/Observability/logging# cat log-meshConfig.yaml
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  name: accesslog-meshdefault
+  namespace: istio-system
+spec:
+  profile: demo
+  meshConfig:
+    accessLogFile: /dev/stdout
+    accessLogEncoding: JSON
+root@k8s-master01:~/istio/istio-in-practise/Observability/logging# kubectl apply -f log-meshConfig.yaml
+----通过Telemetry启用日志功能
+root@k8s-master01:~/istio/istio-in-practise/Observability/logging# cat log.yaml		
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: mesh-default
+  namespace: istio-system
+spec:
+  accessLogging:
+  - {}
+----查看istio的配置
+root@k8s-master01:~/istio/istio-in-practise/Observability/Tracing# kubectl get istioOperator -n istio-system
+NAME                    REVISION   STATUS   AGE
+accesslog-meshdefault                       100s		#这个是我们刚刚定义的，打开日志功能并且设置格式为JSON的istioOperator
+installed-state                             9d			#这个是我们使用profile demo运行的配置，可以查看具体配置
+#注：在istio中，我们只要打开日志功能并且设置日志格式为JSON，然后就可以使用我们外部的ELK进行收集k8s节点上容器的日志文件即可(包括envoy数据平面的日志)
+
+
+#链路追踪--需要应用程序添加context(少量代码，近零侵入)
+----通过IstioOperator定义
+root@k8s-master01:~/istio/istio-in-practise/Observability/Tracing# cat istiooperator-tracing.yaml		#全局级别
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  profile: demo
+  meshConfig:
+    enableTracing: true			#开启链路追踪
+    defaultConfig:
+      tracing:
+        sampling: 100.0				#采样率为100%，繁忙时可适当减小此值
+        max_path_tag_length: 256	#路径标签最大长度
+----通过Telemetry定义
+root@k8s-master01:~/istio/istio-in-practise/Observability/logging# cat trace.yaml
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: mesh-default
+  namespace: istio-system			#网格全局级别，也可配置名称空间、指定workload级别
+spec:
+  tracing:
+  - providers:
+    - name: localtrace				#指定调用的tracing工具路径，需要事先定义，如使用skywalking需要事先定义。如不定义使用默认jaeger
+    randomSamplingPercentage: 100
+##注：profile demo默认启用Prometheus，Logging,Tracing功能，只是tracing使用的是内置的jaeger
 
 
 
+###网格安全
 
+#Istio的安全模型
+- istio网格的安全体系涉及到多个组件 
+  - 用于密钥和证书管理的证书颁发机构（CA），由istiod内置的citedal提供
+  - 由API server（istio的api）分发给各代理（Envoy）的配置，包括认证策略、授权策略及名称标识信息
+  - 各Sidecar Envoy和边缘代理(Ingress Gateway和Egress Gateway)作为PEP（Policy Enforcement Points）负责保护客户端和服务之间的通信安全
+  - Envoy程序上用于遥测和审计的扩展
+#Istio identity
+- 身份标识是通信安全领域的基础概念
+  - 安全的通信过程中，双方出于相互认证的目的而交换身份凭据
+    - 客户端：根据安全命名信息核验服务器的标识，以检测其是否获取运行目标服务的授权
+	- 服务端：根据授权策略来确定客户端可以访问哪些信息，并审核谁在什么时间访问了哪些信息
+  - Istio的身份标识模型使用一等服务标识（first-class service identity）来标识请求者的身份，它支持标识人类用户、单个工作负载或一组工作负载
+- Istio在不同的平台上可以使用的身份标识服务如下
+  - Kubernetes：Kubernetes service account
+  - GCE: GCP service account
+  - On-premises(non-Kubernetes): user account, custom service account, service name, Istio service account, or GCP service account
+- Istio兼容SPIFEE，不过，Citedal提供了比SPIRE更为强大的安全功能，包括认证、授权、审计等
+  - Istio常用的SPIFFE ID格式：spiffe://<domain>/ns/<namespace>/sa/<serviceaccount> ，例如：spiffe://cluster.local/ns/default/sa/default
 
+#身份标识和证书管理
+- 每个istio-proxy运行两个进程，1个为envoy，另一个为pilot-agent
+- Istio使用X.509证书为每个工作负载提供身份标识
+- 每个istio-proxy容器中与envoy相伴运行的pilot-agent负责同istiod协同完成私钥和证书的轮换
+- Istio提供私钥和证书的流程如下：
+  - istiod提供gRPC服务来接受证书签名请求（CSRs）
+  - 启动时，istio proxy容器中的pilot-agent会创建私钥和CSR，并将CSR及其凭据发送给istiod(cidetal)完成签名
+  - istiod上的CA负责验证CSR中携带的凭据，并在成功验证后签署CSR以生成证书
+  - 工作负载启动时，envoy通过SDS API从同一容器中的pilot-agent请求证书和私钥
+  - pilog-agent通过Envoy SDS API将私钥及从istiod上收到的证书发送给本地的envoy
+  - pilot-agent周期性地监视着工作负载证书的有效期限，以处理证书和密钥轮换
+#Istio认证机制
+- Istio沿用了Envoy所支持的认证方式，它为网格内的服务提供两种身份验证机制
+  - Peer authentication: 即service-to-service身份认证，或简称为服务认证，用以验证发起连接请求的客户端；为此，Istio支持双向TLS谁，即mTLS，以实现以下特性
+    - 为每个服务提供一个专用的可表示其角色的身份标识，以实现跨集群和跨云的互操作
+	- 安全实现service-to-service通信
+	- 提供密钥管理系统以自动完成密钥和证书生成、分发及轮替
+  - Request authentication: 也称为最终用户认证，它将发出请求的原始客户端认证为最终用户或设备
+    - Istio基于JWT验证机制启用请求级身份认证功能
+	- 支持使用自定义的身份认证服务，或任何中OIDC认证系统，例如Keyclock, Auth0, Firebase Auth等
+- Istio将身份认证策略通过Kubernetes API存储于Istio configuration storage之中
+  - istiod负责确诊每个代理保持最新状态，并在适当时提供密钥
+  - istio的认证还支持许可模式(permissive mode)
+#Istio认证架构
+- Istio基于身份认证策略来定义所使用的认证机制
+  - 身份认证策略通过API群组"security.istio.io"中的两个CR进行定义
+    - PeerAuthentication CR: 定义服务认证策略
+	- RequestAuthentication CR: 定义最终用户认证策略
+  - 认证策略保存于Istio配置存储（configuration storage）之中，并由Istio Controller负载监视
+    - configuration storage中的任何变动，都将由istiod自动转换为合适配置信息，并应用至相关各PEP以执行必要的认证机制
+	- 另外，针对JWT认证，控制平面还要将公钥信息附加至相应的配置之上；而针对mTLS认证，istiod则需要将私钥和证书配置到Pod之上
+  - Istio将认证策略相关的配置以异步方式配置到目标端点，而Envoy在收到相应配置后，新的认证机制则即刻生效
+  - 发送请求的客户端服务负责遵循必要的身份验证机制
+    - 对于Request Authentication，应用程序负责获取JWT凭据并将其附加到请求中
+	- 对于Peer Authentication, Istio会自动将两个PEP之间的所有流量升级为双向TLS
+	- 若身份验证策略禁用了mTLS模式，Istio将继续在PEP之间使用纯文本
+	- 用户也可使用DesticationRule显示禁用mTLS模式
+- 成功认证后，Istio会将相关"身份"及"凭据"转到后续的授权步骤中使用
 
+#认证策略的生效范围
+- Peer和Request两种身份验证策略都使用selector字段选定工作负载
+- 认证策略的生效范围由其所属的名称空间及使用的选择器（selector）所决定
+  - 创建于根名称空间，且未使用selector或使用了空的selector，其生效范围为网格内的所有工作负载
+  - 创建于特定名称空间，且未使用selector或使用了空的selector，其生效范围为该名称空间中的所有工作负载
+  - 创建于特定名称空间，且使用了非空的selector，其生效范围为该名称空间中的特定工作负载
+- 认证策略的生效机制
+  - Peer Authentication
+    - 网格范围的策略仅能有一个生效，名称空间级别的策略及其所属的名称空间上也仅能生效一个，同样，若存在多个匹配到某工作负载的策略时，也仅能生效一个
+	- 以上场景中，都是最旧（最早创建）的那个策略生效
+	- 生效（搜索）次序：特定工作负载的策略 -> 名称空间级的策略 -> 网格级的策略
+  - Request Authentication
+    - Request认证中多个策略会组合生效，这不同于Peer认证策略中的"用旧废新"
+	- 强烈建议在网格和名称空间级别各自最多定义一个策略
+
+#Peer Authentication Policy使用要点
+- Peer Authentication Policy负责为工作负载指定其作为服务器端时实施TLS通信的方式，它支持如下模式
+  - PERMISSIVE：工作负载支持mTLS流量和纯文本（明文）流量，通常仅应该于将应用迁移至网格过程中的过渡期间使用
+  - STRICT: 工作负载仅支持mTLS流量
+  - DISABLE: 禁用mTLS
+  - UNSET: 从上级继承认证策略的设定
+- 另外，在使用了非空selector（即特定于某工作负载）的Peer Authentication Policy上，还可以为不同的端口指定不同的mTLS设定
+注1：VirtualService和DestinationRule是为客户端定义如何访问上游服务的
+注2：服务间认证是为上游服务定义TLS的，而为客户端定义TLS证书是定义在DestinationRule的
+
+#DestinationRule CR中的mTLS
+- Client TLS Settings
+  - mode: 要使用的TLS模式，该字段的值决定了其它哪些字段是为生效字段
+  - clientCertificate: 客户端证书，TLS模式为MUTUAL时必须配置该字段，而ISTIO_MUTUAL则要求该字段必须为空
+  - privateKey: 客户端私钥，要求同上
+  - caCertificates: 验证服务端证书时使用的CA证书，省略时则不校验服务端证书；ISTIO_MUTUAL则要求该字段必须为空
+  - credentialName: 含有客户端私钥、客户端证书和CA证书的Secret资源名称，仅目前适用于Gateway Envoy
+  - subjectAltNames: 证书中的subject名称的可替换名称列表
+  - SNI: TLS handshake中要使用的SNI
+  - insecureSkipVerify: 是否跳过验证服务端证书签名的SAN的步骤
+- 客户端可用的TLS模式
+  - DISABLE: 禁止同上游端点创建TLS连接
+  - SIMPLE：向上游发起一个TLS连接（单向验证服务端的证书）
+  - MUTUAL: 同上游建立双向认证的TLS连接，向上游提供客户端证书由clientCertificate字段指定
+  - ISTIO_MUTIAL: 同上游建立双向认证的TLS连接，但会使用istio自动生成的证书，因此，该模式要求ClientTLSSettings字段中嵌套其它字段统统使用空值
+  
+#DestinationRule上的TLS客户端与PeerAuthentication上的TLS服务端的组合要点：
+- PeerAuthentication使用PERMISSIVE时，DestinationRule可以使用任意模式
+- PeerAuthentication使用STRICT时，DestinationRule可以使用MUTUAL或ISTIO_MUTUAL模式
+- PeerAuthentication使用DISABLE时，DestinationRule也需要使用DISABLE模式
+注：主要着手服务端PeerAuthentication
+注：istio安装完成后默认启用了mTLS，模式为PERMISSIVE
+
+#PeerAuthentication及TLS示例
+--未default名称空间启用mTLS,模式为PERMISSIVE
+root@k8s-master01:~/istio/istio-in-practise/Security/01-PeerAuthentication-Policy-Basics# cat 01-namespace-default-peerauthn.yaml
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: default
+spec:
+  mtls:
+    mode: PERMISSIVE		#启用mTLS的PERMISSIVE模式，istio安装好后默认就是如此
+---
+root@k8s-master01:~/istio/istio-in-practise/Security/01-PeerAuthentication-Policy-Basics# kubectl apply -f 01-namespace-default-peerauthn.yaml
+
+--运行client进行测试
+--网格内client测试抓包看是否是TLS
+root@k8s-master01:~/istio/istio-in-practise/Security/01-PeerAuthentication-Policy-Basics# kubectl get pods -o wide | grep client	#网格内client信息
+client                        2/2     Running   0          9d    172.20.217.77    192.168.13.63   <none>           <none>
+root@client # while true;do curl demoapp:8080;sleep 0.$RANDOM;done
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-5c497c6f7c-fgb4n, ServerIP: 172.20.217.72!
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-5c497c6f7c-l9pnf, ServerIP: 172.20.135.157!
+--pod_IP: 172.20.217.77 宿主机：192.168.13.63
+[root@k8s-node04 ~]# route -n | grep 172.20.217.77
+172.20.217.77   0.0.0.0         255.255.255.255 UH    0      0        0 calia7a3e029a7b
+[root@k8s-node04 ~]# tcpdump -i calia7a3e029a7b -nn -X port 8080
+22:47:05.879904 IP 172.20.217.72.8080 > 172.20.217.77.50380: Flags [P.], seq 1161:2321, ack 2140, win 501, options [nop,nop,TS val 869362894 ecr 209914126], length 1160: HTTP
+        0x0000:  4500 04bc 27f6 4000 3f06 0487 ac14 d948  E...'.@.?......H		#从这信息就可以看出来是加密的
+        0x0010:  ac14 d94d 1f90 c4cc e13d df5c 7042 60b9  ...M.....=.\pB`.
+        0x0020:  8018 01f5 0f6e 0000 0101 080a 33d1 6cce  .....n......3.l.
+        0x0030:  0c83 090e 1703 0304 8300 0000 0000 0000  ................
+        0x0040:  06a0 1a40 39b4 4b56 1671 1aa3 3442 3dd0  ...@9.KV.q..4B=.
+        0x0050:  10cf 42da 13a0 efb9 d11f 192a b9e3 42d7  ..B........*..B.
+        0x0060:  43af d801 13f9 99ee 14d5 9abe c7f6 ed99  C...............
+        0x0070:  08ef d2e5 e24b a468 8a3b 60b6 42af 408b  .....K.h.;`.B.@.
+        0x0080:  e4ec 7761 76f7 821b 0813 19d9 0f02 0b45  ..wav..........E
+        0x0090:  3c19 0280 cbfb 0495 7c59 71fd e525 5168  <.......|Yq..%Qh
+        0x00a0:  0514 9e3b 6b0b 3091 5b72 61c1 8f06 5656  ...;k.0.[ra...VV
+        0x00b0:  8c70 d8ab f46a 184b 3341 b911 b56c 2aea  .p...j.K3A...l*.
+        0x00c0:  2ef9 8885 da72 6aea 7fbe 6002 4ead b361  .....rj...`.N..a
+        0x00d0:  f1a3 39cf d56f 3dc4 8554 dc3f 0c2e 5c94  ..9..o=..T.?..\.
+        0x00e0:  a88c d680 f88f 34e4 875f c306 e5f3 9210  ......4.._......
+        0x00f0:  3b71 39cc 9d1e d4b8 3814 da70 8398 7ad6  ;q9.....8..p..z.
+        0x0100:  b235 2c3a 0b16 677d 3fa6 f691 ad1e bbf5  .5,:..g}?.......
+        0x0110:  78ae 131d 2976 c507 f555 7ef4 65ff 0b17  x...)v...U~.e...
+        0x0120:  3389 251d cd65 2eed 7124 6b47 dff7 9769  3.%..e..q$kG...i
+        0x0130:  3fef 4e63 0246 c95d 5748 0c99 f4cf e328  ?.Nc.F.]WH.....(
+        0x0140:  137b 1a15 2053 55a5 84b7 7e95 b3e8 1101  .{...SU...~.....
+        0x0150:  d01f b9b6 230f 0110 bd9b 74ac 6294 03f7  ....#.....t.b...
+        0x0160:  7202 240f f04b b2d6 48fa 28be da2c d859  r.$..K..H.(..,.Y
+        0x0170:  9c02 fe9f f7ef bb62 df6e 69d8 e235 6ea4  .......b.ni..5n.
+        0x0180:  65df 0958 4e40 df65 c1bc ee48 0e42 ed68  e..XN@.e...H.B.h
+        0x0190:  5141 6408 3607 4fc5 0cfc ee89 8fc4 5672  QAd.6.O.......Vr
+        0x01a0:  04f5 4b2e 5565 10aa 50a2 1d71 a87d 80dc  ..K.Ue..P..q.}..
+        0x01b0:  eaf6 307c 73e7 7e4f e240 7f6d 9503 9b0c  ..0|s.~O.@.m....
+        0x01c0:  a4cd 55d2 2fd9 8e52 59e0 4a5f 0d7b 2fc0  ..U./..RY.J_.{/.
+        0x01d0:  6f38 70a6 621f acbe 14a1 5c9b 6479 aea1  o8p.b.....\.dy..
+
+--网格外client测试抓包看是否是明文
+root@k8s-master01:~# kubectl run test-client --image=ikubernetes/admin-box:v1.2 -it --restart=Always -n test --command /bin/sh	#新建网格外cleint
+root@k8s-master01:~/istio/istio-in-practise/Security/01-PeerAuthentication-Policy-Basics# kubectl get pods -o wide -n test | grep client #网格外client信息
+test-client   1/1     Running   0          109s   172.20.217.92   192.168.13.63   <none>           <none>
+[root@k8s-node04 ~]# route -n | grep 172.20.217.92
+172.20.217.92   0.0.0.0         255.255.255.255 UH    0      0        0 califaa96795e30
+[root@k8s-node04 ~]# tcpdump -i califaa96795e30 -nn -X port 8080
+root@test-client # curl demoapp.default:8080
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-5c497c6f7c-fgb4n, ServerIP: 172.20.217.72!
+22:49:13.342866 IP 10.68.120.190.8080 > 172.20.217.92.37266: Flags [P.], seq 1:359, ack 85, win 509, options [nop,nop,TS val 451620832 ecr 3207492797], length 358: HTTP: HTTP/1.1 200 OK
+        0x0000:  4500 019a 508a 4000 3f06 e160 0a44 78be  E...P.@.?..`.Dx.
+        0x0010:  ac14 d95c 1f90 9192 df58 246e ba66 1979  ...\.....X$n.f.y
+        0x0020:  8018 01fd 0a00 0000 0101 080a 1aeb 2fe0  ............../.
+        0x0030:  bf2e 74bd 4854 5450 2f31 2e31 2032 3030  ..t.HTTP/1.1.200
+        0x0040:  204f 4b0d 0a63 6f6e 7465 6e74 2d74 7970  .OK..content-typ
+        0x0050:  653a 2074 6578 742f 6874 6d6c 3b20 6368  e:.text/html;.ch
+        0x0060:  6172 7365 743d 7574 662d 380d 0a63 6f6e  arset=utf-8..con
+        0x0070:  7465 6e74 2d6c 656e 6774 683a 2031 3135  tent-length:.115
+        0x0080:  0d0a 7365 7276 6572 3a20 6973 7469 6f2d  ..server:.istio-
+        0x0090:  656e 766f 790d 0a64 6174 653a 204d 6f6e  envoy..date:.Mon
+        0x00a0:  2c20 3032 204d 6179 2032 3032 3220 3134  ,.02.May.2022.14
+        0x00b0:  3a34 393a 3133 2047 4d54 0d0a 782d 656e  :49:13.GMT..x-en
+        0x00c0:  766f 792d 7570 7374 7265 616d 2d73 6572  voy-upstream-ser
+        0x00d0:  7669 6365 2d74 696d 653a 2032 0d0a 782d  vice-time:.2..x-
+        0x00e0:  656e 766f 792d 6465 636f 7261 746f 722d  envoy-decorator-
+        0x00f0:  6f70 6572 6174 696f 6e3a 2064 656d 6f61  operation:.demoa
+        0x0100:  7070 2e64 6566 6175 6c74 2e73 7663 2e63  pp.default.svc.c
+        0x0110:  6c75 7374 6572 2e6c 6f63 616c 3a38 3038  luster.local:808
+        0x0120:  302f 2a0d 0a0d 0a69 4b75 6265 726e 6574  0/*....iKubernet
+        0x0130:  6573 2064 656d 6f61 7070 2076 312e 3020  es.demoapp.v1.0.
+        0x0140:  2121 2043 6c69 656e 7449 503a 2031 3237  !!.ClientIP:.127
+        0x0150:  2e30 2e30 2e36 2c20 5365 7276 6572 4e61  .0.0.6,.ServerNa
+        0x0160:  6d65 3a20 6465 6d6f 6170 7076 3130 2d35  me:.demoappv10-5
+        0x0170:  6334 3937 6336 6637 632d 6667 6234 6e2c  c497c6f7c-fgb4n,
+        0x0180:  2053 6572 7665 7249 503a 2031 3732 2e32  .ServerIP:.172.2		#可以看出来是明文通信，IP地址信息清晰可见
+        0x0190:  302e 3231 372e 3732 210a                 0.217.72!.
+
+----对default名称空间下匹配的标签pod启用严格mTLS通信
+root@k8s-master01:~/istio/istio-in-practise/Security/01-PeerAuthentication-Policy-Basics# cat 02-demoapp-peerauthn.yaml
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: demoapp
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: demoapp
+  mtls:
+    mode: STRICT
+----针对访问demoapp的客户端启用ISTIO_MUTUAL mTLS,如果PeerAuthentication定义服务端是PERMISSIVE，那么网格之外的client将不会受此影响而使用的是明文通信
+root@k8s-master01:~/istio/istio-in-practise/Security/01-PeerAuthentication-Policy-Basics# cat 03-destinationrule-demoapp-mtls.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: demoapp
+spec:
+  host: demoapp
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_CONN
+    tls:
+      mode: ISTIO_MUTUAL
+  subsets:
+  - name: v10
+    labels:
+      version: v1.0
+  - name: v11
+    labels:
+      version: v1.1
+
+----针对在default名称空间下特定标签的pod不进行配置mTLS,则从根名称空间(istio-system)继承使用mTLS配置
+root@k8s-master01:~/istio/istio-in-practise/Security/02-PeerAuthentication-Disable# cat 02-demoapp-peerauthn.yaml
+---
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: demoapp
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: demoapp
+  mtls:
+    mode: UNSET
+----针对访问demoapp的客户端禁用mTLS
+root@k8s-master01:~/istio/istio-in-practise/Security/02-PeerAuthentication-Disable# cat 03-destinationrule-demoapp-mtls.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: demoapp
+spec:
+  host: demoapp
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_CONN
+    tls:
+      mode: DISABLE
+  subsets:
+  - name: v10
+    labels:
+      version: v1.0
+  - name: v11
+    labels:
+      version: v1.1
+
+###Secure Gateway--IngressGateway开启TLS认证
+#为kiali开启TLS
+----生成测试使用的证书
+root@k8s-master01:/tmp# mkdir certs && cd certs
+root@k8s-master01:/tmp/certs# openssl req -x509 -sha256 -nodes -days 3650 -newkey rsa:2048 -subj '/O=MageEdu Inc./CN=magedu.com' -keyout magedu.com.key -out magedu.com.crt			#生成CA公私钥证书
+root@k8s-master01:/tmp/certs# openssl req -out kiali.magedu.com.csr -newkey rsa:2048 -nodes -keyout kiali.magedu.com.key -subj '/CN=kiali.magedu.com/O=kiali organization'			#生成kiali.magedu.com.csr
+root@k8s-master01:/tmp/certs# openssl x509 -req -days 3650 -CA magedu.com.crt -CAkey magedu.com.key -set_serial 0 -in kiali.magedu.com.csr -out kiali.magedu.com.crt
+注：如果多次制作证书，其Serial number要递增
+
+----生成相关的Secret资源
+root@k8s-master01:/tmp/certs# kubectl create secret tls kiali-credential --key=kiali.magedu.com.key --cert=kiali.magedu.com.crt -n istio-system
+
+----配置Gateway
+root@k8s-master01:~/istio/istio-in-practise/Security/03-Ingress-Gateway-TLS/kiali# cat kiali-gateway.yaml
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: kiali-gateway
+  namespace: istio-system
+spec:
+  selector:
+    app: istio-ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "kiali.magedu.com"
+    tls:
+      httpsRedirect: true		#启用重写向到https
+  - port:
+      number: 443				#https端口为443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE				#tls模式为SIMPLE，就是单向TLS
+      credentialName: kiali-credential		#之前定义的k8s secret资源
+    hosts:
+    - "kiali.magedu.com"		#https主机名
+root@k8s-master01:~/istio/istio-in-practise/Security/03-Ingress-Gateway-TLS/kiali# kubectl apply -f kiali-gateway.yaml
+
+----配置virtualservice
+root@k8s-master01:~/istio/istio-in-practise/Security/03-Ingress-Gateway-TLS/kiali# cat kiali-virtualservice.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: kiali-virtualservice
+  namespace: istio-system
+spec:
+  hosts:
+  - "kiali.magedu.com"
+  gateways:
+  - kiali-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        host: kiali
+        port:
+          number: 20001
+---
+root@k8s-master01:~/istio/istio-in-practise/Security/03-Ingress-Gateway-TLS/kiali# kubectl apply -f kiali-virtualservice.yaml
 
 
 
