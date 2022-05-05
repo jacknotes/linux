@@ -4012,7 +4012,7 @@ spec:
 注：主要着手服务端PeerAuthentication
 注：istio安装完成后默认启用了mTLS，模式为PERMISSIVE
 
-#PeerAuthentication及TLS示例
+##PeerAuthentication及TLS示例
 --未default名称空间启用mTLS,模式为PERMISSIVE
 root@k8s-master01:~/istio/istio-in-practise/Security/01-PeerAuthentication-Policy-Basics# cat 01-namespace-default-peerauthn.yaml
 ---
@@ -4243,6 +4243,930 @@ spec:
           number: 20001
 ---
 root@k8s-master01:~/istio/istio-in-practise/Security/03-Ingress-Gateway-TLS/kiali# kubectl apply -f kiali-virtualservice.yaml
+
+
+
+###最终用户认证
+#Request Authentication使用要点
+- Request Authentication Policy会验证JSON Web Token（JWT）中几个关键字段的值 
+  - 请求中token所处的位置
+  - Issuer或者请求
+  - 公共的JWKS
+- Istio检查token的方法
+  - 若请求报文针对request authentication policy中的rules提供了token, Istio将会核验这些token，并会拒绝无效的token
+  - 但Istio默认会接受那些并未提供token的请求；若需要拒绝该类请求，则要通过相应的"授权"规则完成，由这些类规则负责完成针对特定操作的限制 
+- Requesst Authentication Policy的生效机制
+  - 每个JWT均使用了唯一的location时，Requesst Authentication Policy上甚至可以指定多个JWT
+  - 多个policy匹配到了同一个workload时，Istio会将这多个policy上的规则进行合并
+  - 目前，请求报文上尚不允许附带一个以上的JWT
+注：没有定义授权策略时，已认证身份相当于授权
+
+#RequestAuthentication实战
+- 由Keycloak提供身份管理和访问管理
+  - 著名的开源身份和访问管理）Identity and Access Management，简称为IAM）解决方案
+  - 支持基于OAuth 2.0标准的OpenID Connect协议对用户进行身份验证
+  - 应用程序可通过OAuth 2.0将身份验证委托给外部系统（例如Keycloak），从而实现SSO
+  - 支持集成不同的身份认证服务，例如Github, Google和Facebook等
+  - 支持用户联绑功能，可以通过LDAP或Kerberos来导入用户
+- 客户端访问服务的请求将由Envoy代理拦截后交由Keycloak进行认证
+  - 应用程序需要在访问目标服务时，自行通过OAuth 2.0协议与Keycloak进行交互，并在请求到JWT之后携带JWT向服务端发起请求
+  - Envoy自v1.19版开始已然可通过http.auth2过滤器直接支持与IdPs(Identity Providers)交互，因而也无须再由应用程序实现该功能
+    - 但，目前Istio尚未提供该功能的CRD
+	- 于是，我们需要手动来测试该功能
+	
+#部署keycloak
+DocumentUrl: https://www.keycloak.org/getting-started/getting-started-kube
+root@k8s-master01:~/istio/istio-in-practise/Security/04-RequestAuthn-and-AuthzPolicy# curl -sSLO https://raw.githubusercontent.com/keycloak/keycloak-quickstarts/latest/kubernetes-examples/keycloak.yaml
+root@k8s-master01:~/istio/istio-in-practise/Security/04-RequestAuthn-and-AuthzPolicy# cat keycloak.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: keycloak
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: keycloak
+  labels:
+    app: keycloak
+spec:
+  ports:
+  - name: http
+    port: 8090				#改变service端口，与现有端口冲突
+    targetPort: 8080
+  selector:
+    app: keycloak
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: keycloak
+  labels:
+    app: keycloak
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+    spec:
+      containers:
+      - name: keycloak
+        image: quay.io/keycloak/keycloak:18.0.0
+        args: ["start-dev"]
+        env:
+        - name: KEYCLOAK_ADMIN
+          value: "admin"
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          value: "admin"
+        - name: KC_PROXY
+          value: "edge"
+        ports:
+        - name: http
+          containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /realms/master
+            port: 8080
+root@k8s-master01:~/istio/istio-in-practise/Security/04-RequestAuthn-and-AuthzPolicy# kubectl apply -f keycloak.yaml
+root@k8s-master01:~/istio/istio-in-practise/Security/04-RequestAuthn-and-AuthzPolicy# kubectl get all -n keycloak
+NAME                            READY   STATUS              RESTARTS   AGE
+pod/keycloak-64db9874f7-fjjck   0/1     ContainerCreating   0          9s
+
+NAME               TYPE           CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+service/keycloak   LoadBalancer   10.68.210.217   <pending>     8080:38775/TCP   11s
+
+NAME                       READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/keycloak   0/1     1            0           10s
+
+NAME                                  DESIRED   CURRENT   READY   AGE
+replicaset.apps/keycloak-64db9874f7   1         1         0       9s
+
+----编辑主机名，并配置LoadBalanceIP来提供外部访问
+root@k8s-master01:~/istio/istio-in-practise/Security/04-RequestAuthn-and-AuthzPolicy# vim /etc/hosts
+172.168.2.28 kiali.magedu.com keycloak.magedu.com auth.magedu.com keycloak.keycloak.svc.homsom.local
+
+root@k8s-master01:~/istio/istio-in-practise/Security/04-RequestAuthn-and-AuthzPolicy# kubectl edit svc keycloak -n keycloak
+  externalIPs:
+  - 172.168.2.28
+root@k8s-master01:~/istio/istio-in-practise/Security/04-RequestAuthn-and-AuthzPolicy# kubectl get svc -n keycloak
+NAME       TYPE           CLUSTER-IP      EXTERNAL-IP    PORT(S)          AGE
+keycloak   LoadBalancer   10.68.210.217   172.168.2.28   8080:38775/TCP   9m40s
+root@k8s-master01:~/istio/istio-in-practise/Security/04-RequestAuthn-and-AuthzPolicy# ping keycloak.magedu.com
+
+----访问keycloak，默认用户和密码都为admin
+http://keycloak.magedu.com:8090/
+配置为中文，Realm Settings -> Themes -> Internationalization(Enabled) -> Default Local(ZH-CN)
+
+#keycloak概念
+- 在Keycloak中，Realm是专门用来管理项目的工作区，各Realm之间的资源彼此隔离。Realm可分为两类：
+  - 一是master Realm, 由Keycloak刚启动时自动创建，用于管理admin帐号以及创建其他的Realm。
+  - 第二类称为other realm,由master realm中的admin用户创建
+  - 我们通常应该在专门创建的other realm中为指定的项目管理用户、凭据、角色和组等
+- 在Keycloak中，Client表示允许向Keycloak发起身份验证的实体，一般是指那些希望使用Keycloak来为其提供SSO的应用程序或服务；例如，网格内的认证，发起认证请求的客户端就是Sidecar Envoy
+
+1. realm中添加新的istio领域，用于将istio的认证环境同其它应用进行隔离
+名称：istio
+配置固定Frontend URL：http://keycloak.keycloak.svc.homsom.local:8090
+服务路径：访问realm的入口，http://keycloak.magedu.com:8090/realms/istio/.well-known/openid-configuration
+
+2. 查看keycloak的openid configuration
+root@k8s-master01:~/istio/istio-in-practise/Security/04-RequestAuthn-and-AuthzPolicy# curl -s http://keycloak.magedu.com:8090/realms/istio/.well-known/openid-configuration | jq .
+{
+  "issuer": "http://keycloak.magedu.com:8090/realms/istio",
+  "authorization_endpoint": "http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/auth",
+  "token_endpoint": "http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/token",
+  "introspection_endpoint": "http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/token/introspect",
+  "userinfo_endpoint": "http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/userinfo",
+  "end_session_endpoint": "http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/logout",
+  "frontchannel_logout_session_supported": true,
+  "frontchannel_logout_supported": true,
+  "jwks_uri": "http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/certs",
+  "check_session_iframe": "http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/login-status-iframe.html",
+  "grant_types_supported": [
+    "authorization_code",
+    "implicit",
+    "refresh_token",
+    "password",
+    "client_credentials",
+    "urn:ietf:params:oauth:grant-type:device_code",
+    "urn:openid:params:grant-type:ciba"
+  ],
+  "acr_values_supported": [
+    "0",
+    "1"
+  ],
+  "response_types_supported": [
+    "code",
+    "none",
+    "id_token",
+    "token",
+    "id_token token",
+    "code id_token",
+    "code token",
+    "code id_token token"
+  ],
+  "subject_types_supported": [
+    "public",
+    "pairwise"
+  ],
+  "id_token_signing_alg_values_supported": [
+    "PS384",
+    "ES384",
+    "RS384",
+    "HS256",
+    "HS512",
+    "ES256",
+    "RS256",
+    "HS384",
+    "ES512",
+    "PS256",
+    "PS512",
+    "RS512"
+  ],
+  "id_token_encryption_alg_values_supported": [
+    "RSA-OAEP",
+    "RSA-OAEP-256",
+    "RSA1_5"
+  ],
+  "id_token_encryption_enc_values_supported": [
+    "A256GCM",
+    "A192GCM",
+    "A128GCM",
+    "A128CBC-HS256",
+    "A192CBC-HS384",
+    "A256CBC-HS512"
+  ],
+  "userinfo_signing_alg_values_supported": [
+    "PS384",
+    "ES384",
+    "RS384",
+    "HS256",
+    "HS512",
+    "ES256",
+    "RS256",
+    "HS384",
+    "ES512",
+    "PS256",
+    "PS512",
+    "RS512",
+    "none"
+  ],
+  "userinfo_encryption_alg_values_supported": [
+    "RSA-OAEP",
+    "RSA-OAEP-256",
+    "RSA1_5"
+  ],
+  "userinfo_encryption_enc_values_supported": [
+    "A256GCM",
+    "A192GCM",
+    "A128GCM",
+    "A128CBC-HS256",
+    "A192CBC-HS384",
+    "A256CBC-HS512"
+  ],
+  "request_object_signing_alg_values_supported": [
+    "PS384",
+    "ES384",
+    "RS384",
+    "HS256",
+    "HS512",
+    "ES256",
+    "RS256",
+    "HS384",
+    "ES512",
+    "PS256",
+    "PS512",
+    "RS512",
+    "none"
+  ],
+  "request_object_encryption_alg_values_supported": [
+    "RSA-OAEP",
+    "RSA-OAEP-256",
+    "RSA1_5"
+  ],
+  "request_object_encryption_enc_values_supported": [
+    "A256GCM",
+    "A192GCM",
+    "A128GCM",
+    "A128CBC-HS256",
+    "A192CBC-HS384",
+    "A256CBC-HS512"
+  ],
+  "response_modes_supported": [
+    "query",
+    "fragment",
+    "form_post",
+    "query.jwt",
+    "fragment.jwt",
+    "form_post.jwt",
+    "jwt"
+  ],
+  "registration_endpoint": "http://keycloak.magedu.com:8090/realms/istio/clients-registrations/openid-connect",
+  "token_endpoint_auth_methods_supported": [
+    "private_key_jwt",
+    "client_secret_basic",
+    "client_secret_post",
+    "tls_client_auth",
+    "client_secret_jwt"
+  ],
+  "token_endpoint_auth_signing_alg_values_supported": [
+    "PS384",
+    "ES384",
+    "RS384",
+    "HS256",
+    "HS512",
+    "ES256",
+    "RS256",
+    "HS384",
+    "ES512",
+    "PS256",
+    "PS512",
+    "RS512"
+  ],
+  "introspection_endpoint_auth_methods_supported": [
+    "private_key_jwt",
+    "client_secret_basic",
+    "client_secret_post",
+    "tls_client_auth",
+    "client_secret_jwt"
+  ],
+  "introspection_endpoint_auth_signing_alg_values_supported": [
+    "PS384",
+    "ES384",
+    "RS384",
+    "HS256",
+    "HS512",
+    "ES256",
+    "RS256",
+    "HS384",
+    "ES512",
+    "PS256",
+    "PS512",
+    "RS512"
+  ],
+  "authorization_signing_alg_values_supported": [
+    "PS384",
+    "ES384",
+    "RS384",
+    "HS256",
+    "HS512",
+    "ES256",
+    "RS256",
+    "HS384",
+    "ES512",
+    "PS256",
+    "PS512",
+    "RS512"
+  ],
+  "authorization_encryption_alg_values_supported": [
+    "RSA-OAEP",
+    "RSA-OAEP-256",
+    "RSA1_5"
+  ],
+  "authorization_encryption_enc_values_supported": [
+    "A256GCM",
+    "A192GCM",
+    "A128GCM",
+    "A128CBC-HS256",
+    "A192CBC-HS384",
+    "A256CBC-HS512"
+  ],
+  "claims_supported": [
+    "aud",
+    "sub",
+    "iss",
+    "auth_time",
+    "name",
+    "given_name",
+    "family_name",
+    "preferred_username",
+    "email",
+    "acr"
+  ],
+  "claim_types_supported": [
+    "normal"
+  ],
+  "claims_parameter_supported": true,
+  "scopes_supported": [
+    "openid",
+    "offline_access",
+    "phone",
+    "microprofile-jwt",
+    "roles",
+    "email",
+    "acr",
+    "web-origins",
+    "address",
+    "profile"
+  ],
+  "request_parameter_supported": true,
+  "request_uri_parameter_supported": true,
+  "require_request_uri_registration": true,
+  "code_challenge_methods_supported": [
+    "plain",
+    "S256"
+  ],
+  "tls_client_certificate_bound_access_tokens": true,
+  "revocation_endpoint": "http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/revoke",
+  "revocation_endpoint_auth_methods_supported": [
+    "private_key_jwt",
+    "client_secret_basic",
+    "client_secret_post",
+    "tls_client_auth",
+    "client_secret_jwt"
+  ],
+  "revocation_endpoint_auth_signing_alg_values_supported": [
+    "PS384",
+    "ES384",
+    "RS384",
+    "HS256",
+    "HS512",
+    "ES256",
+    "RS256",
+    "HS384",
+    "ES512",
+    "PS256",
+    "PS512",
+    "RS512"
+  ],
+  "backchannel_logout_supported": true,
+  "backchannel_logout_session_supported": true,
+  "device_authorization_endpoint": "http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/auth/device",
+  "backchannel_token_delivery_modes_supported": [
+    "poll",
+    "ping"
+  ],
+  "backchannel_authentication_endpoint": "http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/ext/ciba/auth",
+  "backchannel_authentication_request_signing_alg_values_supported": [
+    "PS384",
+    "ES384",
+    "RS384",
+    "ES256",
+    "RS256",
+    "ES512",
+    "PS256",
+    "PS512",
+    "RS512"
+  ],
+  "require_pushed_authorization_requests": false,
+  "pushed_authorization_request_endpoint": "http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/ext/par/request",
+  "mtls_endpoint_aliases": {
+    "token_endpoint": "http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/token",
+    "revocation_endpoint": "http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/revoke",
+    "introspection_endpoint": "http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/token/introspect",
+    "device_authorization_endpoint": "http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/auth/device",
+    "registration_endpoint": "http://keycloak.magedu.com:8090/realms/istio/clients-registrations/openid-connect",
+    "userinfo_endpoint": "http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/userinfo",
+    "pushed_authorization_request_endpoint": "http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/ext/par/request",
+    "backchannel_authentication_endpoint": "http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/ext/ciba/auth"
+  }
+}
+
+
+3. 在istio realm中创建客户端
+客户端ID: istio-client
+客户端协议：openid-connect
+
+4. 创建用户并设置密码
+用户名：tom
+密码：magedu.com
+
+5. 访问token接口获取token
+URL: "token_endpoint":"http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/token"
+root@k8s-master01:~# curl -s -d 'username=tom&password=magedu.com&grant_type=password&client_id=istio-client' http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/token
+{"access_token":"eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJ2Z2tTci10MlJseFNuU3hDS2JUQkZXbzF3Szh6a2VOcFd4OTYwd2J5Y2h3In0.eyJleHAiOjE2NTE1NzI0MjAsImlhdCI6MTY1MTU3MjEyMCwianRpIjoiZDE2YzI1NWUtNzE4MC00YzZkLTkxZmUtN2NkNTJiOWNkNjY5IiwiaXNzIjoiaHR0cDovL2tleWNsb2FrLm1hZ2VkdS5jb206ODA5MC9yZWFsbXMvaXN0aW8iLCJhdWQiOiJhY2NvdW50Iiwic3ViIjoiNTIxMzhkMmEtZDIyOC00ODA4LWJlOTctYTVlODdhYWFkNTU3IiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiaXN0aW8tY2xpZW50Iiwic2Vzc2lvbl9zdGF0ZSI6IjlmNjhkMDMyLTliNzUtNGQ3MS05Zjc5LTU3ZGZkYWNiMThiYiIsImFjciI6IjEiLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsib2ZmbGluZV9hY2Nlc3MiLCJ1bWFfYXV0aG9yaXphdGlvbiIsImRlZmF1bHQtcm9sZXMtaXN0aW8iXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6ImVtYWlsIHByb2ZpbGUiLCJzaWQiOiI5ZjY4ZDAzMi05Yjc1LTRkNzEtOWY3OS01N2RmZGFjYjE4YmIiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsIm5hbWUiOiJ0b20gbWFnZWR1IiwicHJlZmVycmVkX3VzZXJuYW1lIjoidG9tIiwiZ2l2ZW5fbmFtZSI6InRvbSIsImZhbWlseV9uYW1lIjoibWFnZWR1IiwiZW1haWwiOiJ0b21AbWFnZWR1LmNvbSJ9.P749qkxXvxFuKsyGQK_uVYOlqfPoHIDo_vBDrrRsjOK3H1zq2yIQ4uP2bI55jDX7QhS1WU6WZSS7NlrsEV9v6Q7vvkf-Lb6lKg2KhYCUzw2UJSFJQSL-ipdAZMj_NNSQ4IZGwHRlexo3i8JasCgQUQRE49xyJ6cAWMjfIV_XUKZ3AT0c7IOZ7jk4kFV1B_xVfCyx-Btj8Cic29N8Hoy0SAhZz3hQpd3CRwPOIWKf7Qxp2tatoVl5x7OEFLqfE3Y9rR954f9ZtVo3JQSv66cUJcyF-CUBHcEcnmbl-KSZbXy3rovL0biZrG6rq3KK36nLrEc8Pbw1tWvDNBrxhsfzYQ","expires_in":300,"refresh_expires_in":1800,"refresh_token":"eyJhbGciOiJIUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICIwNzllMGEzMS1kN2EyLTRiZDMtODcyNy0xOWM2YzE0ODA1ZjgifQ.eyJleHAiOjE2NTE1NzM5MjAsImlhdCI6MTY1MTU3MjEyMCwianRpIjoiOTBiNzQ3ZTMtZmE0Yi00NzI2LWEyYTUtMTg5ZTA4ZDI4MjZlIiwiaXNzIjoiaHR0cDovL2tleWNsb2FrLm1hZ2VkdS5jb206ODA5MC9yZWFsbXMvaXN0aW8iLCJhdWQiOiJodHRwOi8va2V5Y2xvYWsubWFnZWR1LmNvbTo4MDkwL3JlYWxtcy9pc3RpbyIsInN1YiI6IjUyMTM4ZDJhLWQyMjgtNDgwOC1iZTk3LWE1ZTg3YWFhZDU1NyIsInR5cCI6IlJlZnJlc2giLCJhenAiOiJpc3Rpby1jbGllbnQiLCJzZXNzaW9uX3N0YXRlIjoiOWY2OGQwMzItOWI3NS00ZDcxLTlmNzktNTdkZmRhY2IxOGJiIiwic2NvcGUiOiJlbWFpbCBwcm9maWxlIiwic2lkIjoiOWY2OGQwMzItOWI3NS00ZDcxLTlmNzktNTdkZmRhY2IxOGJiIn0.k1LnFekH3F-DVXICdptP-y7M1dhLGOFdtG3MGB3w8Hw","token_type":"Bearer","not-before-policy":0,"session_state":"9f68d032-9b75-4d71-9f79-57dfdacb18bb","scope":"email profile"}
+root@k8s-master01:~# curl -s -d 'username=tom&password=magedu.com&grant_type=password&client_id=istio-client' http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/token | jq .access_token		#token每次不同，是有效期的，默认5分钟
+"eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJ2Z2tTci10MlJseFNuU3hDS2JUQkZXbzF3Szh6a2VOcFd4OTYwd2J5Y2h3In0.eyJleHAiOjE2NTE1NzI1NjIsImlhdCI6MTY1MTU3MjI2MiwianRpIjoiYTE0Y2Y4ZTItYjM0Mi00ZjEzLTg1N2UtMGY1YjNmOWFiMDIzIiwiaXNzIjoiaHR0cDovL2tleWNsb2FrLm1hZ2VkdS5jb206ODA5MC9yZWFsbXMvaXN0aW8iLCJhdWQiOiJhY2NvdW50Iiwic3ViIjoiNTIxMzhkMmEtZDIyOC00ODA4LWJlOTctYTVlODdhYWFkNTU3IiwidHlwIjoiQmVhcmVyIiwiYXpwIjoiaXN0aW8tY2xpZW50Iiwic2Vzc2lvbl9zdGF0ZSI6ImNkMGRkNzY4LTA1MjAtNDlhZS05OGM3LTEyNGJjZTNiYWYwZiIsImFjciI6IjEiLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsib2ZmbGluZV9hY2Nlc3MiLCJ1bWFfYXV0aG9yaXphdGlvbiIsImRlZmF1bHQtcm9sZXMtaXN0aW8iXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6ImVtYWlsIHByb2ZpbGUiLCJzaWQiOiJjZDBkZDc2OC0wNTIwLTQ5YWUtOThjNy0xMjRiY2UzYmFmMGYiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsIm5hbWUiOiJ0b20gbWFnZWR1IiwicHJlZmVycmVkX3VzZXJuYW1lIjoidG9tIiwiZ2l2ZW5fbmFtZSI6InRvbSIsImZhbWlseV9uYW1lIjoibWFnZWR1IiwiZW1haWwiOiJ0b21AbWFnZWR1LmNvbSJ9.Ugwa8SJpPTdicRLWyK3OY3vhHy4oLocyI_3He8cn66Ia0KAtmU8mTYDARKDrPG0hqvudXKLreXKFDQdR1dq6vN-L3OUtjDq7aTQ6WsaUsdFdS2IC8pU8zh9Ba9XOm_pju73stQMFJs4XYniNTacxab656I9NB9SlE_qQtapz4HUAmi_R5_SGext2YWqnvPEw8It8gfhWhZPins90DFykhqozvCmWF_izTCw69w1gB2b5lsnGFm4wSa0fEEt8VF7qgDyb4rsbyddkpZS9CSsxW_5jLo4-44LwuaFVCOglOyOP_VKnSGrrmBgU0TSZLeS2SdaQam7umsqOpEI41CyWZw"
+
+
+6. 复制access_token JWT网站(jwt.io)进行解析，查看token信息是否如自己配置一样
+
+7. 进入网格中的client
+root@k8s-master01:~# kubectl exec -it client /bin/sh
+root@client # apk add jq		#安装jq包
+root@client # curl -s -d 'username=tom&password=magedu.com&grant_type=password&client_id=istio-client' http://keycloak.keycloak.svc.homsom.local:8090/realms/istio/
+protocol/openid-connect/token | jq .access_token
+"eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJ2Z2tTci10MlJseFNuU3hDS2JUQkZXbzF3Szh6a2VOcFd4OTYwd2J5Y2h3In0.eyJleHAiOjE2NTE1NzI3MjgsImlhdCI6MTY1MTU3MjQyOCwianRpIjoiNGJjM2Q3ZmMtM2RjYS00NzliLTkzZDgtZTc1ZjE5YmRjYWVhIiwiaXNzIjoiaHR0cDovL2tleWNsb2FrLmtleWNsb2FrLnN2Yy5ob21zb20ubG9jYWwvcmVhbG1zL2lzdGlvIiwiYXVkIjoiYWNjb3VudCIsInN1YiI6IjUyMTM4ZDJhLWQyMjgtNDgwOC1iZTk3LWE1ZTg3YWFhZDU1NyIsInR5cCI6IkJlYXJlciIsImF6cCI6ImlzdGlvLWNsaWVudCIsInNlc3Npb25fc3RhdGUiOiJmOThjMzk0Ny02NTEzLTQ5M2EtYWQyMS0wOWNiZWFkNjIyNmIiLCJhY3IiOiIxIiwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbIm9mZmxpbmVfYWNjZXNzIiwidW1hX2F1dGhvcml6YXRpb24iLCJkZWZhdWx0LXJvbGVzLWlzdGlvIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYWNjb3VudCI6eyJyb2xlcyI6WyJtYW5hZ2UtYWNjb3VudCIsIm1hbmFnZS1hY2NvdW50LWxpbmtzIiwidmlldy1wcm9maWxlIl19fSwic2NvcGUiOiJlbWFpbCBwcm9maWxlIiwic2lkIjoiZjk4YzM5NDctNjUxMy00OTNhLWFkMjEtMDljYmVhZDYyMjZiIiwiZW1haWxfdmVyaWZpZWQiOmZhbHNlLCJuYW1lIjoidG9tIG1hZ2VkdSIsInByZWZlcnJlZF91c2VybmFtZSI6InRvbSIsImdpdmVuX25hbWUiOiJ0b20iLCJmYW1pbHlfbmFtZSI6Im1hZ2VkdSIsImVtYWlsIjoidG9tQG1hZ2VkdS5jb20ifQ.iRPz62LUQzAhWWl_BKedK8f_YmrWHzuOTFWgwfCvruRIPjIIO-be_C-5_dvJhRNOHwgXCLxdua1SbH1B_LZeih-7WeL-ERz5XtffMBRcPh2oKCbaA-7P0eM8hRPgACNZS8VuQaRkW426T4Qr-5CuMuOtEvL1kbGdIF0j90Pf1r_aVNm8GCte701-DHJbCOKMG7MauI9raFHZ2uAEi5dLMPcb31PT-tkpLcTMbbite9QNFEOFAB-WVACTF2d9dVo2LV8nQkfSHipE9GcPNFchmCtiZvAunRL_2ChRBZlKBZyAfJS5PULlxbDQGp3ntzQrRIdr1T7GLpDNd15-nnjdNA"
+
+8. 将token赋值给变量TOKEN
+root@client # TOKEN=`curl -s -d 'username=tom&password=magedu.com&grant_type=password&client_id=istio-client' http://keycloak.keycloak.svc.homsom.local:8090/realms/istio/protocol/openid-connect/token | jq .access_token`
+
+9. 用网格外部客户端测试访问demoapp，当前envoy未强制启用客户端进行认证，所以如下访问跟未添加TOKEN时访问效果一样
+root@test-client # curl -H "Authorization: Bearer $TOKEN" demoapp.default:8080
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-5c497c6f7c-fgb4n, ServerIP: 172.20.217.72!
+
+10. 配置envoy启用客户端令牌认证
+注：issuer和jwksUri地址必须是网格内client访问到的地址，与网格外地址不一样，信息如下：
+  "issuer": "http://keycloak.keycloak.svc.homsom.local/realms/istio",
+  "authorization_endpoint": "http://keycloak.keycloak.svc.homsom.local/realms/istio/protocol/openid-connect/auth",
+  "token_endpoint": "http://keycloak.keycloak.svc.homsom.local/realms/istio/protocol/openid-connect/token",
+  "introspection_endpoint": "http://keycloak.keycloak.svc.homsom.local/realms/istio/protocol/openid-connect/token/introspect",
+  "userinfo_endpoint": "http://keycloak.keycloak.svc.homsom.local/realms/istio/protocol/openid-connect/userinfo",
+  "end_session_endpoint": "http://keycloak.keycloak.svc.homsom.local/realms/istio/protocol/openid-connect/logout",
+  "frontchannel_logout_session_supported": true,
+  "frontchannel_logout_supported": true,
+  "jwks_uri": "http://keycloak.keycloak.svc.homsom.local/realms/istio/protocol/openid-connect/certs",	#用私钥加密用户的token，envoy并用公钥进行解密，获取token校验码和解密后的校验码进行比较，看是否一样。因此此路径是公开访问的
+  "check_session_iframe": "http://keycloak.keycloak.svc.homsom.local/realms/istio/protocol/openid-connect/login-status-iframe.html",
+  
+root@k8s-master01:~/istio/istio-in-practise/Security/04-RequestAuthn-and-AuthzPolicy# cat 02-requestauthn-policy.yaml	
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: demoapp
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: demoapp					#针对default名称空间下特定pod，也可以针对整个default名称空间，甚至所有网格中应用(istio-system中定义)
+  jwtRules:
+  - issuer: "http://keycloak.keycloak.svc.homsom.local:8090/realms/istio"		#此issuer必须跟网格内client访问到的issuer要一模一样，因为是在网格内访问
+    jwksUri: "http://keycloak.keycloak.svc.homsom.local:8090/realms/istio/protocol/openid-connect/certs"		#如上一样
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: demoapp
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: demoapp
+  rules:
+  - from:
+    - source:
+        requestPrincipals: ["*"]
+    to:
+    - operation:
+        methods: ["GET"]
+        paths: ["/*"]
+root@k8s-master01:~/istio/istio-in-practise/Security/04-RequestAuthn-and-AuthzPolicy# kubectl apply -f 02-requestauthn-policy.yaml
+
+11. 测试启用客户端认证后，使用token访问的效果
+root@test-client # TOKEN=`curl -s -d 'username=tom&password=magedu.com&grant_type=password&client_id=istio-client' http://keycloak.keycloak.svc.homsom.local:8090/realms/istio/protocol/openid-connect/token | jq .access_token`
+root@test-client # curl demoapp.default:8080
+RBAC: access deniedroot@client #
+root@test-client # curl -H "Authorization: Bearer $TOKEN" demoapp.default:8080
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-5c497c6f7c-wzvnn, ServerIP: 172.20.217.101!
+root@test-client # curl -H "Authorization: Bearer $TOKEN" demoapp.default:8080
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-5c497c6f7c-wzvnn, ServerIP: 172.20.217.101!
+#注JWT主要针对外部浏览器用户，如果是内部用户访问需要内置OAuth2.0客户端才行
+
+#Istio Authorization
+- Istio的授权机制为Isto网格中的workload提供了mesh-level, namespace-level, workload-level的访问控制机制，它提供如下特性
+  - Workload-to-workload和end-user-to-workload授权
+  - 简单的API: 只包含一个简单的AuthorizationPolicy CRD，易于使用和维护
+  - 灵活的语义：运维人员可以在Istio属性的基础上自定义检查条件
+  - 较好的性能表现：授权检查仅在Envoy本地执行
+  - 较好的兼容性：原生支持HTTP/HTTPS/HTTP2，以及更底层的通信TCP协议
+
+#启用授权
+- Istio的授权功能默认即为开启状态，用户定义出所需的Authorization Policy即可使用相关的功能
+  - 未有相匹配的授权策略时，Istio默认将允许对其发出的所有操作。但只要有一个授权策略匹配到工作负载，其默认策略将自动成为DENY
+  - 授权策略支持的action有CUSTOM, DENY, ALLOW三种
+  - 多个策略关联至同一工作负载时，Istio会将相关的策略进行组合
+- 策略生效机制
+  - 三者同时作用于某工作负载时，评估次序依次为CUSTOM, DENY, ALLOW_ANY
+    - 若存在与请求相匹配的任何CUSTOM策略，授权结果为DENY时，则拒绝请求
+	- 若存在与请求相匹配的任何DENY策略，则拒绝请求
+	- 工作负载上不存在ALLOW策略时，则允许请求
+	- 存在与请求相匹配的任意ALLOW策略时，允许请求
+	- 拒绝所有请求
+  - AUDIT可确定是否记录请求，但它不生成授权结果
+
+#AuthenrizationPolicy CR
+- selector用于选定策略的适用的目标workload，策略的最终生效结果由selector和metadata.namespace共同决定
+  - 设置为根名称空间时则该策略将应用于网格中的所有命名空间；根命名空间可配置，默认什来istio-system
+  - 省略名称空间时表示应用于网格内的所有名称空间
+  - workload selector可用于进一步限制策略的应用范围，它使用pod标签来选择目标workload
+- rules用于定义根据指定何时触发动作
+  - 嵌套的字段 
+    - from字段：匹配的操作请求发出者
+	- to字段：匹配的操作目标
+	- when字段：应用该规则的触发条件
+  - 注意
+    - DENY策略优先于ALLOW策略；istio会优先评估DENY策略，以确保ALLOW策略无法绕过DENY策略
+	- 空值的rules字段（即未定义任何有效的列表项），表示允许对目标workload的所有访问请求
+
+#AuthorizationPolicy
+root@k8s-master01:~/istio/istio-in-practise/Security/04-RequestAuthn-and-AuthzPolicy# cat 03-request-and-peer-authn-policy.yaml
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: demoapp
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: demoapp
+  jwtRules:
+  - issuer: "http://keycloak.keycloak.svc.homsom.local:8090/realms/istio"
+    jwksUri: "http://keycloak.keycloak.svc.homsom.local:8090/realms/istio/protocol/openid-connect/certs"
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: demoapp
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: demoapp
+  rules:
+  - from:		#第一步规则
+    - source:
+        principals: ["cluster.local/ns/default/sa/default"]		#表示客户端为此spiffe ID，需要网格上启用mTLS，否则不会成功，当跟istio有关系时集群后缀为cluster.local，否则为自定义集群后缀，此k8s后缀原为homsom.local
+    - source:	#两者是或的关系
+        namespaces: ["default", "dev", "istio-system"]			#或 表示客户端在注入sidecar的特定名称空间上的pod
+    to:
+    - operation:				#操作为GET所有路径
+        methods: ["GET"]
+        paths: ["/*"]
+  - from:			#另外一条规则
+    - source:
+        requestPrincipals: ["*"]		#表示经过验证的TOKEN用户名称，例如tom，*表示所有，针对RequestAuthentication
+        principals: ["cluster.local/ns/default/sa/default"]	#而且客户端为此spiffe ID，需要网格上启用mTLS，否则不会成功，针对PeerAuthentication
+    to:
+    - operation:				#操作为POST特定路径/livez，/readyz
+        methods: ["POST"]
+        paths: ["/livez", "/readyz"]
+    when:
+    - key: request.auth.claims[iss]		#当请求的TOKEN的issuer是http://keycloak.keycloak.svc.homsom.local:8090/realms/istio时，才进行上面的匹配操作
+      values: ["http://keycloak.keycloak.svc.homsom.local:8090/realms/istio"]
+
+
+####网格和SSO
+###在Istio Ingress Gateway上实现SSO
+#方法1：Ingress TLS passthrough, JWT Validation at Sidecars
+- 工作流程：
+  - 用户（客户端）自行向SSO进行身份验证并取得JWT
+  - Istio Ingress Gateway将请求和JWT转发至目标服务相关的工作负载
+  - ProductPage Pod的Istio-proxy容器根据相关的RequestAuthentication和AuthorizationPolicy验证JWT
+  - 若JWT有效，则开放/productpage给用户，否则，将返回错误消息（RBAC denied）
+- 优点：
+  - 方法简便，只需要两个相关的CR对象
+  - 基于JWT，实现细粒度的授权
+- 缺点
+  - 无OIDC工作流：用户必须要自己获取JWT，并自行附加于HTTP请求之上
+  - 需要为每个应用各自定义RequestAuthentication和AuthenticationPolicy CR资源对象
+ 
+ #方法2：由Ingress Gateway完成OIDC工作流
+ - 有两种常用的方法
+   - 为Ingress Gateway添加oauth2-proxy Sidecar, 或者将oauth2-proxy部署为独立服务
+   - 使用新版本的Envoy自带oauth2 filter进行
+ - 工作流程：
+   - 用户执行未经身份验证的HTTP请求
+   - 未经验证的请求，将会由oauth2-proxy启动OIDC工作流程，由用户参与完成身份验证
+   - 用户执行经过身份验证的HTTP请求，而oauth2-proxy基于HTTP Cookie验证用户身份
+   - oauth2-proxy将请求回传给Ingress Gateway，再由Gateway转给工作负载Pod上的istio-proxy容器
+   - 用户获利目标服务的响应
+ - 优点：
+   - 在Ingress Gateway强制完成身份认证
+   - 自动化OIDC工作流
+ - 缺点：
+   - 粗粒度授权（已认证==已授权），且配置较复杂
+ 
+#方法3：组合JWT和oauth2-proxy自动化OIDC
+- 要点：
+  - 身份认证由oauth2-proxy自动完成
+  - oauth2-proxy从cookie中自动提取JWT，并将其通过HTTP请求上的特定标头（X-Forwarded-Access-Token）转发至istio-proxy
+- 工作流程：
+  - 用户执行未经身份验证的HTTP请求
+  - 未经验证的请求，将会由oauth2-proxy启动OIDC工作流程，由用户参与完成身份验证
+  - 用户执行未经身份验证的HTTP请求，而oauth2-proxy基于HTTP Cookie验证用户身份
+  - oauth2-proxy从请求报文的cookie中提取JWT，并将其使用特定标头发送至Ingress Gateway
+  - Ingress Gateway将请求和JWT标头转发至目标工作负载的istio-proxy容器
+  - 目标工作负载上的istio-proxy根据RequestAuthentication和AuthorizationPolicy确认JWT的有效性
+  - 若JWT有效，则开放目标服务给用户，否则，将返回错误消息（RBAC denied）
+
+#实现步骤
+- 部署Keycloak，创建专用的Realm，并添加OAuth2-Proxy专用的Client
+- 部署OAuth2-Proxy应用，配置专用的Client ID和Secret接入Keycloak
+- 配置Istio网格，将OAuth2-Proxy添加为Provider
+- 创建专用于Ingress Gateway的AuthorizationPolicy，通过CUSTOM action将特定主机的授权委托给外部的Provider
+- 在Keycloak上添加用户后，测试访问 "kiali.magedu.com" 和 "prometheus.magedu.com"等应用
+  - "已认证 == 已授权"
+- 在Keycloak上精心编排用户、角色和组等，完成分组授权
+
+#Keycloak上的Access Type共有三类：
+- confidential: 适用于需要执行浏览器登录的应用，客户端会通过client secret来获取access token，多用于服务端渲染的web系统场景中
+- public: 适用于需要执行浏览器登录的应用，多运用于使用vue和react实现的前端项目
+- bearer-only: 适用于不需要执行浏览顺登录的应用，只允携带bearer token访问，多运用于RESTful API的使用场景
+注：kiali, grafana, prometheus等的UI即是服务端渲染的web系统
+
+
+1. 添加客户端
+客户端 ID：ingress-gateway
+访问类型：confidential
+有效的重定向URI：*
+注：此时ingress-gateway客户端就会有凭据选项卡了，凭据中有秘密：EKCuaLa56Ig34luBkZcIOV4geEq6RoV8，这个秘密后面会使用，不要点重置
+
+2. 部署oauth2-proxy
+root@k8s-master01:~/istio/istio-in-practise/Security/05-JWT-and-Keycloak# cat 01-deploy-oauth2.yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oauth2-proxy
+  labels:
+    istio-injection: enabled
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: oauth2-proxy
+  namespace: oauth2-proxy
+stringData:
+  # change this to your Keycloak Realm Client Id
+  OAUTH2_PROXY_CLIENT_ID: ingress-gateway
+  # change this to your Keycloak Client Secret
+  OAUTH2_PROXY_CLIENT_SECRET: EKCuaLa56Ig34luBkZcIOV4geEq6RoV8		#上一步获取的秘密
+  # Generate by command: openssl rand -base64 32 | tr -- '+/' '-_'
+  OAUTH2_PROXY_COOKIE_SECRET: vEBMxbw7NXfaUIJR4klhdvB678GUPxWTd7tR9hq2m8w=		#随机生成的ID
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: oauth2-proxy
+  namespace: oauth2-proxy
+spec:
+  selector:
+    app: oauth2-proxy
+  ports:
+  - name: http
+    port: 4180
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oauth2-proxy
+  namespace: oauth2-proxy
+spec:
+  selector:
+    matchLabels:
+      app: oauth2-proxy
+  template:
+    metadata:
+      labels:
+        app: oauth2-proxy
+    spec:
+      containers:
+      - name: oauth2-proxy
+        image: quay.io/oauth2-proxy/oauth2-proxy:v7.2.1
+        args:
+        - --provider=oidc
+        - --oidc-issuer-url=http://keycloak.keycloak.svc.homsom.local:8090/realms/istio		#issuer地址，此地址确保网格外部可访问到
+        - --profile-url=http://keycloak.keycloak.svc.homsom.local:8090/realms/istio/protocol/openid-connect/userinfo	#"userinfo_endpoint"地址
+        - --validate-url=http://keycloak.keycloak.svc.homsom.local:8090/realms/istio/protocol/openid-connect/userinfo	#"userinfo_endpoint"地址
+        - --set-authorization-header=true
+        - --http-address=0.0.0.0:4180		#oauth2-proxy监听的地址
+        - --pass-host-header=true
+        - --reverse-proxy=true
+        - --auth-logging=true
+        - --cookie-httponly=true
+        - --cookie-refresh=4m
+        - --cookie-secure=false				#默认为true,需要部署为https模式。更改为false后可使用http访问，为方便测试使用http访问
+        - --email-domain="*"
+        - --pass-access-token=true
+        - --pass-authorization-header=true
+        - --request-logging=true
+        - --set-xauthrequest=true
+        - --silence-ping-logging=true
+        - --skip-provider-button=true
+        - --skip-auth-strip-headers=false
+        - --ssl-insecure-skip-verify=true
+        - --standard-logging=true
+        - --upstream="static://200"
+        - --whitelist-domain=".magedu.com,.homsom.local"		#白名单域，可自行添加
+        env:
+        - name: OAUTH2_PROXY_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: oauth2-proxy
+              key: OAUTH2_PROXY_CLIENT_ID
+        - name: OAUTH2_PROXY_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: oauth2-proxy
+              key: OAUTH2_PROXY_CLIENT_SECRET
+        - name: OAUTH2_PROXY_COOKIE_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: oauth2-proxy
+              key: OAUTH2_PROXY_COOKIE_SECRET
+        resources:
+          requests:
+            cpu: 10m
+            memory: 100Mi
+        ports:
+        - containerPort: 4180
+          protocol: TCP
+        readinessProbe:
+          periodSeconds: 3
+          httpGet:
+            path: /ping
+            port: 4180
+---
+root@k8s-master01:~/istio/istio-in-practise/Security/05-JWT-and-Keycloak# kubectl apply -f 01-deploy-oauth2.yaml
+--报错
+root@k8s-master01:~/istio/istio-in-practise/Security/05-JWT-and-Keycloak# kubectl logs -f oauth2-proxy-bcd4989d5-wg754 -n oauth2-proxy
+[2022/05/04 15:10:52] [main.go:54] oidc: issuer did not match the issuer returned by provider, expected "http://keycloak.keycloak.svc.homsom.local:8090/realms/istio" got "http://keycloak.keycloak.svc.homsom.local/realms/istio"
+--解决，去领域istio中配置固定Frontend URL：http://keycloak.keycloak.svc.homsom.local:8090
+root@k8s-master01:~/istio/istio-in-practise/Security/05-JWT-and-Keycloak# kubectl get pods -n oauth2-proxy
+NAME                           READY   STATUS    RESTARTS   AGE
+oauth2-proxy-bcd4989d5-89862   2/2     Running   1          64s
+
+3. 将OAuth2-Proxy添加为Provider
+root@k8s-master01:~/istio/istio-in-practise/Security/05-JWT-and-Keycloak# cat 02-istio-operator-update.yaml
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  profile: demo
+  meshConfig:
+    extensionProviders:				#添加外部providers，以后添加skywalking也是这样添加
+    - name: oauth2-proxy			#providers名称
+      envoyExtAuthzHttp:
+        service: oauth2-proxy.oauth2-proxy.svc.cluster.local	#prodivers地址
+        port: 4180												#prodivers端口
+        timeout: 1.5s											#连接超时时间
+        includeHeadersInCheck: ["authorization", "cookie"]		#对进入的流量，检查定义的标头是否认证通过，如果未认证通过将以重定向的方式请求认证
+        headersToUpstreamOnAllow: ["x-forwarded-access-token", "authorization", "path", "x-auth-request-user", "x-auth-request-email", "x-auth-request-access-token"]								#认证通过了转发的标头
+        headersToDownstreamOnDeny: ["content-type", "set-cookie"]	 #认证未通过转发的标头
+root@k8s-master01:~/istio/istio-in-practise/Security/05-JWT-and-Keycloak# istioctl install -f 02-istio-operator-update.yaml	#多个配置段需要放在一起，否则会冲掉之前的配置
+
+4. 为Ingress gateway配置请求认证策略
+root@k8s-master01:~/istio/istio-in-practise/Security/05-JWT-and-Keycloak# cat 03-ext-auth-ingress-gateway.yaml
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: istio-ingressgateway
+  namespace: istio-system
+spec:
+  selector:
+    matchLabels:
+      app: istio-ingressgateway		#针对ingress gateway需要进行请求认证操作
+  jwtRules:
+  - issuer: http://keycloak.keycloak.svc.homsom.local:8090/realms/istio									#issuer地址
+    jwksUri: http://keycloak.keycloak.svc.homsom.local:8090/realms/istio/protocol/openid-connect/certs	#jwksUri地址
+    #audiences: ["ingress-gateway","istio-ingress-gateway"]		#此功能是过滤audiences
+    # Forward JWT to Envoy Sidecar
+    #forwardOriginalToken: true									#转发token到网格中workload，实现网络内认证策略
+  - issuer: http://keycloak.magedu.com:8090/realms/istio												#可以添加多个
+    jwksUri: http://keycloak.magedu.com:8090/realms/istio/protocol/openid-connect/certs
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: ext-authz-oauth2-proxy
+  namespace: istio-system
+spec:
+  selector:
+    matchLabels:
+      app: istio-ingressgateway		#当匹配ingress gateway后的认证策略
+  action: CUSTOM					#执行自定义操作
+  provider:
+    # Extension provider configured when we installed Istio
+    name: oauth2-proxy				#指定由哪个provider进行操作，这里是我们上面自定义的provider
+  rules:
+  - to:
+    - operation:	
+        hosts: ["*.magedu.com"]		#针对"*.magedu.com"的主机域名将实现请求认证，包括kiali.magedu.com, prometheus.magedu.com等
+        notPaths: ["/auth/*"]		#但不包括"/auth/*"路径，因为此路径需要转发给oauth2-proxy -> keycloak使用的
+root@k8s-master01:~/istio/istio-in-practise/Security/05-JWT-and-Keycloak# kubectl apply -f 03-ext-auth-ingress-gateway.yaml
+
+5. 现在可以访问kiali.magedu.com进行测试是否跳转到认证页面，此时之前的tom用户是无法认证通过的，需要创建用户进行访问
+--添加用户
+用户名：kiali
+密码：magedu.com
+电子邮件: kiali@magedu.com
+电子邮件验证: 必须开启	#因为oauth-proxy需要验证邮件功能(并不会验证邮件真实性，但必须开启验证)，否则会拒绝认证的。此前tom用户就是未开启此功能，所以不会登录成功
+
+--在客户端添加mappers，客户端 -> ingress-gateway -> Mappers -> 创建协议映射器
+名称：audience-ingress-gateway
+映射器类型：Audience
+Included Client Audience：ingress-gateway		#这个名称在认证策略限制有用
+Included Custom Audience：audience-ingress-gateway
+添加到ID令牌：开
+
+--测试
+root@client # curl -s -d 'username=kiali&password=magedu.com&grant_type=password&client_id=ingress-gateway' http://keycloak.keycloak.svc.homsom.local:8090/realms/i
+stio/protocol/openid-connect/token
+{"error":"unauthorized_client","error_description":"Client secret not provided in request"}root@client #
+--原因，因为需要secret参数
+root@client # curl -s -d 'username=kiali&password=magedu.com&grant_type=password&client_id=ingress-gateway&client_secret=EKCuaLa56Ig34luBkZcIOV4geEq6RoV8' http://keycloak.keycloak.svc.homsom.local:8090/realms/istio/protocol/openid-connect/token	#此时可以认证
+{"access_token":"eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJ2Z2tTci10MlJseFNuU3hDS2JUQkZXbzF3Szh6a2VOcFd4OTYwd2J5Y2h3In0.eyJleHAiOjE2NTE3MTk4NTYsImlhdCI6MTY1MTcxOTU1NiwianRpIjoiZjQzYmRmMzgtNzQzNS00YmI3LTgwNGYtZDA3ODMxOTA1YTA4IiwiaXNzIjoiaHR0cDovL2tleWNsb2FrLmtleWNsb2FrLnN2Yy5ob21zb20ubG9jYWw6ODA5MC9yZWFsbXMvaXN0aW8iLCJhdWQiOlsiaW5ncmVzcy1nYXRld2F5IiwiYWNjb3VudCJdLCJzdWIiOiIxOTllNmI2ZS1iMzhkLTQ4OWUtYmIwZS1kYzU1OWNjMWJhMzUiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJpbmdyZXNzLWdhdGV3YXkiLCJzZXNzaW9uX3N0YXRlIjoiYjQ0NTRkNWUtMGYyNy00YmE2LThhNGEtZWRjYmY0ODZjOTQyIiwiYWNyIjoiMSIsInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIiwiZGVmYXVsdC1yb2xlcy1pc3RpbyJdfSwicmVzb3VyY2VfYWNjZXNzIjp7ImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoiZW1haWwgcHJvZmlsZSIsInNpZCI6ImI0NDU0ZDVlLTBmMjctNGJhNi04YTRhLWVkY2JmNDg2Yzk0MiIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJuYW1lIjoia2lhbGkgbWFnZWR1IiwicHJlZmVycmVkX3VzZXJuYW1lIjoia2lhbGkiLCJnaXZlbl9uYW1lIjoia2lhbGkiLCJmYW1pbHlfbmFtZSI6Im1hZ2VkdSIsImVtYWlsIjoia2lhbGlAbWFnZWR1LmNvbSJ9.U5dK8SRzNUlaQMh6938JrtElG2-59DMptU_RGfDEgpLBpKYec3Rkrf7PCQywhhQ6qUp8onl644hhDRGLzwWi4zdUnsEjhuQuTS7FfCOYIdJtby0uLpwcW5TIjWukGuDx0pqy-rriOxpUp1k9X8TzPQD5aISQQsZkHFogrXGrDttXrPWY364_yEmXHGI_S3isUDQ5w4B5qCxdhMj8GVOnFSx6pNrvZqyS49WOi6Q4BChRmQZEbQ8SHeuNbqh9uK6gW5625ocx-4sSFdatsIg73A8ogJwo6fDJ4olAP2BC09QENvhyPgeQcTTLW_fbW3pc4zLtAXaQxZFwLiBBfzBVog","expires_in":300,"refresh_expires_in":1800,"refresh_token":"eyJhbGciOiJIUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICIwNzllMGEzMS1kN2EyLTRiZDMtODcyNy0xOWM2YzE0ODA1ZjgifQ.eyJleHAiOjE2NTE3MjEzNTYsImlhdCI6MTY1MTcxOTU1NiwianRpIjoiZWE5ZTJlZTgtNWY3NS00NmQ1LTg0ODMtOTM3Yjg1ZTIzMjAzIiwiaXNzIjoiaHR0cDovL2tleWNsb2FrLmtleWNsb2FrLnN2Yy5ob21zb20ubG9jYWw6ODA5MC9yZWFsbXMvaXN0aW8iLCJhdWQiOiJodHRwOi8va2V5Y2xvYWsua2V5Y2xvYWsuc3ZjLmhvbXNvbS5sb2NhbDo4MDkwL3JlYWxtcy9pc3RpbyIsInN1YiI6IjE5OWU2YjZlLWIzOGQtNDg5ZS1iYjBlLWRjNTU5Y2MxYmEzNSIsInR5cCI6IlJlZnJlc2giLCJhenAiOiJpbmdyZXNzLWdhdGV3YXkiLCJzZXNzaW9uX3N0YXRlIjoiYjQ0NTRkNWUtMGYyNy00YmE2LThhNGEtZWRjYmY0ODZjOTQyIiwic2NvcGUiOiJlbWFpbCBwcm9maWxlIiwic2lkIjoiYjQ0NTRkNWUtMGYyNy00YmE2LThhNGEtZWRjYmY0ODZjOTQyIn0.ewXtIe5Nnl8NAkKOurJSAYsN7aDxnL53Kn3sFc_F3r8","token_type":"Bearer","not-before-policy":0,"session_state":"b4454d5e-0f27-4ba6-8a4a-edcbf486c942","scope":"email profile"}
+
+--此时使用kiali用户可以正常访问了
+
+6. 配置授权策略，如果CUSTOM没有明确deny，将会进入此授权策略
+root@k8s-master01:~/istio/istio-in-practise/Security/05-JWT-and-Keycloak# cat 04-ingress-gateway-authz.yaml
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: istio-ingressgateway
+  namespace: istio-system
+spec:
+  selector:
+    matchLabels:
+      app: istio-ingressgateway
+  action: ALLOW
+  rules:
+  - when:
+    - key: request.auth.claims[iss]
+      values:
+      - "http://keycloak.keycloak.svc.cluster.local:8080/auth/realms/istio"
+      - "http://keycloak.magedu.com:8080/auth/realms/istio"
+    - key: request.auth.audiences
+      values:
+      - "ingress-gateway"
+root@k8s-master01:~/istio/istio-in-practise/Security/05-JWT-and-Keycloak# cat 05-authz-gateway-kiali.yaml
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: authz-kiali-ingressgw
+  namespace: istio-system
+spec:
+  selector:
+    matchLabels:
+      app: istio-ingressgateway
+  action: ALLOW
+  rules:
+  - to:
+    - operation:
+        hosts: ["kiali.magedu.com"]
+        paths: ["/*"]
+    when:									#多个是与条件
+    - key: request.auth.claims[iss]
+      values:
+      - "http://keycloak.keycloak.svc.homsom.local:8090/realms/istio"
+      - "http://keycloak.magedu.com:8090/realms/istio"
+    - key: request.auth.claims[groups]
+      values:
+      - "/kiali-admin"
+---
+root@k8s-master01:~/istio/istio-in-practise/Security/05-JWT-and-Keycloak# kubectl apply -f 05-authz-gateway-kiali.yaml
+--此时kiali用户会被访问拒绝，因为此用户不在组"/kiali-admin"中
+在istio领域中新建组：kiali-admin
+在用户kiali中加入组："/kiali-admin"
+在客户端Ingress-gateway中Mappers添加：
+	- 名称：group-members
+	- 映射器类型：Group Membership
+	- Token申请名: groups
+
+--测试是否通过能获取token，--然后复制到Jwt.io确认是否有组信息，--最后测试访问kiali成功访问
+root@client # curl -s -d 'username=kiali&password=magedu.com&grant_type=password&client_id=ingress-gateway&client_secret=EKCuaLa56Ig34luBkZcIOV4geEq6RoV8' http://k
+eycloak.keycloak.svc.homsom.local:8090/realms/istio/protocol/openid-connect/token | jq .access_token
+"eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJ2Z2tTci10MlJseFNuU3hDS2JUQkZXbzF3Szh6a2VOcFd4OTYwd2J5Y2h3In0.eyJleHAiOjE2NTE3MjEwODYsImlhdCI6MTY1MTcyMDc4NiwianRpIjoiY2RjYWJhYmMtNDY0MC00YzUwLTk0ZmQtMDVhNzRmYTUyZmY5IiwiaXNzIjoiaHR0cDovL2tleWNsb2FrLmtleWNsb2FrLnN2Yy5ob21zb20ubG9jYWw6ODA5MC9yZWFsbXMvaXN0aW8iLCJhdWQiOlsiaW5ncmVzcy1nYXRld2F5IiwiYWNjb3VudCJdLCJzdWIiOiIxOTllNmI2ZS1iMzhkLTQ4OWUtYmIwZS1kYzU1OWNjMWJhMzUiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJpbmdyZXNzLWdhdGV3YXkiLCJzZXNzaW9uX3N0YXRlIjoiZjg2YWE1MmItNDFkYi00NTZkLTg3ZGQtMTY2ODUxZjZhMzIyIiwiYWNyIjoiMSIsInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIiwiZGVmYXVsdC1yb2xlcy1pc3RpbyJdfSwicmVzb3VyY2VfYWNjZXNzIjp7ImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoiZW1haWwgcHJvZmlsZSIsInNpZCI6ImY4NmFhNTJiLTQxZGItNDU2ZC04N2RkLTE2Njg1MWY2YTMyMiIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJuYW1lIjoia2lhbGkgbWFnZWR1IiwiZ3JvdXBzIjpbIi9raWFsaS1hZG1pbiJdLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJraWFsaSIsImdpdmVuX25hbWUiOiJraWFsaSIsImZhbWlseV9uYW1lIjoibWFnZWR1IiwiZW1haWwiOiJraWFsaUBtYWdlZHUuY29tIn0.J3yl-AjaKCDwDfBUNmQ3XS5GH2oeXyIzEtIsl-SOP8I6bYegCNXnRzBWprv7RGrXf9TY29383WxFGYFUErM62dkMiETyuIltORQ_AZjnVqVmmbwHhNUAece3UGWhp9JOjaLIXEQokELp-hug-9l2zcxhn_RA7As3Mz8cqXGS6J7dIEx7SVFsIsPZgGByQwnXnmNvahKBZO5bc6AMgM0mPvcJlZO9Vsz7j6yEC4T6EY_-mEiSYZJ7sG3NL1WFhO4YW1v6VCksuykvxX-zhPR0u5mYi16lDGNE1_IJFXAH4OPmIzniSMzI3D-LyaidxzocRXkM93LrSfDPIm0gNHsr2w"
+注：访问prometheus.magedu.com, fe.magedu.com跳转有问题，后续还要进行测试
+
+
+
+
 
 
 
