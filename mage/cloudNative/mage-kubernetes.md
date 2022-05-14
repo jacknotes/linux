@@ -327,7 +327,7 @@ CALICO_IPV4POOL_IPIP: "Always"
 # role:cluster-addon	所有插件不自动安装，后面手动安装
 # coredns 自动安装
 dns_install: "no"
-ENABLE_LOCAL_DNS_CACHE: false	#测试关闭DNS缓存，生产开启。由于这里是测试，部署过一次k8s没关缓存，所以后面会关掉缓存再重新部署k8s集群
+ENABLE_LOCAL_DNS_CACHE: false	#测关闭DNS缓存。由于这里是测试，部署过一次k8s没关缓存，所以后面会关掉缓存再重新部署k8s集群 
 # metric server 自动安装
 metricsserver_install: "no"
 # dashboard 自动安装
@@ -511,10 +511,12 @@ PING 223.6.6.6 (223.6.6.6): 56 data bytes
 64 bytes from 223.6.6.6: seq=0 ttl=114 time=5.657 ms
 64 bytes from 223.6.6.6: seq=1 ttl=114 time=6.902 ms
 / # cat /etc/resolv.conf
-nameserver 169.254.20.10	--这个地址是开启了DNS缓存，这个我想关掉，只能删除集群再重新部署
+nameserver 169.254.20.10	--这个地址是开启了DNS缓存，这个我想关掉，只能删除集群再重新部署 
 search default.svc.homsom.local svc.homsom.local homsom.local hs.com
 options ndots:5
-
+#临时解决办法，把所有节点的kubelet /var/lib/kubelet/config.yaml DNS地址变更如下，并重启所有kubelet服务，以后的节点再增加时，需要把ansible config.yaml中DNS缓存关闭
+clusterDNS:
+- 10.68.0.2
 
 ###删除k8s集群，非常危险
 root@ansible:/etc/kubeasz# ./ezctl destroy k8s-01

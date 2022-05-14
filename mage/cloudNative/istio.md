@@ -5169,6 +5169,176 @@ eycloak.keycloak.svc.homsom.local:8090/realms/istio/protocol/openid-connect/toke
 
 
 
+#####Istio部署模型
+
+#本节话题
+- 单网格
+  - 集群模型
+    - 单集群
+    - 多集群
+  - 网络模型
+    - 单网络
+    - 多网络
+  - 控制平面模型
+    - 单控制平面单集群
+    - 单控制平面多集群（主集群和远程集群，或者均为远程集群）
+    - 多控制平面
+- 多网格
+  - 网格联邦：每个网格使用一个独占的ID进行标识
+  - 网格互信：SPIFFE可信域联邦
+- 租用模型
+  - Namespace tenancy
+  - Cluster tenancy
+  - Mesh Tenancy
+
+#集群模型
+- 单集群单网格
+  - 通常集群运行于单个网络中
+  - 最简单的模型
+  - 缺点：缺少故障隔离和故障转移能力
+- 代表着多个维度下的同一个模型
+  - 单集群
+  - 单网络
+  - 单控制平面
+  - 单网格
+- 多集群单网格：即横跨多个集群的单一网格，运行如下高级功能
+  - 故障隔离和故障转移：cluster-1故障时，转移至cluster-2
+  - 位置感知路由和故障转移
+  - 支持多控制平面模型，实现更高级别的可用性
+  - 支持团队或项目间的隔离
+  - 缺点
+    - 复杂性增加
+    - 跨集群的DNS名称解析需要特殊处理
+  - DNS配置方法
+    - 手动配置
+    - 自动化工具
+      - Istio CoreDNS插件
+      - DNS Sidecar代理
+
+#网络模型
+- 单一网络：服务网格在单个完全连接的网络上运行，所有工作负载实例无 需Istio网关即可直接互通；
+- 多网络：跨越多个网络部署运行单个网格
+  - 可实现如下功能增强 
+    - 服务端点使用相同的IP地址 
+    - 容错 
+    - 扩展可用的网络地址空间 
+  - 典型特点： 
+    - 不同网络中的工作负载实例只能通过一个或多个Istio网关互通
+    - 各网络中的所有服务都需要通过本地的Istio Gateway向外暴露
+    - Istio使用“分区的服务发现机制”为客户端提供服务端点的不同视图
+
+#控制平面模型
+- 单控制平面：在单个集群上运行单个控制平面
+  - 在集群本地拥有控制平面的集群，也称为主集群（primary cluster）
+- 跨多个集群部署的网格，还可以共享控制平面
+  - 控制平面可驻留于单个或多个主集群中，但每个主集群会于本地的Kubernetes API Server上存储网格资源配置
+  - 在集群本地没有控制平面的集群，也称为远程集群（remote cluster）
+  - 主集群中的控制平面必须拥有稳定的可达IP，跨网络时，可通过Istio Gateway将其公开
+- 外部控制平面
+  - 控制平面单独运行，与数据平面完全分离
+  - 无主集群，所有集群都是远程集群
+  - 云端托管的网格即为这种模型的典型表现
+
+#控制平面高可用
+- 跨地域（Region）、区域（Zone）或集群（Cluster）部署多个控制平面
+- 常见部署模型
+  - 每个地域（region）一个集群
+  - 每个地域多个集群（即多集群共享一个控制平面）
+  - 每个区域（zone）一个集群
+  - 每个区域多个集群
+  - 每个集群使用一个控制面
+- 优点
+  - 高可用
+  - 配置隔离
+  - 细粒度的可控发布
+  - 配置服务的选择性可见
+
+#多控制平面场景中的端点发现
+- 针对一个服务，每个控制平面都会在其所在的一个或多个集群中发现相关的端点
+- 多控制平面场景中，也支持跨集群的端点发现
+  - 需要管理员生成一个remote secret，并将其部署到网格中的每个primary cluster
+  - remote secret用于提供访问API Server的凭据
+  - 启用跨集群的端点发现机制后，Istio将会把服务的流量分发至所有端点，这些端点分布于不同Region时，可能会对性能产生负面影响，因而应该使用Locality Load Balancing
+    - 对应于Envoy中的“Locality Weighted LB”
+    - 与“Zone Aware Routing”互斥
+
+#网格模型总结
+- 多网格：网格联邦
+- 可提供单网格所不具有功能
+  - 更加明晰的组织边界
+  - Service Name及Namespace的重用
+  - 更彻底的隔离机制
+- 特殊要求
+  - 需要为每个网格提供专用ID，以消弭各Service Name间的名称冲突
+  - 网格间需要互相传递可信域
+
+#网格间的可信域传递
+- 若某网格中的服务依赖于另一网格中的服务，就需要在两个网格之间通过交换彼此的trust bundle以联合身份和信任关系
+- 可用方案是使用SPIFFE协议进行手动或自动交换trust bundle
+- 将trust bundle导入网格后，即可为这些身份配置本地策略
+
+#网格诊断工具
+- istioctl命令可用于调试和诊断服务网格，它有着可用的众多子命令，仍处于实验性阶段的命令均隶属于experimental子命令；
+- 查看网格中的各Envoy从Pilot同步配置的状态，proxy-status命令可简写为ps；
+  - istioctl proxy-status [<pod-name[.namespace]>] [flags]
+    - SYNC：Envoy已经确认Pilot推送的配置数据；
+    - NOT SENT：Pilot未向Envoy发送任何数据，这通常是因为Pilot无任何可用于发送的数据；
+    - STALE：Pilot已经发送配置但尚未收到Envoy的确认，这一般是网络相关的原因所致；
+- 获取代理配置，proxy-config命令可简写为pc；
+  - istioctl proxy-config [command]
+    - 获取bootstrap配置：bootstrap <pod-name[.namespace]> [flags]
+    - 获取cluster配置信息：cluster <pod-name[.namespace]> [flags]
+    - 获取listener配置信息：listener <pod-name[.namespace]> [flags]
+    - 获取路由配置信息：route <pod-name[.namespace]> [flags]
+    - 获取endpoint信息：endpoint <pod-name[.namespace]> [flags]
+    - 获取secret信息：secret <pod-name[.namespace]> [flags]
+    - 获取指定envoy实例的日志级别：log <pod-name[.namespace]> [flags]
+- istioctl experimental describe命令可用于获取pod上有关网格的配置或service的路由配置信息；
+  - 验证Pod的相关配置：istioctl experimental describe pod <pod> [flags]
+  - 获取service的路由：istioctl experimental describe service <svc> [flags]
+
+#四种集群类型
+- 单网格单集群
+- 单网格多集群（多集群需要eastwest-gatewy实现pod间的流量代理）
+- 多网格单集群
+- 多网格多集群（多集群需要eastwest-gatewy实现pod间的流量代理）
+
+
+
+###部署示例:多网格多集群
+网格1：
+cluster: k8s01
+master01 172.168.2.21
+node01 172.168.2.24
+node02 172.168.2.25
+ingress-gateway 172.168.2.27
+eastwest-gateway 172.168.2.28
+
+
+网格2：
+cluster: k8s02
+master01 172.168.2.31
+node01 172.168.2.34
+node02 172.168.2.35
+ingress-gateway 172.168.2.37
+eastwest-gateway 172.168.2.38
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 </pre>
