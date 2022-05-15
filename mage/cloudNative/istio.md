@@ -1045,7 +1045,7 @@ NAME           DOMAINS              MATCH                  VIRTUAL SERVICE
 http.20001     kiali.magedu.com     /*                     kiali-virtualservice.istio-system	#此时不是404，可以路由到对应的VS上了
                *                    /healthz/ready*
                *                    /stats/prometheus*
-root@k8s-master01:~# istioctl proxy-config clusters $InGW.istio-system		#查看ingress gateway中的clster
+root@k8s-master01:~# istioctl proxy-config clusters $InGW.istio-system		#查看ingress gateway中的cluster
 SERVICE FQDN                                                           PORT      SUBSET     DIRECTION     TYPE           DESTINATION RULE
 BlackHoleCluster                                                       -         -          -             STATIC
 agent                                                                  -         -          -             STATIC
@@ -1143,7 +1143,7 @@ root@k8s-master01:~# istioctl proxy-config clusters $InGW.istio-system --port 20
 SERVICE FQDN                                            PORT      SUBSET     DIRECTION     TYPE     DESTINATION RULE
 istio-ingressgateway.istio-system.svc.cluster.local     20001     -          outbound      EDS
 kiali.istio-system.svc.cluster.local                    20001     -          outbound      EDS      kiali-destinationrule.istio-system		#此时有DR了
-root@k8s-master01:~# istioctl proxy-config routes $InGW.istio-system	#有VIRTUAL SERVICE是生动生成，无VIRTUAL SERVICE是自动生成
+root@k8s-master01:~# istioctl proxy-config routes $InGW.istio-system	#有VIRTUAL SERVICE是自动生成
 NAME           DOMAINS              MATCH                  VIRTUAL SERVICE
 http.20001     kiali.magedu.com     /*                     kiali-virtualservice.istio-system
                *                    /healthz/ready*
@@ -5306,22 +5306,292 @@ eycloak.keycloak.svc.homsom.local:8090/realms/istio/protocol/openid-connect/toke
 
 
 ###部署示例:多网格多集群
-网格1：
+https://istio.io/latest/docs/tasks/security/cert-management/plugin-ca-cert/
+https://istio.io/latest/docs/setup/install/multicluster/multi-primary_multi-network/
+
+#网格1：
 cluster: k8s01
 master01 172.168.2.21
 node01 172.168.2.24
 node02 172.168.2.25
 ingress-gateway 172.168.2.27
 eastwest-gateway 172.168.2.28
+#k8s01:
+root@k8s-master01:~# kubectl get nodes
+NAME           STATUS                     ROLES    AGE     VERSION
+172.168.2.21   Ready,SchedulingDisabled   master   6d21h   v1.23.1
+172.168.2.24   Ready                      node     6d21h   v1.23.1
+172.168.2.25   Ready                      node     6d21h   v1.23.1
 
 
-网格2：
+#网格2：
 cluster: k8s02
 master01 172.168.2.31
 node01 172.168.2.34
 node02 172.168.2.35
 ingress-gateway 172.168.2.37
 eastwest-gateway 172.168.2.38
+#k8s02:
+root@k8s-master01:~# kubectl get nodes
+NAME           STATUS                     ROLES    AGE     VERSION
+172.168.2.31   Ready,SchedulingDisabled   master   7m10s   v1.23.1
+172.168.2.34   Ready                      node     6m2s    v1.23.1
+172.168.2.35   Ready                      node     6m2s    v1.23.1
+
+
+
+
+#下载istio
+--k8s01
+root@k8s-master01:~# curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.13.3 TARGET_ARCH=x86_64 sh -
+root@k8s-master01:~# cd istio-1.13.3/
+root@k8s-master01:~/istio-1.13.3# ls
+bin  LICENSE  manifests  manifest.yaml  README.md  samples  tools
+root@k8s-master01:~/istio-1.13.3# export PATH=$PWD/bin:$PATH
+--k8s02
+root@k8s-master01:~# curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.13.3 TARGET_ARCH=x86_64 sh -
+root@k8s-master01:~# cd istio-1.13.3/
+root@k8s-master01:~/istio-1.13.3# ls
+bin  LICENSE  manifests  manifest.yaml  README.md  samples  tools
+root@k8s-master01:~/istio-1.13.3# export PATH=$PWD/bin:$PATH
+
+#配置信任
+--在 Istio 安装包的顶级目录中，创建一个保存证书和密钥的目录：
+root@k8s-master01:~/istio-1.13.3# mkdir -p certs
+root@k8s-master01:~/istio-1.13.3# pushd certs
+~/istio-1.13.3/certs ~/istio-1.13.3
+
+--生成根证书和密钥：
+root@k8s-master01:~/istio-1.13.3/certs# make -f ../tools/certs/Makefile.selfsigned.mk root-ca
+root@k8s-master01:~/istio-1.13.3/certs# ls
+root-ca.conf  root-cert.csr  root-cert.pem  root-key.pem
+
+----对于每个集群，为 Istio CA 生成一个中间证书和密钥。以下是两个集群示例：cluster1，cluster2
+root@k8s-master01:~/istio-1.13.3/certs# make -f ../tools/certs/Makefile.selfsigned.mk cluster1-cacerts
+root@k8s-master01:~/istio-1.13.3/certs# ls cluster1/
+ca-cert.pem  ca-key.pem  cert-chain.pem  root-cert.pem
+
+root@k8s-master01:~/istio-1.13.3/certs# make -f ../tools/certs/Makefile.selfsigned.mk cluster2-cacerts
+root@k8s-master01:~/istio-1.13.3/certs# ls cluster2
+ca-cert.pem  ca-key.pem  cert-chain.pem  root-cert.pem
+
+----在每个群集中，创建一个包含所有输入文件的secret
+--k8s01
+root@k8s-master01:~/istio-1.13.3/certs# kubectl create ns istio-system && kubectl label namespace istio-system topology.istio.io/network=network1
+
+kubectl create secret generic cacerts -n istio-system \
+      --from-file=cluster1/ca-cert.pem \
+      --from-file=cluster1/ca-key.pem \
+      --from-file=cluster1/root-cert.pem \
+      --from-file=cluster1/cert-chain.pem
+root@k8s-master01:~/istio-1.13.3/certs# kubectl get secret cacerts -n istio-system
+NAME      TYPE     DATA   AGE
+cacerts   Opaque   4      14s
+root@k8s-master01:~/istio-1.13.3/certs# scp -r ../certs root@172.168.2.31:~/istio-1.13.3/	#复制整个certs目录到k8s02控制节点
+
+--k8s02
+root@c2-k8s-master01:~/istio-1.13.3# cd certs/
+root@c2-k8s-master01:~/istio-1.13.3/certs# ls
+cluster1  cluster2  root-ca.conf  root-cert.csr  root-cert.pem  root-cert.srl  root-key.pem
+root@k8s-master01:~/istio-1.13.3/certs# kubectl create ns istio-system && kubectl label namespace istio-system topology.istio.io/network=network2
+
+kubectl create secret generic cacerts -n istio-system \
+      --from-file=cluster2/ca-cert.pem \
+      --from-file=cluster2/ca-key.pem \
+      --from-file=cluster2/root-cert.pem \
+      --from-file=cluster2/cert-chain.pem
+root@k8s-master01:~/istio-1.13.3/certs# kubectl get secret cacerts -n istio-system
+NAME      TYPE     DATA   AGE
+cacerts   Opaque   4      9s
+
+
+
+####安装多主集群在不同的网格之上
+----k8s01
+--配置为主节点cluster1
+root@k8s-master01:~/istio-1.13.3# mkdir cluster1-config
+cat <<EOF > cluster1-config/cluster1.yaml
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  values:
+    global:
+      meshID: mesh1
+      multiCluster:
+        clusterName: cluster1
+      network: network1
+EOF
+root@k8s-master01:~/istio-1.13.3# cat cluster1-config/cluster1.yaml
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  values:
+    global:
+      meshID: mesh1				#网格ID
+      multiCluster:
+        clusterName: cluster1	#集群名称
+      network: network1			#网络名称
+root@k8s-master01:~/istio-1.13.3# istioctl apply -f cluster1-config/cluster1.yaml	#安装istio集群
+This will install the Istio 1.13.3 default profile with ["Istio core" "Istiod" "Ingress gateways"] components into the cluster. Proceed? (y/N) y
+✔ Istio core installed
+✔ Istiod installed
+✔ Ingress gateways installed
+✔ Installation complete                                                                                                                                            root@k8s-master01:~# kubectl get pods -n istio-system
+NAME                                   READY   STATUS    RESTARTS   AGE
+istio-ingressgateway-fc6f6b68b-kg5w9   1/1     Running   0          51s
+istiod-7765576944-7jr4s                1/1     Running   0          22m
+
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster1# kubectl get svc -n istio-system
+NAME                    TYPE           CLUSTER-IP     EXTERNAL-IP   PORT(S)                                                           AGE
+istio-eastwestgateway   LoadBalancer   10.68.77.231   <pending>     15021:46485/TCP,15443:42031/TCP,15012:38508/TCP,15017:50438/TCP   12m
+istio-ingressgateway    LoadBalancer   10.68.96.85    <pending>     15021:37104/TCP,80:56591/TCP,443:48749/TCP                        32m
+istiod                  ClusterIP      10.68.18.144   <none>        15010/TCP,15012/TCP,443/TCP,15014/TCP                             37m
+
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster1# kubectl edit svc istio-ingressgateway -n istio-system
+spec:
+  externalIPs:
+  - 172.168.2.27
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster1# kubectl edit svc istio-eastwestgateway -n istio-system
+spec:
+  externalIPs:
+  - 172.168.2.28
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster1# kubectl get svc -n istio-system
+NAME                    TYPE           CLUSTER-IP     EXTERNAL-IP    PORT(S)                                                           AGE
+istio-eastwestgateway   LoadBalancer   10.68.77.231   172.168.2.28   15021:46485/TCP,15443:42031/TCP,15012:38508/TCP,15017:50438/TCP   15m
+istio-ingressgateway    LoadBalancer   10.68.96.85    172.168.2.27   15021:37104/TCP,80:56591/TCP,443:48749/TCP                        35m
+istiod                  ClusterIP      10.68.18.144   <none>         15010/TCP,15012/TCP,443/TCP,15014/TCP                             39m
+
+
+--在cluster1安装东西向网关
+samples/multicluster/gen-eastwest-gateway.sh \
+    --mesh mesh1 --cluster cluster1 --network network1 | \
+    istioctl install -y -f -
+root@k8s-master01:~/istio-1.13.3# samples/multicluster/gen-eastwest-gateway.sh \
+>     --mesh mesh1 --cluster cluster1 --network network1 | \
+>     istioctl install -y -f -
+✔ Ingress gateways installed
+✔ Installation complete   
+
+root@k8s-master01:~# kubectl get pods -n istio-system
+NAME                                     READY   STATUS    RESTARTS   AGE
+istio-eastwestgateway-5cf6c5fbbb-6mm2p   1/1     Running   0          82s
+istio-ingressgateway-fc6f6b68b-kg5w9     1/1     Running   0          3m42s
+istiod-7765576944-7jr4s                  1/1     Running   0          25m
+
+--在cluster1暴露服务
+注：由于集群位于不同的网络上，因此我们需要在两个集群中公开东西向网关上的所有服务 （*.local）。虽然此网关在 Internet 上是公共的，但其后面的服务只能由具有受信任的 mTLS 证书和工作负载 ID 的服务访问，就像它们位于同一网络上一样。
+kubectl apply -n istio-system -f \
+    samples/multicluster/expose-services.yaml
+root@k8s-master01:~/istio-1.13.3# kubectl apply -n istio-system -f \
+>     samples/multicluster/expose-services.yaml
+gateway.networking.istio.io/cross-network-gateway created
+
+
+----k8s02
+--配置为主节点cluster2
+root@k8s-master01:~/istio-1.13.3# mkdir cluster2-config
+cat <<EOF > cluster2-config/cluster2.yaml
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  values:
+    global:
+      meshID: mesh2
+      multiCluster:
+        clusterName: cluster2
+      network: network2
+EOF
+root@k8s-master01:~/istio-1.13.3# cat cluster2-config/cluster2.yaml
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  values:
+    global:
+      meshID: mesh2				#网格ID，唯一
+      multiCluster:
+        clusterName: cluster2	#集群名称，唯一
+      network: network2			#网络名称，唯一
+root@k8s-master01:~/istio-1.13.3# istioctl apply -f cluster2-config/cluster2.yaml
+This will install the Istio 1.13.3 default profile with ["Istio core" "Istiod" "Ingress gateways"] components into the cluster. Proceed? (y/N) y
+✔ Istio core installed
+✔ Istiod installed
+✔ Ingress gateways installed
+✔ Installation complete                                                                                                                                            root@k8s-master01:~# kubectl get pods -n istio-system
+NAME                                    READY   STATUS    RESTARTS   AGE
+istio-ingressgateway-7b4b88bf9f-cv9g4   1/1     Running   0          15m
+istiod-69db545dd5-4q626                 1/1     Running   0          23m
+
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster2# kubectl edit svc istio-ingressgateway -n istio-system
+spec:
+  externalIPs:
+  - 172.168.2.37
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster2# kubectl edit svc istio-eastwestgateway -n istio-system
+spec:
+  externalIPs:
+  - 172.168.2.38
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster2# kubectl get svc -n istio-system
+NAME                    TYPE           CLUSTER-IP      EXTERNAL-IP    PORT(S)                                                           AGE
+istio-eastwestgateway   LoadBalancer   10.68.26.202    172.168.2.38   15021:51351/TCP,15443:40605/TCP,15012:61976/TCP,15017:32740/TCP   16m
+istio-ingressgateway    LoadBalancer   10.68.251.189   172.168.2.37   15021:30041/TCP,80:31594/TCP,443:54709/TCP                        33m
+istiod                  ClusterIP      10.68.38.232    <none>         15010/TCP,15012/TCP,443/TCP,15014/TCP                             41m
+
+
+--在cluster2安装东西向网关
+samples/multicluster/gen-eastwest-gateway.sh \
+    --mesh mesh2 --cluster cluster2 --network network2 | \
+    istioctl install -y -f -
+root@k8s-master01:~/istio-1.13.3# samples/multicluster/gen-eastwest-gateway.sh \
+>     --mesh mesh2 --cluster cluster2 --network network2 | \
+>     istioctl install -y -f -
+✔ Ingress gateways installed
+✔ Installation complete   
+
+root@k8s-master01:~# kubectl get pods -n istio-system
+NAME                                     READY   STATUS    RESTARTS   AGE
+istio-eastwestgateway-7cd9fbd95d-69lt6   1/1     Running   0          82s
+istio-ingressgateway-7b4b88bf9f-cv9g4    1/1     Running   0          18m
+istiod-69db545dd5-4q626                  1/1     Running   0          26m
+
+
+--在cluster2暴露服务
+注：由于集群位于不同的网络上，因此我们需要在两个集群中公开东西向网关上的所有服务 （*.local）。虽然此网关在 Internet 上是公共的，但其后面的服务只能由具有受信任的 mTLS 证书和工作负载 ID 的服务访问，就像它们位于同一网络上一样。
+kubectl apply -n istio-system -f \
+    samples/multicluster/expose-services.yaml
+root@k8s-master01:~/istio-1.13.3# kubectl apply -n istio-system -f \
+>     samples/multicluster/expose-services.yaml
+gateway.networking.istio.io/cross-network-gateway created
+
+
+##启用终端节点发现
+----配置ssh互信
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster1# ssh-keygen -t rsa
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster1# ssh-copy-id 172.168.2.31
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster2# ssh-keygen -t rsa
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster2# ssh-copy-id 172.168.2.21
+
+----安装一个远程密钥，提供对API服务器的访问(cluster1 -> cluster2)
+--cluster1上创建
+root@k8s-master01:~/istio-1.13.3/cluster1-config# ssh 172.168.2.31 '/root/istio-1.13.3/bin/istioctl x create-remote-secret --name=cluster2' > cluster2-secret.yaml
+
+root@k8s-master01:~/istio-1.13.3/cluster1-config# sed -i 's#https://127.0.0.1:6443#https://172.168.2.31:6443#' cluster2-secret.yaml
+root@k8s-master01:~/istio-1.13.3/cluster1-config# grep 'server:' cluster2-secret.yaml
+        server: https://172.168.2.31:6443
+root@k8s-master01:~/istio-1.13.3/cluster1-config# kubectl apply -f cluster2-secret.yaml		#应用secret 
+secret/istio-remote-secret-cluster2 created
+root@k8s-master01:~/istio-1.13.3/cluster1-config# kubectl get secret -n istio-system | grep remote
+istio-remote-secret-cluster2                        Opaque                                1      112s
+
+----安装一个远程密钥，提供对API服务器的访问(cluster2 -> cluster1)
+--cluster2上创建
+root@k8s-master01:~/istio-1.13.3/cluster2-config# ssh 172.168.2.21 '/root/istio-1.13.3/bin/istioctl x create-remote-secret --name=cluster1' > cluster1-secret.yaml
+
+root@k8s-master01:~/istio-1.13.3/cluster2-config# sed -i 's#https://127.0.0.1:6443#https://172.168.2.21:6443#' cluster1-secret.yaml
+root@k8s-master01:~/istio-1.13.3/cluster2-config# grep 'server:' cluster1-secret.yaml
+        server: https://172.168.2.21:6443
+root@k8s-master01:~/istio-1.13.3/cluster2-config# kubectl apply -f cluster1-secret.yaml		#应用secret
+secret/istio-remote-secret-cluster2 created
+root@k8s-master01:~/istio-1.13.3/cluster2-config# kubectl get secret -n istio-system | grep remote
+istio-remote-secret-cluster1                        Opaque                                1      5s
 
 
 
@@ -5336,7 +5606,300 @@ eastwest-gateway 172.168.2.38
 
 
 
+#测试
+----为default名称空间配置自动注入sidecar
+--cluster1:
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster1# kubectl label namespace default istio-injection=enabled
+--cluster2:
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster2# kubectl label namespace default istio-injection=enabled
 
+
+----cluster1部署服务v1.0:
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster1# ls
+01-deploy-demoapp-v10.yaml  02-service-demoapp.yaml  03-destinationrule-demoapp.yaml  04-virutalservice-demoapp.yaml
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster1# kubectl apply -f .
+deployment.apps/demoappv10 created
+service/demoapp created
+destinationrule.networking.istio.io/demoapp created
+virtualservice.networking.istio.io/demoapp created
+
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster1# kubectl get pods
+NAME                         READY   STATUS    RESTARTS   AGE
+demoappv10-b5d9576cc-hs99x   2/2     Running   0          56s
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster1# kubectl get svc
+NAME         TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)    AGE
+demoapp      ClusterIP   10.68.229.2   <none>        8080/TCP   2m10s
+kubernetes   ClusterIP   10.68.0.1     <none>        443/TCP    7d4h
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster1# kubectl get vs
+NAME      GATEWAYS   HOSTS         AGE
+demoapp              ["demoapp"]   2m13s
+
+
+----cluster2部署服务v1.1:
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster2# ls
+01-deploy-demoapp-v11.yaml  02-service-demoapp.yaml  03-destinationrule-demoapp.yaml  04-virutalservice-demoapp.yaml
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster2# kubectl apply -f .
+deployment.apps/demoappv11 created
+service/demoapp created
+destinationrule.networking.istio.io/demoapp created
+virtualservice.networking.istio.io/demoapp created
+
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster2# kubectl get pods
+NAME                          READY   STATUS    RESTARTS   AGE
+demoappv11-77755cdc65-9nh5n   2/2     Running   0          95s
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster2# kubectl get svc
+NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
+demoapp      ClusterIP   10.68.104.176   <none>        8080/TCP   12s
+kubernetes   ClusterIP   10.68.0.1       <none>        443/TCP    54m
+root@k8s-master01:~/istio-in-practise/Muliti-Cluster-demo/cluster2# kubectl get vs
+NAME      GATEWAYS   HOSTS         AGE
+demoapp              ["demoapp"]   17s
+
+----在cluster1和cluster2上运行测试容器，请求demoapp:8080，看是否可以路由到v1.0和v1.1应用
+--cluster1:
+root@k8s-master01:~# kubectl run client --image=ikubernetes/admin-box:v1.2 --rm --restart=Never -it --command -- /bin/sh
+root@client # while true;do curl demoapp:8080;sleep 0.$RANDOM;done
+iKubernetes demoapp v1.1 !! ClientIP: 127.0.0.6, ServerName: demoappv11-77755cdc65-9nh5n, ServerIP: 172.20.85.198!	#能访问到cluster2上的pod
+iKubernetes demoapp v1.1 !! ClientIP: 127.0.0.6, ServerName: demoappv11-77755cdc65-9nh5n, ServerIP: 172.20.85.198!
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-b5d9576cc-hs99x, ServerIP: 172.20.85.207!
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-b5d9576cc-hs99x, ServerIP: 172.20.85.207!
+iKubernetes demoapp v1.1 !! ClientIP: 127.0.0.6, ServerName: demoappv11-77755cdc65-9nh5n, ServerIP: 172.20.85.198!
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-b5d9576cc-hs99x, ServerIP: 172.20.85.207!
+iKubernetes demoapp v1.1 !! ClientIP: 127.0.0.6, ServerName: demoappv11-77755cdc65-9nh5n, ServerIP: 172.20.85.198!
+
+--cluster2:
+root@k8s-master01:~# kubectl run client --image=ikubernetes/admin-box:v1.2 --rm --restart=Never -it --command -- /bin/sh
+root@client # while true;do curl demoapp:8080;sleep 0.$RANDOM;done
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-b5d9576cc-hs99x, ServerIP: 172.20.85.207!	#能访问到cluster1上的pod
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-b5d9576cc-hs99x, ServerIP: 172.20.85.207!
+iKubernetes demoapp v1.1 !! ClientIP: 127.0.0.6, ServerName: demoappv11-77755cdc65-9nh5n, ServerIP: 172.20.85.198!
+iKubernetes demoapp v1.1 !! ClientIP: 127.0.0.6, ServerName: demoappv11-77755cdc65-9nh5n, ServerIP: 172.20.85.198!
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-b5d9576cc-hs99x, ServerIP: 172.20.85.207!
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-b5d9576cc-hs99x, ServerIP: 172.20.85.207!
+
+注：能访问到另一个地址的集群说明没有问题，可以在两个集群内部问题同一个服务，实现服务的冗余
+
+
+#测试南北向流量
+root@k8s-master01:/tmp/demoapp# cat demoapp-gateway.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: demoapp-gateway
+  namespace: istio-system
+spec:
+  selector:
+    app: istio-ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http-demoapp
+      protocol: HTTP
+    hosts:
+    - "demoapp.magedu.com"
+---
+root@k8s-master01:/tmp/demoapp# cat demoapp-virtualservice.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: demoapp-virtualservice
+spec:
+  hosts:
+  - "demoapp.magedu.com"
+  gateways:
+  - istio-system/demoapp-gateway
+  http:
+  - name: default
+    route:
+    - destination:
+        host: demoapp	#目标地址为demoapp.default.svc.cluster.local
+        port:
+          number: 8080
+---
+root@k8s-master01:/tmp/demoapp# kubectl apply -f demoapp-gateway.yaml -f demoapp-virtualservice.yaml
+gateway.networking.istio.io/demoapp-gateway created
+virtualservice.networking.istio.io/demoapp-virtualservice created
+
+--测试南北向流量
+$  while true;do curl -s demoapp.magedu.com;sleep 0.$RANDOM;done
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-b5d9576cc-hs99x, ServerIP: 172.20.85.207!
+iKubernetes demoapp v1.1 !! ClientIP: 127.0.0.6, ServerName: demoappv11-77755cdc65-9nh5n, ServerIP: 172.20.85.198!
+iKubernetes demoapp v1.1 !! ClientIP: 127.0.0.6, ServerName: demoappv11-77755cdc65-9nh5n, ServerIP: 172.20.85.198!
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-b5d9576cc-hs99x, ServerIP: 172.20.85.207!
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-b5d9576cc-hs99x, ServerIP: 172.20.85.207!
+iKubernetes demoapp v1.1 !! ClientIP: 127.0.0.6, ServerName: demoappv11-77755cdc65-9nh5n, ServerIP: 172.20.85.198!
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-b5d9576cc-hs99x, ServerIP: 172.20.85.207!
+iKubernetes demoapp v1.1 !! ClientIP: 127.0.0.6, ServerName: demoappv11-77755cdc65-9nh5n, ServerIP: 172.20.85.198!
+iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-b5d9576cc-hs99x, ServerIP: 172.20.85.207!
+iKubernetes demoapp v1.1 !! ClientIP: 127.0.0.6, ServerName: demoappv11-77755cdc65-9nh5n, ServerIP: 172.20.85.198!
+iKubernetes demoapp v1.1 !! ClientIP: 127.0.0.6, ServerName: demoappv11-77755cdc65-9nh5n, ServerIP: 172.20.85.198!
+
+
+####按配置部署istio网格
+root@k8s-master01:~# istioctl profile dump default > istio-default.yaml
+root@k8s-master01:~# cat istio-default.yaml
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+spec:
+  components:
+    base:
+      enabled: true
+    cni:
+      enabled: false
+    egressGateways:
+    - enabled: false
+      name: istio-egressgateway
+    ingressGateways:
+    - enabled: true					#是否开启ingressGateways
+      name: istio-ingressgateway
+	  k8s:
+        replicaCount: 2				#insgress副本
+    istiodRemote:
+      enabled: false
+    pilot:
+      enabled: true
+  hub: docker.io/istio				#集群的根地址
+  meshConfig:
+    defaultConfig:
+      proxyMetadata: {}
+    enablePrometheusMerge: true
+  profile: default					#istio profile名称
+  tag: 1.13.3						#istio版本
+  values:
+    base:
+      enableCRDTemplates: false
+      validationURL: ""
+    defaultRevision: ""
+    gateways:
+      istio-egressgateway:
+        autoscaleEnabled: true
+        env: {}
+        name: istio-egressgateway
+        secretVolumes:
+        - mountPath: /etc/istio/egressgateway-certs
+          name: egressgateway-certs
+          secretName: istio-egressgateway-certs
+        - mountPath: /etc/istio/egressgateway-ca-certs
+          name: egressgateway-ca-certs
+          secretName: istio-egressgateway-ca-certs
+        type: ClusterIP
+      istio-ingressgateway:
+        autoscaleEnabled: true
+        env: {}
+        name: istio-ingressgateway
+        secretVolumes:
+        - mountPath: /etc/istio/ingressgateway-certs
+          name: ingressgateway-certs
+          secretName: istio-ingressgateway-certs
+        - mountPath: /etc/istio/ingressgateway-ca-certs
+          name: ingressgateway-ca-certs
+          secretName: istio-ingressgateway-ca-certs
+        type: LoadBalancer
+    global:
+      configValidation: true
+      defaultNodeSelector: {}
+      defaultPodDisruptionBudget:
+        enabled: true
+      defaultResources:
+        requests:
+          cpu: 10m
+      imagePullPolicy: ""
+      imagePullSecrets: []
+      istioNamespace: istio-system			#部署在哪个名称空间
+      istiod:
+        enableAnalysis: false
+      jwtPolicy: third-party-jwt
+      logAsJson: false
+      logging:
+        level: default:info
+      meshNetworks: {}
+      mountMtlsCerts: false
+      multiCluster:
+        clusterName: ""
+        enabled: false
+      network: ""
+      omitSidecarInjectorConfigMap: false
+      oneNamespace: false
+      operatorManageWebhooks: false
+      pilotCertProvider: istiod
+      priorityClassName: ""
+      proxy:
+        autoInject: enabled
+        clusterDomain: cluster.local		#istio-proxy容器中显示的集群后缀，如果k8s集群是test.local，这里是cluster.local，则网格以此为准
+        componentLogLevel: misc:error
+        enableCoreDump: false
+        excludeIPRanges: ""
+        excludeInboundPorts: ""
+        excludeOutboundPorts: ""
+        image: proxyv2						#istio-proxy镜像名称，可以下载下来使用内部的镜像仓库
+        includeIPRanges: '*'
+        logLevel: warning
+        privileged: false
+        readinessFailureThreshold: 30
+        readinessInitialDelaySeconds: 1
+        readinessPeriodSeconds: 2
+        resources:
+          limits:
+            cpu: 2000m
+            memory: 1024Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        statusPort: 15020
+        tracer: zipkin
+      proxy_init:
+        image: proxyv2						#istio-proxy镜像名称，可以下载下来使用内部的镜像仓库
+        resources:
+          limits:
+            cpu: 2000m
+            memory: 1024Mi
+          requests:
+            cpu: 10m
+            memory: 10Mi
+      sds:
+        token:
+          aud: istio-ca
+      sts:
+        servicePort: 0
+      tracer:
+        datadog: {}
+        lightstep: {}
+        stackdriver: {}
+        zipkin: {}
+      useMCP: false
+    istiodRemote:
+      injectionURL: ""
+    pilot:
+      autoscaleEnabled: true
+      autoscaleMax: 5
+      autoscaleMin: 1
+      configMap: true
+      cpu:
+        targetAverageUtilization: 80
+      enableProtocolSniffingForInbound: true
+      enableProtocolSniffingForOutbound: true
+      env: {}
+      image: pilot							#istiod镜像名称，可以下载下来使用内部的镜像仓库
+      keepaliveMaxServerConnectionAge: 30m
+      nodeSelector: {}
+      podLabels: {}
+      replicaCount: 2						#多少个istiod副本
+      traceSampling: 1
+    telemetry:
+      enabled: true
+      v2:
+        enabled: true
+        metadataExchange:
+          wasmEnabled: false
+        prometheus:
+          enabled: true
+          wasmEnabled: false
+        stackdriver:
+          configOverride: {}
+          enabled: false
+          logging: false
+          monitoring: false
+          topology: false
 
 
 
