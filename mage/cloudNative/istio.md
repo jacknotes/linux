@@ -5758,7 +5758,7 @@ spec:
       enabled: false
     pilot:
       enabled: true
-  hub: docker.io/istio				#集群的根地址
+  hub: docker.io/istio				#集群的镜像根地址
   meshConfig:
     defaultConfig:
       proxyMetadata: {}
