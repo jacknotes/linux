@@ -9,23 +9,25 @@ IP/公安备案：通过ICP备案后需要IP或者公安备案后才算真正的
 
 #添加公网网卡步骤： --20210317
 1.创建弹性网卡 
-2.弹性IP绑定辅助弹性网卡 
+2.去弹性IP上绑定辅助弹性网卡，绑定模式为EIP网卡可见模式
 3.到新创建的弹性网卡上进行绑定ECS 
 4.到绑定弹性IP的ECS上创建ifcfg-eth1配置文件并重启网络服务，实现添加公网地址网卡，此时会卡住，因为此时公网网卡已经生效，需要连接公网地址进入管理
 [root@iptables network-scripts]# cp ifcfg-eth0 ifcfg-eth1
 [root@iptables network-scripts]# cat ifcfg-eth1    --此网卡必须绑定第二个弹性网卡后才能使用
 BOOTPROTO=dhcp
-DEVICE=eth1
+DEVICE=eth1		#更改为第二个网卡名称
 ONBOOT=yes
 STARTMODE=auto
 TYPE=Ethernet
 USERCTL=no
+5. 重启ECS
 [root@iptables network-scripts]#systemctl restart network
 [root@iptables network-scripts]#ssh root@publicIP
 
 实现SNAT代理上网：
 1. 阿里云VPC网络IP地址不可以自己设定，网关不可以设定。
 ip地址只能在控制台设定，网关在VPC网络的路由表中建立默认路由，指定下一跳到ECS(代理服务器)
+也可以建立8条默认路由替换0.0.0.0路由
 
 2.网关到达绑定弹性IP的ECS，此时这个ECS需要做SNAT转换
 2.1首先要开启ip转发
@@ -52,6 +54,39 @@ net.ipv4.ip_forward = 1
 [root@iptables yum.repos.d]# systemctl enable iptables
 [root@iptables yum.repos.d]# service iptables save 
 
+
+#20220523--从NAT网关切换为Iptables
+iptables -t nat -A PREROUTING -d 47.103.112.73/32 -p tcp -m tcp --dport 443 -j DNAT --to-destination 10.10.10.240:443	#当内网机器设定此服务器为网关时，则只需要这一条规则即可生效DNAT，否则需要再设定如下一条规则
+iptables -t nat -A POSTROUTING -d 10.10.10.240/32 -p tcp --dport 443 -j SNAT --to-source 10.10.10.249	#当内网机器未设定此服务器为网关时，需要设定此条规则
+
+iptables -t nat -A POSTROUTING -s 10.0.0.0/8 -d 10.10.10.240/32 -p tcp --dport 443 -j SNAT --to-source 10.10.10.249	#此条规则是内网机器以外网域名形式访问内网服务时需要的规则
+
+iptables -t nat -A POSTROUTING -s 10.0.0.0/8 -o eth1 -j SNAT --to-source 47.103.112.73	#SNAT规则
+
+
+----替换默认路由
+在VPC中添加8条路由条目，对原有路由进行覆盖，1.0.0.0/8、2.0.0.0/7、4.0.0.0/6、8.0.0.0/5、16.0.0.0/4、32.0.0.0/3、64.0.0.0/2、128.0.0.0/1，下一跳均为自建SNAT服务器
+
+```bash
+[root@iptables ~]# iptables -S
+-P INPUT DROP
+-P FORWARD ACCEPT
+-P OUTPUT ACCEPT
+-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A INPUT -p icmp -j ACCEPT
+-A INPUT -i lo -j ACCEPT
+-A INPUT -s 10.0.0.0/8 -p tcp -m tcp --dport 22 -j ACCEPT
+-A INPUT -s 222.66.21.210/32 -p tcp -m tcp --dport 22 -j ACCEPT
+-A INPUT -s 10.0.0.0/8 -p tcp -m tcp --dport 9100 -j ACCEPT
+[root@iptables ~]# iptables -S -t nat
+-P PREROUTING ACCEPT
+-P INPUT ACCEPT
+-P OUTPUT ACCEPT
+-P POSTROUTING ACCEPT
+-A PREROUTING -d 47.103.112.73/32 -p tcp -m tcp --dport 443 -j DNAT --to-destination 10.10.10.240:443
+-A POSTROUTING -o eth1 -j SNAT --to-source 47.103.112.73
+-A POSTROUTING -s 10.0.0.0/8 -d 10.10.10.240/32 -p tcp -m tcp --dport 443 -j SNAT --to-source 10.10.10.249
+```
 
 
 

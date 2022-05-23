@@ -980,6 +980,7 @@ CentOS5.x和CentOS6.x真实可用内存=free memory+buffer+cached
 CentOS7.x真实可用内存=available(也可使用free memory+buffer+cached)
 内存使用率：单位Ms
 (1 - ((node_memory_Buffers_bytes + node_memory_Cached_bytes + node_memory_MemFree_bytes) /node_memory_MemTotal_bytes)) * 100
+(((node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100)  or (1 - ((node_memory_Buffers_bytes + node_memory_Cached_bytes + node_memory_MemFree_bytes ) /node_memory_MemTotal_bytes )) * 100)  > 85	#包括centos7和centos6的计算
 #硬盘
 硬盘空闲比例：
 (sum(node_filesystem_free_bytes{device=~"/dev/sda.*"}) by(instance) / sum(node_filesystem_size_bytes{device=~"/dev/sda.*"}) by(instance)) * 100
