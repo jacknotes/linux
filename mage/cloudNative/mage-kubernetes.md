@@ -13,8 +13,8 @@ kubelet
 kube-proxy
 
 1. apiserver多实例运行: apiserver是无状态的，所有数据保存在etcd中，apiserver不做缓存。apiserver多个实例并行运行，通过Loadbalancer负载均衡用户的请求。
-2. scheuler和controller-manager单实例运行: scheduler和controller-manager会修改集群状态，多实例运行会产生竞争状态。通过--leader-elect机制，只有领导者实例才能运行，其它实例处于standby状态；当领导者实例宕机时，剩余的实例选举产生新的领导者。领导者选举的方法：多个实例抢占创建endpoints资源，创建成功者为领导者。比如多个scheduler实例，抢占创建子endpoints资源：kube-scheduler
-# kubectl get endpoints kube-scheduler -n kube-system -oyaml
+2. scheduler和controller-manager单实例运行: scheduler和controller-manager会修改集群状态，多实例运行会产生竞争状态。通过--leader-elect机制，只有领导者实例才能运行，其它实例处于standby状态；当领导者实例宕机时，剩余的实例选举产生新的领导者。领导者选举的方法：多个实例抢占创建endpoints资源，创建成功者为领导者。比如多个scheduler实例抢占创建endpoints资源：kube-scheduler
+# kubectl get endpoints kube-scheduler -n kube-system -o yaml
 apiVersion: v1
 kind: Endpoints
 metadata:
@@ -22,7 +22,7 @@ metadata:
     control-plane.alpha.kubernetes.io/leader: '{"holderIdentity":"master1_293eaef2-fd7e-4ae9-aae7-e78615454881","leaseDurationSeconds":15,"acquireTime":"2021-10-06T20:46:43Z","renewTime":"2021-10-19T02:49:21Z","leaderTransitions":165}'
   creationTimestamp: "2021-02-01T03:10:48Z"
 ......
-查询kube-scheduler资源，可以看到此时master1上的scheduler是active状态，其它实例则为standby。
+查询kube-scheduler endpoint资源，可以看到此时master1上的scheduler是active状态，其它实例则为standby。
 3. kubelet和kube-proxy在工作节点上运行
 3.1 kubelet负责：
 向apiserver创建一个node资源，以注册该节点；
@@ -35,7 +35,7 @@ metadata:
 #控制平台组件开启和关闭实验结果：
 3个kube-apiserver关掉2个，只保留1个，可以正常接收kubectl命令操作、
 3个kube-scheduler和kube-controller-manager关掉2个节点，只保留1个节点可以正常操作
-只保留1个kube-controller-manager，而kube-scheduler3个节点全部关闭，在创建deployment和service时候，任务会被创建成功，但是pod会被一直pending，因为pod没有调度器调试，此时开启一个kube-scheduler后，pending状态的pod正常运行。
+只保留1个kube-controller-manager，而kube-scheduler3个节点全部关闭，在创建deployment和service时候，任务会被创建成功，但是pod会被一直pending，因为pod没有调度器调度，此时开启一个kube-scheduler后，pending状态的pod正常运行。
 只保留1个kube-scheduler，而kube-controller-manager3个节点全部关闭，在创建deployment和service时候，任务不会被创建成功，因为kube-controller-manager没有运行，无法使用deployment控制器创建pod，虽然kube-scheduler运行，但是控制器没有运行，后面的调度任务也就不会被运行。
 
 
@@ -93,6 +93,7 @@ root@ansible:~# pip3 install ansible -i https://mirrors.aliyun.com/pypi/simple/
 或者旧版本ansible也可以使用
 
 2. ansible加入k8s节点进行管控，用ssh免密登录
+root@ansible:~/ansible# ssh-keygen -t rsa
 root@ansible:~/ansible# cat ssh-cp.sh
 -----------------
 #!/bin/bash
@@ -327,7 +328,7 @@ CALICO_IPV4POOL_IPIP: "Always"
 # role:cluster-addon	所有插件不自动安装，后面手动安装
 # coredns 自动安装
 dns_install: "no"
-ENABLE_LOCAL_DNS_CACHE: false	#测关闭DNS缓存。由于这里是测试，部署过一次k8s没关缓存，所以后面会关掉缓存再重新部署k8s集群 
+ENABLE_LOCAL_DNS_CACHE: false	#测关闭DNS缓存
 # metric server 自动安装
 metricsserver_install: "no"
 # dashboard 自动安装
@@ -392,6 +393,144 @@ NAME           STATUS                     ROLES    AGE   VERSION
 -----etcd、kube-apiserver、kubelet此3个服务都有自己的一套证书，并且信任同一个CA，其中etcd启动服务时使用自己的一套证书配置启动。其中kubelet启动服务时也使用自己的一套证书配置启动。kube-apiserver除了也使用自己的一套证书配置启动外，还在服务配置了访问etcd的证书、私钥，kubelet的证书、私钥，kube-apiserver配置访问etcd和kubelet的证书私钥是跟kube-apiserver一样的证书私钥文件。当kube-apiserver访问etcd或者kubelet时使用自己的私钥加密，并将自己的公钥发送给etcd或者kubelet，从而etcd或kubetlet可以使用kube-apiserver的公钥解密。反之亦然。
 ----kube-controller-manager、kube-scheduler、kube-proxy他们的证书和私钥都配置在kubeconfig文件中
 
+
+
+
+#####20220604----配置kube-controller-manager驱逐不健康节点的时间
+###适用于kubernetes v1.13之前
+root@k8s-master01:~# cat /etc/systemd/system/kube-controller-manager.service
+[Unit]
+Description=Kubernetes Controller Manager
+Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+
+[Service]
+ExecStart=/usr/local/bin/kube-controller-manager \
+  --bind-address=0.0.0.0 \
+  --allocate-node-cidrs=true \
+  --cluster-cidr=172.20.0.0/16 \
+  --cluster-name=kubernetes \
+  --cluster-signing-cert-file=/etc/kubernetes/ssl/ca.pem \
+  --cluster-signing-key-file=/etc/kubernetes/ssl/ca-key.pem \
+  --kubeconfig=/etc/kubernetes/kube-controller-manager.kubeconfig \
+  --leader-elect=true \
+  --node-cidr-mask-size=24 \
+  --root-ca-file=/etc/kubernetes/ssl/ca.pem \
+  --service-account-private-key-file=/etc/kubernetes/ssl/ca-key.pem \
+  --service-cluster-ip-range=10.68.0.0/16 \
+  --use-service-account-credentials=true \
+  --v=2 \
+  --node-monitor-period=5s \			#每隔5s和node联系一次，判定node是否失联。默认值为5s
+  --node-monitor-grace-period=30s \		#当node失联30s后，判定node为NotReady状态。默认值为40s
+  --node-startup-grace-period=1m0s \	#在NotReady基础上，当node失联1m0s后，判定node为UnHealthy状态。默认值为1m0s
+  --pod-eviction-timeout=30s			#在UnHealthy基础上，当node失联30s后，开始删除原node上的pod进行重建。默认值为5m0s
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+-----
+
+###v1.18以后的配置，当前集群版本为v1.23.7
+root@k8s-master01:~/git/k8s-deploy/frontend-www-homsom-com-test/deploy# /usr/local/bin/kube-controller-manager --help 
+--enable-taint-manager=true		#此参数是v1.18以后的参数，默认为true，意思为开启污点管理来驱逐pod，v1.13 >= v1.18参数为TaintBasedEvictions=true
+
+root@k8s-master01:~# /usr/local/bin/kube-apiserver --help | grep -i -C 5 toleration-seconds
+      --default-not-ready-toleration-seconds int       Indicates the tolerationSeconds of the toleration for notReady:NoExecute that is added by default to every pod that does not already have such a toleration. (default 300)
+      --default-unreachable-toleration-seconds int     Indicates the tolerationSeconds of the toleration for unreachable:NoExecute that is added by default to every pod that does not already have such a toleration. (default 300)
+
+root@ansible:~# kubectl describe pods client	#在基于污点的驱逐开启状态下node-startup-grace-period 和 pod-eviction-timeout 参数配置的时间不再生效，pod状态下可以看到pod什么情况下被驱逐及驱逐时间
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+
+#配置kube-apiserver
+root@k8s-master01:~/git/k8s-deploy/frontend-www-homsom-com-test/deploy# cat /etc/systemd/system/kube-apiserver.service
+[Unit]
+Description=Kubernetes API Server
+Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/kube-apiserver \
+  --allow-privileged=true \
+  --anonymous-auth=false \
+  --api-audiences=api,istio-ca \
+  --authorization-mode=Node,RBAC \
+  --bind-address=172.168.2.21 \
+  --client-ca-file=/etc/kubernetes/ssl/ca.pem \
+  --endpoint-reconciler-type=lease \
+  --etcd-cafile=/etc/kubernetes/ssl/ca.pem \
+  --etcd-certfile=/etc/kubernetes/ssl/kubernetes.pem \
+  --etcd-keyfile=/etc/kubernetes/ssl/kubernetes-key.pem \
+  --etcd-servers=https://172.168.2.23:2379,https://172.168.2.22:2379,https://172.168.2.21:2379 \
+  --kubelet-certificate-authority=/etc/kubernetes/ssl/ca.pem \
+  --kubelet-client-certificate=/etc/kubernetes/ssl/kubernetes.pem \
+  --kubelet-client-key=/etc/kubernetes/ssl/kubernetes-key.pem \
+  --secure-port=6443 \
+  --service-account-issuer=https://kubernetes.default.svc \
+  --service-account-signing-key-file=/etc/kubernetes/ssl/ca-key.pem \
+  --service-account-key-file=/etc/kubernetes/ssl/ca.pem \
+  --service-cluster-ip-range=10.68.0.0/16 \
+  --service-node-port-range=30000-62767 \
+  --tls-cert-file=/etc/kubernetes/ssl/kubernetes.pem \
+  --tls-private-key-file=/etc/kubernetes/ssl/kubernetes-key.pem \
+  --requestheader-client-ca-file=/etc/kubernetes/ssl/ca.pem \
+  --requestheader-allowed-names= \
+  --requestheader-extra-headers-prefix=X-Remote-Extra- \
+  --requestheader-group-headers=X-Remote-Group \
+  --requestheader-username-headers=X-Remote-User \
+  --proxy-client-cert-file=/etc/kubernetes/ssl/aggregator-proxy.pem \
+  --proxy-client-key-file=/etc/kubernetes/ssl/aggregator-proxy-key.pem \
+  --enable-aggregator-routing=true \
+  --v=2 \
+  --default-not-ready-toleration-seconds=60 \	#添加此两行，默认匹配到任何一个将进行驱逐
+  --default-unreachable-toleration-seconds=30
+Restart=always
+RestartSec=5
+Type=notify
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target
+---
+注：配置kube-apiserver驱逐时间只针对新创建的pod生效，对于已经存在的pod默认还是300s
+
+#配置kube-controller-manager
+root@k8s-master01:~/git/k8s-deploy/frontend-www-homsom-com-test/deploy# cat /etc/systemd/system/kube-controller-manager.service
+[Unit]
+Description=Kubernetes Controller Manager
+Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+
+[Service]
+ExecStart=/usr/local/bin/kube-controller-manager \
+  --bind-address=0.0.0.0 \
+  --allocate-node-cidrs=true \
+  --cluster-cidr=172.20.0.0/16 \
+  --cluster-name=kubernetes \
+  --cluster-signing-cert-file=/etc/kubernetes/ssl/ca.pem \
+  --cluster-signing-key-file=/etc/kubernetes/ssl/ca-key.pem \
+  --kubeconfig=/etc/kubernetes/kube-controller-manager.kubeconfig \
+  --leader-elect=true \
+  --node-cidr-mask-size=24 \
+  --root-ca-file=/etc/kubernetes/ssl/ca.pem \
+  --service-account-private-key-file=/etc/kubernetes/ssl/ca-key.pem \
+  --service-cluster-ip-range=10.68.0.0/16 \
+  --use-service-account-credentials=true \
+  --v=2 \
+  --node-monitor-period=5s \	#v1.18以后默认只有此两个参数有效了
+  --node-monitor-grace-period=30s
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+---
+root@k8s-master01:~/git/k8s-deploy/frontend-www-homsom-com-test/deploy# scp /etc/systemd/system/kube-controller-manager.service 172.168.2.22:/etc/systemd/system/
+root@k8s-master01:~/git/k8s-deploy/frontend-www-homsom-com-test/deploy# scp /etc/systemd/system/kube-controller-manager.service 172.168.2.23:/etc/systemd/system/
+root@k8s-master01:~/git/k8s-deploy/frontend-www-homsom-com-test/deploy# ssh 172.168.2.22 'systemctl daemon-reload && systemctl restart kube-controller-manager.service && systemctl status kube-controller-manager.service | grep Active'
+   Active: active (running) since Sat 2022-06-04 15:56:57 CST; 21ms ago
+root@k8s-master01:~/git/k8s-deploy/frontend-www-homsom-com-test/deploy# ssh 172.168.2.23 'systemctl daemon-reload && systemctl restart kube-controller-manager.service && systemctl status kube-controller-manager.service | grep Active'
+   Active: active (running) since Sat 2022-06-04 15:57:02 CST; 14ms ago
+------------
 
 4.2.7 安装node
 --可以在安装node时调整相关配置，例如kube-proxy ipvs模式，ipvs调度算法等
@@ -628,7 +767,7 @@ data:
             fallthrough in-addr.arpa ip6.arpa
         }
         prometheus :9153
-        forward . 192.168.10.250 {	#转发服务器地址
+        forward . 192.168.10.250 {	#转发服务器地址，可写多个
             max_concurrent 1000
         }
         cache 30
@@ -722,6 +861,8 @@ spec:
       targetPort: 8443
       nodePort: 30002	--节点端口为30002
 -----
+注：- --token-ttl=3600 参数表示dashboard会话超时时间为3600秒，默认为15分钟
+
 
 4.4.3 下载dashboard相关容器并更名推送到本地仓库
 root@k8s-master02:~# docker pull kubernetesui/dashboard:v2.3.1
@@ -1647,7 +1788,7 @@ LimitRange: 1. 限制容器  2. 限制pod  3. 限制名称空间
 kubernetes现在版本支持ipvs和iptables，ipvs性能更好，当不支持ipvs的时候自动降级为iptables
 
 
-5.9 dashboardtoken制作
+5.9 dashboard token制作
 root@k8s-master01:~/k8s# vim /root/.kube/config    #增加token到user中
 apiVersion: v1
 clusters:

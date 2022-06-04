@@ -3405,6 +3405,8 @@ Password updated
 Context '10.68.98.231' updated
 注：新密码设定好后就可以登录到ArgoCD UI界面了
 
+#注：在UI上添加凭据时可以是用户ssh key或deploy key如果报错，请添加known_hosts，必须是centos系统，ubuntu系统有问题
+argocd repo add git@gitlab.hs.com:kubernetes/netcore.git --ssh-private-key-path ~/.ssh/id_rsa
 
 ##使用ArgoCD
 项目地址：https://gitee.com/mageedu/spring-boot-helloworld-deployment
@@ -3494,12 +3496,121 @@ version 0.9.5
 version 0.9.5
 注：argoCD这样配置在版本迭代时会有失败的请求
 
---命令行删除applications，此时相应的pod和service都将被删除
+--命令行删除applications，此时相应的pod和service都将被删除，使用kubectl命令删除则不会
 root@k8s-master01:~# argocd app delete spring-boot-helloworld
 
 --命令行添加application
 root@k8s-master01:~# argocd app create spring-boot-helloworld --repo https://gitee.com/jacknotes/spring-boot-helloworld-deployment.git --path deploy/kubernetes --dest-namespace helloworld --dest-server https://kubernetes.default.svc --sync-policy automated --self-heal
 application 'spring-boot-helloworld' created
+
+--命令行添加其它集群
+root@k8s-master01:~/argocd/cluster# argocd cluster add context-fat-cluster --kubeconfig config --name fat-cluster	#config是k8s管理员用户kubeconfig文件，在~/.kube/config
+WARNING: This will create a service account `argocd-manager` on the cluster referenced by context `context-fat-cluster` with full cluster level admin privileges. Do you want to continue [y/N]? y
+INFO[0001] ServiceAccount "argocd-manager" created in namespace "kube-system"
+INFO[0001] ClusterRole "argocd-manager-role" created
+INFO[0001] ClusterRoleBinding "argocd-manager-role-binding" created
+Cluster 'https://172.168.2.31:6443' added
+
+root@k8s-master01:~/argocd/cluster# argocd cluster list	#此时fat-cluster还未部署application状态所以是unknow
+SERVER                          NAME         VERSION  STATUS      MESSAGE                                              PROJECT
+https://172.168.2.31:6443       fat-cluster           Unknown     Cluster has no application and not being monitored.
+https://kubernetes.default.svc  in-cluster   1.23     Successful
+
+root@k8s-master01:~/argocd/cluster# argocd cluster list	#此时fat-cluster部署了application状态所以是Successful
+SERVER                          NAME         VERSION  STATUS      MESSAGE  PROJECT
+https://172.168.2.31:6443       fat-cluster  1.23     Successful
+https://kubernetes.default.svc  in-cluster   1.23     Successful
+
+
+----gitlab添加webhook触发argoCD
+Documentation: https://argo-cd.readthedocs.io/en/stable/operator-manual/webhook/
+uv6uHEyPI6Xbvh7I4b5tDfdNs1bBBtOL	#生成secret，用于访问argoCD
+
+kubectl edit secret argocd-secret -n argocd-secret	#编辑argocd-secret添加gitlab添加的secret
+type: Opaque
+stringData:
+  webhook.gitlab.secret: uv6uHEyPI6Xbvh7I4b5tDfdNs1bBBtOL	#增加此行
+
+----添加基于SSH的gitlab认证
+## 下面为创建多个存储库示例,使用同一个凭据
+```bash
+root@k8s-master01:~# cat argocd-secret-ssh-template.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: private-repo-000001
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  type: git
+  url: git@gitlab.hs.com:k8s-deploy/frontend-www-homsom-com-test.git
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: private-repo-000002
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  type: git
+  url: git@gitlab.hs.com:k8s-deploy/frontend-www-homsom-com.git
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: private-repo-000003
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  type: git
+  url: git@gitlab.hs.com:k8s-deploy/java-flightrefund-order-service-hs-com.git
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: private-repo-creds
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repo-creds
+stringData:
+  type: git
+  url: git@gitlab.hs.com:k8s-deploy
+  sshPrivateKey: |
+    -----BEGIN RSA PRIVATE KEY-----
+    MIIEowIBAAKCAQEAmhCD24CCTEmMWzHGOyO3ZAnX1WHA1fyV6U0Efcz2wduHhPj7
+    mquUEZN4dZYC6eL8QuTr5RKigbPg25q0ReAEOkzkpNhvRbxtrmq0b/u7CxXjWJiL
+    /OHanH/u6CpS/M0ySxVGcY9dB2uxnWqYze34ljHoXkPuJJn7ufuGKEVZ9JIXdMao
+    N9TWUSQWR6+3cd5d3042h6E8cyhkA5urlW+9VfiPWhO2Z8bYeTwerucj7+0Pn4yt
+    nD0VAncJZzoOgUet7SY38WeVO76sbM/No2igNnjVLSyaYleDWXOwUSCZtPgUKB+s
+    /8ev502Xu3pr6LbnaZysHoGEjw0a1Es1pnM6MQIDAQABAoIBAFDx9mVgepUcW2sa
+    lr1BwbwE0+qfxpJneFgwh/iUtN0bu3Mo4gDcvxoQ8kxNedBq2wFGh44+oTUmTjDz
+    cl34GiCLf+IAeU4Zd0MZex4PE7H6WQ2WcI54F8T8Dojam+mI4jDCx9UobsdUVOiR
+    NiGUM3SuWhkU9c0zPif0OAN2lJHDU3EDe8Wwy1lI5VNDJuUKyDZUfd2riOczzV/E
+    xePoswcCqgLfxO674ywOOPcmA2zQS6m9fB+QusQG6M6UjN2agQ+jPM4I4vpLdmpK
+    pflEf/DIuPvjIrN0M/4xXcdDVfDHJV256OHcsCfidybXzx1a1F9bDPCcEACZi5Uh
+    J+gGQEECgYEAx5CX1bHKI6X4SyDY7ibCXccesBjNPC3022xOLx2ciqq3T4LtefSN
+    ej6CuHSc1DIhbUWeKQkPDByXFGZ8EDHDSm7Rm39ZmgXYdpf/qpLzXdVbPW17mBw3
+    EwmUvvxIA8Zauf8HvGgkD9+0bkgFhh90dmMy8yNvdULLdD8DqEMzMbkCgYEAxaHy
+    jPSfKWaRqseciLbCW6MwAcYb3knCz7UXsOhWeTCEaiAKg3KwrIKT81BTtGitZMMB
+    cLV+AA9Ta2troM9xmoRQMQyBhjlHXpU3RQEjlG8xKaabFFnOoY6DYl1Gsy3xamQ4
+    SKalSG3wrQN/UkeqSrSAXddHnXABiEJgdVeqaDkCgYBf6qw/hls8dQn4ugnptPFY
+    d1rVkqYaFZCJYe3WEWpq75B5g9k184eISME1fL7f8lREm+Bfor37uUYYBQX+Fpzh
+    io/uJ/Bd6g9XOMkmJ8kWwXQ/+v4bZvxFhyZaARFv1wdGPEBwmrEye/fRxYX6J+Ym
+    /JjBabepaXg2IA9W8S2K6QKBgQCDeT7wQnP3iMJzCCO8V0hoyeDP7Ujw0cUFhIVk
+    LMwKBxqvtu0HkS6zNJLUFKX6qIBhPdEhd7uAsrFeDrIk4pvCnS7z0kwATO6Ln1yL
+    TTysLGRaPvl/ylbJ5xLERyUXYgLuMgm3WxUtX+XyUxdKV16UIAwdYW/E7pQ2X2Hn
+    7g/xEQKBgHtPOeB7YaTvTwKZVUGiZcSA0WzTkzjUOIN165K+XO9qEM5Tvj0892bA
+    ld2nd6oESKvosa29+laflkdyNT3wGNtA/nfSG1bHkg/VIve5fnvN8LFlAbCOJwCf
+    C1iUM1zDoIZ4oggXlvRRhMT4o5AMYJ91t00DM+Nm6ir8E9n4nZb2
+    -----END RSA PRIVATE KEY-----
+```
+
+
+
+
 
 --声明式配置applicaion
 root@k8s-master01:~# kubectl get application -o yaml -n argocd  > application.yaml
@@ -3694,7 +3805,57 @@ NAME  CLUSTER  NAMESPACE  PROJECT  STATUS  HEALTH  SYNCPOLICY  CONDITIONS  REPO 
 作业2：使用notification实现构建后操作  
 
 
-
+#针对不同集群不同分支配置的ApplicationSet
+root@k8s-master01:~/git/k8s-deploy/frontend-www-homsom-com-test# cat applicationset.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: frontend-www-homsom-com-test
+  namespace: argocd
+spec:
+  generators:
+  - list:
+      elements:
+      - cluster: pro
+        url: https://kubernetes.default.svc
+      - cluster: uat
+        url: https://172.168.2.31:6443
+      - cluster: fat
+        url: https://172.168.2.31:6443
+  template:
+    metadata:
+      name: '{{cluster}}-frontend-www-homsom-com-test'
+    spec:
+      project: homsom
+      source:
+        path: ./deploy/
+        repoURL: git@gitlab.hs.com:k8s-deploy/frontend-www-homsom-com-test.git
+        targetRevision: '{{cluster}}'
+      destination:
+        namespace: '{{cluster}}-frontend'
+        server: '{{url}}'
+      syncPolicy:
+        automated:
+          selfHeal: true
+          prune: true
+          allowEmpty: false
+        syncOptions:
+        - Validate=false
+        - CreateNamespace=true
+        - PrunePropagationPolicy=foreground
+        - PruneLast=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
+      ignoreDifferences:
+      - group: networking.istio.io
+        kind: VirtualService
+        jsonPointers:
+        - /spec/http/0
+---
 
 
 
@@ -3719,7 +3880,7 @@ NAME  CLUSTER  NAMESPACE  PROJECT  STATUS  HEALTH  SYNCPOLICY  CONDITIONS  REPO 
   - 几个相关的CRD
     - Rollout、AnalysisTemplate、ClusterAnalysisTemplate、AnalysisRun
 - 基本工作机制
-  - 与Deployment相似，Argo Rollouts控制器借助于ReplicaSet完成应用的创建、绽放和删除
+  - 与Deployment相似，Argo Rollouts控制器借助于ReplicaSet完成应用的创建、缩放和删除
   - ReplicaSet资源由Rollout的spec.template字段进行定义
   
 #Argo Rollouts架构
@@ -3749,7 +3910,9 @@ https://github.com/argoproj/argo-rollouts/releases/download/v1.2.1/dashboard-ins
 #https://github.com/argoproj/argo-rollouts/releases/download/v1.2.1/namespace-install.yaml		#名称空间级别安装
 
 #部署Argo Rollout
-root@k8s-master01:~/tekton-and-argocd-in-practise/06-deploy-argocd/argo-rollouts# kubectl create namespace argo-rollouts
+curl -OL https://github.com/argoproj/argo-rollouts/releases/download/v1.2.1/install.yaml	
+curl -OL https://github.com/argoproj/argo-rollouts/releases/download/v1.2.1/dashboard-install.yaml
+root@k8s-master01:~/tekton-and-argocd-in-practise/06-deploy-argocd/argo-rollouts# kubectl create namespace argo-rollouts	#只能部署在此名称空间下
 root@k8s-master01:~/tekton-and-argocd-in-practise/06-deploy-argocd/argo-rollouts# kubectl apply -f install.yaml -n argo-rollouts
 root@k8s-master01:~/tekton-and-argocd-in-practise/06-deploy-argocd/argo-rollouts# kubectl get pods -n argo-rollouts
 NAME                             READY   STATUS              RESTARTS   AGE
@@ -4811,7 +4974,7 @@ spec:
     successCondition: result[0] >= 0.95
     interval: 20s
     count: 5
-    failureLimit: 5		#此次必须小于等于count
+    failureLimit: 5		#此参数值必须小于等于count
     provider:
       prometheus:
         address: http://prometheus.istio-system.svc.cluster.local:9090

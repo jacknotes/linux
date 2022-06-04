@@ -206,6 +206,9 @@ Available Commands:
   diff        Diffs two Istio configuration profiles
   dump        Dumps an Istio configuration profile
   list        Lists available Istio configuration profiles
+####default中values的helm模板文档，此文档可能已经过时（是v1.5版本）：https://istio.io/v1.5/docs/reference/config/installation-options/
+####更改默认配置可以更改IstioOperator.spec.components.<COMPONENTS_NAME>.k8s 来进行更改，新版本支持这个更改，旧版本支持values来更改
+####新版本文档地址：https://istio.io/latest/docs/reference/config/istio.operator.v1alpha1/
 root@k8s-master01:/usr/local/istio# istioctl profile dump default
 apiVersion: install.istio.io/v1alpha1
 kind: IstioOperator
@@ -1277,7 +1280,7 @@ root@k8s-master01:~/istio/kiali# kubectl apply -f kiali-gateway.yaml -f kiali-vi
   - 绑定到服务的所有流量都会通过Sidecar Envoy自动进行重新路由
 - Istio借助于服务注册中心完成服务发现
   - Istio自身并不进行服务发现功能，它需要借助于服务注册中心发现所有的Service及相应的各Endpoint
-  - Istio还假设服务的新实例会自动注册到服务注册表，并且会自动删除不集群的实例
+  - Istio还假设服务的新实例会自动注册到服务注册表，并且会自动删除不在集群的实例
   - Kubernetes、Mesos等平台能够为基于容器的应用程序提供服务发现功能，另外也存在大量针对基于VM的应用程序的解决方案
 - Kubernetes系统上，Istio会将网格中的每个Service的端口创建为Listener，而其匹配到的endpoint将组合成为一个Cluster
   - 这些Listener和Cluster将配置在网格内的每个Sidecar Envoy之上
@@ -1856,15 +1859,15 @@ http.8080     kiali.magedu.com       /*                     kiali-virtualservice
 
 
 #高级流量路由机制
-5.1 url重定向和重写
+5.1 url重定向和重写（重写向是客户端获取新url进行访问，重写是服务端进行的操作）
 场景一：
 client -> ingress-gateway 	-> front-proxy/backend -> backend app 
 							-> front-proxy/canary -> canary app 
 							-> front-proxy/ ->  app 
 场景二：
 client 			-> 			front-proxy/backend -> backend app 
-							-> front-proxy/canary -> canary app 
-							-> front-proxy/ ->  app 
+							front-proxy/canary -> canary app 
+							front-proxy/ ->  app 
 注：以上场景都需要满足
 
 5.2 部署backend app
@@ -1978,7 +1981,7 @@ Proxying value: iKubernetes demoapp v1.1 !! ClientIP: 127.0.0.6, ServerName: dem
 Proxying value: iKubernetes demoapp v1.1 !! ClientIP: 127.0.0.6, ServerName: demoappv11-7984f579f5-dbhd9, ServerIP: 172.20.217.90!
  - Took 6 milliseconds.
 ^C
-root@client # while true;do curl proxy/^Csleep 0.$RANDOM;done
+root@client # while true;do curl proxy/backend;sleep 0.$RANDOM;done
 root@client # curl proxy/backend
 root@client # curl -I  proxy/backend
 HTTP/1.1 301 Moved Permanently
@@ -2076,7 +2079,7 @@ x-envoy: test
 root@client # curl demoapp:8080/user-agent
 User-Agent: curl/7.67.0
 
-8.1 故障注入--服务韧性配置有关，主要做用是测试服务韧性，好让前端可以做重试、做超时的配置
+8.1 故障注入--服务韧性配置有关，主要作用是测试服务韧性，好让前端可以做重试、做超时的配置
 root@k8s-master01:~/istio/istio-in-practise/Traffic-Management-Basics/ms-demo/08-fault-injection# cat virtualservice-demoapp.yaml
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
@@ -2393,7 +2396,7 @@ spec:
     outlierDetection:					#断路器
       maxEjectionPercent: 50			#最大弹出为50%
       consecutive5xxErrors: 5			#连续的5xx错误达到5次将弹出1次
-      interval: 10s						#每隔10s钟对弹出的洗衣机进行检测，看是否正常，如若还未正常将在弹出时间X次数
+      interval: 10s						#每隔10s钟对弹出的服务端点进行检测，看是否正常，如若还未正常将在弹出时间X次数
       baseEjectionTime: 1m				#基础弹出时间为1m
       minHealthPercent: 40				#最小健康节点为40%，当小于此百分比时将禁用断路器功能
   subsets:
@@ -2532,7 +2535,7 @@ x-envoy-decorator-operation: demoapp.default.svc.cluster.local:8080/*
 - 此前版本中，该初始化容器会运行一个用于生成iptables规则的相关脚本来生成iptables规则，脚本地址为：https://github.com/istio/cni/blob/master/tools/packaging/common/istio-iptables.sh 
   
 #istio-init初始化容器配置的iptables规则 
-[root@k8s-node04 ~]# nsenter -t 25088 -n iptables -t nat -S
+[root@k8s-node04 ~]# nsenter -t 25088 -n iptables -t nat -S	#25088是容器的进程，此处为进入特定容器的网络名称空间
 -P PREROUTING ACCEPT
 -P INPUT ACCEPT
 -P OUTPUT ACCEPT
@@ -2843,7 +2846,7 @@ Proxying value: iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: dem
 	- HTTPS/TLS流量中，对应于SNI
   - location: 服务的位置
     - MESH_EXTERNAL: 表示服务在网格外部，需要通过API进行访问接口
-	- MESH_INTERNAL: 表示服务是网格中的一部分，通常用于在扩展风格时显式进行服务添加
+	- MESH_INTERNAL: 表示服务是网格中的一部分，通常用于在扩展网格时显式进行服务添加
   - ports: 服务使用的端口
   - resolution: 服务的解析方式，用于指定如何解析与服务关联的各端点的IP地址
     - NONE: 假设传入的连接已经被解析到特定的IP地址
@@ -3607,7 +3610,7 @@ tcp-stats-filter-1.12   7d5h
   - 在工作负载的podTemplate资源上，通过"proxy.istio.io/config"注解进行配置
 
 Telemetry V1:对于Envoy来说是主动式指标
-Telemetry V２:对于Envoy来说是被动式指标
+Telemetry V2:对于Envoy来说是被动式指标
 服务级指标: stats、metadata exchange输出
 代理级指标：proxy本身支持
 -- istio日志收集跟收集k8s日志一样
@@ -4897,7 +4900,7 @@ spec:
 #Keycloak上的Access Type共有三类：
 - confidential: 适用于需要执行浏览器登录的应用，客户端会通过client secret来获取access token，多用于服务端渲染的web系统场景中
 - public: 适用于需要执行浏览器登录的应用，多运用于使用vue和react实现的前端项目
-- bearer-only: 适用于不需要执行浏览顺登录的应用，只允携带bearer token访问，多运用于RESTful API的使用场景
+- bearer-only: 适用于不需要执行浏览器登录的应用，只允携带bearer token访问，多运用于RESTful API的使用场景
 注：kiali, grafana, prometheus等的UI即是服务端渲染的web系统
 
 
@@ -5753,11 +5756,31 @@ spec:
     - enabled: true					#是否开启ingressGateways
       name: istio-ingressgateway
 	  k8s:
-        replicaCount: 2				#insgress副本
+		service:
+          externalIPs: ["172.168.2.28"]		#loadbalance的IP地址
+		  affinity:
+          podAntiAffinity:	#pod反亲和性，需要调整，使一个节点只运行一个Pod
+            requiredDuringSchedulingIgnoredDuringExecution:		#硬亲和
+            - labelSelector:
+                matchLabels:
+                  istio: ingressgateway
+              topologyKey: kubernetes.io/hostname
     istiodRemote:
       enabled: false
     pilot:
       enabled: true
+	  k8s:
+        resources:		#此资源限制不可更改，这里是测试所以调整为500Mi,默认是2G
+          requests:
+            cpu: 500m
+            memory: 500Mi
+        affinity:
+          podAntiAffinity:	#pod反亲和性，需要调整，使一个节点只运行一个Pod
+            requiredDuringSchedulingIgnoredDuringExecution:		#硬亲和
+            - labelSelector:
+                matchLabels:
+                  istio: pilot
+              topologyKey: kubernetes.io/hostname
   hub: docker.io/istio				#集群的镜像根地址
   meshConfig:
     defaultConfig:
@@ -5785,6 +5808,8 @@ spec:
         type: ClusterIP
       istio-ingressgateway:
         autoscaleEnabled: true
+		autoscaleMin: 3		#最小为3个副本
+        autoscaleMax: 5		#最大为5个副本
         env: {}
         name: istio-ingressgateway
         secretVolumes:
@@ -5871,8 +5896,8 @@ spec:
       injectionURL: ""
     pilot:
       autoscaleEnabled: true
-      autoscaleMax: 5
-      autoscaleMin: 1
+      autoscaleMax: 5		#最多5个istiod副本
+      autoscaleMin: 3		#最少3个istiod副本
       configMap: true
       cpu:
         targetAverageUtilization: 80
@@ -5883,7 +5908,7 @@ spec:
       keepaliveMaxServerConnectionAge: 30m
       nodeSelector: {}
       podLabels: {}
-      replicaCount: 2						#多少个istiod副本
+      replicaCount: 2						
       traceSampling: 1
     telemetry:
       enabled: true
@@ -5901,6 +5926,136 @@ spec:
           monitoring: false
           topology: false
 
+
+######## 当实现pod反亲和性后，pod一直属于pending状态时，应当将旧的replicaset副本数调整为1即可
+# istiod
+  template:
+    metadata:
+      annotations:
+        prometheus.io/port: "15014"
+        prometheus.io/scrape: "true"
+        sidecar.istio.io/inject: "false"
+      creationTimestamp: null
+      labels:
+        app: istiod
+        install.operator.istio.io/owning-resource: unknown
+        istio: pilot
+        istio.io/rev: default
+        operator.istio.io/component: Pilot
+        sidecar.istio.io/inject: "false"
+    spec:
+      affinity:
+        podAntiAffinity:		#istio增加pod反亲和性，当在有key为"kubernetes.io/hostname"的节点上，有标签为istio=pilot的pod时则不在此pod运行，此反亲和性可使每个节点运行一个pod，而不会在一个节点上运行多个pod
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                istio: pilot
+            topologyKey: kubernetes.io/hostname
+
+
+# istio-ingressgateway
+  template:
+    metadata:
+      annotations:
+        prometheus.io/path: /stats/prometheus
+        prometheus.io/port: "15020"
+        prometheus.io/scrape: "true"
+        sidecar.istio.io/inject: "false"
+      creationTimestamp: null
+      labels:
+        app: istio-ingressgateway
+        chart: gateways
+        heritage: Tiller
+        install.operator.istio.io/owning-resource: unknown
+        istio: ingressgateway
+        istio.io/rev: default
+        operator.istio.io/component: IngressGateways
+        release: istio
+        service.istio.io/canonical-name: istio-ingressgateway
+        service.istio.io/canonical-revision: latest
+        sidecar.istio.io/inject: "false"
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                istio: ingressgateway
+            topologyKey: kubernetes.io/hostname
+
+# 此时istiod和istio-ingressgateway都已经运行在不同的节点之上，此重建过程不会影响外部服务访问，因为是滚动更新的
+root@k8s-master01:~/argocd# kubectl get pods -o wide  -n istio-system
+NAME                                    READY   STATUS    RESTARTS   AGE     IP               NODE            NOMINATED NODE   READINESS GATES
+grafana-67f5ccd9d7-snkqw                1/1     Running   0          4d19h   172.20.58.211    172.168.2.25    <none>           <none>
+istio-ingressgateway-848484f9b6-dscjp   1/1     Running   0          66s     172.20.135.185   172.168.2.26    <none>           <none>
+istio-ingressgateway-848484f9b6-j2htn   1/1     Running   0          66s     172.20.85.199    172.168.2.24    <none>           <none>
+istio-ingressgateway-848484f9b6-tg4vb   1/1     Running   0          66s     172.20.217.98    192.168.13.63   <none>           <none>
+istiod-75d8959bd6-q2qlv                 1/1     Running   0          14m     172.20.135.184   172.168.2.26    <none>           <none>
+istiod-75d8959bd6-vpsvt                 1/1     Running   0          14m     172.20.85.194    172.168.2.24    <none>           <none>
+istiod-75d8959bd6-zr6rj                 1/1     Running   0          14m     172.20.58.227    172.168.2.25    <none>           <none>
+
+
+
+
+
+
+
+
+
+####nginx代理istio VS
+server {
+    listen      80;
+    server_name	argocd.hs.com;		#nginx上的域名
+    location / {
+	proxy_redirect off;
+	proxy_set_header Host argocd.magedu.com; 	#istio VS的域名
+	proxy_http_version 1.1;
+	proxy_ssl_verify off;
+	proxy_pass http://172.168.2.28/;		#istio ingressgateway地址
+
+    	error_page   500 502 503 504  /50x.html;
+    	location = /50x.html {
+      		root   /usr/share/nginx/html;
+    	}
+    }  #注：此服务只能把argocd.hs.com重定向到argocd.magedu.com，无法直接使用argocd.magedu.com进行访问，因为后端服务是不受信任的https服务
+}
+
+server {
+    listen       80;
+    server_name	argo-rollouts.hs.com;
+    location / {
+	proxy_redirect off;
+	proxy_set_header Host argo-rollouts.magedu.com;
+	proxy_http_version 1.1;
+	proxy_pass http://172.168.2.28;
+        root   /usr/share/nginx/html;
+        index  index.html index.htm;
+
+    	error_page   500 502 503 504  /50x.html;
+    	location = /50x.html {
+       		root   /usr/share/nginx/html;
+    	}
+    }	#注：访问argo-rollouts.hs.com就跟访问argo-rollouts.magedu.com一样，后端服务是http服务
+}
+
+server {
+    listen       80;
+    server_name	www.hs.com;	#nginx上的域名
+    location / {
+	proxy_redirect off;
+	proxy_set_header Host $proxy_host; 
+	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	proxy_http_version 1.1;
+	proxy_pass https://www.homsom.com;	#受信任的https服务
+        root   /usr/share/nginx/html;
+        index  index.html index.htm;
+
+    	error_page   500 502 503 504  /50x.html;
+    	location = /50x.html {
+      		root   /usr/share/nginx/html;
+    	}
+    }	#注：访问http://www.hs.com跟访问https://www.homsom.com一样。因为后端服务是受信任的https服务
+}
 
 
 

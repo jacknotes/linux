@@ -4105,7 +4105,7 @@ pod-second   0/1     Pending   0          6s    <none>        <none>      <none>
 #####因为反亲和性的条件是：不能在pod的键值为app=mapp所在的节点和键为zone的节点上运行，而k8s.node1是app=mapp所在的节点，而k8s.node2是键为zone的节点，所以这两个节点都不允许运行
 ####污点调度或容忍调度、
 1.节点调度  2. pod调度 3. 污点调度
-污点是定义在节点在的键值属性数据：1.标签 2.annotaions(注解) 3.污点(通常用在节点上，不像前面两个别的资源都可以用)
+污点是定义在节点上的键值属性数据：1.标签 2.annotaions(注解) 3.污点(通常用在节点上，不像前面两个别的资源都可以用)
 在pod上定义容忍度，pod对象的键值形数据，这个数据是污点值列表
 taints是键值形数据，用在节点上，定义污点。
 tolerations是键值形数据,用在pod上，定义容忍度，容忍哪些污点。
@@ -4113,8 +4113,8 @@ tolerations是键值形数据,用在pod上，定义容忍度，容忍哪些污�
 	1. NoSchedule:仅影响调度过程，对现存的pod对象不产生影响
 	2. NoExecute：既影响调度过程也影响现存的pod对象，不容忍的pod对象将被驱逐
 	3. PreferNoSchedule：不能调度到不能容忍的节点上，但是没有节点运行时也可以运行在不容忍时的节点上
-等值比较，存在性判断
-##例：
+	
+##等值比较，存在性判断，例：
 [root@k8s-master scheduler]# kubectl describe nodes k8s-master
 Taints:             node-role.kubernetes.io/master:NoSchedule #这个就是master的污点，而我们运行的pod从来没有容忍过这个污点，所以不会运行在master节点上
 [root@k8s-master scheduler]# kubectl describe pods kube-proxy-fxvqs    -n kube-system #查看lproxy的容忍度
