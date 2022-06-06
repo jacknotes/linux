@@ -5269,8 +5269,8 @@ version 0.9.5
 
 #安装notification template和trigger，会生成ConfigMap argocd-notifications-cm
 root@ansible:~/k8s/argocd# curl -L -o argocd-notification-template https://raw.githubusercontent.com/argoproj/argo-cd/stable/notifications_catalog/install.yaml
-root@ansible:~/k8s/argocd# kubectl apply -n argocd -f argocd-notification-template	#查看模板
-root@k8s-master01:~# argocd admin notifications template get -n argocd
+root@ansible:~/k8s/argocd# kubectl apply -n argocd -f argocd-notification-template
+root@k8s-master01:~# argocd admin notifications template get -n argocd	#查看模板
 NAME                     PREVIEW
 app-created              Application {{.app.metadata.name}} has been created.
 app-deleted              Application {{.app.metadata.name}} has been deleted.
@@ -5323,8 +5323,6 @@ metadata:
 type: Opaque
 
 #注册电子邮件通知服务，配置ConfigMap argocd-notifications-cm，自己会默认调用secret argocd-notifications-secret的用户和密码
-kubectl patch cm argocd-notifications-cm -n argocd --type merge -p '{"data": {"service.email.gmail": "{ username: $email-username, password: $email-password, host: smtp.qiye.163.com, port: 465, from: $email-username }" }}'
-
 root@ansible:~/k8s/argocd# kubectl patch cm argocd-notifications-cm -n argocd --type merge -p '{"data": {"service.email.gmail": "{ username: $email-username, password: $email-password, host: smtp.qiye.163.com, port: 465, from: $email-username }" }}'
 configmap/argocd-notifications-cm patched
 
@@ -5381,9 +5379,8 @@ spec:
 root@k8s-master01:~/git/kubernetes/ops/argocd/04-applicationset# kubectl apply -f application-test.yaml
 
 #通过将注释添加到 Argo CD 应用程序或项目来订阅通知：
-root@ansible:~/k8s/argocd# kubectl patch app pro-frontend-www-homsom-com-test -n argocd -p '{"metadata": {"annotations": {"notifications.argoproj.io/subscribe.on-sync-succeeded.slack":"jack.li@homsom.com"}}}' --type merge
+root@ansible:~/k8s/argocd# kubectl patch app pro-frontend-www-homsom-com-test -n argocd -p '{"metadata": {"annotations": {"notifications.argoproj.io/subscribe.on-sync-succeeded.email.gmail": "jack.li@homsom.com"}}}' --type merge
 application.argoproj.io/pro-frontend-www-homsom-com-test patched
-
 
 
 ###云原生课程总结
