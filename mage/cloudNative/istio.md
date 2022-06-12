@@ -3144,7 +3144,7 @@ Nginx 2101 ~~
   - 因此：WorkloadGroup和WorkloadEntry能够方便用户将虚拟机上的服务注册到网格内
   
 #WorkloadEntry示例
-##意图：使用WorkloadEntry创建两个endpoint，然后使用ServiceEntry通过标准选择workload，实现对外部服务的负载均衡，流量比为50:50
+##意图：使用WorkloadEntry创建两个endpoint，然后使用ServiceEntry通过标签选择workload，实现对外部服务的负载均衡，流量比为50:50
 root@k8s-master01:~/istio/istio-in-practise/ServiceEntry-and-WorkloadEntry/02-Workload-Entry# cat 01-workloadentry-nginx.yaml
 apiVersion: networking.istio.io/v1beta1
 kind: WorkloadEntry			#使用WorkloadEntry创建两个endpoint
@@ -4111,7 +4111,7 @@ iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-5c497c6f
         0x0190:  302e 3231 372e 3732 210a                 0.217.72!.
 
 ----对default名称空间下匹配的标签pod启用严格mTLS通信
-root@k8s-master01:~/istio/istio-in-practise/Security/01-PeerAuthentication-Policy-Basics# cat 02-demoapp-peerauthn.yaml
+root@k8s-master01:~/istio/istio-in-practise/Security/01-PeerAuthentication-Policy-Basics# cat 02-demoapp-peerauthen.yaml
 ---
 apiVersion: security.istio.io/v1beta1
 kind: PeerAuthentication
@@ -4124,6 +4124,7 @@ spec:
       app: demoapp
   mtls:
     mode: STRICT
+	
 ----针对访问demoapp的客户端启用ISTIO_MUTUAL mTLS,如果PeerAuthentication定义服务端是PERMISSIVE，那么网格之外的client将不会受此影响而使用的是明文通信
 root@k8s-master01:~/istio/istio-in-practise/Security/01-PeerAuthentication-Policy-Basics# cat 03-destinationrule-demoapp-mtls.yaml
 apiVersion: networking.istio.io/v1beta1
@@ -4159,6 +4160,7 @@ spec:
       app: demoapp
   mtls:
     mode: UNSET
+	
 ----针对访问demoapp的客户端禁用mTLS
 root@k8s-master01:~/istio/istio-in-practise/Security/02-PeerAuthentication-Disable# cat 03-destinationrule-demoapp-mtls.yaml
 apiVersion: networking.istio.io/v1beta1
@@ -4266,7 +4268,7 @@ root@k8s-master01:~/istio/istio-in-practise/Security/03-Ingress-Gateway-TLS/kial
 
 #RequestAuthentication实战
 - 由Keycloak提供身份管理和访问管理
-  - 著名的开源身份和访问管理）Identity and Access Management，简称为IAM）解决方案
+  - 著名的开源身份和访问管理（Identity and Access Management，简称为IAM）解决方案
   - 支持基于OAuth 2.0标准的OpenID Connect协议对用户进行身份验证
   - 应用程序可通过OAuth 2.0将身份验证委托给外部系统（例如Keycloak），从而实现SSO
   - 支持集成不同的身份认证服务，例如Github, Google和Facebook等
@@ -4761,7 +4763,9 @@ root@test-client # curl -H "Authorization: Bearer $TOKEN" demoapp.default:8080
 iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-5c497c6f7c-wzvnn, ServerIP: 172.20.217.101!
 #注JWT主要针对外部浏览器用户，如果是内部用户访问需要内置OAuth2.0客户端才行
 
-#Istio Authorization
+
+
+####Istio Authorization
 - Istio的授权机制为Isto网格中的workload提供了mesh-level, namespace-level, workload-level的访问控制机制，它提供如下特性
   - Workload-to-workload和end-user-to-workload授权
   - 简单的API: 只包含一个简单的AuthorizationPolicy CRD，易于使用和维护
@@ -4785,7 +4789,7 @@ iKubernetes demoapp v1.0 !! ClientIP: 127.0.0.6, ServerName: demoappv10-5c497c6f
 
 #AuthenrizationPolicy CR
 - selector用于选定策略的适用的目标workload，策略的最终生效结果由selector和metadata.namespace共同决定
-  - 设置为根名称空间时则该策略将应用于网格中的所有命名空间；根命名空间可配置，默认什来istio-system
+  - 设置为根名称空间时则该策略将应用于网格中的所有命名空间；根命名空间可配置，默认是istio-system
   - 省略名称空间时表示应用于网格内的所有名称空间
   - workload selector可用于进一步限制策略的应用范围，它使用pod标签来选择目标workload
 - rules用于定义根据指定何时触发动作
@@ -4868,7 +4872,7 @@ spec:
    - 未经验证的请求，将会由oauth2-proxy启动OIDC工作流程，由用户参与完成身份验证
    - 用户执行经过身份验证的HTTP请求，而oauth2-proxy基于HTTP Cookie验证用户身份
    - oauth2-proxy将请求回传给Ingress Gateway，再由Gateway转给工作负载Pod上的istio-proxy容器
-   - 用户获利目标服务的响应
+   - 用户获取目标服务的响应
  - 优点：
    - 在Ingress Gateway强制完成身份认证
    - 自动化OIDC工作流
@@ -5166,6 +5170,28 @@ root@client # curl -s -d 'username=kiali&password=magedu.com&grant_type=password
 eycloak.keycloak.svc.homsom.local:8090/realms/istio/protocol/openid-connect/token | jq .access_token
 "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJ2Z2tTci10MlJseFNuU3hDS2JUQkZXbzF3Szh6a2VOcFd4OTYwd2J5Y2h3In0.eyJleHAiOjE2NTE3MjEwODYsImlhdCI6MTY1MTcyMDc4NiwianRpIjoiY2RjYWJhYmMtNDY0MC00YzUwLTk0ZmQtMDVhNzRmYTUyZmY5IiwiaXNzIjoiaHR0cDovL2tleWNsb2FrLmtleWNsb2FrLnN2Yy5ob21zb20ubG9jYWw6ODA5MC9yZWFsbXMvaXN0aW8iLCJhdWQiOlsiaW5ncmVzcy1nYXRld2F5IiwiYWNjb3VudCJdLCJzdWIiOiIxOTllNmI2ZS1iMzhkLTQ4OWUtYmIwZS1kYzU1OWNjMWJhMzUiLCJ0eXAiOiJCZWFyZXIiLCJhenAiOiJpbmdyZXNzLWdhdGV3YXkiLCJzZXNzaW9uX3N0YXRlIjoiZjg2YWE1MmItNDFkYi00NTZkLTg3ZGQtMTY2ODUxZjZhMzIyIiwiYWNyIjoiMSIsInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsInVtYV9hdXRob3JpemF0aW9uIiwiZGVmYXVsdC1yb2xlcy1pc3RpbyJdfSwicmVzb3VyY2VfYWNjZXNzIjp7ImFjY291bnQiOnsicm9sZXMiOlsibWFuYWdlLWFjY291bnQiLCJtYW5hZ2UtYWNjb3VudC1saW5rcyIsInZpZXctcHJvZmlsZSJdfX0sInNjb3BlIjoiZW1haWwgcHJvZmlsZSIsInNpZCI6ImY4NmFhNTJiLTQxZGItNDU2ZC04N2RkLTE2Njg1MWY2YTMyMiIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJuYW1lIjoia2lhbGkgbWFnZWR1IiwiZ3JvdXBzIjpbIi9raWFsaS1hZG1pbiJdLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJraWFsaSIsImdpdmVuX25hbWUiOiJraWFsaSIsImZhbWlseV9uYW1lIjoibWFnZWR1IiwiZW1haWwiOiJraWFsaUBtYWdlZHUuY29tIn0.J3yl-AjaKCDwDfBUNmQ3XS5GH2oeXyIzEtIsl-SOP8I6bYegCNXnRzBWprv7RGrXf9TY29383WxFGYFUErM62dkMiETyuIltORQ_AZjnVqVmmbwHhNUAece3UGWhp9JOjaLIXEQokELp-hug-9l2zcxhn_RA7As3Mz8cqXGS6J7dIEx7SVFsIsPZgGByQwnXnmNvahKBZO5bc6AMgM0mPvcJlZO9Vsz7j6yEC4T6EY_-mEiSYZJ7sG3NL1WFhO4YW1v6VCksuykvxX-zhPR0u5mYi16lDGNE1_IJFXAH4OPmIzniSMzI3D-LyaidxzocRXkM93LrSfDPIm0gNHsr2w"
 注：访问prometheus.magedu.com, fe.magedu.com跳转有问题，后续还要进行测试
+
+
+
+###授权策略实现IP白名单
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: ingress-policy
+  namespace: istio-system
+spec:
+  selector:
+    matchLabels:
+      app: istio-ingressgateway
+  action: ALLOW
+  rules:
+  - from:
+    - source:
+       ipBlocks: ["192.168.13.0/24"]
+    to:
+    - operation:
+        hosts:
+        - *.fat.qa.hs.com
 
 
 
