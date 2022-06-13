@@ -2527,7 +2527,7 @@ x-envoy-decorator-operation: demoapp.default.svc.cluster.local:8080/*
 #Istio初始化容器
 - istio-init初始化容器基于istio/proxyv2镜像启动，它运行istio-iptables程序以生成流量拦截规则
   - 拦截的流量将转发至两个相关的端口
-    - 15006：由z选项定义，指定用于接收拦截所有发往当前Pod/VM的入站流量的目标商品，该配置仅用于REDIRECT转发模式
+    - 15006：由z选项定义，指定用于接收拦截所有发往当前Pod/VM的入站流量的目标端口，该配置仅用于REDIRECT转发模式
 	- 15001：由p选项定义，指定用于接收拦截的所有TCP流量的目标端口
   - 流量拦截模式由-m选项指定，目前支持REDIRECT和TPROXY两种模式
   - 流量拦截时要包含的目标端口列表使用-o选项指定，而要排除的目标端口列表则使用-d选项指定
