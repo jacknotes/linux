@@ -911,7 +911,7 @@ root@k8s-master01:~# istioctl proxy-config all demoapp
 - Virtual Services和Destication Rules是Istio流量路由功能的核心组件 
 - Virtual Services用于将分类流量并将其路由到指定的目的地(Destination)，而Destination Rules则用于配置那个指定Destination如何处理流量
   - Virtual Services
-    - 用于在Istio及其底层平台（例如Kubernetes）的基础上配置如何将请求路由到风格中的各Service之上
+    - 用于在Istio及其底层平台（例如Kubernetes）的基础上配置如何将请求路由到网格中的各Service之上
 	- 通常由一组路由规则（routing rules）组成，这些路由规则按顺序进行评估，从而使istio能够将那些Virtual Service的每个给定请求匹配到网格内特定的目标之上
 	- 事实上，其定义的是分发给网格内各Envoy的VirtualHost和Route的相关配置
   - Destination Rules
@@ -3941,7 +3941,7 @@ spec:
   - pilot-agent周期性地监视着工作负载证书的有效期限，以处理证书和密钥轮换
 #Istio认证机制
 - Istio沿用了Envoy所支持的认证方式，它为网格内的服务提供两种身份验证机制
-  - Peer authentication: 即service-to-service身份认证，或简称为服务认证，用以验证发起连接请求的客户端；为此，Istio支持双向TLS谁，即mTLS，以实现以下特性
+  - Peer authentication: 即service-to-service身份认证，或简称为服务认证，用以验证发起连接请求的客户端；为此，Istio支持双向TLS认证，即mTLS，以实现以下特性
     - 为每个服务提供一个专用的可表示其角色的身份标识，以实现跨集群和跨云的互操作
 	- 安全实现service-to-service通信
 	- 提供密钥管理系统以自动完成密钥和证书生成、分发及轮替
@@ -3949,7 +3949,7 @@ spec:
     - Istio基于JWT验证机制启用请求级身份认证功能
 	- 支持使用自定义的身份认证服务，或任何中OIDC认证系统，例如Keyclock, Auth0, Firebase Auth等
 - Istio将身份认证策略通过Kubernetes API存储于Istio configuration storage之中
-  - istiod负责确诊每个代理保持最新状态，并在适当时提供密钥
+  - istiod负责确保每个代理保持最新状态，并在适当时提供密钥
   - istio的认证还支持许可模式(permissive mode)
 #Istio认证架构
 - Istio基于身份认证策略来定义所使用的认证机制
@@ -5042,7 +5042,7 @@ spec:
         port: 4180												#prodivers端口
         timeout: 1.5s											#连接超时时间
         includeHeadersInCheck: ["authorization", "cookie"]		#对进入的流量，检查定义的标头是否认证通过，如果未认证通过将以重定向的方式请求认证
-        headersToUpstreamOnAllow: ["x-forwarded-access-token", "authorization", "path", "x-auth-request-user", "x-auth-request-email", "x-auth-request-access-token"]								#认证通过了转发的标头
+        headersToUpstreamOnAllow: ["x-forwarded-access-token", "authorization", "path", "x-auth-request-user", "x-auth-request-email", "x-auth-request-access-token"]		#认证通过后，转发的标头
         headersToDownstreamOnDeny: ["content-type", "set-cookie"]	 #认证未通过转发的标头
 root@k8s-master01:~/istio/istio-in-practise/Security/05-JWT-and-Keycloak# istioctl install -f 02-istio-operator-update.yaml	#多个配置段需要放在一起，否则会冲掉之前的配置
 
@@ -5173,7 +5173,207 @@ eycloak.keycloak.svc.homsom.local:8090/realms/istio/protocol/openid-connect/toke
 
 
 
-###授权策略实现IP白名单
+
+
+####bookinfo AuthorizationPolicy
+$ kubectl label namespace default istio-injection=enabled
+$ kubectl apply -f samples/bookinfo/platform/kube/bookinfo.yaml
+$ kubectl get services
+$ kubectl get pods
+
+root@ansible:~/k8s/istio# kubectl exec "$(kubectl get pod -l app=ratings -o jsonpath='{.items[0].metadata.name}')" -c ratings -- curl -sS productpage:9080/productpage | grep -o "<title>.*</title>"
+<title>Simple Bookstore App</title>
+
+root@ansible:~/k8s/istio/bookinfo# cat bookinfo-gateway.yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: bookinfo-gateway
+  namespace: istio-system
+spec:
+  selector:
+    istio: ingressgateway # use istio default controller
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "bookinfo.k8s.hs.com"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: bookinfo
+  namespace: istio-system
+spec:
+  hosts:
+  - "bookinfo.k8s.hs.com"
+  gateways:
+  - bookinfo-gateway
+  http:
+  - match:
+    - uri:
+        exact: /productpage
+    - uri:
+        prefix: /static
+    - uri:
+        exact: /login
+    - uri:
+        exact: /logout
+    - uri:
+        prefix: /api/v1/products
+    route:
+    - destination:
+        host: productpage.default.svc.cluster.local
+        port:
+          number: 9080
+---
+
+#访问测试
+root@ansible:~/k8s/istio/bookinfo# curl -H 'Host: bookinfo.k8s.hs.com' -s "http://172.168.2.28/productpage" | grep -o "<title>.*</title>"
+<title>Simple Bookstore App</title>
+注：您还可以将浏览器指向http://$GATEWAY_URL/productpage Bookinfo 网页。如果您多次刷新页面，您应该会看到 中显示的不同版本的评论productpage，以循环方式呈现（红星、黑星、无星），因为我们还没有使用 Istio 来控制版本路由。
+
+#授权策略测试使用：https://istio.io/latest/docs/tasks/security/authorization/authz-http/
+
+
+
+##tcp AuthorizationPolicy
+kubectl create ns foo
+kubectl apply -f <(istioctl kube-inject -f samples/tcp-echo/tcp-echo.yaml) -n foo
+kubectl apply -f <(istioctl kube-inject -f samples/sleep/sleep.yaml) -n foo
+root@ansible:/usr/local/istio# kubectl get pods -n foo
+NAME                       READY   STATUS    RESTARTS   AGE
+sleep-57c8b7f8d-lstkb      2/2     Running   0          50s
+tcp-echo-888545b45-s6mlv   2/2     Running   0          102s
+root@ansible:/usr/local/istio# kubectl exec "$(kubectl get pod -l app=sleep -n foo -o jsonpath={.items..metadata.name})" -c sleep -n foo -- sh -c 'echo "port 9000" | nc tcp-echo 9000' | grep "hello" && echo 'connection succeeded' || echo 'connection rejected'
+hello port 9000
+connection succeeded
+
+root@ansible:/usr/local/istio# TCP_ECHO_IP=$(kubectl get pod "$(kubectl get pod -l app=tcp-echo -n foo -o jsonpath={.items..metadata.name})" -n foo -o jsonpath="{.status.podIP}")
+root@ansible:/usr/local/istio# echo $TCP_ECHO_IP
+172.20.58.198
+root@ansible:/usr/local/istio# kubectl exec "$(kubectl get pod -l app=sleep -n foo -o jsonpath={.items..metadata.name})" -c sleep -n foo -- sh -c "echo \"port 9002\" | nc $TCP_ECHO_IP 9002" | grep "hello" && echo 'connection succeeded' || echo 'connection rejected'
+hello port 9002
+connection succeeded
+
+kubectl apply -f - <<EOF
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: tcp-policy
+  namespace: foo
+spec:
+  selector:
+    matchLabels:
+      app: tcp-echo
+  action: ALLOW
+  rules:
+  - to:
+    - operation:
+       ports: ["9000", "9001"]
+EOF
+
+root@ansible:/usr/local/istio# kubectl exec "$(kubectl get pod -l app=sleep -n foo -o jsonpath={.items..metadata.name})" -c sleep -n foo -- sh -c 'echo "port 9000" | nc tcp-echo 9000' | grep "hello" && echo 'connection succeeded' || echo 'connection rejected'
+hello port 9000
+connection succeeded
+root@ansible:/usr/local/istio# kubectl exec "$(kubectl get pod -l app=sleep -n foo -o jsonpath={.items..metadata.name})" -c sleep -n foo -- sh -c 'echo "port 9001" | nc tcp-echo 9001' | grep "hello" && echo 'connection succeeded' || echo 'connection rejected'
+hello port 9001
+connection succeeded
+root@ansible:/usr/local/istio# kubectl exec "$(kubectl get pod -l app=sleep -n foo -o jsonpath={.items..metadata.name})" -c sleep -n foo -- sh -c "echo \"port 9002\" | nc $TCP_ECHO_IP 9002" | grep "hello" && echo 'connection succeeded' || echo 'connection rejected'
+connection rejected
+
+
+kubectl apply -f - <<EOF
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: tcp-policy
+  namespace: foo
+spec:
+  selector:
+    matchLabels:
+      app: tcp-echo
+  action: ALLOW
+  rules:
+  - to:
+    - operation:
+        methods: ["GET"]
+        ports: ["9000"]
+EOF
+
+---验证对端口 9000 的请求是否被拒绝。methods发生这种情况是因为规则在使用仅 HTTP 字段 ( ) 进行 TCP 流量时变得无效。Istio 会忽略无效的 ALLOW 规则。最终结果是请求被拒绝，因为它不匹配任何 ALLOW 规则
+root@ansible:/usr/local/istio# kubectl exec "$(kubectl get pod -l app=sleep -n foo -o jsonpath={.items..metadata.name})" -c sleep -n foo -- sh -c 'echo "port 9000" | nc tcp-echo 9000' | grep "hello" && echo 'connection succeeded' || echo 'connection rejected'
+connection rejected
+---验证对端口 9001 的请求是否被拒绝。这是因为请求不匹配任何 ALLOW 规则。
+root@ansible:/usr/local/istio# kubectl exec "$(kubectl get pod -l app=sleep -n foo -o jsonpath={.items..metadata.name})" -c sleep -n foo -- sh -c 'echo "port 9001" | nc tcp-echo 9001' | grep "hello" && echo 'connection succeeded' || echo 'connection rejected'
+connection rejected
+
+
+kubectl apply -f - <<EOF
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: tcp-policy
+  namespace: foo
+spec:
+  selector:
+    matchLabels:
+      app: tcp-echo
+  action: DENY
+  rules:
+  - to:
+    - operation:
+        methods: ["GET"]
+        ports: ["9000"]
+EOF
+
+---验证对端口 9000 的请求是否被拒绝。这是因为 Istio 忽略了无效 DENY 规则中的 HTTP-only 字段。这与无效的 ALLOW 规则不同，后者会导致 Istio 忽略整个规则
+root@ansible:/usr/local/istio# kubectl exec "$(kubectl get pod -l app=sleep -n foo -o jsonpath={.items..metadata.name})" -c sleep -n foo -- sh -c 'echo "port 9000" | nc tcp-echo 9000' | grep "hello" && echo 'connection succeeded' || echo 'connection rejected'
+connection rejected
+---验证是否允许对端口 9001 的请求。这是因为请求ports与 DENY 策略中的不匹配，默认是允许：
+root@ansible:/usr/local/istio# kubectl exec "$(kubectl get pod -l app=sleep -n foo -o jsonpath={.items..metadata.name})" -c sleep -n foo -- sh -c 'echo "port 9001" | nc tcp-echo 9001' | grep "hello" && echo 'connection succeeded' || echo 'connection rejected'
+hello port 9001
+connection succeeded
+
+
+##保留客户端IP地址
+root@ansible:~/k8s/istio# cat virtualservice/http-bin-vs.yaml
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: httpbin-gateway
+  namespace: istio-system
+spec:
+  selector:
+    app: istio-ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "httpbin.k8s.hs.com"
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: httpbin-virtualservice
+  namespace: istio-system
+spec:
+  hosts:
+  - "httpbin.k8s.hs.com"
+  gateways:
+  - httpbin-gateway
+  http:
+  - route:
+    - destination:
+        host: httpbin.foo.svc.cluster.local
+        port:
+          number: 8000
+---
+root@ansible:~/k8s/istio# cat virtualservice/remoteIpBlocks.yaml
 apiVersion: security.istio.io/v1beta1
 kind: AuthorizationPolicy
 metadata:
@@ -5183,15 +5383,113 @@ spec:
   selector:
     matchLabels:
       app: istio-ingressgateway
-  action: ALLOW
+  action: DENY
   rules:
   - from:
     - source:
-       ipBlocks: ["192.168.13.0/24"]
-    to:
-    - operation:
-        hosts:
-        - *.fat.qa.hs.com
+        remoteIpBlocks: ["172.168.2.219"]
+[root@prometheus ~]# curl -s -H 'Host: httpbin.k8s.hs.com' "http://172.168.2.28"/get?show_env=true
+{
+  "args": {
+    "show_env": "true"
+  }, 
+  "headers": {
+    "Accept": "*/*", 
+    "Host": "httpbin.k8s.hs.com", 
+    "User-Agent": "curl/7.29.0", 
+    "X-B3-Parentspanid": "42454ffced1ced4d", 
+    "X-B3-Sampled": "0", 
+    "X-B3-Spanid": "1c8670026fa1a7e9", 
+    "X-B3-Traceid": "c4658db64c485b6d42454ffced1ced4d", 
+    "X-Envoy-Attempt-Count": "1", 
+    "X-Envoy-Internal": "true", 
+    "X-Forwarded-Client-Cert": "By=spiffe://cluster.local/ns/foo/sa/httpbin;Hash=a826996dffa07744ea44b0671424333a92a16fd4bec3906d898f79287940254a;Subject=\"\";URI=spiffe://cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account", 
+    "X-Forwarded-For": "172.20.195.0", 
+    "X-Forwarded-Proto": "http", 
+    "X-Request-Id": "fbf7ef97-851b-4d36-8195-ac8c482f89be"
+  }, 
+  "origin": "172.20.195.0", 
+  "url": "http://httpbin.k8s.hs.com/get?show_env=true"
+}
+[root@prometheus ~]# curl -s -H 'X-Forwarded-For: 172.168.2.21' -H 'Host: httpbin.k8s.hs.com' "http://172.168.2.28"/get?show_env=true
+{
+  "args": {
+    "show_env": "true"
+  }, 
+  "headers": {
+    "Accept": "*/*", 
+    "Host": "httpbin.k8s.hs.com", 
+    "User-Agent": "curl/7.29.0", 
+    "X-B3-Parentspanid": "1e74ed7b6df490cc", 
+    "X-B3-Sampled": "0", 
+    "X-B3-Spanid": "2d21ff900cddabc0", 
+    "X-B3-Traceid": "24d2b7801c9e74761e74ed7b6df490cc", 
+    "X-Envoy-Attempt-Count": "1", 
+    "X-Envoy-External-Address": "172.168.2.21", 	#当请求携带X-Forwarded-For时会读取客户端IP地址，需要配置ingressgateway的numTrustedProxies参数
+    "X-Forwarded-Client-Cert": "By=spiffe://cluster.local/ns/foo/sa/httpbin;Hash=574a447820db5104147d28b6a73441826c112e7974a02719cb04c9ac12235ae7;Subject=\"\";URI=spiffe://cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account", 
+    "X-Forwarded-For": "172.168.2.21,172.20.195.0", 
+    "X-Forwarded-Proto": "http", 
+    "X-Request-Id": "08dc391b-4307-421e-96aa-2c97351fb63f"
+  }, 
+  "origin": "172.168.2.21,172.20.195.0", 
+  "url": "http://httpbin.k8s.hs.com/get?show_env=true"
+}
+
+---
+  meshConfig:
+    defaultConfig:
+      proxyMetadata: {}
+      gatewayTopology:
+        numTrustedProxies: 2	#需要在ingressgateway中配置信任的代理数，为2则获取倒数第二个，为1则获取倒数第一个
+
+root@ansible:~/k8s/istio# curl -s -H 'X-Forwarded-For: 56.5.6.7, 72.9.5.6, 98.1.2.3' -H 'Host: httpbin.k8s.hs.com' "http://172.168.2.28"/get?show_env=true
+{
+  "args": {
+    "show_env": "true"
+  },
+  "headers": {
+    "Accept": "*/*",
+    "Host": "httpbin.k8s.hs.com",
+    "User-Agent": "curl/7.58.0",
+    "X-B3-Parentspanid": "1bae5ea0a267c7ca",
+    "X-B3-Sampled": "0",
+    "X-B3-Spanid": "89342bf62867cada",
+    "X-B3-Traceid": "100e6802f3bf230a1bae5ea0a267c7ca",
+    "X-Envoy-Attempt-Count": "1",
+    "X-Envoy-External-Address": "72.9.5.6",	#获取到的地址，为倒数第二个，此地址将会赋值给x-forward-for
+    "X-Forwarded-Client-Cert": "By=spiffe://cluster.local/ns/foo/sa/httpbin;Hash=509338dd7ed5a198f9b7448f78b9d60a3d84e63c6fc7881c96bd991064756499;Subject=\"\";URI=spiffe://cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account",
+    "X-Forwarded-For": "56.5.6.7, 72.9.5.6, 98.1.2.3,172.20.195.0",
+    "X-Forwarded-Proto": "http",
+    "X-Request-Id": "9dbd4cb0-a753-4ea2-9950-c5514ee52f06"
+  },
+  "origin": "56.5.6.7, 72.9.5.6, 98.1.2.3,172.20.195.0",
+  "url": "http://httpbin.k8s.hs.com/get?show_env=true"
+}
+
+root@ansible:~/k8s/istio# curl -s -H 'X-Forwarded-For: 172.168.2.219' -H 'Host: httpbin.k8s.hs.com' "http://172.168.2.28"/get?show_env=true
+{
+  "args": {
+    "show_env": "true"
+  },
+  "headers": {
+    "Accept": "*/*",
+    "Host": "httpbin.k8s.hs.com",
+    "User-Agent": "curl/7.58.0",
+    "X-B3-Parentspanid": "51cb5dae2e180782",
+    "X-B3-Sampled": "0",
+    "X-B3-Spanid": "21a9fea0cc5e9b73",
+    "X-B3-Traceid": "c925dc90adf07ff451cb5dae2e180782",
+    "X-Envoy-Attempt-Count": "1",
+    "X-Envoy-External-Address": "172.20.195.0",	#当numTrustedProxies参数大于代理节点数时，将会使用最近的一个客户端IP地址，即为172.20.195.0，X-Forwarded-For为1个负载均衡节点，但是numTrustedProxies参数是2
+    "X-Forwarded-Client-Cert": "By=spiffe://cluster.local/ns/foo/sa/httpbin;Hash=509338dd7ed5a198f9b7448f78b9d60a3d84e63c6fc7881c96bd991064756499;Subject=\"\";URI=spiffe://cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account",
+    "X-Forwarded-For": "172.168.2.219,172.20.195.0",
+    "X-Forwarded-Proto": "http",
+    "X-Request-Id": "b05f3388-620b-41a2-a23a-55972f5bc2cc"
+  },
+  "origin": "172.168.2.219,172.20.195.0",
+  "url": "http://httpbin.k8s.hs.com/get?show_env=true"
+}
+
 
 
 
@@ -5811,6 +6109,8 @@ spec:
   meshConfig:
     defaultConfig:
       proxyMetadata: {}
+	  gatewayTopology:
+        numTrustedProxies: 1		#转发客户端IP地址，在X-Forwarded-For中显示，这是k8s前面反向代理节点数+1，例如没有，则是1
     enablePrometheusMerge: true
   profile: default					#istio profile名称
   tag: 1.13.3						#istio版本

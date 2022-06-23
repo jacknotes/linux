@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: cadvisor
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: cAdvisor
+  template:
+    metadata:
+      labels:
+        app: cAdvisor
+    spec:
+      tolerations:
+      - effect: "NoSchedule"
+        operator: "Exists"
+      hostNetwork: true
+      restartPolicy: Always
+      containers:
+      - name: cadvisor
+        image: harborrepo.hs.com/k8s/cadvisor:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+          - name: root
+            mountPath: /rootfs
+          - name: run
+            mountPath: /var/run
+          - name: sys
+            mountPath: /sys
+          - name: docker
+            mountPath: /var/lib/docker
+      volumes:
+      - name: root
+        hostPath:
+          path: /
+      - name: run
+        hostPath:
+          path: /var/run
+      - name: sys
+        hostPath:
+          path: /sys
+      - name: docker
+        hostPath:
+          path: /var/lib/docker

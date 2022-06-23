@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: client
+  template:
+    metadata:
+      labels:
+        app: client
+    spec:
+      restartPolicy: Always
+      serviceAccountName: monitor
+      containers:
+      - name: client
+        image: harborrepo.hs.com/k8s/admin-box:v1.2
+        imagePullPolicy: IfNotPresent
+        command: 
+        - "/bin/bash"
+        args:
+        - "-c"
+        - "sleep 3600"

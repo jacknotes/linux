@@ -531,6 +531,21 @@ root@k8s-master01:~/git/k8s-deploy/frontend-www-homsom-com-test/deploy# ssh 172.
 root@k8s-master01:~/git/k8s-deploy/frontend-www-homsom-com-test/deploy# ssh 172.168.2.23 'systemctl daemon-reload && systemctl restart kube-controller-manager.service && systemctl status kube-controller-manager.service | grep Active'
    Active: active (running) since Sat 2022-06-04 15:57:02 CST; 14ms ago
 ------------
+#永久生效，更改ansible配置文件模板
+/etc/kubeasz/roles/kube-master/templates
+[root@prometheus templates]# vim kube-controller-manager.service.j2 
+...
+  --v=2 \
+  --default-not-ready-toleration-seconds=60 \
+  --default-unreachable-toleration-seconds=30
+
+[root@prometheus templates]# vim kube-controller-manager.service.j2 
+...
+  --v=2 \
+  --node-monitor-period=5s \
+  --node-monitor-grace-period=30s
+-----
+
 
 4.2.7 安装node
 --可以在安装node时调整相关配置，例如kube-proxy ipvs模式，ipvs调度算法等
@@ -926,6 +941,7 @@ namespace:  20 bytes
 token:      eyJhbGciOiJSUzI1NiIsImtpZCI6ImQ3UV9STlJ4TEpQRS1XWmNHblFmaHJOUmdUaW5jMVJvSERqeE9VajR1LWcifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlcm5ldGVzLWRhc2hib2FyZCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJhZG1pbi11c2VyLXRva2VuLW00ZHBoIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImFkbWluLXVzZXIiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiI3ZTY3OTZjMS04NDcxLTRkYWItODU3Mi1hODg2YmY4NWQyZGUiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZXJuZXRlcy1kYXNoYm9hcmQ6YWRtaW4tdXNlciJ9.vetemWR84jzBdD4akQPvk3gKFNuxMpF4e0THKY3vmQ77wLEOOyxI7KWolTU6qYQAh11t-cTa4H0gtlvvQwA_IBBuYrl6sSDpFrAQhrD9AaAW2mcMb2ocXs70T-okZwTgginIaB4Yhes7psqI1NG9aHDbKDkk1ECg62ou96QKNOKgtXc1lfcpPRJHbP0j8sg3JGvXIsg4F5TAUjPkEu4lNQr8bKrPvTheqqQF2JphoOQObZ9J1AbKpinBrZlSD7QxEVJwCa4Q-T-hLr93Y1epbesJ6blna7MfCyX9y-qqqJ6mtgWoLlNNUhsGIgJ1sWeTDZli5lwU1INATLGkmlYglA
 
 4.4.6 然后用上面获取的token去访问dashboard，就可以通过dashboard进行访问了
+注：dashboard副本数为1时，通过前端nginx代理https到dashboard无问题，当副本数大于1时有问题
 
 
 4.5 k8s master添加
@@ -8035,6 +8051,33 @@ WEB访问：http://172.168.2.27:3000
 --grafana模板
 13332/13824-kube-state-metrics 
 
+#监控kubelet
+  - job_name: 'kubernetes-node-kubelet'
+    metrics_path: /metrics
+    scheme: https
+    kubernetes_sd_configs:
+    - role:  node
+      api_server: https://172.168.2.21:6443/
+      bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+      tls_config:
+        insecure_skip_verify: true
+    bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+    tls_config:
+      insecure_skip_verify: true
+    relabel_configs:
+    - action: labelmap
+      regex: __meta_kubernetes_node_label_(.+)
+<!--     - action: labelmap
+      regex: __meta_kubernetes_node_label_(.+)
+    - target_label: __address__
+      replacement: kubernetes.default.svc:443
+    - source_labels: [__meta_kubernetes_node_name]
+      regex: (.+)
+      target_label: __metrics_path__
+      replacement: /api/v1/nodes/${1}/proxy/metrics -->
+---
+
+
 
 
 #--监控扩展
@@ -9166,6 +9209,341 @@ root@prometheus01:/usr/local/prometheus# systemctl start prometheus
 
 7. 开启数据复制（可选）
 默认情况下，数据被 vminsert 的组件基于 hash 算法分别将数据持久化到不同的vmstorage 节点，一个数据被拆分成多份。可以启用 vminsert 组件支持的-replicationFactor=N 复制功能，将数据分别在各节点保存一份完整的副本以实现数据的高可用。
+
+
+
+
+
+#######外部prometheus监控k8s
+---------------
+root@ansible:~/k8s/prometheus# ls
+01-cadvisor-deployment.yaml  02-node_exporter-deployment.yaml  03-monitoring-serviceaccount.yaml  04-kube-state-metric.yaml 
+root@ansible:~/k8s/prometheus# cat 01-cadvisor-deployment.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: cadvisor
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: cAdvisor
+  template:
+    metadata:
+      labels:
+        app: cAdvisor
+    spec:
+      tolerations:
+      - effect: "NoSchedule"
+        operator: "Exists"
+      hostNetwork: true
+      restartPolicy: Always
+      containers:
+      - name: cadvisor
+        image: harborrepo.hs.com/k8s/cadvisor:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+          - name: root
+            mountPath: /rootfs
+          - name: run
+            mountPath: /var/run
+          - name: sys
+            mountPath: /sys
+          - name: docker
+            mountPath: /var/lib/docker
+      volumes:
+      - name: root
+        hostPath:
+          path: /
+      - name: run
+        hostPath:
+          path: /var/run
+      - name: sys
+        hostPath:
+          path: /sys
+      - name: docker
+        hostPath:
+          path: /var/lib/docker
+root@ansible:~/k8s/prometheus# cat 02-node_exporter-deployment.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-exporter
+  namespace: monitoring
+  labels:
+    k8s-app: node-exporter
+spec:
+  selector:
+    matchLabels:
+        k8s-app: node-exporter
+  template:
+    metadata:
+      labels:
+        k8s-app: node-exporter
+    spec:
+      tolerations:
+        - effect: NoSchedule
+          operator: "Exists"
+      containers:
+      - image: harborrepo.hs.com/k8s/node-exporter:v1.3.1
+        imagePullPolicy: IfNotPresent
+        name: prometheus-node-exporter
+        ports:
+        - containerPort: 9100
+          hostPort: 9100
+          protocol: TCP
+          name: metrics
+        volumeMounts:
+        - mountPath: /host/proc
+          name: proc
+        - mountPath: /host/sys
+          name: sys
+        - mountPath: /host
+          name: rootfs
+        args:
+        - --path.procfs=/host/proc
+        - --path.sysfs=/host/sys
+        - --path.rootfs=/host
+      volumes:
+        - name: proc
+          hostPath:
+            path: /proc
+        - name: sys
+          hostPath:
+            path: /sys
+        - name: rootfs
+          hostPath:
+            path: /
+      hostNetwork: true
+      hostPID: true
+root@ansible:~/k8s/prometheus# cat 03-monitoring-serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  namespace: monitoring
+  name: monitor
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: monitor-clusterrolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- namespace: monitoring
+  kind: ServiceAccount
+  name: monitor
+root@ansible:~/k8s/prometheus# cat 04-kube-state-metric.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-state-metrics
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-state-metrics
+  template:
+    metadata:
+      labels:
+        app: kube-state-metrics
+    spec:
+      serviceAccountName: kube-state-metrics
+      containers:
+      - name: kube-state-metrics
+        image: harborrepo.hs.com/k8s/kube-state-metrics:2.2.4
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-state-metrics
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kube-state-metrics
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "pods", "services", "resourcequotas", "replicationcontrollers", "limitranges", "persistentvolumeclaims", "persistentvolumes", "namespaces", "endpoints"]
+  verbs: ["list", "watch"]
+- apiGroups: ["extensions"]
+  resources: ["daemonsets", "deployments", "replicasets"]
+  verbs: ["list", "watch"]
+- apiGroups: ["apps"]
+  resources: ["statefulsets"]
+  verbs: ["list", "watch"]
+- apiGroups: ["batch"]
+  resources: ["cronjobs", "jobs"]
+  verbs: ["list", "watch"]
+- apiGroups: ["autoscaling"]
+  resources: ["horizontalpodautoscalers"]
+  verbs: ["list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kube-state-metrics
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kube-state-metrics
+subjects:
+- kind: ServiceAccount
+  name: kube-state-metrics
+  namespace: kube-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    prometheus.io/scrape: 'true'
+  name: kube-state-metrics
+  namespace: kube-system
+  labels:
+    app: kube-state-metrics
+spec:
+  type: NodePort
+  ports:
+  - name: kube-state-metrics
+    port: 8080
+    targetPort: 8080
+    nodePort: 30005
+    protocol: TCP
+  selector:
+    app: kube-state-metrics
+---
+---------------prometheus-config----------------
+  - job_name: 'kubernetes-node'
+    metrics_path: /metrics
+    scheme: http
+    kubernetes_sd_configs:
+    - role: node                                                          
+      api_server: https://172.168.2.21:6443/
+      bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+      tls_config:
+        insecure_skip_verify: true
+    bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+    tls_config:
+      insecure_skip_verify: true
+    relabel_configs:
+    - source_labels: [__address__]
+      regex: '(.*):10250'
+      replacement: '${1}:9100'
+      target_label: __address__
+      action: replace
+    - action: labelmap
+      regex: __meta_kubernetes_node_label_(.+)
+ 
+  - job_name: 'kubernetes-node-cadvisor'
+    metrics_path: /metrics
+    scheme: https
+    kubernetes_sd_configs:
+    - role:  node
+      api_server: https://172.168.2.21:6443/
+      bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+      tls_config:
+        insecure_skip_verify: true
+    bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+    tls_config:
+      insecure_skip_verify: true
+    relabel_configs:
+    - action: labelmap
+      regex: __meta_kubernetes_node_label_(.+)
+    - target_label: __address__
+      replacement: 172.168.2.21:6443
+    - source_labels: [__meta_kubernetes_node_name]
+      regex: (.+)
+      target_label: __metrics_path__
+      replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+
+  - job_name: 'kubernetes-node-kubelet'
+    metrics_path: /metrics
+    scheme: https
+    kubernetes_sd_configs:
+    - role:  node
+      api_server: https://172.168.2.21:6443/
+      bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+      tls_config:
+        insecure_skip_verify: true
+    bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+    tls_config:
+      insecure_skip_verify: true
+    relabel_configs:
+    - action: labelmap
+      regex: __meta_kubernetes_node_label_(.+)
+
+  - job_name: 'kubernetes-apiserver'
+    metrics_path: /metrics
+    scheme: https
+    kubernetes_sd_configs:
+    - role: endpoints
+      api_server: https://172.168.2.21:6443/
+      bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+      tls_config:
+        insecure_skip_verify: true
+    bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+    tls_config:
+      insecure_skip_verify: true
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+      action: keep
+      regex: default;kubernetes;https
+
+  - job_name: 'kubernetes-service-endpoints'
+    metrics_path: /metrics
+    scheme: http
+    kubernetes_sd_configs:
+    - role: endpoints
+      api_server: https://172.168.2.21:6443/
+      bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+      tls_config:
+        insecure_skip_verify: true
+    bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+    tls_config:
+      insecure_skip_verify: true
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+      action: keep
+      regex: true
+    - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
+      action: replace
+      target_label: __scheme__
+      regex: (https?)
+    - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+      action: replace
+      target_label: __metrics_path__
+      regex: (.+)
+    - target_label: __address__
+      replacement: 172.168.2.21:30009
+    - action: labelmap
+      regex: __meta_kubernetes_service_label_(.+)
+    - source_labels: [__meta_kubernetes_namespace]
+      action: replace
+      target_label: kubernetes_namespace
+    - source_labels: [__meta_kubernetes_service_name]
+      action: replace
+      target_label: kubernetes_name
+   
+  - job_name: 'kubernetes-kube-state-metric'
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+    - targets: ["172.168.2.21:30005"]
+-------------------------------
+
+
+
+
+
+
 
 
 </pre>
