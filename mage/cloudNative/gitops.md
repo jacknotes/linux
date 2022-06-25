@@ -3857,7 +3857,228 @@ spec:
         - /spec/http/0
 ---
 
+###部署Notification template和trigger
+#Documentation: https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/
 
+#安装notification template和trigger，会生成ConfigMap argocd-notifications-cm
+root@ansible:~/k8s/argocd# curl -L -o argocd-notification-template https://raw.githubusercontent.com/argoproj/argo-cd/stable/notifications_catalog/install.yaml
+root@ansible:~/k8s/argocd# kubectl apply -n argocd -f argocd-notification-template
+root@k8s-master01:~# argocd admin notifications template get -n argocd	#查看模板
+NAME                     PREVIEW
+app-created              Application {{.app.metadata.name}} has been created.
+app-deleted              Application {{.app.metadata.name}} has been deleted.
+app-deployed             {{if eq .serviceType "slack"}}:white_check_mark:{{end}} Application {{.app.metadata.name}} is now r...
+app-health-degraded      {{if eq .serviceType "slack"}}:exclamation:{{end}} Application {{.app.metadata.name}} has degraded.
+app-sync-failed          {{if eq .serviceType "slack"}}:exclamation:{{end}}  The sync operation of application {{.app.metada...
+app-sync-running         The sync operation of application {{.app.metadata.name}} has started at {{.app.status.operationStat...
+app-sync-status-unknown  {{if eq .serviceType "slack"}}:exclamation:{{end}} Application {{.app.metadata.name}} sync is 'Unkn...
+app-sync-succeeded       {{if eq .serviceType "slack"}}:white_check_mark:{{end}} Application {{.app.metadata.name}} has been...
+root@k8s-master01:~# argocd admin notifications trigger get -n argocd	#查看触发器
+NAME                    TEMPLATE                 CONDITION
+on-created              app-created              true
+on-deleted              app-deleted              app.metadata.deletionTimestamp != nil
+on-deployed             app-deployed             app.status.operationState.phase in ['Succeeded'] and app.status.health.status == 'Healthy'
+on-health-degraded      app-health-degraded      app.status.health.status == 'Degraded'
+on-sync-failed          app-sync-failed          app.status.operationState.phase in ['Error', 'Failed']
+on-sync-running         app-sync-running         app.status.operationState.phase in ['Running']
+on-sync-status-unknown  app-sync-status-unknown  app.status.sync.status == 'Unknown'
+on-sync-succeeded       app-sync-succeeded       app.status.operationState.phase in ['Succeeded']
+
+#将电子邮件用户名和密码令牌添加到argocd-notifications-secret
+export EMAIL_USER='test@test.com'
+export PASSWORD='test@123!@#'
+kubectl apply -n argocd -f - << EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: argocd-notifications-secret
+stringData:
+  email-username: $EMAIL_USER
+  email-password: $PASSWORD
+type: Opaque
+EOF
+
+root@ansible:~/k8s/argocd# kubectl get secret argocd-notifications-secret -o yaml -n argocd
+apiVersion: v1
+data:
+  email-password: SG9tc29YhQCM=
+  email-username: cHJvbWV0aGV29t
+kind: Secret
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","kind":"Secret","metadata":{"annotations":{},"name":"argocd-notifications-secret","namespace":"argocd"},"stringData":{"email-password":"Homsom@4006!@#","email-username":"prometheus@homsom.com"},"type":"Opaque"}
+  creationTimestamp: "2022-05-31T08:40:01Z"
+  name: argocd-notifications-secret
+  namespace: argocd
+  resourceVersion: "2202905"
+  uid: 1316f48c-9c3e-4f26-ac1a-e70eafdf0715
+type: Opaque
+
+#注册电子邮件通知服务，配置ConfigMap argocd-notifications-cm，自己会默认调用secret argocd-notifications-secret的用户和密码
+root@ansible:~/k8s/argocd# kubectl patch cm argocd-notifications-cm -n argocd --type merge -p '{"data": {"service.email.gmail": "{ username: $email-username, password: $email-password, host: smtp.qiye.163.com, port: 465, from: $email-username }" }}'
+configmap/argocd-notifications-cm patched
+
+root@ansible:~/k8s/argocd# kubectl get cm argocd-notifications-cm -o yaml -n argocd | head -n 10
+apiVersion: v1
+data:
+  service.email.gmail: '{ username: $email-username, password: $email-password, host:
+    smtp.qiye.163.com, port: 465, from: $email-username }'	#实际添加了此行
+  template.app-created: |
+    email:
+      subject: Application {{.app.metadata.name}} has been created.
+    message: Application {{.app.metadata.name}} has been created.
+    teams:
+      title: Application {{.app.metadata.name}} has been created.
+
+#创建application
+root@k8s-master01:~/git/kubernetes/ops/argocd/04-applicationset# cat application-test.yaml
+# 基于istio实现的canary时需要使用此application
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pro-frontend-www-homsom-com-test
+  namespace: argocd
+spec:
+  destination:
+    namespace: pro-frontend
+    server: https://kubernetes.default.svc
+  project: homsom
+  source:
+    path: deploy/
+    repoURL: git@gitlab.hs.com:k8s-deploy/frontend-www-homsom-com-test.git
+    targetRevision: pro
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+      allowEmpty: false
+    syncOptions:
+    - Validate=false
+    - CreateNamespace=true
+    - PrunePropagationPolicy=foreground
+    - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  ignoreDifferences:
+  - group: networking.istio.io
+    kind: VirtualService
+    jsonPointers:
+    - /spec/http/0
+root@k8s-master01:~/git/kubernetes/ops/argocd/04-applicationset# kubectl apply -f application-test.yaml
+
+#通过将注释添加到 Argo CD 应用程序来订阅通知：
+root@ansible:~/k8s/argocd# kubectl patch app pro-frontend-www-homsom-com-test -n argocd -p '{"metadata": {"annotations": {"notifications.argoproj.io/subscribe.on-sync-succeeded.gmail": "test@test.com"}}}' --type merge
+application.argoproj.io/pro-frontend-www-homsom-com-test patched
+
+# 配置所有项目的所有应用默认订阅信息，也可以针对特定project或特定application在annotations中进行定义
+root@ansible:~# kubectl edit cm argocd-notifications-cm -n argocd
+apiVersion: v1
+data:
+  service.email.email: '{ username: $email-username, password: $email-password, host:
+    smtp.qiye.163.com, port: 465, from: $email-username }'
+  subscriptions: |
+    - recipients:
+      - email:jack.li@homsom.com
+      triggers:
+      - on-deleted
+      - on-health-degraded
+      - on-sync-failed
+      - on-sync-status-unknown
+    - recipients:
+      - email:595872348@qq.com
+      triggers:
+      - on-deployed
+	  
+#更改argocd notification时区
+root@ansible:~# kubectl edit deploy argocd-notifications-controller -n argocd
+    spec:
+      containers:
+      - command:
+        - argocd-notifications
+        image: quay.io/argoproj/argocd:v2.3.4
+        name: argocd-notifications-controller
+        env:
+        - name: TZ
+          value: Asia/Shanghai		#更改通知服务时间
+
+
+
+
+
+### 基于RBAC来创建argocd本地用户
+注：argocd本地用户不提供高级功能，例如组，登录历史记录等。因此，如果您需要此类功能，强烈建议使用SSO。
+
+# 创建alice用户
+root@ansible:~# kubectl get cm argocd-cm -o yaml -n argocd
+apiVersion: v1
+data:
+  accounts.alice: login				#登录方式有login,apiKey
+  accounts.alice.enabled: "true"	#默认是true，可不写
+  accounts.jack: login, apiKey
+  #admin.enabled: "false"			#关闭admin用户
+  users.anonymous.enabled: "true"	#启用匿名用户访问，但是需要在cm/argocd-rbac-cm中配置默认策略为role:readonly
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: argocd
+--获取用户列表
+root@k8s-master01:~/git/k8s-deploy/frontend-www-homsom-com-test# argocd account list
+NAME   ENABLED  CAPABILITIES
+admin  true     login
+alice  true     login
+root@k8s-master01:~/git/k8s-deploy/frontend-www-homsom-com-test# argocd account get --account alice
+Name:               alice
+Enabled:            true
+Capabilities:       login
+
+Tokens:
+NONE
+--设置alice用户密码
+# if you are managing users as the admin user, <current-user-password> should be the current admin password.
+argocd account update-password \
+  --account alice \
+  --current-password <current-user-password> \
+  --new-password <new-user-password>
+注：current-password为admin管理员用户密码，new-password为alice用户密码
+
+root@k8s-master01:~/git/k8s-deploy/frontend-www-homsom-com-test# argocd account update-password \
+ --account alice \
+ --current-password password \
+ --new-password alice@1234
+Password updated
+
+#为alice用户绑定权限
+- 权限结构
+  - 分解权限定义在应用程序和 Argo CD 中的所有其他资源类型之间略有不同。
+    - 除应用程序权限之外的所有资源（请参阅下一个项目符号）：
+      p, <role/user/group>, <resource>, <action>, <object>
+    - 应用程序（属于应用程序项目）：
+      p, <role/user/group>, <resource>, <action>, <appproject>/<object>
+- RBAC 资源和操作
+  - 资源：clusters projects applications repositories certificates accounts gpgkeys
+  - 行动：get create update delete sync override action
+- 可以在 ConfigMap/argocd-rbac-cm中配置其他用户、角色和组
+
+root@ansible:~# kubectl get cm argocd-rbac-cm -o yaml -n argocd	#以下权限只有application的回滚权限
+apiVersion: v1
+data:
+  policy.csv: |
+    p, alice, applications, update, */*, allow
+    p, alice, applications, sync, */*, allow
+	p, alice, applications, delete, default/*, allow		#可以对default项目下的application进行删除
+  policy.default: role:readonly
+kind: ConfigMap
+metadata:
+  name: argocd-rbac-cm
+  namespace: argocd
+---
+
+#使用alice用户登录argocd UI，测试权限即可
 
 
 
@@ -5264,228 +5485,7 @@ version 0.9.5
 
 
 
-###部署Notification template和trigger
-#Documentation: https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/
 
-#安装notification template和trigger，会生成ConfigMap argocd-notifications-cm
-root@ansible:~/k8s/argocd# curl -L -o argocd-notification-template https://raw.githubusercontent.com/argoproj/argo-cd/stable/notifications_catalog/install.yaml
-root@ansible:~/k8s/argocd# kubectl apply -n argocd -f argocd-notification-template
-root@k8s-master01:~# argocd admin notifications template get -n argocd	#查看模板
-NAME                     PREVIEW
-app-created              Application {{.app.metadata.name}} has been created.
-app-deleted              Application {{.app.metadata.name}} has been deleted.
-app-deployed             {{if eq .serviceType "slack"}}:white_check_mark:{{end}} Application {{.app.metadata.name}} is now r...
-app-health-degraded      {{if eq .serviceType "slack"}}:exclamation:{{end}} Application {{.app.metadata.name}} has degraded.
-app-sync-failed          {{if eq .serviceType "slack"}}:exclamation:{{end}}  The sync operation of application {{.app.metada...
-app-sync-running         The sync operation of application {{.app.metadata.name}} has started at {{.app.status.operationStat...
-app-sync-status-unknown  {{if eq .serviceType "slack"}}:exclamation:{{end}} Application {{.app.metadata.name}} sync is 'Unkn...
-app-sync-succeeded       {{if eq .serviceType "slack"}}:white_check_mark:{{end}} Application {{.app.metadata.name}} has been...
-root@k8s-master01:~# argocd admin notifications trigger get -n argocd	#查看触发器
-NAME                    TEMPLATE                 CONDITION
-on-created              app-created              true
-on-deleted              app-deleted              app.metadata.deletionTimestamp != nil
-on-deployed             app-deployed             app.status.operationState.phase in ['Succeeded'] and app.status.health.status == 'Healthy'
-on-health-degraded      app-health-degraded      app.status.health.status == 'Degraded'
-on-sync-failed          app-sync-failed          app.status.operationState.phase in ['Error', 'Failed']
-on-sync-running         app-sync-running         app.status.operationState.phase in ['Running']
-on-sync-status-unknown  app-sync-status-unknown  app.status.sync.status == 'Unknown'
-on-sync-succeeded       app-sync-succeeded       app.status.operationState.phase in ['Succeeded']
-
-#将电子邮件用户名和密码令牌添加到argocd-notifications-secret
-export EMAIL_USER='test@test.com'
-export PASSWORD='test@123!@#'
-kubectl apply -n argocd -f - << EOF
-apiVersion: v1
-kind: Secret
-metadata:
-  name: argocd-notifications-secret
-stringData:
-  email-username: $EMAIL_USER
-  email-password: $PASSWORD
-type: Opaque
-EOF
-
-root@ansible:~/k8s/argocd# kubectl get secret argocd-notifications-secret -o yaml -n argocd
-apiVersion: v1
-data:
-  email-password: SG9tc29YhQCM=
-  email-username: cHJvbWV0aGV29t
-kind: Secret
-metadata:
-  annotations:
-    kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"v1","kind":"Secret","metadata":{"annotations":{},"name":"argocd-notifications-secret","namespace":"argocd"},"stringData":{"email-password":"Homsom@4006!@#","email-username":"prometheus@homsom.com"},"type":"Opaque"}
-  creationTimestamp: "2022-05-31T08:40:01Z"
-  name: argocd-notifications-secret
-  namespace: argocd
-  resourceVersion: "2202905"
-  uid: 1316f48c-9c3e-4f26-ac1a-e70eafdf0715
-type: Opaque
-
-#注册电子邮件通知服务，配置ConfigMap argocd-notifications-cm，自己会默认调用secret argocd-notifications-secret的用户和密码
-root@ansible:~/k8s/argocd# kubectl patch cm argocd-notifications-cm -n argocd --type merge -p '{"data": {"service.email.gmail": "{ username: $email-username, password: $email-password, host: smtp.qiye.163.com, port: 465, from: $email-username }" }}'
-configmap/argocd-notifications-cm patched
-
-root@ansible:~/k8s/argocd# kubectl get cm argocd-notifications-cm -o yaml -n argocd | head -n 10
-apiVersion: v1
-data:
-  service.email.gmail: '{ username: $email-username, password: $email-password, host:
-    smtp.qiye.163.com, port: 465, from: $email-username }'	#实际添加了此行
-  template.app-created: |
-    email:
-      subject: Application {{.app.metadata.name}} has been created.
-    message: Application {{.app.metadata.name}} has been created.
-    teams:
-      title: Application {{.app.metadata.name}} has been created.
-
-#创建application
-root@k8s-master01:~/git/kubernetes/ops/argocd/04-applicationset# cat application-test.yaml
-# 基于istio实现的canary时需要使用此application
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: pro-frontend-www-homsom-com-test
-  namespace: argocd
-spec:
-  destination:
-    namespace: pro-frontend
-    server: https://kubernetes.default.svc
-  project: homsom
-  source:
-    path: deploy/
-    repoURL: git@gitlab.hs.com:k8s-deploy/frontend-www-homsom-com-test.git
-    targetRevision: pro
-  syncPolicy:
-    automated:
-      selfHeal: true
-      prune: true
-      allowEmpty: false
-    syncOptions:
-    - Validate=false
-    - CreateNamespace=true
-    - PrunePropagationPolicy=foreground
-    - PruneLast=true
-    retry:
-      limit: 5
-      backoff:
-        duration: 5s
-        factor: 2
-        maxDuration: 3m
-  ignoreDifferences:
-  - group: networking.istio.io
-    kind: VirtualService
-    jsonPointers:
-    - /spec/http/0
-root@k8s-master01:~/git/kubernetes/ops/argocd/04-applicationset# kubectl apply -f application-test.yaml
-
-#通过将注释添加到 Argo CD 应用程序来订阅通知：
-root@ansible:~/k8s/argocd# kubectl patch app pro-frontend-www-homsom-com-test -n argocd -p '{"metadata": {"annotations": {"notifications.argoproj.io/subscribe.on-sync-succeeded.gmail": "test@test.com"}}}' --type merge
-application.argoproj.io/pro-frontend-www-homsom-com-test patched
-
-# 配置所有项目的所有应用默认订阅信息，也可以针对特定project或特定application在annotations中进行定义
-root@ansible:~# kubectl edit cm argocd-notifications-cm -n argocd
-apiVersion: v1
-data:
-  service.email.email: '{ username: $email-username, password: $email-password, host:
-    smtp.qiye.163.com, port: 465, from: $email-username }'
-  subscriptions: |
-    - recipients:
-      - email:jack.li@homsom.com
-      triggers:
-      - on-deleted
-      - on-health-degraded
-      - on-sync-failed
-      - on-sync-status-unknown
-    - recipients:
-      - email:595872348@qq.com
-      triggers:
-      - on-deployed
-	  
-#更改argocd notification时区
-root@ansible:~# kubectl edit deploy argocd-notifications-controller -n argocd
-    spec:
-      containers:
-      - command:
-        - argocd-notifications
-        image: quay.io/argoproj/argocd:v2.3.4
-        name: argocd-notifications-controller
-        env:
-        - name: TZ
-          value: Asia/Shanghai		#更改通知服务时间
-
-
-
-
-
-### 基于RBAC来创建argocd本地用户
-注：argocd本地用户不提供高级功能，例如组，登录历史记录等。因此，如果您需要此类功能，强烈建议使用SSO。
-
-# 创建alice用户
-root@ansible:~# kubectl get cm argocd-cm -o yaml -n argocd
-apiVersion: v1
-data:
-  accounts.alice: login				#登录方式有login,apiKey
-  accounts.alice.enabled: "true"	#默认是true，可不写
-  accounts.jack: login, apiKey
-  #admin.enabled: "false"			#关闭admin用户
-  users.anonymous.enabled: "true"	#启用匿名用户访问，但是需要在cm/argocd-rbac-cm中配置默认策略为role:readonly
-kind: ConfigMap
-metadata:
-  name: argocd-cm
-  namespace: argocd
---获取用户列表
-root@k8s-master01:~/git/k8s-deploy/frontend-www-homsom-com-test# argocd account list
-NAME   ENABLED  CAPABILITIES
-admin  true     login
-alice  true     login
-root@k8s-master01:~/git/k8s-deploy/frontend-www-homsom-com-test# argocd account get --account alice
-Name:               alice
-Enabled:            true
-Capabilities:       login
-
-Tokens:
-NONE
---设置alice用户密码
-# if you are managing users as the admin user, <current-user-password> should be the current admin password.
-argocd account update-password \
-  --account alice \
-  --current-password <current-user-password> \
-  --new-password <new-user-password>
-注：current-password为admin管理员用户密码，new-password为alice用户密码
-
-root@k8s-master01:~/git/k8s-deploy/frontend-www-homsom-com-test# argocd account update-password \
- --account alice \
- --current-password password \
- --new-password alice@1234
-Password updated
-
-#为alice用户绑定权限
-- 权限结构
-  - 分解权限定义在应用程序和 Argo CD 中的所有其他资源类型之间略有不同。
-    - 除应用程序权限之外的所有资源（请参阅下一个项目符号）：
-      p, <role/user/group>, <resource>, <action>, <object>
-    - 应用程序（属于应用程序项目）：
-      p, <role/user/group>, <resource>, <action>, <appproject>/<object>
-- RBAC 资源和操作
-  - 资源：clusters projects applications repositories certificates accounts gpgkeys
-  - 行动：get create update delete sync override action
-- 可以在 ConfigMap/argocd-rbac-cm中配置其他用户、角色和组
-
-root@ansible:~# kubectl get cm argocd-rbac-cm -o yaml -n argocd	#以下权限只有application的回滚权限
-apiVersion: v1
-data:
-  policy.csv: |
-    p, alice, applications, update, */*, allow
-    p, alice, applications, sync, */*, allow
-	p, alice, applications, delete, default/*, allow		#可以对default项目下的application进行删除
-  policy.default: role:readonly
-kind: ConfigMap
-metadata:
-  name: argocd-rbac-cm
-  namespace: argocd
----
-
-#使用alice用户登录argocd UI，测试权限即可
 
 
 

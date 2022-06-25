@@ -1558,6 +1558,7 @@ source /etc/profile
 DATE=`date +%Y-%m-%d_%H-%M-%S`
 ETCDCTL_API=3 /usr/bin/etcdctl snapshot save /data/etcd-backup-dir/etcd-snapshot-${DATE}.db
 ---------------
+注：在ubuntu18中，通过ansible推送root（crontab）文件到节点之上不会生效，经过测试得知：需要手动编辑文件后方可生效，可用echo进行测试。
 
 5.4.3 etcd 集群v3版本数据自动备份与恢复：
 root@ansible:/etc/kubeasz# ./ezctl backup k8s-01
@@ -6949,6 +6950,196 @@ users:
 #token前面有四个空格
 
 
+##### 创建Jack普通用户，隶属于组homsom:ops
+[root@prometheus ssl]# mkdir homsom-ssl
+[root@prometheus ssl]# cd homsom-ssl/
+[root@prometheus homsom-ssl]# cat jack-csr.json
+{
+  "CN": "Jack",				#用户名称
+  "hosts": [],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CN",
+      "ST": "Shanghai",
+      "L": "Shanghai",
+      "O": "homsom:ops",	#组名称
+      "OU": "System"
+    }
+  ]
+}
+-----------脚本---------------
+[root@prometheus homsom-ssl]# cat kubeconfig-gaterate.sh 
+#!/bin/sh
+
+USER=ops
+
+cfssl gencert -ca=/etc/kubeasz/clusters/k8s-pro/ssl/ca.pem  -ca-key=/etc/kubeasz/clusters/k8s-pro/ssl/ca-key.pem -config=/etc/kubeasz/clusters/k8s-pro/ssl/ca-config.json -profile=kubernetes ./${USER}-csr.json | cfssljson -bare ${USER}
+
+sleep 3
+
+kubectl config set-cluster k8s-pro --certificate-authority=/etc/kubeasz/clusters/k8s-pro/ssl/ca.pem --embed-certs=true --server=https://k8s-api.hs.com:6443 --kubeconfig=${USER}.kubeconfig
+kubectl config set-credentials ${USER} --client-certificate=/etc/kubeasz/clusters/k8s-pro/ssl/homsom-ssl/${USER}.pem --client-key=/etc/kubeasz/clusters/k8s-pro/ssl/homsom-ssl/${USER}-key.pem --embed-certs=true --kubeconfig=${USER}.kubeconfig
+kubectl config set-context k8s-pro-context --cluster=k8s-pro --user=${USER} --namespace=pro-${USER} --kubeconfig=${USER}.kubeconfig
+kubectl config use-context k8s-pro-context --kubeconfig=${USER}.kubeconfig
+------------------------------
+
+[root@prometheus homsom-ssl]# cfssl gencert -ca=/etc/kubeasz/clusters/k8s-pro/ssl/ca.pem  -ca-key=/etc/kubeasz/clusters/k8s-pro/ssl/ca-key.pem -config=/etc/kubeasz/clusters/k8s-pro/ssl/ca-config.json -profile=kubernetes ./jack-csr.json | cfssljson -bare Jack
+2022/06/24 14:43:21 [INFO] generate received request
+2022/06/24 14:43:21 [INFO] received CSR
+2022/06/24 14:43:21 [INFO] generating key: rsa-2048
+2022/06/24 14:43:21 [INFO] encoded CSR
+2022/06/24 14:43:21 [INFO] signed certificate with serial number 211635244455856111295165951000918356493581574129
+2022/06/24 14:43:21 [WARNING] This certificate lacks a "hosts" field. This makes it unsuitable for
+websites. For more information see the Baseline Requirements for the Issuance and Management
+of Publicly-Trusted Certificates, v.1.1.6, from the CA/Browser Forum (https://cabforum.org);
+specifically, section 10.2.3 ("Information Requirements").
+
+[root@prometheus homsom-ssl]# ls
+Jack.csr  jack-csr.json  Jack-key.pem  Jack.pem
+
+[root@prometheus homsom-ssl]# kubectl config set-cluster k8s-pro --certificate-authority=/etc/kubeasz/clusters/k8s-pro/ssl/ca.pem --embed-certs=true --server=https://k8s-api.hs.com:6443 --kubeconfig=Jack.kubeconfig
+[root@prometheus homsom-ssl]# kubectl config set-credentials Jack --client-certificate=/etc/kubeasz/clusters/k8s-pro/ssl/homsom-ssl/Jack.pem --client-key=/etc/kubeasz/clusters/k8s-pro/ssl/homsom-ssl/Jack-key.pem --embed-certs=true --kubeconfig=Jack.kubeconfig
+[root@prometheus homsom-ssl]# kubectl config set-context k8s-pro-context --cluster=k8s-pro --user=Jack --namespace=default --kubeconfig=Jack.kubeconfig
+[root@prometheus homsom-ssl]# kubectl config use-context k8s-pro-context --kubeconfig=Jack.kubeconfig
+-------
+[root@prometheus homsom-ssl]# cat Jack.kubeconfig 
+apiVersion: v1
+clusters:
+- cluster:
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURsRENDQW55Z0F3SUJBZ0lVUmpZUEdzSUNJYk9DMXNPdE1sVDVNWXhXemtBd0RRWUpLb1pJaHZjTkFRRUwKQlFBd1lURUxNQWtHQTFVRUJoTUNRMDR4RVRBUEJnTlZCQWdUQ0VoaGJtZGFhRzkxTVFzd0NRWURWUVFIRXdKWQpVekVNTUFvR0ExVUVDaE1EYXpoek1ROHdEUVlEVlFRTEV3WlRlWE4wWlcweEV6QVJCZ05WQkFNVENtdDFZbVZ5CmJtVjBaWE13SUJjTk1qSXdOakl4TURVME5UQXdXaGdQTWpFeU1qQTFNamd3TlRRMU1EQmFNR0V4Q3pBSkJnTlYKQkFZVEFrTk9NUkV3RHdZRFZRUUlFd2hJWVc1bldtaHZkVEVMTUFrR0ExVUVCeE1DV0ZNeEREQUtCZ05WQkFvVApBMnM0Y3pFUE1BMEdBMVVFQ3hNR1UzbHpkR1Z0TVJNd0VRWURWUVFERXdwcmRXSmxjbTVsZEdWek1JSUJJakFOCkJna3Foa2lHOXcwQkFRRUZBQU9DQVE4QU1JSUJDZ0tDQVFFQTRZUHhlSUJmM2xuNWhhMUVaTnkxaHhJU21qTVoKUDd0bFlrWVZkd3pWVDFSVHNhN2ZMS1FESE5BVXJ2NWNPV05hbWVnL2sxVm5kbkt2M3VvS0xtVjhmWUdlcWlmTAp0WDUyZTJoSDN0dThoV3NNMmN4UFRKekViaHRxcStkSkJ4S0NYUjQ0TGFkRHhnY3RidnZPM3NuS3JjY1RmR0x4CkRaZU4rbW9uZFZMTGVKeXVhbmU0UkVWa25pcnRER2o3dHVMSGVGNnY3Ykw1YkVlcXMxL1ovdGFYQkZqMVZRQ2kKMkNWa0Z4bXo1MWR5WS9Yb1BGWmZ5N2lXcVBkWnFRVExSVDd6RGNxRCtHUnVOZjVtd1hzcWRBS0l6TFZpTjJOMwpzQmtKaGJCS2gzeGE4WlU5YTg4d0xkSXdyM0dZa2M0VU9WcWQzdC9WT255Szd2aWdhbVkyWXZmVGxRSURBUUFCCm8wSXdRREFPQmdOVkhROEJBZjhFQkFNQ0FRWXdEd1lEVlIwVEFRSC9CQVV3QXdFQi96QWRCZ05WSFE0RUZnUVUKNFZMaUNlUVFoaDd3NmRGQkw2U3R2ZWxrTWVNd0RRWUpLb1pJaHZjTkFRRUxCUUFEZ2dFQkFHYWw4L1hveks0bQpLM3JEaHpVdHg1TVVjbkFycGlwa2xKZmlXSWx0anJIRHcxS3loSWk5am5UYi92NzZyN1pmMnJVQ3dXdWdoQVdYCnBuYVF3N0RKMUcxaFFNc3dIZElZZEtFMGtOYU5RekhHNUxNY2pJSi9ydXZvTjZxZFoxalFlM2I5aVJiSUI5QlEKQm1md2xDMmtqalZlTi9GMnA3UERaT3hPeXNhTHdhdDBLN2lsTEZoQTZuSUVtSEJiK0pTQldWVFJvQWNMSERFSAo2ZlFrOEpCQWRqUTBUaVg2T1NHeDlGOEFsdDFjN2FVOFFSc2swL3g5UXZTRkxySXJkQnBDN2wrV2JZNnlzZTE4CjVhQkpUd0x5cFoySDJpb2FBL0lyN3FWbVNhM2NRanpycG4zanNHWVZBWENXSkJvaDNJbHAwc1dVVXpOaUQrcjcKYXlNeGhUQ0lxcFE9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    server: https://k8s-api.hs.com:6443
+  name: k8s-pro
+contexts:
+- context:
+    cluster: k8s-pro
+    namespace: default
+    user: Jack
+  name: k8s-pro-context
+current-context: k8s-pro-context
+kind: Config
+preferences: {}
+users:
+- name: Jack
+  user:
+    client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUQyRENDQXNDZ0F3SUJBZ0lVSlJJTmRidGNtaitOYThiR2VMMHpOV0o2WC9Fd0RRWUpLb1pJaHZjTkFRRUwKQlFBd1lURUxNQWtHQTFVRUJoTUNRMDR4RVRBUEJnTlZCQWdUQ0VoaGJtZGFhRzkxTVFzd0NRWURWUVFIRXdKWQpVekVNTUFvR0ExVUVDaE1EYXpoek1ROHdEUVlEVlFRTEV3WlRlWE4wWlcweEV6QVJCZ05WQkFNVENtdDFZbVZ5CmJtVjBaWE13SUJjTk1qSXdOakkwTURZek9EQXdXaGdQTWpBM01qQTJNVEV3TmpNNE1EQmFNR2d4Q3pBSkJnTlYKQkFZVEFrTk9NUkV3RHdZRFZRUUlFd2hUYUdGdVoyaGhhVEVSTUE4R0ExVUVCeE1JVTJoaGJtZG9ZV2t4RXpBUgpCZ05WQkFvVENtaHZiWE52YlRwdmNITXhEekFOQmdOVkJBc1RCbE41YzNSbGJURU5NQXNHQTFVRUF4TUVTbUZqCmF6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQURnZ0VQQURDQ0FRb0NnZ0VCQUxxQ1p3WlVHZWtBTEZpYnBnTTcKeFVVaGl2emFxTnpUTTQ1aHpqaG5pTHNTaUlMVWVBUDRjQ29BMURtQmRzQ2oxS2dRL25jdkNVM2ZVbHRnRlp6bApyWnFQeXFyZTN6NGF2UldWS1BoK215dDQ3K3J2UkZtdFVnempZVUZkeFJuNU9uY3hwc1FOVnpYbnY4UW9NdU1FCmxlWXJUekFwaGw4RkxwMkxnUlZxVDlNUk1NZzZDL2hYYmNrSXU3bXpjemRWZXJMMWNqVm82MFdlQUFJVzQ2eDYKdy9SRER6VW5ZMGRoQjVwclhWNm42WHBmbXZlZXVlUFUwRytaRUlOQit3cVhLemRVQVJsZ0c1YXB3YTRQTnhkUwppTENsMjlmNkJuYWpwSkljbTBNV21TNmMra3Rzc1pmVjJnSjJSYWlheUt4T0dLNVp3WDE2Q3lpUU0xcG9YS1VHCkt6TUNBd0VBQWFOL01IMHdEZ1lEVlIwUEFRSC9CQVFEQWdXZ01CMEdBMVVkSlFRV01CUUdDQ3NHQVFVRkJ3TUIKQmdnckJnRUZCUWNEQWpBTUJnTlZIUk1CQWY4RUFqQUFNQjBHQTFVZERnUVdCQlFEVnEyV3hFSGNIaWJsS2FuNAplVVllYUxqN0pUQWZCZ05WSFNNRUdEQVdnQlRoVXVJSjVCQ0dIdkRwMFVFdnBLMjk2V1F4NHpBTkJna3Foa2lHCjl3MEJBUXNGQUFPQ0FRRUEyancwSmJ0ckNSeHRhQU5sR2ZieEttSXl6REVXSlFKMHliMEdaNy9iZHp6Tk1wTmcKN0llaStlSUxlZmUrWm5FbXl3T0phWXV2YjIySmpKbHZXMWFjeTY5WURabjgvUDVKUkhURWJJZUcrYWpyZVhSeApJdlo2VytBdjlHQjlnUkoxcFlFV29TR2s5Rk9ONlQzVk1sQnlVczRlTjUxNC80OVY2elRRaGRCVHdJRW0wQVhQCmxUbmtUOXdwenRBR0RNYmFOQlp6L01MQ1VCZFlLZ05oam9hZ09GU29qSzkvYmhFZjMvbXJ4dDhTVWhQZ042UUQKWDhycml5YlNwY0dKL3BWcGhQdDQvNHVtM1ozcnZ1Y2p1VDdEVXVRVkNIVHdqTlJJZkhXS05tZjJYeER5ZmhLdApMdnU1OE9KcDhZOFZCVmlrRmlnZlIwVkljZFRWdi9oRi9YOXZsUT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
+    client-key-data: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdW9KbkJsUVo2UUFzV0p1bUF6dkZSU0dLL05xbzNOTXpqbUhPT0dlSXV4S0lndFI0CkEvaHdLZ0RVT1lGMndLUFVxQkQrZHk4SlRkOVNXMkFWbk9XdG1vL0txdDdmUGhxOUZaVW8rSDZiSzNqdjZ1OUUKV2ExU0RPTmhRVjNGR2ZrNmR6R214QTFYTmVlL3hDZ3k0d1NWNWl0UE1DbUdYd1V1bll1QkZXcFAweEV3eURvTAorRmR0eVFpN3ViTnpOMVY2c3ZWeU5XanJSWjRBQWhianJIckQ5RU1QTlNkalIyRUhtbXRkWHFmcGVsK2E5NTY1CjQ5VFFiNWtRZzBIN0NwY3JOMVFCR1dBYmxxbkJyZzgzRjFLSXNLWGIxL29HZHFPa2toeWJReGFaTHB6NlMyeXgKbDlYYUFuWkZxSnJJckU0WXJsbkJmWG9MS0pBeldtaGNwUVlyTXdJREFRQUJBb0lCQUFoWUZTdmZUMWx4UElxcQpTLzhSQ1g1U1JkbVNIc1BpWHdnYnNCSXQ3NXdPOURTR05PaFlrUXdRQlc2ZE1DYm1MWGxuYVRzRHk3TEVMdmNQCmtXZjNqcEMvcGgyRzR3M3dQRTFlNHZwYkQ2NGVOdjJYdnNNVVVmdHBvTXcvMmJXVHhOM1lSdEcybHhRK1RnSUUKbW1JMXJrOGgyT1VhdG54Qnl4Z1pTYWtmbkhxZzByQjgyWkxsd2Qycm1zWkpHLzQ2SlRWZ1VMaFE4ZjE5dnBkWgo5bU5GbXVTck42NnJNRVRXdzltSUdRdTNybVFxTkNCRnh2eWZQZjlBd2hLMmVUSjMyUW13VkVGTENqWXFzMkd0CnQ4Y3Z0SG9nUlRtT2djU3A4WVM3Y01qdklLRGlpeUZRcFc3TjNKWVdLdUJKNkVTdmZkcWs5UEJvSGEvdmNwM00KWVZVNWU2RUNnWUVBMGNiRGpZOWo3dEVlUkQ1dksrdVRybTBwRmZid005ZmJ1c2ZqQUxjTituUlVqUlNFV3cxVgpJOHB3NjR5UmZCdmd2cXg4Ujd6UTNSeC9GSDRmdmJuTy9kMTJZVXJRRFJVeDQ3SFdKZEtzUDRjRkhacVQzKzhpCmt5bFVoZ2Z4N2FXZEhuZU5lOUpuU0lGUkdRZFpqMFB6ZW01OUcrZmFyWSt5YW9ML05waVFWODhDZ1lFQTQ1c3MKUmRxRUJNZnd0dUZCKytwNm1heFlPZlpoZHZRK1B6SEZ1SmQ2T0FOcUhLNHVlYnNCQU1ZME1leVJMZEd5TE1FRAp4cytDSm5KTEhPVk41MUZqb3VuOGlhbWFrOUJScWVuM1NBVjdBaHJrNTBxeHBicUZFWVppVVo1V2VmRE1oSWNPCmQ5UFFEKy8zVnF5MkxKdTI4cFRWV1ZRNGdOM3JMcmFyTzQvaHExMENnWUFhRUpkVnJINWZPdzZHcmpkRC9zWmYKd3VKNi95N0RVa3ZUL21nZk81OTZBaUJMVTBSS3gvSlBPeVVpcjFtWVVTSndycC9XamdocG9OUE5hUXBxbVg2MQpubUhLSHZDUTM1Uk9WVmRsWmJMUFJlaUYwQ0lWamZIKzFRRFNrb1FsNGhFT3F3NGlWM2RMMC8yT25aSXNNZVk3CnpTU3daZk9PNHk3byt4UFk1Y1h4a3dLQmdHN1ROTmlDa1B2ZSt5ZWhRVWJQb29qSE1XSnZ4SDl1YUF6UFNHNGMKVytlQVNoL1M5RkJUclNaYVhEbmU3Y1g0c0NBNGo0VXpyelRYUEJuQzBZOEx3MDhsVGRFZUkyVkw3eWVrQThNdQozL2xqYlFmdUI5Z2huUCt1aHBzbFZRZ2xKd0IwM3FlY0hGaFdTUUlNTU54QnFmQXVaa0FMMFVOMlN6akF1MW5TCk1sa0ZBb0dCQUtHZWZvSG04MWoycGtPT1B0MU03NTBQWEUxQm5va3dBVUUwMHFxMUlvOFpDUmxTdm5MU2l2RUcKeUFqK1pOdlgzVjZpTi92QzhKc3BUQk9QUy9zRnRYSDd0aytvV09SYTYwbXlVRnBuMzFtYkdkZjU5WHYxcm5vSgpPL1NncWdOWTg2SVRPR0JwWVBkTEE3NXJ3djBBRWFzYzV6ajNDMTdDUjdYMSswbU5pdURhCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
+-------
+####赋予Jack用户在default名称空间下有特定资源只读权限
+[root@prometheus rbac]# cat jack-default-ua.yaml 
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: role-jack
+  namespace: default
+rules:
+- apiGroups: ["*"]
+  resources: ["pods/exec"]
+  #verbs: ["*"]
+  ##RO-Role
+  verbs: ["get", "list", "watch", "create"]
+
+- apiGroups: ["*"]
+  resources: ["pods"]
+  #verbs: ["*"]
+  ##RO-Role
+  verbs: ["get", "list", "watch"]
+
+- apiGroups: ["*"]
+  resources: ["deployments", "replicasets", "deployments/scale"]
+  #verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  ##RO-Role
+  verbs: ["get", "watch", "list"]
+
+- apiGroups: ["*"]
+  resources: ["events"]
+  ##RO-Role
+  verbs: ["get", "watch", "list"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: rolebinding-jack
+  namespace: default
+subjects:
+- kind: User 
+  name: Jack
+roleRef:
+  kind: Role
+  name: role-jack
+  apiGroup: rbac.authorization.k8s.io
+---
+#####赋予Jack用户在default名称空间下有特定资源只读权限--通过dashboard访问
+[root@prometheus rbac]# cat jack-default-sa.yaml 
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-jack
+  namespace: default
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: role-jack
+  namespace: default
+rules:
+- apiGroups: ["*"]
+  resources: ["pods/exec"]
+  #verbs: ["*"]
+  ##RO-Role
+  verbs: ["get", "list", "watch", "create"]
+
+- apiGroups: ["*"]
+  resources: ["pods"]
+  #verbs: ["*"]
+  ##RO-Role
+  verbs: ["get", "list", "watch"]
+
+- apiGroups: ["*"]
+  resources: ["deployments", "replicasets", "deployments/scale"]
+  #verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  ##RO-Role
+  verbs: ["get", "watch", "list"]
+
+- apiGroups: ["*"]
+  resources: ["events"]
+  ##RO-Role
+  verbs: ["get", "watch", "list"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: rolebinding-jack
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: sa-jack
+roleRef:
+  kind: Role
+  name: role-jack
+  apiGroup: rbac.authorization.k8s.io
+-------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 6.6 k8s网络，容器网络
 1. overlay网络模型--性能最差，扩展性最好
@@ -8353,6 +8544,352 @@ http {
 }
 --下载nginx-vts-exporter进行监控
 [root@tengine /usr/local/nginx/sbin]# /usr/local/nginx-vts-exporter-0.10.3.linux-amd64/nginx-vts-exporter -nginx.scrape_timeout 10 -nginx.scrape_uri http://127.0.0.1:8089/status/format/json -telemetry.address 192.168.13.50:9913 -telemetry.endpoint /metrics
+
+
+
+###监控etcd
+--1 将etcd引入为k8s service资源
+[root@prometheus prometheus]# cat 05-etcd-metrics.yaml 
+apiVersion: v1
+kind: Service
+metadata:
+  name: k8s-etcd
+  namespace: kube-system
+  labels:
+    k8s-component: etcd
+    component.kubernetes.io/name: etcd		#此label在prometheus中需要过滤使用
+spec:
+  type: ClusterIP
+  clusterIP: None 
+  ports:
+  - name: port
+    port: 2379          
+    protocol: TCP
+---
+apiVersion: v1
+kind: Endpoints
+metadata:
+  name: k8s-etcd
+  namespace: kube-system
+  labels:
+    k8s-component: etcd
+subsets:
+- addresses:
+  - ip: 192.168.13.31
+  - ip: 192.168.13.32
+  - ip: 192.168.13.33
+  ports:
+  - port: 2379
+---
+[root@prometheus prometheus]# kubectl apply -f 05-etcd-metrics.yaml
+[root@prometheus prometheus]# kubectl  get svc -n kube-system | grep etcd
+k8s-etcd             ClusterIP   None            <none>        2379/TCP         
+[root@prometheus prometheus]# kubectl  describe ep k8s-etcd -n kube-system
+Name:         k8s-etcd
+Namespace:    kube-system
+Labels:       k8s-component=etcd
+Annotations:  <none>
+Subsets:
+  Addresses:          192.168.13.31,192.168.13.32,192.168.13.33
+  NotReadyAddresses:  <none>
+  Ports:
+    Name     Port  Protocol
+    ----     ----  --------
+    <unset>  2379  TCP
+
+Events:  <none>
+
+--2 在外部prometheus中配置etcd
+[root@prometheus prometheus]# cat prometheus.yml
+  - job_name: 'kubernetes-etcd'
+    metrics_path: /metrics
+    scheme: https
+    kubernetes_sd_configs:
+    - role: endpoints
+      namespaces:
+        names: ["kube-system"] 
+      api_server: https://k8s-api.hs.com:6443/
+      bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+      tls_config:
+        insecure_skip_verify: true
+    tls_config:
+      ca_file: /usr/local/prometheus/k8s/ca.pem
+      cert_file: /usr/local/prometheus/k8s/etcd.pem
+      key_file: /usr/local/prometheus/k8s/etcd-key.pem   
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_service_label_component_kubernetes_io_name]	#此名称为上面创建service使用的label
+      action: keep
+      regex: etcd
+---
+
+--3 复制etcd 公钥、私钥、CA证书到外部prometheus服务器，此密钥一定要保管好
+root@k8s-master01:/etc/kubernetes/ssl# scp etcd.pem etcd-key.pem ca.pem root@192.168.13.236:/usr/local/prometheus/k8s/
+
+--4 在prometheus中查看证书信息
+[root@prometheus prometheus]# ll /usr/local/prometheus/k8s
+total 16
+-rw-r--r-- 1 root root 1302 Jun 25 18:28 ca.pem
+-rw-r--r-- 1 root root 1679 Jun 25 18:28 etcd-key.pem
+-rw-r--r-- 1 root root 1428 Jun 25 18:28 etcd.pem
+-rw-r--r-- 1 root root  909 Jun 23 17:25 prometheus_token
+
+--5 重载prometheus服务
+[root@prometheus prometheus]# curl -X POST http://localhost:9090/-/reload
+
+--6 去prometheus中查看是否正常获取获取数据 
+
+--7 在grafana中导入ID为9733的ETCD Dashboard看板
+
+####prometheus for k8s告警规则
+---
+[root@prometheus rules]# cat kubernetes.rule 
+    groups:
+    - name: KubernetesHostStatusAlert
+      rules:
+      - alert: KubernetesNodeDown
+        expr: up{job=~"kubernetes-node"} == 0
+        for: 15s
+        labels:
+          severity: High
+        annotations:
+          summary: "Kubernetes Node is Down"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} is Down, Server Machine can shutdown,time keep 15s(current value: {{ $value }})"
+      - alert: KubernetesHostCpuUsageAlert
+        expr: sum by(job,instance) (avg without(cpu) (irate(node_cpu_seconds_total{job="kubernetes-node",mode!="idle"}[5m]))) * 100 > 85
+        for: 5m
+        labels:
+          severity: High
+        annotations:
+          summary: "Host CPU[5m] usage High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} CPU Usage above 85%/5m (current value: {{ $value }})"
+      - alert: KubernetesHostCpuUsage100%Alert
+        expr: sum by(job,instance) (avg without(cpu) (irate(node_cpu_seconds_total{job="kubernetes-node",mode!="idle"}[5m]))) * 100 >= 99
+        for: 5m
+        labels:
+          severity: High
+        annotations:
+          summary: "Host CPU[5m] usage High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} CPU Usage above equal 99%/5m (current value: {{ $value }})"
+      - alert: KubernetesHostMemUsageAlert
+        expr: (1 - ((node_memory_Buffers_bytes{job="kubernetes-node"}+ node_memory_Cached_bytes{job="kubernetes-node"} + node_memory_MemFree_bytes{job="kubernetes-node"}) /node_memory_MemTotal_bytes{job="kubernetes-node"})) * 100 > 85
+        for: 5m
+        labels:
+          severity: High
+        annotations:
+          summary: "Host Memory usage High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Memory Usage above 85% (current value: {{ $value }})"
+      - alert: KubernetesHostMemUsage100%Alert
+        expr: (1 - ((node_memory_Buffers_bytes{job="kubernetes-node"}+ node_memory_Cached_bytes{job="kubernetes-node"} + node_memory_MemFree_bytes{job="kubernetes-node"}) /node_memory_MemTotal_bytes{job="kubernetes-node"})) * 100 > 95
+        for: 5m
+        labels:
+          severity: High
+        annotations:
+          summary: "Host Memory usage High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Memory Usage above equal 95% (current value: {{ $value }})"
+      - alert: KubernetesHostDiskUsageCapacityAlert
+        expr: (100-(node_filesystem_free_bytes{fstype=~"ext4|xfs",job="kubernetes-node"}/node_filesystem_size_bytes {fstype=~"ext4|xfs",job="kubernetes-node"}*100)) > 90
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Host Disk Usage Capacity High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Host Disk Capacity Usage above 90% (path: {{ $labels.mountpoint }},value: {{ $value }})"
+      - alert: KubernetesHostDiskAvailableCapacityAlert
+        expr: node_filesystem_free_bytes{fstype=~"ext4|xfs",mountpoint!="/boot",job="kubernetes-node"} / 1024 /1024 /1024 < 1
+        for: 1m
+        labels:
+          severity: High
+        annotations:
+          summary: "Host Disk Available Capacity Low"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Host Disk Available Capacity under 1G (path: {{ $labels.mountpoint }},value: {{ $value }})"
+      - alert: KubernetesHostDiskReadRateAlert
+        expr: irate(node_disk_read_bytes_total{job="kubernetes-node"}[5m]) /1024 /1024 > 60
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Host Disk Read Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Disk Read Rate above 60M/5m (device: {{ $labels.device }},value: {{ $value }})"
+      - alert: KubernetesHostDiskWriteRateAlert
+        expr: irate(node_disk_written_bytes_total{job="kubernetes-node"}[5m]) /1024 /1024 > 60
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Host Disk Write Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Disk Write Rate above 60M/5m (device: {{ $labels.device }},value: {{ $value }})"
+      - alert: KubernetesHostDiskIOPSReadRateAlert
+        expr: topk(1,irate(node_disk_reads_completed_total{job="kubernetes-node"}[5m])) > 1500
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Host Disk[5m] IOPS Read Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Disk Read IOPS Rate above 1500/5m (device: {{ $labels.device }},value: {{ $value }})"
+      - alert: KubernetesHostDiskIOPSWriteRateAlert
+        expr: topk(1,irate(node_disk_writes_completed_total{job="kubernetes-node"}[5m])) > 1500
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Host Disk[5m] IOPS Write Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Disk Write IOPS Rate above 1500/5m (device: {{ $labels.device }},value: {{ $value }})"
+      - alert: KubernetesHostNetworkReceiveAlert
+        expr: irate(node_network_receive_bytes_total{device!~"tap.*|veth.*|br.*|docker.*|virbr*|lo*",job="kubernetes-node"}[5m]) * 8 / 1024 / 1024 > 80
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Host Network[5m] Receive Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Network Download rate above 80Mbps/5m (current value: {{ $value }})  
+      - alert: KubernetesHostNetworkSendAlert
+        expr: irate(node_network_transmit_bytes_total{device!~"tap.*|veth.*|br.*|docker.*|virbr*|lo*",job="kubernetes-node"}[5m]) * 8 / 1024 / 1024 > 80
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Host Network[5m] Send Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Network Send rate above 80Mbps/5m (current value: {{ $value }})" 
+      - alert: KubernetesHostNetworkEstablishedConnectionAlert
+        expr: node_netstat_Tcp_CurrEstab{job="kubernetes-node"} > 1500
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Host Network[5m] Established Connection High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Network Established Connection above 1500 (current value: {{ $value }})"  
+    - name: KubernetesAPIServerAlert
+      rules:
+      - alert: KubernetesAPIServerDown		
+        expr: count(up{job="kubernetes-apiserver"}) < 3
+        for: 15s
+        labels:
+          severity: High
+        annotations:
+          summary: "Kubernetes APIServer Down"
+          description: "Kubernetes APIServer Node is Down, Node less than 3.(current value: {{ $value }})"  	  
+      - alert: KubernetesAPIServerRestfulCommandAlert		
+        expr: sum(rate(apiserver_request_total{job="kubernetes-apiserver"}[5m])) by (verb) > 100
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes APIServer Restful Command Many"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes APIServer Restful Command above 100/5m (current value: {{ $value }})"     
+      - alert: KubernetesAPIServerWorkQueueAlert		
+        expr: histogram_quantile(0.90, sum(rate(workqueue_queue_duration_seconds_bucket{job="kubernetes-apiserver"}[5m])) by (le)) > 0.01
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes APIServer Work Queue Wait Time Long"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes APIServer Work Queue Wait Time Long, P90 value above 10ms/5m (current value: {{ $value }})" 
+      - alert: KubernetesAPIServerWorkQueueAlert		
+        expr: histogram_quantile(0.90, sum(rate(workqueue_work_duration_seconds_bucket{job="kubernetes-apiserver"}[5m])) by (le)) > 0.01
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes APIServer Work Queue Processing Time Long"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes APIServer Work Queue Processing Time Long, P90 value above 10ms/5m (current value: {{ $value }})"    		  
+      - alert: KubernetesAPIServerRequestLatencyAlert		
+        expr: histogram_quantile(0.90, sum(rate(apiserver_request_duration_seconds_bucket{job="kubernetes-apiserver",verb!~"CONNECT|WATCH"}[5m])) by (le)) > 0.5
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes APIServer Request Latency High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes APIServer Request Latency High, P90 value above 500ms/5m (current value: {{ $value }})"  
+      - alert: KubernetesAPIServerRequestLatencyAlert		
+        expr: histogram_quantile(0.90, sum(rate(etcd_request_duration_seconds_bucket{job="kubernetes-apiserver"}[5m])) by (le)) > 0.05
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Etcd Request Latency High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes APIServer Request Latency High, P90 value above 50ms/5m (current value: {{ $value }})" 
+    - name: KubernetesPodsStatusAlert
+      rules:
+      - alert: KubernetesAllPodsCPUUsageAlert
+        expr: sum by (instance,job) (irate(container_cpu_usage_seconds_total{job="kubernetes-node-cadvisor",image!="",name=~"^k8s_.*"}[5m])) / sum by (instance,job) (machine_cpu_cores) * 100 > 70
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Node All Pods CPU Usage Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes Node All Pods CPU Usage Rate above 70%/5m (current value: {{ $value }})"
+      - alert: KubernetesAllPodsMemoryUsageAlert
+        expr: sum by (instance,job) (container_memory_working_set_bytes{job="kubernetes-node-cadvisor",image!="",name=~"^k8s_.*"}) / sum by (instance,job) (machine_memory_bytes) * 100 > 70
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Node All Pods Memory Usage Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes Node All Pods Memory Usage Rate above 70%/5m (current value: {{ $value }})"
+      - alert: KubernetesAllPodsNetworkSendAlert
+        expr: sum by(instance,job) (irate(container_network_transmit_bytes_total{job="kubernetes-node-cadvisor"}[5m])) /1024 /1024 > 50
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Node All Pods Network Send Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes Node All Pods Network Send Rate above 50M/5m (current value: {{ $value }})"  
+      - alert: KubernetesAllPodsNetworkReceivedAlert
+        expr: sum by(instance,job) (irate(container_network_receive_bytes_total{job="kubernetes-node-cadvisor"}[5m])) /1024 /1024 > 50
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Node All Pods Network Received Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes Node All Pods Network Received Rate above 50M/5m (current value: {{ $value }})"  		  
+      - alert: KubernetesSinglePodsCPUUsageAlert
+        expr: sum by(instance,job,namespace,pod) (irate(container_cpu_usage_seconds_total{job="kubernetes-node-cadvisor",image!="",name=~"^k8s_.*"}[5m])) * 1000 > 1000
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Node Single Pods CPU Usage Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}}, namespace: {{$labels.namespace}}, pod: {{$labels.pod}} Kubernetes Node Single Pods CPU Usage Rate above 1000m(1000m=1core)/5m (current value: {{ $value }})"
+      - alert: KubernetesSinglePodsMemoryUsageAlert
+        expr: sum by(instance,job,namespace,pod) (container_memory_working_set_bytes{job="kubernetes-node-cadvisor",image!="",name=~"^k8s_.*"}) /1024 /1024 > 1024
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Node Single Pods Memory Usage Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}}, namespace: {{$labels.namespace}}, pod: {{$labels.pod}} Kubernetes Node Single Pods Memory Usage Rate above 1G/5m (current value: {{ $value }})"		  
+      - alert: KubernetesSinglePodsNetworkSenddAlert
+        expr: sum by(instance,job,namespace,pod) (irate(container_network_transmit_bytes_total{job="kubernetes-node-cadvisor",image!="",name=~"^k8s_.*"}[5m])) /1024 /1024 > 20
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Node Single Pods Network Send Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}}, namespace: {{$labels.namespace}}, pod: {{$labels.pod}} Kubernetes Node Single Pods Network Send Rate above 20M/5m (current value: {{ $value }})"			  
+      - alert: KubernetesSinglePodsNetworkReceivedAlert
+        expr: sum by(instance,job,namespace,pod) (irate(container_network_receive_bytes_total{job="kubernetes-node-cadvisor",image!="",name=~"^k8s_.*"}[5m])) /1024 /1024 > 20
+        for: 5m
+        labels:
+          severity: warnning
+        annotations:
+          summary: "Kubernetes Node Single Pods Network Received Rate High"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}}, namespace: {{$labels.namespace}}, pod: {{$labels.pod}} Kubernetes Node Single Pods Network Received Rate above 20M/5m (current value: {{ $value }})"			  
+
+    - name: KubernetesEtcdStatusAlert
+      rules:
+      - alert: KubernetesEtcdDown
+        expr: up{job=~"kubernetes-etcd"} == 0
+        for: 15s
+        labels:
+          severity: High
+        annotations:
+          summary: "Kubernetes Etcd is Down"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} is Down, Kubernetes Etcd database is down.(current value: {{ $value }})"
+---
+
+
+
+
 
 
 

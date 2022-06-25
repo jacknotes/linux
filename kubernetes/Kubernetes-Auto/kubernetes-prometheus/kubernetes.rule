@@ -8,7 +8,7 @@
           severity: High
         annotations:
           summary: "Kubernetes Node is Down"
-          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} is Down,Server Machine can shutdown,time keep 15s(current value: {{ $value }})"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} is Down, Server Machine can shutdown,time keep 15s(current value: {{ $value }})"
       - alert: KubernetesHostCpuUsageAlert
         expr: sum by(job,instance) (avg without(cpu) (irate(node_cpu_seconds_total{job="kubernetes-node",mode!="idle"}[5m]))) * 100 > 85
         for: 5m
@@ -116,13 +116,13 @@
     - name: KubernetesAPIServerAlert
       rules:
       - alert: KubernetesAPIServerDown		
-        expr: up{job="kubernetes-apiserver"} == 0
+        expr: count(up{job="kubernetes-apiserver"}) < 3
         for: 15s
         labels:
           severity: High
         annotations:
           summary: "Kubernetes APIServer Down"
-          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Kubernetes APIServer is Down, time keep 15s (current value: {{ $value }})"  	  
+          description: "Kubernetes APIServer Node is Down, Node less than 3.(current value: {{ $value }})"  	  
       - alert: KubernetesAPIServerRestfulCommandAlert		
         expr: sum(rate(apiserver_request_total{job="kubernetes-apiserver"}[5m])) by (verb) > 100
         for: 5m
@@ -229,3 +229,14 @@
         annotations:
           summary: "Kubernetes Node Single Pods Network Received Rate High"
           description: "job: {{ $labels.job }}, instance: {{$labels.instance}}, namespace: {{$labels.namespace}}, pod: {{$labels.pod}} Kubernetes Node Single Pods Network Received Rate above 20M/5m (current value: {{ $value }})"			  
+
+    - name: KubernetesEtcdStatusAlert
+      rules:
+      - alert: KubernetesEtcdDown
+        expr: up{job=~"kubernetes-etcd"} == 0
+        for: 15s
+        labels:
+          severity: High
+        annotations:
+          summary: "Kubernetes Etcd is Down"
+          description: "job: {{ $labels.job }}, instance: {{$labels.instance}} is Down, Kubernetes Etcd database is down.(current value: {{ $value }})"
