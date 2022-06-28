@@ -17,23 +17,9 @@
   "gnetId": 315,
   "graphTooltip": 0,
   "id": 89,
-  "iteration": 1655975285914,
+  "iteration": 1656409224230,
   "links": [],
   "panels": [
-    {
-      "collapsed": false,
-      "datasource": null,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 0
-      },
-      "id": 35,
-      "panels": [],
-      "title": "All Pods Usage",
-      "type": "row"
-    },
     {
       "datasource": "Prometheus",
       "fieldConfig": {
@@ -44,7 +30,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "dark-green",
                 "value": null
               }
             ]
@@ -55,9 +41,9 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 2,
+        "w": 3,
         "x": 0,
-        "y": 1
+        "y": 0
       },
       "id": 55,
       "links": [],
@@ -89,7 +75,7 @@
       ],
       "timeFrom": null,
       "timeShift": null,
-      "title": "CPU Milli Core ",
+      "title": "CPU mCore ",
       "type": "stat"
     },
     {
@@ -105,7 +91,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "dark-green",
                 "value": null
               },
               {
@@ -124,9 +110,9 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 3,
-        "x": 2,
-        "y": 1
+        "w": 4,
+        "x": 3,
+        "y": 0
       },
       "id": 27,
       "links": [],
@@ -144,7 +130,7 @@
       "pluginVersion": "7.1.4",
       "targets": [
         {
-          "expr": "sum(irate(container_cpu_usage_seconds_total{image!=\"\",name=~\"^k8s_.*\",kubernetes_io_hostname=\"$Node\",namespace=\"$namespace\"}[5m])) / sum (machine_cpu_cores{kubernetes_io_hostname=~\"^$Node$\"}) * 100",
+          "expr": "sum(irate(container_cpu_usage_seconds_total{image!=\"\",kubernetes_io_hostname=~\"^$Node\",container!=\"POD\"}[5m])) / sum (machine_cpu_cores{kubernetes_io_hostname=~\"^$Node\"}) * 100",
           "interval": "10s",
           "intervalFactor": 1,
           "legendFormat": "",
@@ -171,7 +157,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "dark-green",
                 "value": null
               },
               {
@@ -190,9 +176,9 @@
       },
       "gridPos": {
         "h": 6,
-        "w": 3,
-        "x": 5,
-        "y": 1
+        "w": 4,
+        "x": 7,
+        "y": 0
       },
       "id": 49,
       "links": [],
@@ -210,7 +196,7 @@
       "pluginVersion": "7.1.4",
       "targets": [
         {
-          "expr": "sum(container_memory_working_set_bytes{image!=\"\",name=~\"^k8s_.*\",kubernetes_io_hostname=\"$Node\",namespace=\"$namespace\"}) / sum (machine_memory_bytes{kubernetes_io_hostname=~\"$Node\"}) * 100",
+          "expr": "sum(container_memory_working_set_bytes{image!=\"\",kubernetes_io_hostname=\"$Node\",container!=\"POD\"}) / sum (machine_memory_bytes{kubernetes_io_hostname=~\"$Node\"}) * 100",
           "interval": "10s",
           "intervalFactor": 1,
           "legendFormat": "",
@@ -244,22 +230,22 @@
       "grid": {},
       "gridPos": {
         "h": 6,
-        "w": 8,
-        "x": 8,
-        "y": 1
+        "w": 13,
+        "x": 11,
+        "y": 0
       },
       "height": "200px",
       "hiddenSeries": false,
       "id": 53,
       "isNew": true,
       "legend": {
-        "alignAsTable": true,
+        "alignAsTable": false,
         "avg": true,
         "current": true,
         "max": false,
         "min": false,
         "rightSide": false,
-        "show": true,
+        "show": false,
         "sideWidth": null,
         "sort": "current",
         "sortDesc": true,
@@ -281,12 +267,23 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(container_network_receive_bytes_total{kubernetes_io_hostname=\"$Node\",namespace=\"$namespace\"}[5m])) ",
+          "expr": "sum(irate(container_network_receive_bytes_total{kubernetes_io_hostname=\"$Node\",container=\"POD\"}[5m]))",
+          "hide": false,
           "interval": "10s",
           "intervalFactor": 1,
           "legendFormat": "Received",
           "metric": "network",
           "refId": "A",
+          "step": 10
+        },
+        {
+          "expr": "sum(irate(container_network_transmit_bytes_total{kubernetes_io_hostname=\"$Node\",container=\"POD\"}[5m]))",
+          "hide": false,
+          "interval": "10s",
+          "intervalFactor": 1,
+          "legendFormat": "Sent",
+          "metric": "network",
+          "refId": "B",
           "step": 10
         }
       ],
@@ -338,128 +335,6 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "Prometheus",
-      "decimals": 2,
-      "editable": true,
-      "error": false,
-      "fieldConfig": {
-        "defaults": {
-          "custom": {}
-        },
-        "overrides": []
-      },
-      "fill": 0,
-      "fillGradient": 0,
-      "grid": {},
-      "gridPos": {
-        "h": 6,
-        "w": 8,
-        "x": 16,
-        "y": 1
-      },
-      "height": "200px",
-      "hiddenSeries": false,
-      "id": 51,
-      "isNew": true,
-      "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": true,
-        "max": false,
-        "min": false,
-        "rightSide": false,
-        "show": true,
-        "sideWidth": null,
-        "sort": "current",
-        "sortDesc": true,
-        "total": false,
-        "values": true
-      },
-      "lines": true,
-      "linewidth": 2,
-      "links": [],
-      "nullPointMode": "connected",
-      "percentage": false,
-      "pluginVersion": "7.1.4",
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "sum(irate(container_network_transmit_bytes_total{kubernetes_io_hostname=\"$Node\",namespace=\"$namespace\"}[5m])) ",
-          "interval": "10s",
-          "intervalFactor": 1,
-          "legendFormat": "Sent",
-          "metric": "network",
-          "refId": "B",
-          "step": 10
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "All Pod Network Sent Usage",
-      "tooltip": {
-        "msResolution": false,
-        "shared": true,
-        "sort": 2,
-        "value_type": "cumulative"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "Bps",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        },
-        {
-          "format": "Bps",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "collapsed": false,
-      "datasource": null,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 7
-      },
-      "id": 37,
-      "panels": [],
-      "title": "Single Pod Usage",
-      "type": "row"
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus",
       "decimals": 3,
       "editable": true,
       "error": false,
@@ -473,19 +348,19 @@
       "fillGradient": 0,
       "grid": {},
       "gridPos": {
-        "h": 6,
+        "h": 7,
         "w": 8,
         "x": 0,
-        "y": 8
+        "y": 6
       },
       "height": "",
       "hiddenSeries": false,
       "id": 17,
       "isNew": true,
       "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": true,
+        "alignAsTable": false,
+        "avg": false,
+        "current": false,
         "max": false,
         "min": false,
         "rightSide": false,
@@ -493,7 +368,7 @@
         "sort": "current",
         "sortDesc": true,
         "total": false,
-        "values": true
+        "values": false
       },
       "lines": true,
       "linewidth": 2,
@@ -510,11 +385,11 @@
       "steppedLine": true,
       "targets": [
         {
-          "expr": "sum(rate(container_cpu_usage_seconds_total{image!=\"\",name=~\"^k8s_.*\",kubernetes_io_hostname=~\"^$Node$\",namespace=\"$namespace\"}[5m])) by (pod) * 1000",
+          "expr": "sum(irate(container_cpu_usage_seconds_total{image!=\"\",kubernetes_io_hostname=~\"^$Node\",container!=\"POD\"}[5m])) by (pod,namespace) * 1000",
           "instant": false,
           "interval": "10s",
           "intervalFactor": 1,
-          "legendFormat": "{{ pod }}",
+          "legendFormat": "{{namespace}} | {{ pod }}",
           "metric": "container_cpu",
           "refId": "A",
           "step": 10
@@ -581,18 +456,18 @@
       "fillGradient": 0,
       "grid": {},
       "gridPos": {
-        "h": 6,
+        "h": 7,
         "w": 8,
         "x": 8,
-        "y": 8
+        "y": 6
       },
       "hiddenSeries": false,
       "id": 25,
       "isNew": true,
       "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": true,
+        "alignAsTable": false,
+        "avg": false,
+        "current": false,
         "max": false,
         "min": false,
         "rightSide": false,
@@ -601,7 +476,7 @@
         "sort": "current",
         "sortDesc": true,
         "total": false,
-        "values": true
+        "values": false
       },
       "lines": true,
       "linewidth": 2,
@@ -618,10 +493,10 @@
       "steppedLine": true,
       "targets": [
         {
-          "expr": "sum(container_memory_working_set_bytes{image!=\"\",kubernetes_io_hostname=\"$Node\",namespace=\"$namespace\"}) by (pod) ",
+          "expr": "sum(container_memory_working_set_bytes{image!=\"\",kubernetes_io_hostname=\"$Node\",container!=\"POD\"}) by (pod,namespace)",
           "interval": "10s",
           "intervalFactor": 1,
-          "legendFormat": "{{ pod }}",
+          "legendFormat": "{{ namespace }} | {{ pod }}",
           "metric": "container_memory_usage:sort_desc",
           "refId": "A",
           "step": 10
@@ -688,19 +563,19 @@
       "fillGradient": 0,
       "grid": {},
       "gridPos": {
-        "h": 6,
+        "h": 7,
         "w": 8,
         "x": 16,
-        "y": 8
+        "y": 6
       },
       "height": "200px",
       "hiddenSeries": false,
-      "id": 32,
+      "id": 57,
       "isNew": true,
       "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": true,
+        "alignAsTable": false,
+        "avg": false,
+        "current": false,
         "max": false,
         "min": false,
         "rightSide": false,
@@ -709,7 +584,7 @@
         "sort": "current",
         "sortDesc": true,
         "total": false,
-        "values": true
+        "values": false
       },
       "lines": true,
       "linewidth": 2,
@@ -726,19 +601,10 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(container_network_receive_bytes_total{kubernetes_io_hostname=\"$Node\",namespace=\"$namespace\"}[5m])) by (pod)",
+          "expr": "sum(irate(container_network_transmit_bytes_total{kubernetes_io_hostname=\"$Node\",container=\"POD\"}[5m])) by (pod,namespace)",
           "interval": "10s",
           "intervalFactor": 1,
-          "legendFormat": "Received: {{pod}}",
-          "metric": "network",
-          "refId": "A",
-          "step": 10
-        },
-        {
-          "expr": "sum(irate(container_network_transmit_bytes_total{kubernetes_io_hostname=\"$Node\",namespace=\"$namespace\"}[5m])) by (pod)",
-          "interval": "10s",
-          "intervalFactor": 1,
-          "legendFormat": "Sent: {{pod}}",
+          "legendFormat": "{{ namespace }} | {{pod}}",
           "metric": "network",
           "refId": "B",
           "step": 10
@@ -748,7 +614,7 @@
       "timeFrom": null,
       "timeRegions": [],
       "timeShift": null,
-      "title": "Pod Network Usage",
+      "title": "Pod Network Sent",
       "tooltip": {
         "msResolution": false,
         "shared": true,
@@ -787,20 +653,6 @@
       }
     },
     {
-      "collapsed": false,
-      "datasource": null,
-      "gridPos": {
-        "h": 1,
-        "w": 24,
-        "x": 0,
-        "y": 14
-      },
-      "id": 42,
-      "panels": [],
-      "title": "Single Container Usage",
-      "type": "row"
-    },
-    {
       "aliasColors": {},
       "bars": false,
       "dashLength": 10,
@@ -819,19 +671,19 @@
       "fillGradient": 0,
       "grid": {},
       "gridPos": {
-        "h": 6,
-        "w": 12,
+        "h": 7,
+        "w": 8,
         "x": 0,
-        "y": 15
+        "y": 13
       },
       "height": "",
       "hiddenSeries": false,
       "id": 24,
       "isNew": true,
       "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": true,
+        "alignAsTable": false,
+        "avg": false,
+        "current": false,
         "hideEmpty": false,
         "hideZero": false,
         "max": false,
@@ -842,7 +694,7 @@
         "sort": "current",
         "sortDesc": true,
         "total": false,
-        "values": true
+        "values": false
       },
       "lines": true,
       "linewidth": 2,
@@ -859,11 +711,11 @@
       "steppedLine": true,
       "targets": [
         {
-          "expr": "sum(irate(container_cpu_usage_seconds_total{image!=\"\",container!=\"POD\",kubernetes_io_hostname=\"$Node\",namespace=\"$namespace\"}[5m])) by (pod,container)  * 1000",
+          "expr": "irate(container_cpu_usage_seconds_total{image!=\"\",kubernetes_io_hostname=~\"^$Node$\",container!=\"POD\"}[5m]) * 1000",
           "hide": false,
           "interval": "10s",
           "intervalFactor": 1,
-          "legendFormat": "pod: {{ pod}} | containers: {{ container}}",
+          "legendFormat": "{{ namespace }} | {{ pod}} | {{ container}}",
           "metric": "container_cpu",
           "refId": "A",
           "step": 10
@@ -930,18 +782,18 @@
       "fillGradient": 0,
       "grid": {},
       "gridPos": {
-        "h": 6,
-        "w": 12,
-        "x": 12,
-        "y": 15
+        "h": 7,
+        "w": 8,
+        "x": 8,
+        "y": 13
       },
       "hiddenSeries": false,
       "id": 47,
       "isNew": true,
       "legend": {
-        "alignAsTable": true,
-        "avg": true,
-        "current": true,
+        "alignAsTable": false,
+        "avg": false,
+        "current": false,
         "hideEmpty": false,
         "hideZero": false,
         "max": false,
@@ -952,7 +804,7 @@
         "sort": "current",
         "sortDesc": true,
         "total": false,
-        "values": true
+        "values": false
       },
       "lines": true,
       "linewidth": 2,
@@ -969,10 +821,10 @@
       "steppedLine": true,
       "targets": [
         {
-          "expr": "sum(container_memory_working_set_bytes{image!=\"\",kubernetes_io_hostname=\"$Node\",namespace=\"$namespace\"}) by (pod,container) ",
+          "expr": "container_memory_working_set_bytes{image!=\"\",kubernetes_io_hostname=\"$Node\",container!=\"POD\"}",
           "interval": "10s",
           "intervalFactor": 1,
-          "legendFormat": "Pod: {{ pod }} | Containers: {{ container}}",
+          "legendFormat": "{{ namespace }} | {{ pod }} | {{ container}}",
           "metric": "container_memory_usage:sort_desc",
           "refId": "A",
           "step": 10
@@ -1019,9 +871,117 @@
         "align": true,
         "alignLevel": null
       }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "decimals": 2,
+      "editable": true,
+      "error": false,
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "fill": 0,
+      "fillGradient": 0,
+      "grid": {},
+      "gridPos": {
+        "h": 7,
+        "w": 8,
+        "x": 16,
+        "y": 13
+      },
+      "height": "200px",
+      "hiddenSeries": false,
+      "id": 32,
+      "isNew": true,
+      "legend": {
+        "alignAsTable": false,
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "rightSide": false,
+        "show": true,
+        "sideWidth": null,
+        "sort": "current",
+        "sortDesc": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 2,
+      "links": [],
+      "nullPointMode": "connected",
+      "percentage": false,
+      "pluginVersion": "7.1.4",
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "sum(irate(container_network_receive_bytes_total{kubernetes_io_hostname=\"$Node\",container=\"POD\"}[5m])) by (pod,namespace)",
+          "interval": "10s",
+          "intervalFactor": 1,
+          "legendFormat": "{{ namespace }} | {{pod}}",
+          "metric": "network",
+          "refId": "A",
+          "step": 10
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Pod Network Received",
+      "tooltip": {
+        "msResolution": false,
+        "shared": true,
+        "sort": 2,
+        "value_type": "cumulative"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "Bps",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "Bps",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
     }
   ],
-  "refresh": "10s",
+  "refresh": "30s",
   "schemaVersion": 26,
   "style": "dark",
   "tags": [
@@ -1033,35 +993,9 @@
       {
         "allValue": ".*",
         "current": {
-          "selected": false,
-          "text": "kube-system",
-          "value": "kube-system"
-        },
-        "datasource": "Prometheus",
-        "definition": "label_values(kube_namespace_labels,namespace)",
-        "hide": 0,
-        "includeAll": false,
-        "label": null,
-        "multi": false,
-        "name": "namespace",
-        "options": [],
-        "query": "label_values(kube_namespace_labels,namespace)",
-        "refresh": 1,
-        "regex": "",
-        "skipUrlSync": false,
-        "sort": 0,
-        "tagValuesQuery": "",
-        "tags": [],
-        "tagsQuery": "",
-        "type": "query",
-        "useTags": false
-      },
-      {
-        "allValue": ".*",
-        "current": {
-          "selected": false,
-          "text": "172.168.2.21",
-          "value": "172.168.2.21"
+          "selected": true,
+          "text": "192.168.13.36",
+          "value": "192.168.13.36"
         },
         "datasource": "Prometheus",
         "definition": "label_values(kubernetes_io_hostname)",
@@ -1115,5 +1049,5 @@
   "timezone": "browser",
   "title": "Kubernetes Pods",
   "uid": "ZoMNV-6Gza",
-  "version": 16
+  "version": 55
 }
