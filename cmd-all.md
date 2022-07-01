@@ -269,7 +269,7 @@ welcome
 hello
 2017-08-08
 #使用print以逗号分隔时，打印则是以空格分界
-[root@master-nginx backup]# echo | awk ‘{a="hello";b="nihao";c="minggongge";print a,b,c;}'  
+[root@master-nginx backup]# echo | awk '{a="hello";b="nihao";c="minggongge";print a,b,c;}'  
 hello nihao minggongge
 #内置变量
 $0   #当前记录
