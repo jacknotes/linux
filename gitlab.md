@@ -159,6 +159,7 @@ Notify.test_email('jack.li@homsom.com', 'title', 'content').deliver_now
 
 #gitlab源码部署安装8.9.11
 官方部署指导URL: https://gitlab.com/gitlab-org/gitlab-recipes/tree/master/install/centos
+部署URL分支：63-gitlab-omnibus-ssl-apache24-conf-proxypass-vs-rewriterule
 
 支持的 Unix 发行版：
 Ubuntu
@@ -222,8 +223,55 @@ Firewall
 [root@ha2 yum.repos.d]# cat base.repo 
 [base]
 name=centos6 base repos
-baseurl=https://vault.centos.org/6.8/os/x86_64
+#baseurl=https://vault.centos.org/6.8/os/x86_64
+baseurl=http://archive.kernel.org/centos-vault/6.8/os/x86_64/
 gpgcheck=0
+
+```
+cat > /etc/yum.repos.d/base.repo << EOF
+[base]
+name=CentOS-6.10 - Base - mirrors.aliyun.com
+failovermethod=priority
+baseurl=http://mirrors.aliyun.com/centos-vault/6.10/os/$basearch/
+gpgcheck=1
+gpgkey=http://mirrors.aliyun.com/centos-vault/RPM-GPG-KEY-CentOS-6
+ 
+#released updates 
+[updates]
+name=CentOS-6.10 - Updates - mirrors.aliyun.com
+failovermethod=priority
+baseurl=http://mirrors.aliyun.com/centos-vault/6.10/updates/$basearch/
+gpgcheck=1
+gpgkey=http://mirrors.aliyun.com/centos-vault/RPM-GPG-KEY-CentOS-6
+ 
+#additional packages that may be useful
+[extras]
+name=CentOS-6.10 - Extras - mirrors.aliyun.com
+failovermethod=priority
+baseurl=http://mirrors.aliyun.com/centos-vault/6.10/extras/$basearch/
+gpgcheck=1
+gpgkey=http://mirrors.aliyun.com/centos-vault/RPM-GPG-KEY-CentOS-6
+ 
+#additional packages that extend functionality of existing packages
+[centosplus]
+name=CentOS-6.10 - Plus - mirrors.aliyun.com
+failovermethod=priority
+baseurl=http://mirrors.aliyun.com/centos-vault/6.10/centosplus/$basearch/
+gpgcheck=1
+enabled=0
+gpgkey=http://mirrors.aliyun.com/centos-vault/RPM-GPG-KEY-CentOS-6
+ 
+#contrib - packages by Centos Users
+[contrib]
+name=CentOS-6.10 - Contrib - mirrors.aliyun.com
+failovermethod=priority
+baseurl=http://mirrors.aliyun.com/centos-vault/6.10/contrib/$basearch/
+gpgcheck=1
+enabled=0
+gpgkey=http://mirrors.aliyun.com/centos-vault/RPM-GPG-KEY-CentOS-6
+
+EOF
+```
 1.1 添加 EPEL 存储库
 EPEL是 Fedora 项目基于志愿者的社区努力，旨在创建一个高质量的附加软件包存储库，以补充基于 Fedora 的 Red Hat Enterprise Linux (RHEL) 及其兼容的衍生产品，例如 CentOS 和 Scientific Linux。
 作为 Fedora 打包社区的一部分，EPEL 包是 100% 免费/自由的开源软件 (FLOSS)。
@@ -261,15 +309,17 @@ repolist: 22,250
 
 5. 从源代码安装新版本Git
 5.1 安装 Git 编译的必备文件：
-[root@gitlab ~]# yum install -y zlib-devel perl-CPAN gettext curl-devel expat-devel gettext-devel openssl-devel
+[root@gitlab ~]# yum install -y zlib-devel perl-CPAN gettext curl-devel expat-devel gettext-devel openssl-devel numactl
+
 5.2 克隆 Gitaly 存储库以编译和安装 Git：
-如果要安装 GitLab 13.6，请使用分支名称13-6-stable
-[root@gitlab ~]# git clone https://gitlab.com/gitlab-org/git.git -b v2.32.0 /tmp/git
-[root@gitlab ~]# cd /tmp/git
-[root@gitlab git]# make prefix=/usr/local all
-[root@gitlab git]# make prefix=/usr/local install
-[root@gitlab git]# /usr/local/bin/git version 
-git version 2.32.0
+mkdir /tmp/git && cd /tmp/git
+curl --progress https://www.kernel.org/pub/software/scm/git/git-2.10.5.tar.gz | tar xz
+cd git-2.10.5
+./configure
+make
+make prefix=/usr/local install
+[root@gitlab git-2.10.5]# /usr/local/bin/git version 
+git version 2.10.5
 
 6. Ruby安装
 6.1 在生产中使用 ruby​​ 版本管理器，如RVM、rbenv或chruby与 GitLab 经常导致难以诊断的问题。不支持版本管理器，我们强烈建议大家按照以下说明使用系统 ruby​​。
