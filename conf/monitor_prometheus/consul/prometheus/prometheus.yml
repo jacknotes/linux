@@ -20,6 +20,18 @@ scrape_configs:
       labels:
         app: "prometheus server"
 
+#  - job_name: 'federate'
+#    scrape_interval: 15s
+#    honor_labels: true
+#    metrics_path: '/federate'
+#    params:
+#      'match[]':
+#       - '{job=~"aliyun-node_exporter|aliyun-docker"}'
+#    static_configs:
+#    - targets: ['10.10.10.230:9090']
+#      labels:
+#        prometheus: "aliyun"
+
   - job_name: 'consul-nginx_exporter'
     scrape_interval: 15s
     consul_sd_configs:
@@ -175,6 +187,16 @@ scrape_configs:
         action: keep
       - regex: __meta_consul_service_metadata_(.+)
         action: labelmap
+    metric_relabel_configs:
+    - action: drop
+      source_labels: [__name__]
+      regex: 'windows_service_status'
+    #- action: drop
+    #  source_labels: [__name__]
+    #  regex: 'windows_service_state'
+    - action: drop
+      source_labels: [__name__]
+      regex: 'windows_service_start_mode'
 
   - job_name: 'consul-wmi_exporter'
     scrape_interval: 15s
@@ -187,6 +209,13 @@ scrape_configs:
         action: keep
       - regex: __meta_consul_service_metadata_(.+)
         action: labelmap
+    metric_relabel_configs:
+    - action: drop
+      source_labels: [__name__]
+      regex: 'wmi_service_status'
+    - action: drop
+      source_labels: [__name__]
+      regex: 'wmi_service_state'
 
   - job_name: 'consul-blackbox_icmp'
     scrape_interval: 5s
@@ -313,7 +342,7 @@ scrape_configs:
       services: []
     relabel_configs:
       - source_labels: [__meta_consul_tags]
-        regex: .*blackbox_tcp.*
+        regex: .*blackbox_tcp,.*
         action: keep
       - regex: __meta_consul_service_metadata_(.+)
         action: labelmap
@@ -325,6 +354,29 @@ scrape_configs:
         target_label: instance
       - target_label: __address__
         replacement: 192.168.13.236:9115
+
+  - job_name: 'consul-blackbox-tcp-aliyun'
+    scrape_interval: 5s
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*blackbox_tcp-aliyun.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - source_labels: [__address__]
+        regex: \[(.*)\]:(.*)
+        target_label: __param_target
+        replacement: ${1}
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: 10.10.10.230:9115
 
   - job_name: 'consul-snmp_exporter'
     scrape_interval: 30s
@@ -520,3 +572,170 @@ scrape_configs:
       - target_label: __address__
         replacement: 192.168.13.236:9290
 
+  - job_name: 'vmware_exporter'
+    metrics_path: '/metrics'
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: [vmware_exporter]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - target_label: __address__
+        replacement: 192.168.13.236:9272
+
+#  - job_name: 'consul-nacos'
+#    scrape_interval: 15s
+#    metrics_path: /nacos/actuator/prometheus
+#    consul_sd_configs:
+#    - server: '192.168.13.236:8500'
+#      services: []
+#    relabel_configs:
+#      - source_labels: [__meta_consul_service]
+#        regex: .*consul-nacos.*
+#        action: keep
+#      - regex: __meta_consul_service_metadata_(.+)
+#        action: labelmap
+#      - source_labels: [__address__]
+#        target_label: instance
+#
+
+  - job_name: 'kubernetes-node'
+    metrics_path: /metrics
+    scheme: http
+    kubernetes_sd_configs:
+    - role: node                                                          
+      api_server: https://k8s-api.hs.com:6443/
+      bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+      tls_config:
+        insecure_skip_verify: true
+    bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+    tls_config:
+      insecure_skip_verify: true
+    relabel_configs:
+    - source_labels: [__address__]
+      regex: '(.*):10250'
+      replacement: '${1}:9100'
+      target_label: __address__
+      action: replace
+    - action: labelmap
+      regex: __meta_kubernetes_node_label_(.+)
+ 
+  - job_name: 'kubernetes-node-cadvisor'
+    metrics_path: /metrics
+    scheme: https
+    kubernetes_sd_configs:
+    - role:  node
+      api_server: https://k8s-api.hs.com:6443/
+      bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+      tls_config:
+        insecure_skip_verify: true
+    bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+    tls_config:
+      insecure_skip_verify: true
+    relabel_configs:
+    - action: labelmap
+      regex: __meta_kubernetes_node_label_(.+)
+    - target_label: __address__
+      replacement: k8s-api.hs.com:6443
+    - source_labels: [__meta_kubernetes_node_name]
+      regex: (.+)
+      target_label: __metrics_path__
+      replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
+
+  - job_name: 'kubernetes-node-kubelet'
+    metrics_path: /metrics
+    scheme: https
+    kubernetes_sd_configs:
+    - role:  node
+      api_server: https://k8s-api.hs.com:6443/
+      bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+      tls_config:
+        insecure_skip_verify: true
+    bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+    tls_config:
+      insecure_skip_verify: true
+    relabel_configs:
+    - action: labelmap
+      regex: __meta_kubernetes_node_label_(.+)
+
+  - job_name: 'kubernetes-apiserver'
+    metrics_path: /metrics
+    scheme: https
+    kubernetes_sd_configs:
+    - role: endpoints
+      api_server: https://k8s-api.hs.com:6443/
+      bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+      tls_config:
+        insecure_skip_verify: true
+    bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+    tls_config:
+      insecure_skip_verify: true
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+      action: keep
+      regex: default;kubernetes;https
+
+  - job_name: 'kubernetes-etcd'
+    metrics_path: /metrics
+    scheme: https
+    kubernetes_sd_configs:
+    - role: endpoints
+      namespaces:
+        names: ["kube-system"] 
+      api_server: https://k8s-api.hs.com:6443/
+      bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+      tls_config:
+        insecure_skip_verify: true
+    tls_config:
+      ca_file: /usr/local/prometheus/k8s/ca.pem
+      cert_file: /usr/local/prometheus/k8s/etcd.pem
+      key_file: /usr/local/prometheus/k8s/etcd-key.pem   
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_service_label_component_kubernetes_io_name]
+      action: keep
+      regex: etcd
+
+  - job_name: 'kubernetes-service-endpoints'
+    metrics_path: /metrics
+    scheme: http
+    kubernetes_sd_configs:
+    - role: endpoints
+      api_server: https://k8s-api.hs.com:6443/
+      bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+      tls_config:
+        insecure_skip_verify: true
+    bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+    tls_config:
+      insecure_skip_verify: true
+    relabel_configs:
+    - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+      action: keep
+      regex: true
+    - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
+      action: replace
+      target_label: __scheme__
+      regex: (https?)
+    - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+      action: replace
+      target_label: __metrics_path__
+      regex: (.+)
+    - target_label: __address__
+      replacement: coredns-metrics.k8s.hs.com
+    - action: labelmap
+      regex: __meta_kubernetes_service_label_(.+)
+    - source_labels: [__meta_kubernetes_namespace]
+      action: replace
+      target_label: kubernetes_namespace
+    - source_labels: [__meta_kubernetes_service_name]
+      action: replace
+      target_label: kubernetes_name
+   
+  - job_name: 'kubernetes-kube-state-metric'
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+    - targets: ["kube-state-metric.k8s.hs.com"]

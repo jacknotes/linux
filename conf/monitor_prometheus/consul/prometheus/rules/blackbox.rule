@@ -8,5 +8,5 @@ groups:
       severity: High
     annotations:
       summary: "probe failure"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} is probe fail (current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, instance: {{ $labels.instance }} is probe fail (current value: {{ $value }})"
 

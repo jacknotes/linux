@@ -1,0 +1,39 @@
+groups:
+- name: vmware_exporterServiceAlert
+  rules:
+  - alert: vmware_exporterHostDown
+    expr: up{job="vmware_esxi"} < 1
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "Host Down"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Host is Down (current value: {{ $value }})"
+
+  - alert: vmware_exporterHostMemoryAlert
+    expr: vmware_host_memory_usage / vmware_host_memory_max * 100 > 95
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "Memory Usage High"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Host Memory Usage great than 95% (current value: {{ $value }})"
+
+  - alert: vmware_exporterHostDiskAlert
+    expr: vmware_datastore_freespace_size /1024 /1024 /1024 < 50
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "Disk Capacity Low"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Host Disk Capacity less than 50G (current value: {{ $value }})"
+
+  - alert: vmware_exporterHostCPUAlert
+    expr: vmware_host_cpu_usage / vmware_host_cpu_max * 100 > 85
+    for: 30s
+    labels:
+      severity: High
+    annotations:
+      summary: "CPU Usate High"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Host CPU Usage great than 85% (current value: {{ $value }})"
+

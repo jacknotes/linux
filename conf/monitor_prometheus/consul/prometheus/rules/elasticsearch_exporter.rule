@@ -124,7 +124,7 @@ groups:
     labels:
       severity: critical
     annotations:
-      summary: "elasticsearch node disk usage rate Alert"
+      summary: "elasticsearch node disk usage capcity Alert"
       description: "ElasticSearch env: {{ $labels.env }}, instance: {{ $labels.instance }}, cluster: {{ $labels.cluster }} disk usage capcity > 90 and has a value of {{ $value }}"
 
   - alert: Elasticsearch_Network_SendTraffic_Alert

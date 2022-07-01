@@ -29,29 +29,29 @@ groups:
       description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }}Usage Host Memory Many,Value Is Greater 30%(current value: {{ $value }})"
 
   - alert: redisClientConnectNumberAlert
-    expr: redis_connected_clients > 200
+    expr: redis_connected_clients > 300
     for: 1m
     labels:
       severity: High
     annotations:
       summary: "Redis Client Connect Number Many"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Client Connect Number Many, Value is Greater 200(current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Client Connect Number Many, Value is Greater 300(current value: {{ $value }})"
 
   - alert: redisNetworkInputAlert
-    expr: rate(redis_net_input_bytes_total[5m]) /1024 /1024 > 3
+    expr: rate(redis_net_input_bytes_total[5m]) /1024 /1024 > 10
     for: 1m
     labels:
       severity: High
     annotations:
       summary: "Redis Network Input Flow Many"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Input Flow Many,Value Is Greater 3mbps/5m(current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Input Flow Many,Value Is Greater 10mbps/5m(current value: {{ $value }})"
 
   - alert: redisNetworkOutputAlert
-    expr: rate(redis_net_output_bytes_total[5m]) /1024 /1024 > 3
+    expr: rate(redis_net_output_bytes_total[5m]) /1024 /1024 > 10
     for: 1m
     labels:
       severity: High
     annotations:
       summary: "Redis Network Output Flow Many"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Output Flow Many, Value Is Greater 3mbps/5m(current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Output Flow Many, Value Is Greater 10mbps/5m(current value: {{ $value }})"
 

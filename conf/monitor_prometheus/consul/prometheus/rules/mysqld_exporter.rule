@@ -20,13 +20,13 @@ groups:
       description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} QPS[5m] is greater 5000/5m(current value: {{ $value }})"
 
   - alert: mysqlConnectNumberAlert
-    expr: mysql_global_status_threads_connected{env="pro"} > 200
+    expr: mysql_global_status_threads_connected{env=~"pro|uat|fat"} > 250
     for: 1m
     labels:
       severity: High
     annotations:
       summary: "Mysql Connect Number Is Many"
-      description: "team: {{ $labels.team }}, env: {{ $labels.env }} project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} connect number is greater 200(current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, env: {{ $labels.env }} project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} connect number is greater 250(current value: {{ $value }})"
 
   - alert: mysqlConnectNumberAlert
     expr: mysql_global_status_threads_connected{env="aliyun"} > 500
@@ -74,13 +74,13 @@ groups:
       description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} delete number is greater 10/5m(current value: {{ $value }})"
 
   - alert: mysqlSlowQueryAlert
-    expr: irate(mysql_global_status_slow_queries[1m]) > 0.1
+    expr: irate(mysql_global_status_slow_queries[1m]) > 0.5
     for: 3m
     labels:
       severity: High
     annotations:
       summary: "Mysql Slow Query Is Many"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} slow query is greater 0.1/1m(current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} slow query is greater 0.5/1m(current value: {{ $value }})"
 
   - alert: mysqlTableLocksWaitedAlert
     expr: irate(mysql_global_status_table_locks_waited[1m]) >1

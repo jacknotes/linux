@@ -29,13 +29,13 @@ groups:
       description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} CPU Usage above equal 99%/5m (current value: {{ $value }})"
 
   - alert: linuxHostMemUsageAlert
-    expr: (1 - ((node_memory_Buffers_bytes{job=~".*node_exporter.*"}+ node_memory_Cached_bytes{job=~".*node_exporter.*"} + node_memory_MemFree_bytes{job=~".*node_exporter.*"}) /node_memory_MemTotal_bytes{job=~".*node_exporter.*"})) * 100 > 85 
+    expr: (((node_memory_MemTotal_bytes{job=~".*node_exporter.*"} - node_memory_MemAvailable_bytes{job=~".*node_exporter.*"}) / node_memory_MemTotal_bytes{job=~".*node_exporter.*"} * 100)  or (1 - ((node_memory_Buffers_bytes{job=~".*node_exporter.*"} + node_memory_Cached_bytes{job=~".*node_exporter.*"} + node_memory_MemFree_bytes{job=~".*node_exporter.*"} ) /node_memory_MemTotal_byte{job=~".*node_exporter.*"} )) * 100)  > 90
     for: 5m 
     labels:
       severity: warnning
     annotations:
       summary: "Host Memory usage High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Memory Usage above 85% (current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Memory Usage above 90% (current value: {{ $value }})"
 
   - alert: linuxHostMemUsage100%Alert
     expr: (1 - ((node_memory_Buffers_bytes{job=~".*node_exporter.*"} + node_memory_Cached_bytes{job=~".*node_exporter.*"} + node_memory_MemFree_bytes{job=~".*node_exporter.*"}) /node_memory_MemTotal_bytes{job=~".*node_exporter.*"})) * 100 >= 99
@@ -119,10 +119,10 @@ groups:
       description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Send rate above 80Mbps/5m (current value: {{ $value }})"
 
   - alert: linuxHostNetworkEstablishedConnectionAlert
-    expr: node_netstat_Tcp_CurrEstab  > 3000
+    expr: node_netstat_Tcp_CurrEstab  > 5000
     for: 1m 
     labels:
       severity: warnning
     annotations:
       summary: "Host Network[5m] Established Connection High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Established Connection above 3000 (current value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Network Established Connection above 5000 (current value: {{ $value }})"

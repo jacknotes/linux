@@ -65,13 +65,13 @@ groups:
       description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Disk Max Write IOPS Rate above 5000/5m (value: {{ $value }})"
 
   - alert: xenserverHostDiskUsageCapacityAlert
-    expr: (100 - (node_filesystem_free_bytes{fstype=~"ext.*|xfs",job=~".*xenserver.*"} / node_filesystem_size_bytes{fstype=~"ext.*|xfs",job=~".*xenserver.*"} * 100)) > 90
+    expr: (100 - (node_filesystem_free_bytes{fstype=~"ext.*|xfs",job=~".*xenserver.*"} / node_filesystem_size_bytes{fstype=~"ext.*|xfs",job=~".*xenserver.*"} * 100)) > 85
     for: 5m
     labels:
       severity: warnning
     annotations:
       summary: "Host Disk Usage Capacity High"
-      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Host Disk Capacity Usage above 90% (path: {{ $labels.mountpoint }},value: {{ $value }})"
+      description: "team: {{ $labels.team }}, project: {{ $labels.project }}, job: {{ $labels.job }}, app: {{ $labels.app }}, instance: {{ $labels.instance }} Host Disk Capacity Usage above 85% (path: {{ $labels.mountpoint }},value: {{ $value }})"
 
   - alert: xenserverHostNetworkReceiveAlert
     expr: max without(device)(irate(node_network_receive_bytes_total{device!~"tap.*|veth.*|br.*|docker.*|virbr*|lo*",job=~".*xenserver.*"}[5m])) * 8 / 1024 / 1024 > 80
