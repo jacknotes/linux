@@ -597,6 +597,8 @@ You will lose any data stored in authorized_keys file.
 Do you want to continue (yes/no)? yes   --这将重新生成authorized_keys文件。您将丢失存储在authorized_keys文件中的所有数据。
 [root@localhost gitlab]# sudo service gitlab start  --开启服务
 
+#参数链接：https://blog.51cto.com/u_15127626/3294565
+
 
 
 #自动备份脚本

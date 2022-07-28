@@ -5526,6 +5526,838 @@ version 0.9.5
 
 
 
+####监控argocd
+######部署prometheus-server并监控argocd
+---------------------------------
+[root@prometheus prometheus]# cat 10-promehteus-server.yaml 
+---
+# Source: prometheus/templates/server/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-server
+  namespace: kube-system
+---
+# Source: prometheus/templates/server/cm.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-server
+  namespace: kube-system
+data:
+  alerting_rules.yml: |
+    {}
+  alerts: |
+    {}
+  prometheus.yml: |
+    global:
+      evaluation_interval: 1m
+      scrape_interval: 15s
+      scrape_timeout: 10s
+    rule_files:
+    - /etc/config/recording_rules.yml
+    - /etc/config/alerting_rules.yml
+    - /etc/config/rules
+    - /etc/config/alerts
+    scrape_configs:
+    - job_name: prometheus
+      static_configs:
+      - targets:
+        - localhost:9090
+    - bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      job_name: kubernetes-apiservers
+      kubernetes_sd_configs:
+      - role: endpoints
+      relabel_configs:
+      - action: keep
+        regex: default;kubernetes;https
+        source_labels:
+        - __meta_kubernetes_namespace
+        - __meta_kubernetes_service_name
+        - __meta_kubernetes_endpoint_port_name
+      scheme: https
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        insecure_skip_verify: true
+    - bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      job_name: kubernetes-nodes
+      kubernetes_sd_configs:
+      - role: node
+      relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - replacement: kubernetes.default.svc:443
+        target_label: __address__
+      - regex: (.+)
+        replacement: /api/v1/nodes/$1/proxy/metrics
+        source_labels:
+        - __meta_kubernetes_node_name
+        target_label: __metrics_path__
+      scheme: https
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        insecure_skip_verify: true
+    - bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      job_name: kubernetes-nodes-cadvisor
+      kubernetes_sd_configs:
+      - role: node
+      relabel_configs:
+      - action: labelmap
+        regex: __meta_kubernetes_node_label_(.+)
+      - replacement: kubernetes.default.svc:443
+        target_label: __address__
+      - regex: (.+)
+        replacement: /api/v1/nodes/$1/proxy/metrics/cadvisor
+        source_labels:
+        - __meta_kubernetes_node_name
+        target_label: __metrics_path__
+      scheme: https
+      tls_config:
+        ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        insecure_skip_verify: true
+    - job_name: kubernetes-service-endpoints
+      kubernetes_sd_configs:
+      - role: endpoints
+      relabel_configs:
+      - action: keep
+        regex: true
+        source_labels:
+        - __meta_kubernetes_service_annotation_prometheus_io_scrape
+      - action: replace
+        regex: (https?)
+        source_labels:
+        - __meta_kubernetes_service_annotation_prometheus_io_scheme
+        target_label: __scheme__
+      - action: replace
+        regex: (.+)
+        source_labels:
+        - __meta_kubernetes_service_annotation_prometheus_io_path
+        target_label: __metrics_path__
+      - action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        source_labels:
+        - __address__
+        - __meta_kubernetes_service_annotation_prometheus_io_port
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_service_annotation_prometheus_io_param_(.+)
+        replacement: __param_$1
+      - action: labelmap
+        regex: __meta_kubernetes_service_label_(.+)
+      - action: replace
+        source_labels:
+        - __meta_kubernetes_namespace
+        target_label: namespace
+      - action: replace
+        source_labels:
+        - __meta_kubernetes_service_name
+        target_label: service
+      - action: replace
+        source_labels:
+        - __meta_kubernetes_pod_node_name
+        target_label: node
+    - job_name: kubernetes-service-endpoints-slow
+      kubernetes_sd_configs:
+      - role: endpoints
+      relabel_configs:
+      - action: keep
+        regex: true
+        source_labels:
+        - __meta_kubernetes_service_annotation_prometheus_io_scrape_slow
+      - action: replace
+        regex: (https?)
+        source_labels:
+        - __meta_kubernetes_service_annotation_prometheus_io_scheme
+        target_label: __scheme__
+      - action: replace
+        regex: (.+)
+        source_labels:
+        - __meta_kubernetes_service_annotation_prometheus_io_path
+        target_label: __metrics_path__
+      - action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        source_labels:
+        - __address__
+        - __meta_kubernetes_service_annotation_prometheus_io_port
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_service_annotation_prometheus_io_param_(.+)
+        replacement: __param_$1
+      - action: labelmap
+        regex: __meta_kubernetes_service_label_(.+)
+      - action: replace
+        source_labels:
+        - __meta_kubernetes_namespace
+        target_label: namespace
+      - action: replace
+        source_labels:
+        - __meta_kubernetes_service_name
+        target_label: service
+      - action: replace
+        source_labels:
+        - __meta_kubernetes_pod_node_name
+        target_label: node
+      scrape_interval: 5m
+      scrape_timeout: 30s
+    - job_name: argocd-server-metrics
+      scrape_interval: 90s
+      scrape_timeout: 90s
+      metrics_path: /metrics
+      scheme: http
+      static_configs:
+      - targets: ["argocd-metrics.argocd:8082", "argocd-server-metrics.argocd:8083", "argocd-repo-server.argocd:8084"]
+    - honor_labels: true
+      job_name: prometheus-pushgateway
+      kubernetes_sd_configs:
+      - role: service
+      relabel_configs:
+      - action: keep
+        regex: pushgateway
+        source_labels:
+        - __meta_kubernetes_service_annotation_prometheus_io_probe
+    - job_name: kubernetes-services
+      kubernetes_sd_configs:
+      - role: service
+      metrics_path: /probe
+      params:
+        module:
+        - http_2xx
+      relabel_configs:
+      - action: keep
+        regex: true
+        source_labels:
+        - __meta_kubernetes_service_annotation_prometheus_io_probe
+      - source_labels:
+        - __address__
+        target_label: __param_target
+      - replacement: blackbox
+        target_label: __address__
+      - source_labels:
+        - __param_target
+        target_label: instance
+      - action: labelmap
+        regex: __meta_kubernetes_service_label_(.+)
+      - source_labels:
+        - __meta_kubernetes_namespace
+        target_label: namespace
+      - source_labels:
+        - __meta_kubernetes_service_name
+        target_label: service
+    - job_name: kubernetes-pods
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - action: keep
+        regex: true
+        source_labels:
+        - __meta_kubernetes_pod_annotation_prometheus_io_scrape
+      - action: replace
+        regex: (https?)
+        source_labels:
+        - __meta_kubernetes_pod_annotation_prometheus_io_scheme
+        target_label: __scheme__
+      - action: replace
+        regex: (.+)
+        source_labels:
+        - __meta_kubernetes_pod_annotation_prometheus_io_path
+        target_label: __metrics_path__
+      - action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        source_labels:
+        - __address__
+        - __meta_kubernetes_pod_annotation_prometheus_io_port
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_annotation_prometheus_io_param_(.+)
+        replacement: __param_$1
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - action: replace
+        source_labels:
+        - __meta_kubernetes_namespace
+        target_label: namespace
+      - action: replace
+        source_labels:
+        - __meta_kubernetes_pod_name
+        target_label: pod
+      - action: drop
+        regex: Pending|Succeeded|Failed|Completed
+        source_labels:
+        - __meta_kubernetes_pod_phase
+    - job_name: kubernetes-pods-slow
+      kubernetes_sd_configs:
+      - role: pod
+      relabel_configs:
+      - action: keep
+        regex: true
+        source_labels:
+        - __meta_kubernetes_pod_annotation_prometheus_io_scrape_slow
+      - action: replace
+        regex: (https?)
+        source_labels:
+        - __meta_kubernetes_pod_annotation_prometheus_io_scheme
+        target_label: __scheme__
+      - action: replace
+        regex: (.+)
+        source_labels:
+        - __meta_kubernetes_pod_annotation_prometheus_io_path
+        target_label: __metrics_path__
+      - action: replace
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        replacement: $1:$2
+        source_labels:
+        - __address__
+        - __meta_kubernetes_pod_annotation_prometheus_io_port
+        target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_annotation_prometheus_io_param_(.+)
+        replacement: __param_$1
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - action: replace
+        source_labels:
+        - __meta_kubernetes_namespace
+        target_label: namespace
+      - action: replace
+        source_labels:
+        - __meta_kubernetes_pod_name
+        target_label: pod
+      - action: drop
+        regex: Pending|Succeeded|Failed|Completed
+        source_labels:
+        - __meta_kubernetes_pod_phase
+      scrape_interval: 5m
+      scrape_timeout: 30s
+  recording_rules.yml: |
+    {}
+  rules: |
+    {}
+---
+# Source: prometheus/templates/server/clusterrole.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app: prometheus-server
+  name: prometheus-server
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+      - nodes/proxy
+      - nodes/metrics
+      - services
+      - endpoints
+      - pods
+      - ingresses
+      - configmaps
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "extensions"
+      - "networking.k8s.io"
+    resources:
+      - ingresses/status
+      - ingresses
+    verbs:
+      - get
+      - list
+      - watch
+  - nonResourceURLs:
+      - "/metrics"
+    verbs:
+      - get
+---
+# Source: prometheus/templates/server/clusterrolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  labels:
+    app: prometheus-server
+  name: prometheus-server
+subjects:
+  - kind: ServiceAccount
+    name: prometheus-server
+    namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: prometheus-server
+---
+# Source: prometheus/templates/server/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: prometheus-server
+  name: prometheus-server
+  namespace: kube-system
+spec:
+  ports:
+    - name: http
+      port: 9090
+      protocol: TCP
+      targetPort: 9090
+      nodePort: 30005
+  selector:
+    app: prometheus-server
+  sessionAffinity: None
+  type: "NodePort"
+---
+# Source: prometheus/templates/server/deploy.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: prometheus-server
+  name: prometheus-server
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: prometheus-server
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: prometheus-server
+    spec:
+      enableServiceLinks: true
+      serviceAccountName: prometheus-server
+      containers:
+        - name: prometheus-server-configmap-reload
+          image: "harborrepo.hs.com/k8s/configmap-reload:v0.5.0"
+          imagePullPolicy: "IfNotPresent"
+          args:
+            - --volume-dir=/etc/config
+            - --webhook-url=http://127.0.0.1:9090/-/reload
+          resources:
+            {}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/config
+              readOnly: true
 
+        - name: prometheus-server
+          image: "harborrepo.hs.com/k8s/prometheus:v2.31.1"
+          imagePullPolicy: "IfNotPresent"
+          args:
+            - --storage.tsdb.retention.time=7d
+            - --config.file=/etc/config/prometheus.yml
+            - --storage.tsdb.path=/data
+            - --web.console.libraries=/etc/prometheus/console_libraries
+            - --web.console.templates=/etc/prometheus/consoles
+            - --web.enable-lifecycle
+          ports:
+            - containerPort: 9090
+          readinessProbe:
+            httpGet:
+              path: /-/ready
+              port: 9090
+              scheme: HTTP
+            initialDelaySeconds: 0
+            periodSeconds: 5
+            timeoutSeconds: 4
+            failureThreshold: 3
+            successThreshold: 1
+          livenessProbe:
+            httpGet:
+              path: /-/healthy
+              port: 9090
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 3
+            successThreshold: 1
+          resources:
+            {}
+          volumeMounts:
+            - name: config-volume
+              mountPath: /etc/config
+            - name: storage-volume
+              mountPath: /data
+              subPath: ""
+      hostNetwork: false
+      dnsPolicy: ClusterFirst
+      securityContext:
+        fsGroup: 65534
+        runAsGroup: 65534
+        runAsNonRoot: true
+        runAsUser: 65534
+      terminationGracePeriodSeconds: 300
+      volumes:
+        - name: config-volume
+          configMap:
+            name: prometheus-server
+        - name: storage-volume
+          emptyDir:
+            {}
+---------------------------------
+######外部prometheus-server抓取联邦节点的argocd指标(k8s中Prometheus-server是联邦节点)
+  - job_name: 'prometheus-federate-kubernetes'
+    scheme: http
+    metrics_path: /federate
+    scrape_interval: 30s
+    honor_labels: true
+    params:
+      'match[]':
+      - '{job="argocd-server-metrics"}'
+    static_configs:
+    - targets: 
+      - "monitor.k8s.hs.com"
+######外部grafana添加argocd Dashboard
+dashboard地址：https://github.com/argoproj/argo-cd/blob/master/examples/dashboard.json
+
+
+##在deployment或者rollout是添加外部链接
+[root@prometheus dotnet]# cat deploy/01-rollout.yaml 
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: pro-dotnet-tripapplicationform-api-hs-com-rollout
+  annotations:
+    link.argocd.argoproj.io/external-link: http://newjenkins.hs.com/job/tripapplicationform.api.hs.com
+
+
+#####kustomize例子
+[root@prometheus kustomize]# ls
+base  fat  pro  uat
+[root@prometheus kustomize]# tree .
+.
+├── base
+│   ├── destinationrule.yaml
+│   ├── kustomization.yaml
+│   ├── rollout.yaml
+│   ├── service.yaml
+│   └── virtualservice.yaml
+├── fat
+│   ├── kustomization.yaml
+│   ├── patch-rollout.yaml
+│   ├── patch-viatualservice.yaml
+│   └── replicas-rollout.yaml
+├── pro
+│   ├── kustomization.yaml
+│   ├── patch-rollout.yaml
+│   ├── patch-viatualservice.yaml
+│   └── replicas-rollout.yaml
+└── uat
+    ├── kustomization.yaml
+    ├── patch-rollout.yaml
+    ├── patch-viatualservice.yaml
+    └── replicas-rollout.yaml
+
+4 directories, 17 files
+[root@prometheus kustomize]# cat base/kustomization.yaml 
+resources:
+- rollout.yaml
+- service.yaml
+- virtualservice.yaml
+- destinationrule.yaml
+
+[root@prometheus kustomize]# cat base/rollout.yaml 
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: frontend-nginx-hs-com-rollout
+spec:
+  strategy:
+    canary:
+      trafficRouting:
+        istio:
+          virtualService:
+            name: frontend-nginx-hs-com-virtualservice
+            routes:
+            - primary
+          destinationRule:
+            name: frontend-nginx-hs-com-destinationrule
+            canarySubsetName: canary
+            stableSubsetName: stable
+      steps:
+#      - setWeight: 30
+#      - pause: {duration: 5}
+#      - setWeight: 60
+#      - pause: {duration: 5}
+      - setWeight: 100
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: frontend-nginx-hs-com-selector
+  template:
+    metadata:
+      labels:
+        app: frontend-nginx-hs-com-selector
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: frontend-nginx-hs-com-selector
+              topologyKey: kubernetes.io/hostname
+            weight: 50
+      containers:
+      - name: homsom-container
+        image: harborrepo.hs.com/base/helloworld:v1
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 80
+          protocol: TCP
+          name: http
+        resources:
+          requests:
+            cpu: 100m
+            memory: 100Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        readinessProbe:
+          httpGet:
+            path: /index.html
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        livenessProbe:
+          httpGet:
+            path: /index.html
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+---
+[root@prometheus kustomize]# cat base/service.yaml 
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-nginx-hs-com-service
+spec:
+  ports:
+  - name: http-80
+    port: 80
+    targetPort: 80
+    protocol: TCP
+  type: ClusterIP
+  selector:
+    app: frontend-nginx-hs-com-selector
+
+[root@prometheus kustomize]# cat base/virtualservice.yaml 
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: frontend-nginx-hs-com-virtualservice
+spec:
+  hosts:
+  - "nginx.hs.com"
+  gateways:
+  - istio-system/general-gateway
+  http:
+  - name: primary
+    route:
+    - destination:
+        host: frontend-nginx-hs-com-service
+        subset: stable
+      weight: 100
+    - destination:
+        host: frontend-nginx-hs-com-service
+        subset: canary
+      weight: 0
+---
+[root@prometheus kustomize]# cat base/destinationrule.yaml 
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: frontend-nginx-hs-com-destinationrule
+spec:
+  host: frontend-nginx-hs-com-service
+  subsets:
+  - name: canary
+    labels:
+      app: frontend-nginx-hs-com-selector
+  - name: stable
+    labels:
+      app: frontend-nginx-hs-com-selector
+  trafficPolicy:
+    tls:
+      mode: DISABLE
+---
+[root@prometheus kustomize]# cat fat/kustomization.yaml 		#fat环境配置清单
+bases:
+- ../base			#引入base中kustomize中include的配置清单文件
+
+patchesStrategicMerge:		#普通的打补丁方法
+- replicas-rollout.yaml		#合并的配置清单文件
+
+patchesJson6902:		#更高级的打补丁方法
+- target:
+    group: networking.istio.io
+    version: v1beta1
+    kind: VirtualService
+    name: frontend-nginx-hs-com-virtualservice
+  path: patch-viatualservice.yaml	#打补丁的参数文件
+[root@prometheus kustomize]# cat fat/replicas-rollout.yaml 
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: frontend-nginx-hs-com-rollout
+spec:
+  replicas: 1		#使用此replicas覆盖../base中的rollout对象的replicas 
+[root@prometheus kustomize]# cat fat/patch-viatualservice.yaml 
+- op: replace
+  path: /spec/hosts		#覆盖virtualserver中的hosts名称
+  value: 
+  - "fat.nginx.hs.com"
+[root@prometheus kustomize]# cat uat/kustomization.yaml 	#uat环境配置清单
+bases:
+- ../base
+
+patchesStrategicMerge:
+- replicas-rollout.yaml
+
+patchesJson6902:
+- target:
+    group: networking.istio.io
+    version: v1beta1
+    kind: VirtualService
+    name: frontend-nginx-hs-com-virtualservice
+  path: patch-viatualservice.yaml
+[root@prometheus kustomize]# cat uat/replicas-rollout.yaml 
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: frontend-nginx-hs-com-rollout
+spec:
+  replicas: 1
+[root@prometheus kustomize]# cat uat/patch-viatualservice.yaml 
+- op: replace
+  path: /spec/hosts
+  value: 
+  - "uat.nginx.hs.com"
+[root@prometheus kustomize]# cat pro/kustomization.yaml 	#pro环境配置清单
+bases:
+- ../base
+
+patchesStrategicMerge:
+- replicas-rollout.yaml
+
+patchesJson6902:
+- target:
+    group: networking.istio.io
+    version: v1beta1
+    kind: VirtualService
+    name: frontend-nginx-hs-com-virtualservice
+  path: patch-viatualservice.yaml
+[root@prometheus kustomize]# cat pro/replicas-rollout.yaml 
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: frontend-nginx-hs-com-rollout
+spec:
+  replicas: 2
+[root@prometheus kustomize]# cat pro/patch-viatualservice.yaml 
+- op: replace
+  path: /spec/hosts
+  value: 
+  - "pro.nginx.hs.com"
+
+
+####argocd API使用
+API文档地址：https://argocd.k8s.hs.com/swagger-ui
+--获取token
+[root@prometheus application]# curl -k https://argocd.k8s.baidu.com/api/v1/session -d $'{"username":"jack","password":"password"}'
+{"token":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJhcmdvY2QiLCJzdWIiOiJqYWNrOmxvZ2luIiwiZXhwIjoxNjU5MDg0NDQ1LCJuYmYiOjE2NTg5OTgwNDUsImlhdCI6MTY1ODk5ODA0NSwianRpIjoiZjFmNTExOWMtZWMzZi00MjBkLWE3YWQtMWVmNjM1MjFlDrg8UKyf0ehkSLHpBn6hlVmdA"}
+
+--request message
+curl -k https://argocd.k8s.hs.com/api/v1/account -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJhcmdvY2QiLCJzdWIiOiJqYWNrOmxvZ2luIiwiZXhwIjoxNjU5MDg0NDQ1LCJuYmYiOjE2NTg5OTgwNDUsImlhdCI6MTY1ODk5ODA0NSwianRpIjoiZjFmNTExOWMtZWMzZi00MjBkLWE3YWQtMWVmNjM1MjFjNmY5In0.6OpjFicb2OQsQGHcWlDrg8UKyf0ehkSLHpBn6hlVmdA" -d '{
+  "items": [
+    {
+      "capabilities": [
+        "string"
+      ],
+      "enabled": true,
+      "name": "string",
+      "tokens": [
+        {
+          "expiresAt": "string",
+          "id": "string",
+          "issuedAt": "string"
+        }
+      ]
+    }
+  ]
+}'
+--response message
+{"items":[{"name":"admin","enabled":true,"capabilities":["login"]},{"name":"dev","enabled":true,"capabilities":["login"]},{"name":"jack","enabled":true,"capabilities":["login","apiKey"]},{"name":"ops","enabled":true,"capabilities":["login"]},{"name":"test","enabled":true,"capabilities":["login"]}]}
+
+
+
+####argocd使用问题汇总：
+问题1：
+ssh连接太繁忙，argocd同步git太频繁，报如下错；
+Application pro-java-regionalsource-service-hs-com sync is 'Unknown'.
+Application details: <no value>/applications/pro-java-regionalsource-service-hs-com.
+ 
+ 
+    * rpc error: code = Unknown desc = ssh: handshake failed: read tcp 172.20.85.211:39090->192.168.13.213:22: read: connection reset by peer
+措施1：
+[root@gitlab ~]# vim /etc/ssh/sshd_config 
+MaxSessions 1000
+MaxStartups 1000
+[root@gitlab ~]# service sshd restart
+措施2：
+调整argocd默认刷新时间为30分钟，默认情况下，控制器每 3m 轮询一次 Git。您可以使用ConfigMaptimeout.reconciliation中的设置来增加此持续时间。argocd-cm的值timeout.reconciliation是一个持续时间字符串，例如60s、或。1m1h1d
+[root@prometheus prometheus]# kubectl get cm -n argocd argocd-cm -o yaml
+apiVersion: v1
+data:
+  accounts.dev: login
+  accounts.jack: login, apiKey
+  accounts.ops: login
+  accounts.test: login
+  timeout.reconciliation: 30m
+
+
+
+问题2：
+jenkins pull k8s清单仓库失败，因为git仓库不是全小写地址。
+当把git仓库地址变成全小写地址后，在argocd中填写的是大小写地址，此时argocd pull git仓库失败。
+当在argocd中把git仓库地址变成全小写后，有argocd中部署应用时偶尔会报如下错误：
+Application pro-java-foodmeituan-api-hs-com sync is 'Unknown'.
+Application details: <no value>/applications/pro-java-foodmeituan-api-hs-com.
+ 
+ 
+    * rpc error: code = Internal desc = Failed to fetch default: `git fetch origin --tags --force` failed exit status 128: fatal: '/home/git/repositories/k8s-deploy/java-FoodMeituan-api-hs-com.git' does not appear to be a git repository
+fatal: Could not read from remote repository.
+ 
+Please make sure you have the correct access rights
+and the repository exists.
+措施：
+从jenkins到git再到k8s，最后到argocd，命名标准化一定要一致，否则会导致雪崩效应的问题。所以需要按照DNS规范来创建使用，例如全小写DNS名称
+删除argocd-repo-server POD重建后正常。
+
+
+问题3：
+我忘记了管理员密码，如何重置？
+措施：
+对于 Argo CD v1.8 及更早版本，初始密码设置为服务器 pod 的名称，根据入门指南。对于 Argo CD v1.9 及更高版本，初始密码可从名为argocd-initial-admin-secret.
+# bcrypt(password)=$2a$10$rRyBsGSHK6.uc8fntPwVIuLVHgsAhAX7TcdrqW/RADU0uh7CaChLa
+kubectl -n argocd patch secret argocd-secret \
+  -p '{"stringData": {
+    "admin.password": "$2a$10$rRyBsGSHK6.uc8fntPwVIuLVHgsAhAX7TcdrqW/RADU0uh7CaChLa",
+    "admin.passwordMtime": "'$(date +%FT%T%Z)'"
+  }}'
+  
+要更改密码，请编辑密码并使用新的 bcrypt 哈希argocd-secret更新该字段。admin.password您可以使用https://www.browserling.com/tools/bcrypt 之类的网站来生成新的哈希值。例如：
+另一种选择是删除admin.password和admin.passwordMtime键并重新启动 argocd-server。这将根据入门指南生成一个新密码，因此可以是 pod 的名称（Argo CD 1.8 及更早版本）或存储在密钥中的随机生成的密码（Argo CD 1.9 及更高版本）。
 
 </pre>

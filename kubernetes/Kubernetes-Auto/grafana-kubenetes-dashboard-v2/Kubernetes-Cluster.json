@@ -17,7 +17,7 @@
   "gnetId": 7249,
   "graphTooltip": 0,
   "id": 86,
-  "iteration": 1656405685960,
+  "iteration": 1658987679773,
   "links": [],
   "panels": [
     {
@@ -62,14 +62,14 @@
               },
               {
                 "id": "custom.width",
-                "value": 144
+                "value": 121
               }
             ]
           },
           {
             "matcher": {
               "id": "byName",
-              "options": "Memory"
+              "options": "Memory Size"
             },
             "properties": [
               {
@@ -111,6 +111,10 @@
               {
                 "id": "unit",
                 "value": "percent"
+              },
+              {
+                "id": "custom.width",
+                "value": 121
               }
             ]
           },
@@ -123,6 +127,10 @@
               {
                 "id": "unit",
                 "value": "percent"
+              },
+              {
+                "id": "custom.width",
+                "value": 120
               }
             ]
           },
@@ -134,7 +142,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 241
+                "value": 187
               }
             ]
           },
@@ -146,7 +154,7 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 106
+                "value": 64
               }
             ]
           },
@@ -158,7 +166,31 @@
             "properties": [
               {
                 "id": "custom.width",
-                "value": 153
+                "value": 113
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Disk Usage"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "CPU Core"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 113
               }
             ]
           }
@@ -253,7 +285,7 @@
       ],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Panel Title",
+      "title": "Server Resource",
       "transformations": [
         {
           "id": "seriesToColumns",
@@ -288,8 +320,8 @@
               "version_id": true
             },
             "indexByName": {
-              "Time": 3,
-              "Value #A": 2,
+              "Time": 4,
+              "Value #A": 3,
               "Value #B": 19,
               "Value #C": 20,
               "Value #D": 22,
@@ -297,29 +329,29 @@
               "Value #F": 24,
               "Value #G": 23,
               "Value #H": 21,
-              "__name__": 5,
-              "beta_kubernetes_io_arch": 6,
-              "beta_kubernetes_io_os": 7,
-              "gateway_k8s_hs_com": 8,
-              "id": 9,
-              "id_like": 10,
+              "__name__": 6,
+              "beta_kubernetes_io_arch": 7,
+              "beta_kubernetes_io_os": 8,
+              "gateway_k8s_hs_com": 9,
+              "id": 10,
+              "id_like": 11,
               "instance": 0,
-              "job": 4,
-              "kubernetes_io_arch": 11,
-              "kubernetes_io_hostname": 12,
-              "kubernetes_io_os": 13,
+              "job": 5,
+              "kubernetes_io_arch": 12,
+              "kubernetes_io_hostname": 13,
+              "kubernetes_io_os": 14,
               "kubernetes_io_role": 1,
-              "name": 14,
-              "pretty_name": 15,
-              "version": 16,
+              "name": 15,
+              "pretty_name": 16,
+              "version": 2,
               "version_codename": 17,
               "version_id": 18
             },
             "renameByName": {
               "Value #A": "uptime",
               "Value #C": "CPU Core",
-              "Value #D": "Memory",
-              "Value #E": "Disk / Usage",
+              "Value #D": "Memory Size",
+              "Value #E": "Disk Usage",
               "Value #F": "Disk Size",
               "Value #G": "Memory Usage",
               "Value #H": "CPU Usage",
@@ -361,7 +393,7 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 2,
+        "w": 3,
         "x": 0,
         "y": 6
       },
@@ -448,8 +480,8 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 2,
-        "x": 2,
+        "w": 3,
+        "x": 3,
         "y": 6
       },
       "id": 9,
@@ -539,8 +571,8 @@
       },
       "gridPos": {
         "h": 5,
-        "w": 2,
-        "x": 4,
+        "w": 3,
+        "x": 6,
         "y": 6
       },
       "id": 2,
@@ -618,8 +650,8 @@
       "fillGradient": 0,
       "gridPos": {
         "h": 5,
-        "w": 4,
-        "x": 6,
+        "w": 5,
+        "x": 9,
         "y": 6
       },
       "hiddenSeries": false,
@@ -704,6 +736,141 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 5,
+        "w": 5,
+        "x": 14,
+        "y": 6
+      },
+      "hiddenSeries": false,
+      "id": 30,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "percentage": false,
+      "pluginVersion": "7.1.4",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "count(sum(kube_pod_container_status_running) by(pod))",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "Running Pod",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(kube_pod_container_status_running)",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "Running Container",
+          "refId": "B"
+        },
+        {
+          "expr": "count(sum(kube_pod_container_status_ready) by(pod))",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "Ready Pod",
+          "refId": "C"
+        },
+        {
+          "expr": "count(sum(kube_pod_container_status_terminated) by(pod)) - count(sum(kube_pod_container_status_terminated == 0) by(pod))",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "Terminated Pod",
+          "refId": "D"
+        },
+        {
+          "expr": "count(sum(kube_pod_container_status_waiting) by(pod)) - count(sum(kube_pod_container_status_waiting == 0) by(pod))",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "Wating Pod",
+          "refId": "E"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Pod Status",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
       "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
@@ -715,8 +882,8 @@
       "fillGradient": 0,
       "gridPos": {
         "h": 5,
-        "w": 4,
-        "x": 10,
+        "w": 5,
+        "x": 19,
         "y": 6
       },
       "hiddenSeries": false,
@@ -798,6 +965,99 @@
       "bars": false,
       "dashLength": 10,
       "dashes": false,
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 6,
+        "w": 9,
+        "x": 0,
+        "y": 11
+      },
+      "hiddenSeries": false,
+      "id": 32,
+      "legend": {
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "nullPointMode": "null",
+      "percentage": false,
+      "pluginVersion": "7.1.4",
+      "pointradius": 2,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "time() - sum(kube_pod_start_time) by(namespace,pod)",
+          "interval": "",
+          "legendFormat": "{{namespace}} | {{pod}}",
+          "refId": "A"
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Pod Uptime",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "decimals": null,
+          "format": "s",
+          "label": "",
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
       "datasource": "Prometheus",
       "fieldConfig": {
         "defaults": {
@@ -822,10 +1082,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 5,
-        "w": 2,
-        "x": 14,
-        "y": 6
+        "h": 6,
+        "w": 5,
+        "x": 9,
+        "y": 11
       },
       "hiddenSeries": false,
       "id": 16,
@@ -918,108 +1178,10 @@
       "fill": 1,
       "fillGradient": 0,
       "gridPos": {
-        "h": 5,
-        "w": 4,
-        "x": 16,
-        "y": 6
-      },
-      "hiddenSeries": false,
-      "id": 25,
-      "legend": {
-        "alignAsTable": false,
-        "avg": false,
-        "current": false,
-        "max": false,
-        "min": false,
-        "show": true,
-        "total": false,
-        "values": false
-      },
-      "lines": true,
-      "linewidth": 1,
-      "links": [],
-      "nullPointMode": "null",
-      "percentage": false,
-      "pluginVersion": "7.1.4",
-      "pointradius": 5,
-      "points": false,
-      "renderer": "flot",
-      "seriesOverrides": [],
-      "spaceLength": 10,
-      "stack": false,
-      "steppedLine": false,
-      "targets": [
-        {
-          "expr": "irate(node_network_receive_bytes_total{job=\"$job\",device=~'eth.*'}[5m])*8",
-          "format": "time_series",
-          "interval": "",
-          "intervalFactor": 2,
-          "legendFormat": "{{instance}}",
-          "metric": "node_memory_MemAvailable",
-          "refId": "A",
-          "step": 10
-        }
-      ],
-      "thresholds": [],
-      "timeFrom": null,
-      "timeRegions": [],
-      "timeShift": null,
-      "title": "Network Receive",
-      "tooltip": {
-        "shared": true,
-        "sort": 0,
-        "value_type": "individual"
-      },
-      "type": "graph",
-      "xaxis": {
-        "buckets": null,
-        "mode": "time",
-        "name": null,
-        "show": true,
-        "values": []
-      },
-      "yaxes": [
-        {
-          "format": "bytes",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": "0",
-          "show": true
-        },
-        {
-          "format": "short",
-          "label": null,
-          "logBase": 1,
-          "max": null,
-          "min": null,
-          "show": true
-        }
-      ],
-      "yaxis": {
-        "align": false,
-        "alignLevel": null
-      }
-    },
-    {
-      "aliasColors": {},
-      "bars": false,
-      "dashLength": 10,
-      "dashes": false,
-      "datasource": "Prometheus",
-      "fieldConfig": {
-        "defaults": {
-          "custom": {}
-        },
-        "overrides": []
-      },
-      "fill": 1,
-      "fillGradient": 0,
-      "gridPos": {
-        "h": 5,
-        "w": 4,
-        "x": 20,
-        "y": 6
+        "h": 6,
+        "w": 5,
+        "x": 14,
+        "y": 11
       },
       "hiddenSeries": false,
       "id": 26,
@@ -1111,13 +1273,111 @@
         },
         "overrides": []
       },
+      "fill": 1,
+      "fillGradient": 0,
+      "gridPos": {
+        "h": 6,
+        "w": 5,
+        "x": 19,
+        "y": 11
+      },
+      "hiddenSeries": false,
+      "id": 25,
+      "legend": {
+        "alignAsTable": false,
+        "avg": false,
+        "current": false,
+        "max": false,
+        "min": false,
+        "show": true,
+        "total": false,
+        "values": false
+      },
+      "lines": true,
+      "linewidth": 1,
+      "links": [],
+      "nullPointMode": "null",
+      "percentage": false,
+      "pluginVersion": "7.1.4",
+      "pointradius": 5,
+      "points": false,
+      "renderer": "flot",
+      "seriesOverrides": [],
+      "spaceLength": 10,
+      "stack": false,
+      "steppedLine": false,
+      "targets": [
+        {
+          "expr": "irate(node_network_receive_bytes_total{job=\"$job\",device=~'eth.*'}[5m])*8",
+          "format": "time_series",
+          "interval": "",
+          "intervalFactor": 2,
+          "legendFormat": "{{instance}}",
+          "metric": "node_memory_MemAvailable",
+          "refId": "A",
+          "step": 10
+        }
+      ],
+      "thresholds": [],
+      "timeFrom": null,
+      "timeRegions": [],
+      "timeShift": null,
+      "title": "Network Receive",
+      "tooltip": {
+        "shared": true,
+        "sort": 0,
+        "value_type": "individual"
+      },
+      "type": "graph",
+      "xaxis": {
+        "buckets": null,
+        "mode": "time",
+        "name": null,
+        "show": true,
+        "values": []
+      },
+      "yaxes": [
+        {
+          "format": "bytes",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": "0",
+          "show": true
+        },
+        {
+          "format": "short",
+          "label": null,
+          "logBase": 1,
+          "max": null,
+          "min": null,
+          "show": true
+        }
+      ],
+      "yaxis": {
+        "align": false,
+        "alignLevel": null
+      }
+    },
+    {
+      "aliasColors": {},
+      "bars": false,
+      "dashLength": 10,
+      "dashes": false,
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
       "fill": 0,
       "fillGradient": 0,
       "gridPos": {
         "h": 6,
         "w": 6,
         "x": 0,
-        "y": 11
+        "y": 17
       },
       "height": "230px",
       "hiddenSeries": false,
@@ -1214,7 +1474,7 @@
         "h": 6,
         "w": 6,
         "x": 6,
-        "y": 11
+        "y": 17
       },
       "hiddenSeries": false,
       "id": 7,
@@ -1312,7 +1572,7 @@
         "h": 6,
         "w": 6,
         "x": 12,
-        "y": 11
+        "y": 17
       },
       "height": "",
       "hiddenSeries": false,
@@ -1407,7 +1667,7 @@
         "h": 6,
         "w": 6,
         "x": 18,
-        "y": 11
+        "y": 17
       },
       "hiddenSeries": false,
       "id": 17,
@@ -1504,7 +1764,7 @@
         "h": 6,
         "w": 6,
         "x": 0,
-        "y": 17
+        "y": 23
       },
       "height": "300px",
       "hiddenSeries": false,
@@ -1534,7 +1794,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "topk(10,sum(container_memory_usage_bytes{job=\"$job_cadvisor\",image!=\"\",container!=\"POD\"}) by(pod,namespace,job))",
+          "expr": "topk(10,sum(container_memory_working_set_bytes{job=\"$job_cadvisor\",image!=\"\",container!=\"POD\"}) by(pod,namespace,job))",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 2,
@@ -1602,7 +1862,7 @@
         "h": 6,
         "w": 6,
         "x": 6,
-        "y": 17
+        "y": 23
       },
       "height": "300px",
       "hiddenSeries": false,
@@ -1632,7 +1892,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "topk(10,sum(container_memory_usage_bytes{job=\"$job_cadvisor\",image!=\"\",container!=\"POD\"}) by(container,pod,namespace,job))",
+          "expr": "topk(10,sum(container_memory_working_set_bytes{job=\"$job_cadvisor\",image!=\"\",container!=\"POD\"}) by(container,pod,namespace,job))",
           "format": "time_series",
           "instant": false,
           "interval": "",
@@ -1701,7 +1961,7 @@
         "h": 6,
         "w": 6,
         "x": 12,
-        "y": 17
+        "y": 23
       },
       "height": "230px",
       "hiddenSeries": false,
@@ -1800,7 +2060,7 @@
         "h": 6,
         "w": 6,
         "x": 18,
-        "y": 17
+        "y": 23
       },
       "height": "230px",
       "hiddenSeries": false,
@@ -1971,5 +2231,5 @@
   "timezone": "",
   "title": "Kubernetes Cluster",
   "uid": "os6Bh8Omk",
-  "version": 82
+  "version": 96
 }
