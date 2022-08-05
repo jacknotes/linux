@@ -6301,6 +6301,53 @@ curl -k https://argocd.k8s.hs.com/api/v1/account -H "Authorization: Bearer eyJhb
 {"items":[{"name":"admin","enabled":true,"capabilities":["login"]},{"name":"dev","enabled":true,"capabilities":["login"]},{"name":"jack","enabled":true,"capabilities":["login","apiKey"]},{"name":"ops","enabled":true,"capabilities":["login"]},{"name":"test","enabled":true,"capabilities":["login"]}]}
 
 
+###argocd使用hpa
+[root@prometheus k8s-deploy]# cat hpa-v1.yaml 
+apiVersion: autoscaling/v1			#hpa v1只支持CPU，不支持内存
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pro-frontend-nginx-hs-com-rollout
+spec:
+  maxReplicas: 4
+  minReplicas: 2
+  scaleTargetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: pro-frontend-nginx-hs-com-rollout
+  targetCPUUtilizationPercentage: 20
+[root@prometheus k8s-deploy]# cat hpa-v2.yaml 
+apiVersion: autoscaling/v2beta2		#argocd目前不支持autoscaling/v2，需要写成v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pro-frontend-nginx-hs-com-rollout
+spec:
+  maxReplicas: 4
+  minReplicas: 2
+  scaleTargetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: pro-frontend-nginx-hs-com-rollout
+  metrics:
+  - type: Resource
+    resource:			#resource只能使用memory或者cpu。其它类型有Pods、Object、External、ContainerResource
+#      name: memory
+#      target: 
+#        type: Utilization
+#        averageUtilization: 20
+      name: cpu						#在同一个类型下，memory和cpu不能同时使用，后者会覆盖前者
+      target: 
+        type: Utilization
+        averageUtilization: 20
+
+
+
+
+
+
+
+
+
+
 
 ####argocd使用问题汇总：
 问题1：
