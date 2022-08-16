@@ -10077,6 +10077,43 @@ spec:
 -------------------------------
 
 
+##k8s 健康检查端口信息
+#kube-proxy
+root@k8s-master02:~# curl http://192.168.13.31:10249/healthz
+ok
+root@k8s-master02:~# curl http://192.168.13.31:10249/metrics
+#kubelet
+root@k8s-master02:~# curl http://192.168.13.31:10248/healthz
+ok
+root@k8s-master02:~# curl -k https://192.168.13.31:10250/metrics
+Unauthorized
+#etcd
+root@k8s-master02:~# curl http://127.0.0.1:2379/health
+{"health":"true","reason":""}
+root@k8s-master02:~# curl http://127.0.0.1:2379/metrics
+root@k8s-master02:~# curl http://192.168.13.31:2379/metrics
+#kube-apiserver
+root@k8s-master02:~# curl http://127.0.0.1:8001/healthz
+root@k8s-master02:~# curl http://127.0.0.1:8001/metrics
+root@k8s-master02:~# curl https://192.168.13.31:6443/healthz
+root@k8s-master02:~# curl https://192.168.13.31:6443/metrics
+#kube-controller-manager
+root@k8s-master02:~# curl -k https://192.168.13.31:10257/healthz
+root@k8s-master02:~# curl -k https://192.168.13.31:10257/metrics
+#kube-scheduler
+root@k8s-master02:~# curl -k https://192.168.13.31:10259/healthz
+root@k8s-master02:~# curl -k https://192.168.13.31:10259/metrics
+# curl
+root@k8s-master02:/etc/kubernetes/ssl# curl --cacert ./ca.pem --cert ./kubernetes.pem --key ./kubernetes-key.pem https://192.168.13.31:6443/healthz
+ok
+root@k8s-master02:/etc/kubernetes/ssl# curl --cacert ./ca.pem --cert ./kubernetes.pem --key ./kubernetes-key.pem https://192.168.13.31:2379/health 
+{"health":"true","reason":""}
+root@k8s-master02:/etc/kubernetes/ssl# curl -k https://192.168.13.31:10257/healthz
+ok
+root@k8s-master02:/etc/kubernetes/ssl# curl -k https://192.168.13.31:10259/healthz
+ok
+
+
 
 
 
