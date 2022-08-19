@@ -10118,6 +10118,31 @@ ok
 
 
 
+#####k8s报错
+1. root@ansible:~/k8s/elk/k8s-elk/elk/es-data# kubectl describe pods es-master-0 -n ops-elk
+Warning  FailedScheduling  27s   default-scheduler  0/7 nodes are available: 7 persistentvolumeclaim "storage-es-master-0" bound to non-existent persistentvolume "pvc-a313a27d-9058-4dbf-a24c-0f7c7b54eddb".
+----去etcd查看此key
+root@k8s-master01:~# etcdctl get / --prefix --keys-only | grep storage-es-master-0
+/registry/events/ops-elk/storage-es-master-0.170cace1e4ab33cd
+/registry/events/ops-elk/storage-es-master-0.170cace1e4f470b9
+/registry/events/ops-elk/storage-es-master-0.170cace1e83c2ee5
+/registry/events/ops-elk/storage-es-master-0.170cae2ac571e675
+/registry/persistentvolumeclaims/ops-elk/storage-es-master-0	#删除此错误的PVC
+----删除错误的key资源
+root@k8s-master01:~# etcdctl del /registry/persistentvolumeclaims/ops-elk/storage-es-master-0
+1
+----再将部署成功了
+root@ansible:~/k8s/elk/k8s-elk/elk/es-data# kubectl apply -f . -n ops-elk
+configmap/es-master created
+service/es-master created
+statefulset.apps/es-master created
+root@ansible:~/k8s/elk/k8s-elk/elk/es-data# kubectl get pods -n ops-elk
+NAME          READY   STATUS     RESTARTS   AGE
+es-master-0   0/1     Init:0/2   0          3s		#此时正常了
+
+
+
+
 
 
 </pre>

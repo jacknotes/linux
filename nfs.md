@@ -1,7 +1,7 @@
 ﻿#NFS
 <pre>
 nfs服务端： 
-1，使用yum -y install nfs-utils rpcbind    #因为centos7自带了rpcbind，所以不用安装rpc服务，rpc监听在111端口，可以使用ss -tnulp | grep 111查看rpc服务是否自动启动，如果没有启动，就systemctl start rpcbind 启动rpc服务。rpc在nfs服务器搭建过程中至关重要，因为rpc能够获得nfs服务器端的端口号等信息，nfs客户器端通过rpc获得这些信息后才能连接nfs服务器端。
+1，使用yum -y install nfs-utils rpcbind    #因为centos7自带了rpcbind，所以不用安装rpc服务，rpc监听在111端口，可以使用ss -tnulp | grep 111查看rpc服务是否自动启动，如果没有启动，就systemctl start rpcbind 启动rpc服务。rpc在nfs服务器搭建过程中至关重要，因为rpc能够获得nfs服务器端的端口号等信息，nfs客户器端通过rpc获得这些信息后才能连接nfs服务器端。ubuntu: nfs-kernel-server nfs-common
 2，使用 rpm -qa | grep nfs-utils || rpcbind 查看是否安装成功，
 3，编辑/etc/exports ，添加以下内容           
 /nfs    192.168.1.0/24(rw,async,no_root_squash)  #no_root_squash为允许root用户使用
