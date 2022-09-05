@@ -1,4 +1,4 @@
-#frp
+# frp
 
 ## frp安装 
 ```
@@ -68,13 +68,13 @@ remote_port = 8033				#指定服务端ssh端口，对应的是192.168.13.236:22
 type = http						#类型为http
 local_ip = 192.168.13.236		#本地的http服务Ip及Port，此处为prometheus服务
 local_port = 9090			
-custom_domains = prometheus.markli.cn #对应的公网域名，需要映射到frp服务器，访问方式为http://prometheus.markli.cn:8088
+custom_domains = prometheus.mark.cn #对应的公网域名，需要映射到frp服务器，访问方式为http://prometheus.mark.cn:8088
 
 [web2]
 type = http
 local_ip = 192.168.13.236
 local_port = 3000
-custom_domains = grafana.markli.cn
+custom_domains = grafana.mark.cn
 
 [rdp]							#配置段描述
 type = tcp						#类型为tcp
@@ -120,4 +120,37 @@ Chain INPUT (policy DROP 61 packets, 3164 bytes)
    98  5468 ACCEPT     tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            multiport ports 7123,8088,8099,8033
   182  9432 ACCEPT     tcp  --  *      *       0.0.0.0/0            0.0.0.0/0            multiport dports 7001:7010
 
+```
+
+### 通过frp上nginx进行反射代理frp http/https服务
+```
+    server {
+        listen       80;
+        server_name  prometheus.mark.cn;
+
+        location / {
+		proxy_pass http://127.0.0.1:8088;
+		proxy_set_header    Host            $host;
+                proxy_set_header    X-Real-IP       $remote_addr;
+                proxy_set_header    X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_hide_header   X-Powered-By;
+		auth_basic_user_file /usr/local/nginx/conf/passwdfile;
+		auth_basic	"Prometheus for homsom";
+        }
+    }
+
+    server {
+        listen       80;
+        server_name  prometheus.mark.cn;
+        server_name  grafana.markli.cn;
+
+        location / {
+		proxy_pass http://127.0.0.1:8088;
+		proxy_set_header    Host            $host;
+                proxy_set_header    X-Real-IP       $remote_addr;
+                proxy_set_header    X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_hide_header   X-Powered-By;
+        }
+    }
+	#注：此时可以删除frp服务端 http/https端口相关安全组和防火墙配置，因为通过nginx反向代理进行配置了。
 ```
