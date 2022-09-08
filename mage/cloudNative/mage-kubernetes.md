@@ -2,11 +2,12 @@
 
 
 
-## kubernetes高可用集群的典型架构
+### kubernetes高可用集群的典型架构
 
 ![kubernetes-HA](https://github.com/jacknotes/linux/raw/master/image/kubernetes-ha.jpg)
 
-[Linux bind doc](https://github.com/kubernetes/kubernetes)
+
+[kubernetes github](https://github.com/kubernetes/kubernetes)
 
 ### 控制面组件：
 
