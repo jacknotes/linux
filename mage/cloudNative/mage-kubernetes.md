@@ -6,6 +6,8 @@
 
 ![kubernetes-HA](https://github.com/jacknotes/linux/raw/master/image/kubernetes-ha.jpg)
 
+[Linux bind doc](https://github.com/kubernetes/kubernetes)
+
 ### 控制面组件：
 
 etcd：多实例并行运行，通过Raft保证一致；
