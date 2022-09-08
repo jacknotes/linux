@@ -1,20 +1,35 @@
-#mage-kubernetes 1.21
+# mage-kubernetes 1.21
 
 <pre>
 
-###kubernetes高可用集群的典型架构
-#控制面组件：
+## kubernetes高可用集群的典型架构
+
+
+
+![kubernetes-HA](https://github.com/jacknotes/linux/raw/master/image/kubernetes-ha.jpg)
+
+
+
+
+### 控制面组件：
+
 etcd：多实例并行运行，通过Raft保证一致；
 apiserver：多实例并行运行；
 controller-manager：多实例仅有1个节点active；
 scheduler：多实例仅有1个节点active；
-#工作节点组件：
+
+### 工作节点组件：
+
 kubelet
 kube-proxy
 
+### 注：
+
 1. apiserver多实例运行: apiserver是无状态的，所有数据保存在etcd中，apiserver不做缓存。apiserver多个实例并行运行，通过Loadbalancer负载均衡用户的请求。
 2. scheduler和controller-manager单实例运行: scheduler和controller-manager会修改集群状态，多实例运行会产生竞争状态。通过--leader-elect机制，只有领导者实例才能运行，其它实例处于standby状态；当领导者实例宕机时，剩余的实例选举产生新的领导者。领导者选举的方法：多个实例抢占创建endpoints资源，创建成功者为领导者。比如多个scheduler实例抢占创建endpoints资源：kube-scheduler
-# kubectl get endpoints kube-scheduler -n kube-system -o yaml
+
+```
+sh# kubectl get endpoints kube-scheduler -n kube-system -o yaml
 apiVersion: v1
 kind: Endpoints
 metadata:
@@ -22,25 +37,27 @@ metadata:
     control-plane.alpha.kubernetes.io/leader: '{"holderIdentity":"master1_293eaef2-fd7e-4ae9-aae7-e78615454881","leaseDurationSeconds":15,"acquireTime":"2021-10-06T20:46:43Z","renewTime":"2021-10-19T02:49:21Z","leaderTransitions":165}'
   creationTimestamp: "2021-02-01T03:10:48Z"
 ......
-查询kube-scheduler endpoint资源，可以看到此时master1上的scheduler是active状态，其它实例则为standby。
+# 查询kube-scheduler endpoint资源，可以看到此时master1上的scheduler是active状态，其它实例则为standby。
+```
+
 3. kubelet和kube-proxy在工作节点上运行
-3.1 kubelet负责：
-向apiserver创建一个node资源，以注册该节点；
-持续监控apiserver，若有pod部署到该节点上，创建并启动pod；
-持续监控运行的pod，向apiserver报告pod的状态、事件和资源消耗；
-周期性的运行容器的livenessProbe，当探针失败时，则重启容器；
-持续监控apiserver，若有pod删除，则终止该容器；
-3.2 kube-proxy负责：
-负责确保对服务ip和port的访问最终能到达pod中，通过节点上的iptables/ipvs来实现；
-#控制平台组件开启和关闭实验结果：
-3个kube-apiserver关掉2个，只保留1个，可以正常接收kubectl命令操作、
-3个kube-scheduler和kube-controller-manager关掉2个节点，只保留1个节点可以正常操作
-只保留1个kube-controller-manager，而kube-scheduler3个节点全部关闭，在创建deployment和service时候，任务会被创建成功，但是pod会被一直pending，因为pod没有调度器调度，此时开启一个kube-scheduler后，pending状态的pod正常运行。
-只保留1个kube-scheduler，而kube-controller-manager3个节点全部关闭，在创建deployment和service时候，任务不会被创建成功，因为kube-controller-manager没有运行，无法使用deployment控制器创建pod，虽然kube-scheduler运行，但是控制器没有运行，后面的调度任务也就不会被运行。
+	1. kubelet负责：向apiserver创建一个node资源，以注册该节点；
+    持续监控apiserver，若有pod部署到该节点上，创建并启动pod；
+       持续监控运行的pod，向apiserver报告pod的状态、事件和资源消耗；
+       周期性的运行容器的livenessProbe，当探针失败时，则重启容器；
+       持续监控apiserver，若有pod删除，则终止该容器；
+	2. kube-proxy负责：
+    负责确保对服务ip和port的访问最终能到达pod中，通过节点上的iptables/ipvs来实现；
+	3. 控制平台组件开启和关闭实验结果：
+    3个kube-apiserver关掉2个，只保留1个，可以正常接收kubectl命令操作、
+       3个kube-scheduler和kube-controller-manager关掉2个节点，只保留1个节点可以正常操作
+	   只保留1个kube-controller-manager，而kube-scheduler3个节点全部关闭，在创建deployment和service时候，任务会被创建成功，但是pod会被一直pending，因为pod没有调度器调度，此时开启一个kube-scheduler后，pending状态的pod正常运行。
+       只保留1个kube-scheduler，而kube-controller-manager3个节点全部关闭，在创建deployment和service时候，任务不会被创建成功，因为kube-controller-manager没有运行，无法使用deployment控制器创建pod，虽然kube-scheduler运行，但是控制器没有运行，后面的调度任务也就不会被运行。
 
 
+## 部署环境
 
-#k8s生产集群部署：
+### k8s生产集群部署环境：
 kubernetes-master: 3个
 etcd: 3个
 harbor: 2个高可用
@@ -52,7 +69,7 @@ node: 48C 256G ssd/2T 10g/25g网卡 物理机
 master: 16c 16G ssd/200G 物理机或虚拟机
 etcd: 8c 16G ssd/150g
 
-#测试环境配置：
+### 测试环境配置：
 172.168.2.11	ansible
 172.168.2.21	kubernetes-master01		etcd01
 172.168.2.22	kubernetes-master02		etcd02
@@ -63,11 +80,10 @@ etcd: 8c 16G ssd/150g
 172.168.2.25	node02
 172.168.2.26	node03
 OS: ubuntu18
-DeployMethod: Binary Install
+DeployMethod: Binary Install    [DeployUrl](https://github.com/easzlab/kubeasz)
 注：etcd是镜像集群，任意etcd节点进行备份，任意etcd节点进行恢复即可。
-DeployUrl: https://github.com/easzlab/kubeasz
-
-#ubuntu20.04.3时区调整为24小时制
+注：ubuntu20.04.3时区调整为24小时制
+```
 # ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/locltime
 # cat /etc/default/locale
 LANG=en_US.UTF-8
@@ -84,9 +100,9 @@ docker login harbor.magedu.net
 
 #haproxy tcp监控VIP地址及端口时需要更改的内核参数
 net.ipv4.ip_nonlocal_bind = 1
+```
 
-
-#k8s二进制生产集群部署
+## k8s二进制部署高可用集群
 1. cobbler安装ubuntu18.04.5并安装新版本ansible
 root@ansible:~# apt install -y python3-pip
 root@ansible:~# pip3 install ansible -i https://mirrors.aliyun.com/pypi/simple/
@@ -717,7 +733,7 @@ root@ansible:/etc/kubeasz# ansible k8s -m shell -a 'uptime'
 172.168.2.26 | SUCCESS | rc=0 >>
  21:37:53 up 1 min,  0 users,  load average: 0.49, 0.32, 0.12
 
- 
+
 ###重新部署k8s集群
 root@ansible:/etc/kubeasz# ./ezctl setup k8s-01 01
 root@ansible:/etc/kubeasz# ./ezctl setup k8s-01 02
@@ -1062,10 +1078,11 @@ NAME           STATUS                     ROLES    AGE     VERSION
 	2.2 node升级前需要将pod进行驱逐，否则会影响服务
 
 3. master组件选主解释
-apiserver作为集群入口，本身是无状态的web服务器，多个apiserver服务之间直接负载请求并不需要做选主。
-Controller-Manager和Scheduler作为任务类型的组件，比如controller-manager内置的k8s各种资源对象的控制器实时的watch  apiserver获取对象最新的变化事件做期望状态和实际状态调整，调度器watch未绑定节点的pod做节点选择，显然多个这些任务同时工作是完全没有必要的，所以controller-manager和scheduler也是需要选主的，但是选主逻辑和etcd不一样的，这里只需要保证从多个controller-manager和scheduler之间选出一个进入工作状态即可，而无需考虑它们之间的数据一致和同步。
+	apiserver作为集群入口，本身是无状态的web服务器，多个apiserver服务之间直接负载请求并不需要做选主。
+	Controller-Manager和Scheduler作为任务类型的组件，比如controller-manager内置的k8s各种资源对象的控制器实时的watch  apiserver获取对象最新的变化事件做期望状态和实际状态调整，调度器watch未绑定节点的pod做节点选择，显然多个这些任务同时工作是完全没有必要的，所以controller-manager和scheduler也是需要选主的，但是选主逻辑和etcd不一样的，这里只需要保证从多个controller-manager和scheduler之间选出一个进入工作状态即可，而无需考虑它们之间的数据一致和同步。
 	
 	
+
 4.6.3 采用滚动升级方式进行升级
 4.6.3.1 下载需要更新的k8s版本二进制，我们是下载1.21.5
 https://github.com/kubernetes/kubernetes/blob/master/CHANGELOG/CHANGELOG-1.21.md#downloads-for-v12110
@@ -1813,15 +1830,15 @@ clusters:
     certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR1RENDQXFDZ0F3SUJBZ0lVWTkvWDRUM3N6T0FsZktmbm1jV3I0MzdpdDUwd0RRWUpLb1pJaHZjTkFRRUwKQlFBd1lURUxNQWtHQTFVRUJoTUNRMDR4RVRBUEJnTlZCQWdUQ0VoaGJtZGFhRzkxTVFzd0NRWURWUVFIRXdKWQpVekVNTUFvR0ExVUVDaE1EYXpoek1ROHdEUVlEVlFRTEV3WlRlWE4wWlcweEV6QVJCZ05WQkFNVENtdDFZbVZ5CmJtVjBaWE13SUJjTk1qSXdNekEwTVRFeU1qQXdXaGdQTWpFeU1qQXlNRGd4TVRJeU1EQmFNR0V4Q3pBSkJnTlYKQkFZVEFrTk9NUkV3RHdZRFZRUUlFd2hJWVc1bldtaHZkVEVMTUFrR0ExVUVCeE1DV0ZNeEREQUtCZ05WQkFvVApBMnM0Y3pFUE1BMEdBMVVFQ3hNR1UzbHpkR1Z0TVJNd0VRWURWUVFERXdwcmRXSmxjbTVsZEdWek1JSUJJakFOCkJna3Foa2lHOXcwQkFRRUZBQU9DQVE4QU1JSUJDZ0tDQVFFQTNtYm0zaHM3WlJ3WEdEUktkUW9rR25QVjVNbUQKYUEzNnpaZ0VXWUJNSkIvZDBOSEFkQkZDY1dLb3ArNUF2SFk3elBjeGdNelpRZ1B4TU9DcU9CS09NUVJYNG4ydApENmYxbUZrMzFNRDBEMXJGVTBXcGYwanRiampNMmNEOW5wU2trcmZ4dDliWlh2NHRHNFpDUlB4U1RJbkxDU0RkClVNYnN6OUFXVkZNamtnSndUa3FpU2NIZitod1FvOWZVdVduekZTWWdGUUppUWtWRVZqaGErYU5DK2oyUjNOQjUKN1hDS1RHMFBUNS9JVVFEL2t2V0doL0NoZEZUQmREV0plL0d4cnpkYlAxejRQbnBvSTBvaThDN1MwakErVlJKRApMcS9WcE5TY2d1WFB6ZXNPZSs3Tk9Ub0hwZURyVGJxTER5aVRMbEVWNmRWWG5ScE9tdG9XdjI2OU13SURBUUFCCm8yWXdaREFPQmdOVkhROEJBZjhFQkFNQ0FRWXdFZ1lEVlIwVEFRSC9CQWd3QmdFQi93SUJBakFkQmdOVkhRNEUKRmdRVXhxbndaUFpNTEZUeUhJVzNzcWNyaGJmZEl0QXdId1lEVlIwakJCZ3dGb0FVeHFud1pQWk1MRlR5SElXMwpzcWNyaGJmZEl0QXdEUVlKS29aSWh2Y05BUUVMQlFBRGdnRUJBTFpndlVIOEh1SDRIYnJtUW80ejFOTWJKamZVCmlHaFYzdmpFRitIVHlhejByOU1HSlo5b1p3M2hpK0ZpUUJEaUFGSjNvTEVtWVEweDFLd2VlUnorQUlwOVV6QUEKaE5ETVB2YmlqTXl3b3JRNTdzN3BSWlMzejB5RHJ1MEh2R21WRkl6WjRzcm05TjZ2SnVORGUvbklBc0o5eitzbwpKN2doQ3k3Z0dqL2w5dXV2dmovNk8vNVJTVVc4WGE3NWZPR2ZESjFVdUdyemMzbE1mTkNwVUJwMFFXTXVtWHFRClJReHZuKzdRQWdQcitQRk9OLzZMSVkxYlZwNmkvUHhaZ2xjcHFnRjV4QUZ4VEFJYmRXdjVxTjVVQUNsWTFwOE8KVEwyeG9LQVdsQ1IydkdpVS8zbWJTZ2prd3JzRTRRZ3hweHdMdklUc2FNNWtINVF3YUMvalNIR0V3SlE9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0Kaaa
     server: https://172.168.2.21:6443
   name: cluster1
-contexts:
+    contexts:
 - context:
     cluster: cluster1
     user: admin
   name: context-cluster1
-current-context: context-cluster1
-kind: Config
-preferences: {}
-users:
+    current-context: context-cluster1
+    kind: Config
+    preferences: {}
+    users:
 - name: admin
   user:
     client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUQxekNDQXIrZ0F3SUJBZ0lVYkRTc0dCeDZ1UEdLT2YxR1g5b1RKb1FmOEE0d0RRWUpLb1pJaHZjTkFRRUwKQlFBd1lURUxNQWtHQTFVRUJoTUNRMDR4RVRBUEJnTlZCQWdUQ0VoaGJtZGFhRzkxTVFzd0NRWURWUVFIRXdKWQpVekVNTUFvR0ExVUVDaE1EYXpoek1ROHdEUVlEVlFRTEV3WlRlWE4wWlcweEV6QVJCZ05WQkFNVENtdDFZbVZ5CmJtVjBaWE13SUJjTk1qSXdNekEwTVRNek5UQXdXaGdQTWpBM01qQXlNakF4TXpNMU1EQmFNR2N4Q3pBSkJnTlYKQkFZVEFrTk9NUkV3RHdZRFZRUUlFd2hJWVc1bldtaHZkVEVMTUFrR0ExVUVCeE1DV0ZNeEZ6QVZCZ05WQkFvVApEbk41YzNSbGJUcHRZWE4wWlhKek1ROHdEUVlEVlFRTEV3WlRlWE4wWlcweERqQU1CZ05WQkFNVEJXRmtiV2x1Ck1JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBNDZNMkRia0VQLzNEM0dMYkppVUgKNUN3U2l6SkFCRHJxbE84ZWlMV3QweVZRczRzOEtDUHNBVmMwOTU0dVNJVkp3aUJrMkt6MlBhOHpIS1dNQ1BobAp0LzdaNzdwdytkUUVJeUVXT3p3aWdJKzZ6bW11YmpYWFRSZVFxb2ZHc3UrOEFvVU1Ya2NsczhualhrZjIvY3l2CnVWdmpyVUNDSkV0bjFvT0dhWmhTTUZoRi93TEJpaFVOTEZsb1lmbWNTSGZZSThkVEhZWklLaUk5SUNZY2JCWDEKbFBKMEE1bmpNdUk3dHhDSklpSHJiM3dvaEVsNVdkcmhkWDJFcTR0Rjc1ckJ0YjF6Q0RoczlITmswU0NqTmxpQgowNmI1K2ZnVXUwKzZKY1RtY3o1aGxmaTJJa3hFZkova3EzaGtTaGJCandhK09wZGJ6NEV6bmFPUURLaFNkbDV2Ckh3SURBUUFCbzM4d2ZUQU9CZ05WSFE4QkFmOEVCQU1DQmFBd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUcKQ0NzR0FRVUZCd01DTUF3R0ExVWRFd0VCL3dRQ01BQXdIUVlEVlIwT0JCWUVGS0RKeGJXZy9VNlpUZ1pwZzIwVwpTbXFTZGVZek1COEdBMVVkSXdRWU1CYUFGTWFwOEdUMlRDeFU4aHlGdDdLbks0VzMzU0xRTUEwR0NTcUdTSWIzCkRRRUJDd1VBQTRJQkFRQW4ra2hYUGM3MGFmaWptWEYvSnJJanZWWk9DODRHZGhoVzlzK091K2hPOWtMT3BaaVUKRXlHMGw4UWxCa3g5UXRwT0gxQytTS2w5OFZWYkxEdk9rQlI5NmRONHNVTEZRaUJqZDRoN2ozS0FhRkhGQkh4ZQpEMmhrRk5YMTVIU1FWNzc1RXVkMTRxTndKYkluN2hNUlgzeERMblZzM3FPWmFuN3F3KzNtVzVFOWVIbEVTS0dnCnl6L3NPRm1vNWpCNDdyMUFFYTArS1QvUUhJNWpUS3B1aGpEcGM2Yjlqc3NyUUVoNGIvTXVqZG16d1hWbDVHSmEKMlJxWk4rRlJvV1M1MnNWd0xsVG0vY0M4UjlIN1pKNE8rNnNSVFRiTFlBZ2hQQjVmdUd3RkY2OXdrbWZEOCtBMApTWE1LNHkrdllCaEV2ZjVVV3lSZXN1SXdEQVZGVXRzVGhIbEMKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=ccc
@@ -1830,6 +1847,7 @@ users:
 
 	
 	
+
 6.0 基于PV和PVC运行 zookeeper集群
 root@k8s-master01:~/k8s/dockerfile/zookeeper# docker pull elevy/slim_java:8
 root@k8s-master01:~/k8s/dockerfile/zookeeper# docker tag elevy/slim_java:8 192.168.13.197:8000/baseimages/slim_java:8
@@ -2324,36 +2342,36 @@ spec:
     volumeMounts:
     - name: rbd-data1
       mountPath: /data
-  volumes:
+      volumes:
     - name: rbd-data1
       rbd:
         monitors:
         - '172.168.2.27:6789'
         - '172.168.2.28:6789'
         - '172.168.2.29:6789'
-        pool: shijie-rbd-pool1
-        image: shijie-img-img1
-        fsType: ext4
-        readOnly: false
-        user: magedu-shijie
-        keyring: /etc/ceph/ceph.client.magedu-shijie.keyring
-注：node04主机是centos7系统，内核是3.10，挂载不上，经过内核升级为5.4后可以挂载上。但是机器太旧，后面又挂载不上。
-root@k8s-master01:~/k8s/yaml/ceph-case# kubectl apply -f case1-busybox-keyring.yaml
-root@k8s-master01:~/k8s/yaml/ceph-case# kubectl get pod -o wide
-NAME      READY   STATUS    RESTARTS   AGE   IP              NODE            NOMINATED NODE   READINESS GATES
-busybox   1/1     Running   0          66s   172.20.217.78   192.168.13.63   <none>           <none>
-root@k8s-master01:~/k8s/yaml/ceph-case# kubectl exec -it busybox sh
-/ # df -h | grep rbd
-/dev/rbd0                 2.9G      9.0M      2.9G   0% /data
-/ # echo 'magedu' >> /data/n56.txt	#可进行读写
-/ # cat /data/n56.txt
-magedu
-[root@k8s-node04 ~]# df -TH | grep rbd		#其实是node04节点宿主机进行挂载，pod使用的是宿主机的内核
-/dev/rbd0                                              ext4      3.2G  9.5M  3.1G   1% /var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/shijie-rbd-pool1-image-shijie-img-img1
-[root@k8s-node04 ~]# rbd showmapped
-id  pool              namespace  image            snap  device
-0   shijie-rbd-pool1             shijie-img-img1  -     /dev/rbd0
-root@k8s-master01:~/k8s/yaml/ceph-case# kubectl delete -f case1-busybox-keyring.yaml	#先删除这个yaml，因为rbd只能挂载一个容器
+          pool: shijie-rbd-pool1
+          image: shijie-img-img1
+          fsType: ext4
+          readOnly: false
+          user: magedu-shijie
+          keyring: /etc/ceph/ceph.client.magedu-shijie.keyring
+          注：node04主机是centos7系统，内核是3.10，挂载不上，经过内核升级为5.4后可以挂载上。但是机器太旧，后面又挂载不上。
+          root@k8s-master01:~/k8s/yaml/ceph-case# kubectl apply -f case1-busybox-keyring.yaml
+          root@k8s-master01:~/k8s/yaml/ceph-case# kubectl get pod -o wide
+          NAME      READY   STATUS    RESTARTS   AGE   IP              NODE            NOMINATED NODE   READINESS GATES
+          busybox   1/1     Running   0          66s   172.20.217.78   192.168.13.63   <none>           <none>
+          root@k8s-master01:~/k8s/yaml/ceph-case# kubectl exec -it busybox sh
+          / # df -h | grep rbd
+          /dev/rbd0                 2.9G      9.0M      2.9G   0% /data
+          / # echo 'magedu' >> /data/n56.txt	#可进行读写
+          / # cat /data/n56.txt
+          magedu
+          [root@k8s-node04 ~]# df -TH | grep rbd		#其实是node04节点宿主机进行挂载，pod使用的是宿主机的内核
+          /dev/rbd0                                              ext4      3.2G  9.5M  3.1G   1% /var/lib/kubelet/plugins/kubernetes.io/rbd/mounts/shijie-rbd-pool1-image-shijie-img-img1
+          [root@k8s-node04 ~]# rbd showmapped
+          id  pool              namespace  image            snap  device
+          0   shijie-rbd-pool1             shijie-img-img1  -     /dev/rbd0
+          root@k8s-master01:~/k8s/yaml/ceph-case# kubectl delete -f case1-busybox-keyring.yaml	#先删除这个yaml，因为rbd只能挂载一个容器
 
 --使用nginx挂载rbd
 root@k8s-master01:~/k8s/yaml/ceph-case# cat case2-nginx-keyring.yaml
@@ -2596,19 +2614,19 @@ spec:
     protocol: TCP
     targetPort: 3306
     nodePort: 43306
-  selector:
+    selector:
     app: mysql
-root@k8s-master01:~/k8s/yaml/ceph-case# kubectl apply -f case8-mysql-single.yaml
-root@k8s-master01:~/k8s/yaml/ceph-case# kubectl get pods -o wide
-NAME                     READY   STATUS    RESTARTS   AGE   IP              NODE            NOMINATED NODE   READINESS GATES
-mysql-6c7ffcffdf-z8r9l   1/1     Running   0          68s   172.20.217.88   192.168.13.63   <none>           <none>
-root@mysql-6c7ffcffdf-z8r9l:/# df -TH | grep /var/lib/mysql		#进入容器里面查看已经成功挂载，并且服务已经成功启动
-/dev/rbd0               ext4     2.1G  128M  2.0G   7% /var/lib/mysql
-ceph@ansible:~$ ceph df
---- RAW STORAGE ---
-CLASS    SIZE   AVAIL     USED  RAW USED  %RAW USED
-hdd    45 GiB  44 GiB  1.1 GiB   1.1 GiB       2.44
-TOTAL  45 GiB  44 GiB  1.1 GiB   1.1 GiB       2.44
+    root@k8s-master01:~/k8s/yaml/ceph-case# kubectl apply -f case8-mysql-single.yaml
+    root@k8s-master01:~/k8s/yaml/ceph-case# kubectl get pods -o wide
+    NAME                     READY   STATUS    RESTARTS   AGE   IP              NODE            NOMINATED NODE   READINESS GATES
+    mysql-6c7ffcffdf-z8r9l   1/1     Running   0          68s   172.20.217.88   192.168.13.63   <none>           <none>
+    root@mysql-6c7ffcffdf-z8r9l:/# df -TH | grep /var/lib/mysql		#进入容器里面查看已经成功挂载，并且服务已经成功启动
+    /dev/rbd0               ext4     2.1G  128M  2.0G   7% /var/lib/mysql
+    ceph@ansible:~$ ceph df
+    --- RAW STORAGE ---
+    CLASS    SIZE   AVAIL     USED  RAW USED  %RAW USED
+    hdd    45 GiB  44 GiB  1.1 GiB   1.1 GiB       2.44
+    TOTAL  45 GiB  44 GiB  1.1 GiB   1.1 GiB       2.44
 
 --- POOLS ---
 POOL                   ID  PGS   STORED  OBJECTS     USED  %USED  MAX AVAIL
@@ -2807,23 +2825,23 @@ spec:
     targetPort: 80
     nodePort: 40012
     protocol: TCP
-  type: NodePort
-  selector:
+    type: NodePort
+    selector:
     app: ng-deploy-80
-----TCP探针示例：
-root@k8s-master01:~/k8s/yaml/probe-case# cat tcp.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: nginx-deployment
-spec:
-  replicas: 1
-  selector:
+    ----TCP探针示例：
+    root@k8s-master01:~/k8s/yaml/probe-case# cat tcp.yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+    name: nginx-deployment
+    spec:
+    replicas: 1
+    selector:
     matchLabels: #rs or deployment
       app: ng-deploy-80
     #matchExpressions:
     #  - {key: app, operator: In, values: [ng-deploy-80,ng-rs-81]}
-  template:
+    template:
     metadata:
       labels:
         app: ng-deploy-80
@@ -2833,7 +2851,7 @@ spec:
         image: nginx:1.17.5
         ports:
         - containerPort: 80
-        livenessProbe:
+          livenessProbe:
           tcpSocket:
             port: 80
           initialDelaySeconds: 5
@@ -2841,7 +2859,7 @@ spec:
           timeoutSeconds: 5
           successThreshold: 1
           failureThreshold: 3
-        readinessProbe:
+          readinessProbe:
           tcpSocket:
             port: 80
           initialDelaySeconds: 5
@@ -2861,23 +2879,23 @@ spec:
     targetPort: 80
     nodePort: 40012
     protocol: TCP
-  type: NodePort
-  selector:
+    type: NodePort
+    selector:
     app: ng-deploy-80
-----ExecAction探针示例：
-root@k8s-master01:~/k8s/yaml/probe-case# cat redis.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: redis-deployment
-spec:
-  replicas: 1
-  selector:
+    ----ExecAction探针示例：
+    root@k8s-master01:~/k8s/yaml/probe-case# cat redis.yaml
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+    name: redis-deployment
+    spec:
+    replicas: 1
+    selector:
     matchLabels: #rs or deployment
       app: redis-deploy-6379
     #matchExpressions:
     #  - {key: app, operator: In, values: [redis-deploy-6379,ng-rs-81]}
-  template:
+    template:
     metadata:
       labels:
         app: redis-deploy-6379
@@ -2887,19 +2905,19 @@ spec:
         image: redis
         ports:
         - containerPort: 6379
-        readinessProbe:
+          readinessProbe:
           exec:
             command:
             - /usr/local/bin/redis-cli
             - quit
-          initialDelaySeconds: 5
-          periodSeconds: 3
-          timeoutSeconds: 5
-          successThreshold: 1
-          failureThreshold: 3
-        livenessProbe:
-          exec:
-            command:
+              initialDelaySeconds: 5
+              periodSeconds: 3
+              timeoutSeconds: 5
+              successThreshold: 1
+              failureThreshold: 3
+              livenessProbe:
+              exec:
+              command:
             - /usr/local/bin/redis-cli
             - quit
           initialDelaySeconds: 5
@@ -2919,12 +2937,13 @@ spec:
     targetPort: 6379
     nodePort: 40016
     protocol: TCP
-  type: NodePort
-  selector:
+    type: NodePort
+    selector:
     app: redis-deploy-6379
 
 	
 	
+
 6.4 k8s运行redis
 使用kompose将docker-compose文件转成K8s yaml文件，可以提升效率，但是有些内容未不致，需要进行相应调整。
 redis.conf配置文件：
@@ -3025,22 +3044,22 @@ spec:
     port: 6379
     targetPort: 6379
     nodePort: 36379
-  selector:
+    selector:
     app: devops-redis
-  sessionAffinity: ClientIP		#开启会话保持
-  sessionAffinityConfig:
+    sessionAffinity: ClientIP		#开启会话保持
+    sessionAffinityConfig:
     clientIP:
       timeoutSeconds: 10800
-root@k8s-master01:~/k8s/yaml/magedu/redis# kubectl apply -f redis.yaml
-root@k8s-master01:~/k8s/yaml/magedu/redis# kubectl get pods -n magedu
-NAME                                             READY   STATUS    RESTARTS   AGE
-deploy-devops-redis-749878f59d-gf856             1/1     Running   0          22s
-magedu-nginx-deployment-769d4567ff-8sm6c         1/1     Running   2          2d
-magedu-tomcat-app1-deployment-65747746b9-dfzfl   1/1     Running   1          2d
-zookeeper1-749d87b7c5-stk5w                      1/1     Running   1          2d1h
-zookeeper2-5f5fcb7f4d-s5pgp                      1/1     Running   1          2d1h
-zookeeper3-c857bb585-txchq                       1/1     Running   1          2d1h
-k8s集群外访问: 172.168.2.21:36379 auth:123456
+    root@k8s-master01:~/k8s/yaml/magedu/redis# kubectl apply -f redis.yaml
+    root@k8s-master01:~/k8s/yaml/magedu/redis# kubectl get pods -n magedu
+    NAME                                             READY   STATUS    RESTARTS   AGE
+    deploy-devops-redis-749878f59d-gf856             1/1     Running   0          22s
+    magedu-nginx-deployment-769d4567ff-8sm6c         1/1     Running   2          2d
+    magedu-tomcat-app1-deployment-65747746b9-dfzfl   1/1     Running   1          2d
+    zookeeper1-749d87b7c5-stk5w                      1/1     Running   1          2d1h
+    zookeeper2-5f5fcb7f4d-s5pgp                      1/1     Running   1          2d1h
+    zookeeper3-c857bb585-txchq                       1/1     Running   1          2d1h
+    k8s集群外访问: 172.168.2.21:36379 auth:123456
 
 
 6.4.4 运行mysql主从
@@ -3194,8 +3213,8 @@ spec:
   ports:
   - name: mysql
     port: 3306
-  clusterIP: None
-  selector:
+    clusterIP: None
+    selector:
     app: mysql
 ---
 # Client service for connecting to any MySQL instance for reads.
@@ -3211,9 +3230,9 @@ spec:
   ports:
   - name: mysql
     port: 3306
-  selector:
+    selector:
     app: mysql
-root@k8s-master01:~/k8s/yaml/magedu/mysql# kubectl apply -f mysql-services.yaml
+    root@k8s-master01:~/k8s/yaml/magedu/mysql# kubectl apply -f mysql-services.yaml
 
 6.4.4.5 创建mysql statefulset 控制器，生产使用nodeSelector进行特定节点运行，性能强悍的机器上运行
 root@k8s-master01:~/k8s/yaml/magedu/mysql# cat mysql-statefulset.yaml
@@ -3381,7 +3400,7 @@ spec:
       resources:
         requests:
           storage: 10Gi
-root@k8s-master01:~/k8s/yaml/magedu/mysql# kubectl apply -f mysql-statefulset.yaml
+      root@k8s-master01:~/k8s/yaml/magedu/mysql# kubectl apply -f mysql-statefulset.yaml
 
 6.4.4.6 测试
 -- 在master-0库上写入数据，在其它从库上查看数据及slave状态是否正常
@@ -3555,12 +3574,12 @@ spec:
     protocol: TCP
     targetPort: 8080
     nodePort: 38080
-  selector:
+    selector:
     app: magedu-jenkins
-root@k8s-master01:~/k8s/yaml/magedu/jenkins# kubectl get pod -o wide -n magedu | grep jenkins
-magedu-jenkins-deployment-5f94c58f86-226hb       1/1     Running   0          2m27s   172.20.58.205    172.168.2.25    <none>           <none>
-root@k8s-master01:~/k8s/yaml/magedu/jenkins# kubectl get svc -n magedu | grep jenkins
-magedu-jenkins-service       NodePort    10.68.92.47     <none>        80:38080/TCP                                   49s
+    root@k8s-master01:~/k8s/yaml/magedu/jenkins# kubectl get pod -o wide -n magedu | grep jenkins
+    magedu-jenkins-deployment-5f94c58f86-226hb       1/1     Running   0          2m27s   172.20.58.205    172.168.2.25    <none>           <none>
+    root@k8s-master01:~/k8s/yaml/magedu/jenkins# kubectl get svc -n magedu | grep jenkins
+    magedu-jenkins-service       NodePort    10.68.92.47     <none>        80:38080/TCP                                   49s
 
 6.4.5.5 web访问jenkins地址：http://172.168.2.25:38080
 root@k8s-master01:~/k8s/yaml/magedu/jenkins# kubectl exec -it magedu-jenkins-deployment-5f94c58f86-226hb bash -n magedu
@@ -3779,11 +3798,11 @@ spec:
     protocol: TCP
     targetPort: 443
     nodePort: 30033
-  selector:
+    selector:
     app: wordpress-app
-root@k8s-master01:~/k8s/yaml/magedu/wordpress# kubectl apply -f wordpress.yaml
-root@k8s-master01:~/k8s/yaml/magedu/wordpress# kubectl get pods -n magedu | grep word
-wordpress-app-deployment-7d6d5c4c97-n26gw        2/2     Running   0          45m
+    root@k8s-master01:~/k8s/yaml/magedu/wordpress# kubectl apply -f wordpress.yaml
+    root@k8s-master01:~/k8s/yaml/magedu/wordpress# kubectl get pods -n magedu | grep word
+    wordpress-app-deployment-7d6d5c4c97-n26gw        2/2     Running   0          45m
 
 6.4.6.5 测试nginx+php功能
 注: 1. 数据持久化 2. 数据共享，php写，nginx读
@@ -3911,11 +3930,11 @@ spec:
     protocol: TCP
     targetPort: 20880
     #nodePort: 30001
-  selector:
+    selector:
     app: magedu-provider
-root@k8s-master01:~/k8s/yaml/magedu/dubbo/provider# kubectl apply -f provider.yaml
-root@k8s-master01:~/k8s/dockerfile/web/magedu/dubbo/provider# kubectl get pod -o wide -n magedu | grep provider
-magedu-provider-deployment-7656dfd74f-vpjkl      1/1     Running       0          4m      172.20.217.110   192.168.13.63   <none>           <none>
+    root@k8s-master01:~/k8s/yaml/magedu/dubbo/provider# kubectl apply -f provider.yaml
+    root@k8s-master01:~/k8s/dockerfile/web/magedu/dubbo/provider# kubectl get pod -o wide -n magedu | grep provider
+    magedu-provider-deployment-7656dfd74f-vpjkl      1/1     Running       0          4m      172.20.217.110   192.168.13.63   <none>           <none>
 
 6.4.6.7.3 连接到zookeeper集群查看是否有dubbo provider数据 
 此时连接到zookeeper客户端可查看到provider注册的信息，ip地址为：172.20.217.110跟上面一样，端口为20880
@@ -4010,11 +4029,11 @@ spec:
     protocol: TCP
     targetPort: 80
     #nodePort: 30001
-  selector:
+    selector:
     app: magedu-consumer
-root@k8s-master01:~/k8s/yaml/magedu/dubbo/consumer# kubectl apply -f consumer.yaml
-root@k8s-master01:~/k8s/yaml/magedu/dubbo/consumer# kubectl get pods -n magedu -o wide | grep consum
-magedu-consumer-deployment-84547497d4-999wr      1/1     Running       0          21s     172.20.217.111   192.168.13.63   <none>           <none>
+    root@k8s-master01:~/k8s/yaml/magedu/dubbo/consumer# kubectl apply -f consumer.yaml
+    root@k8s-master01:~/k8s/yaml/magedu/dubbo/consumer# kubectl get pods -n magedu -o wide | grep consum
+    magedu-consumer-deployment-84547497d4-999wr      1/1     Running       0          21s     172.20.217.111   192.168.13.63   <none>           <none>
 
 6.4.6.7.6 连接到zookeeper集群查看是否有dubbo consumer数据 
 
@@ -4094,11 +4113,11 @@ spec:
     protocol: TCP
     targetPort: 8080
     nodePort: 30080
-  selector:
+    selector:
     app: magedu-dubboadmin
-root@k8s-master01:~/k8s/yaml/magedu/dubbo/dubboadmin# kubectl apply -f dubboadmin.yaml
-root@k8s-master01:~/k8s/yaml/magedu/dubbo/dubboadmin# kubectl get pods -o wide -n magedu  | grep dubboadmin
-magedu-dubboadmin-deployment-bbd4b4966-9fnzk     1/1     Running       0          52s     172.20.217.116   192.168.13.63   <none>           <none>
+    root@k8s-master01:~/k8s/yaml/magedu/dubbo/dubboadmin# kubectl apply -f dubboadmin.yaml
+    root@k8s-master01:~/k8s/yaml/magedu/dubbo/dubboadmin# kubectl get pods -o wide -n magedu  | grep dubboadmin
+    magedu-dubboadmin-deployment-bbd4b4966-9fnzk     1/1     Running       0          52s     172.20.217.116   192.168.13.63   <none>           <none>
 
 6.4.6.7.8 访问dubboadmin
 root@k8s-master01:~/k8s/yaml/magedu/dubbo/dubboadmin# kubectl get svc -n magedu | grep dubboadmin
@@ -4200,26 +4219,26 @@ metadata:
 rules:
   - apiGroups:
       - ''
-    resources:
+      resources:
       - configmaps
       - endpoints
       - nodes
       - pods
       - secrets
-    verbs:
+      verbs:
       - list
       - watch
   - apiGroups:
       - ''
-    resources:
+      resources:
       - nodes
-    verbs:
+      verbs:
       - get
   - apiGroups:
       - ''
-    resources:
+      resources:
       - services
-    verbs:
+      verbs:
       - get
       - list
       - update
@@ -4227,31 +4246,31 @@ rules:
   - apiGroups:
       - extensions
       - networking.k8s.io   # k8s 1.14+
-    resources:
+      resources:
       - ingresses
-    verbs:
+      verbs:
       - get
       - list
       - watch
   - apiGroups:
       - ''
-    resources:
+      resources:
       - events
-    verbs:
+      verbs:
       - create
       - patch
   - apiGroups:
       - extensions
       - networking.k8s.io   # k8s 1.14+
-    resources:
+      resources:
       - ingresses/status
-    verbs:
+      verbs:
       - update
   - apiGroups:
       - networking.k8s.io   # k8s 1.14+
-    resources:
+      resources:
       - ingressclasses
-    verbs:
+      verbs:
       - get
       - list
       - watch
@@ -4293,26 +4312,26 @@ metadata:
 rules:
   - apiGroups:
       - ''
-    resources:
+      resources:
       - namespaces
-    verbs:
+      verbs:
       - get
   - apiGroups:
       - ''
-    resources:
+      resources:
       - configmaps
       - pods
       - secrets
       - endpoints
-    verbs:
+      verbs:
       - get
       - list
       - watch
   - apiGroups:
       - ''
-    resources:
+      resources:
       - services
-    verbs:
+      verbs:
       - get
       - list
       - update
@@ -4320,55 +4339,55 @@ rules:
   - apiGroups:
       - extensions
       - networking.k8s.io   # k8s 1.14+
-    resources:
+      resources:
       - ingresses
-    verbs:
+      verbs:
       - get
       - list
       - watch
   - apiGroups:
       - extensions
       - networking.k8s.io   # k8s 1.14+
-    resources:
+      resources:
       - ingresses/status
-    verbs:
+      verbs:
       - update
   - apiGroups:
       - networking.k8s.io   # k8s 1.14+
-    resources:
+      resources:
       - ingressclasses
-    verbs:
+      verbs:
       - get
       - list
       - watch
   - apiGroups:
       - ''
-    resources:
+      resources:
       - configmaps
-    resourceNames:
+      resourceNames:
       - ingress-controller-leader-nginx
-    verbs:
+      verbs:
       - get
       - update
   - apiGroups:
       - ''
-    resources:
+      resources:
       - configmaps
-    verbs:
+      verbs:
       - create
   - apiGroups:
       - ''
-    resources:
+      resources:
       - endpoints
-    verbs:
+      verbs:
       - create
       - get
       - update
   - apiGroups:
       - ''
-    resources:
+      resources:
       - events
-    verbs:
+      verbs:
       - create
       - patch
 ---
@@ -4584,9 +4603,9 @@ webhooks:
           - UPDATE
         resources:
           - ingresses
-    failurePolicy: Fail
-    clientConfig:
-      service:
+        failurePolicy: Fail
+        clientConfig:
+        service:
         namespace: ingress-nginx
         name: ingress-nginx-controller-admission
         path: /extensions/v1beta1/ingresses
@@ -4610,9 +4629,9 @@ metadata:
 rules:
   - apiGroups:
       - admissionregistration.k8s.io
-    resources:
+      resources:
       - validatingwebhookconfigurations
-    verbs:
+      verbs:
       - get
       - update
 ---
@@ -4748,9 +4767,9 @@ metadata:
 rules:
   - apiGroups:
       - ''
-    resources:
+      resources:
       - secrets
-    verbs:
+      verbs:
       - get
       - create
 ---
@@ -4796,7 +4815,7 @@ metadata:
     app.kubernetes.io/component: admission-webhook
   namespace: ingress-nginx
 
-  
+
 6.4.6.9 metrics server部署、hpa控制器
 hpa控制器用metrics server收集到的指标数据当作条件来自动伸缩pod
 hpa控制器伸缩pod需要deploy控制器使用资源限制(limit,request)才可进行自动伸缩
@@ -4915,7 +4934,7 @@ spec:
     port: 443
     protocol: TCP
     targetPort: https
-  selector:
+    selector:
     k8s-app: metrics-server
 ---
 apiVersion: apps/v1
@@ -5138,7 +5157,7 @@ spec:
     protocol: TCP
     targetPort: 443
     nodePort: 40443
-  selector:
+    selector:
     app: magedu-nginx-selector
 ---
 root@k8s-master01:~/k8s/yaml/magedu/nginx# kubectl apply -f nginx.yaml
@@ -5230,21 +5249,21 @@ magedu-nginx-deployment-866644b4bf-sv5vx         1/1     Running   0          35
 
 
 4. 另外一种滚动升级的方式就是写yaml文件
-root@k8s-master01:~/k8s/yaml/deplooy-upgrade-case# cat tomcat-app1.yaml
-kind: Deployment
-#apiVersion: extensions/v1beta1
-apiVersion: apps/v1
-metadata:
-  labels:
+   root@k8s-master01:~/k8s/yaml/deplooy-upgrade-case# cat tomcat-app1.yaml
+   kind: Deployment
+   #apiVersion: extensions/v1beta1
+   apiVersion: apps/v1
+   metadata:
+    labels:
     app: magedu-tomcat-app1-deployment-label
-  name: magedu-tomcat-app1-deployment
-  namespace: magedu
-spec:
-  replicas: 3
-  selector:
+    name: magedu-tomcat-app1-deployment
+    namespace: magedu
+   spec:
+    replicas: 3
+    selector:
     matchLabels:
       app: magedu-tomcat-app1-selector
-  template:
+    template:
     metadata:
       labels:
         app: magedu-tomcat-app1-selector
@@ -5259,26 +5278,26 @@ spec:
         - containerPort: 8080
           protocol: TCP
           name: http
-        env:
+          env:
         - name: "password"
           value: "123456"
         - name: "age"
           value: "18"
-        resources:
+          resources:
           limits:
             cpu: 1
             memory: "512Mi"
           requests:
             cpu: 500m
             memory: "512Mi"
-        volumeMounts:
+          volumeMounts:
         - name: magedu-images
           mountPath: /usr/local/nginx/html/webapp/images
           readOnly: false
         - name: magedu-static
           mountPath: /usr/local/nginx/html/webapp/static
           readOnly: false
-      volumes:
+           volumes:
       - name: magedu-images
         nfs:
           server: 192.168.13.67
@@ -5313,9 +5332,9 @@ spec:
     protocol: TCP
     targetPort: 8080
     nodePort: 40003
-  selector:
+    selector:
     app: magedu-tomcat-app1-selector
-root@k8s-master01:~/k8s/yaml/deplooy-upgrade-case# kubectl apply -f tomcat-service.yaml
+    root@k8s-master01:~/k8s/yaml/deplooy-upgrade-case# kubectl apply -f tomcat-service.yaml
 ---
 root@k8s-master01:~/k8s/yaml/deplooy-upgrade-case# kubectl get svc -n magedu | grep tomcat
 magedu-tomcat-app1-service   NodePort    10.68.168.250   <none>        80:40003/TCP                                   5m54s
@@ -5415,14 +5434,14 @@ spec:
     protocol: TCP
     targetPort: 8080
     nodePort: 40003
-  selector:
+    selector:
     app: magedu-tomcat-app1-selector
     version: v2
-[root@NFSServer ~]# while true;do date; curl http://172.168.2.24:40003/myapp/index.html;sleep 0.2;done	#此时service已经切换到v2了
-Wed Mar 30 22:52:34 CST 2022
-tomcat app2 for v2
-Wed Mar 30 22:52:35 CST 2022
-tomcat app2 for v2
+    [root@NFSServer ~]# while true;do date; curl http://172.168.2.24:40003/myapp/index.html;sleep 0.2;done	#此时service已经切换到v2了
+    Wed Mar 30 22:52:34 CST 2022
+    tomcat app2 for v2
+    Wed Mar 30 22:52:35 CST 2022
+    tomcat app2 for v2
 
 root@k8s-master01:~/k8s/yaml/deplooy-upgrade-case# kubectl delete -f tomcat-app1.yaml	#此时无问题可以删除v1，若是有问题回滚v1，若是升级则更改此文件镜像版本为v3并且增加一个label version: v3，然后更改service yaml文件删除version: v2的标签，如果v3版本无问题，则增加version: v3 label，使service选择v3的deployment
 
@@ -5845,7 +5864,7 @@ LISTEN      0      50              [::ffff:172.168.2.14]:3387                   
 LISTEN      0      50              [::ffff:172.168.2.14]:3388                                         [::]:*
 LISTEN      0      50              [::ffff:172.168.2.14]:3389                                         [::]:*
 
-  
+
 --部署kafka集群
 --下载安装kafka集群
 curl -LO https://mirrors.cnnic.cn/apache/kafka/2.2.2/kafka_2.12-2.2.2.tgz
@@ -5967,27 +5986,27 @@ filebeat.inputs:
   enabled: true
   paths:
     - /apps/tomcat/logs/catalina.out
-  fields:
-    type: tomcat-catalina
+      fields:
+      type: tomcat-catalina
 - type: log
   enabled: true
   paths:
     - /apps/tomcat/logs/localhost_access_log.*.txt
   fields:
-    type: tomcat-accesslog
-filebeat.config.modules:
+      type: tomcat-accesslog
+  filebeat.config.modules:
   path: ${path.config}/modules.d/*.yml
   reload.enabled: false
-setup.template.settings:
+  setup.template.settings:
   index.number_of_shards: 1
-setup.kibana:
-output.kafka:
+  setup.kibana:
+  output.kafka:
    hosts: ["172.168.2.14:9092","172.168.2.14:9093","172.168.2.14:9094"]
    topic: "magedu-n56-app1"			#kafka topic名称
    required_acks: 1
    compression: gzip
    max_message_bytes: 1000000
-#output.redis:
+  #output.redis:
 #  hosts: ["172.31.2.105:6379"]
 #  key: "k8s-magedu-app1"
 #  db: 1
@@ -6098,7 +6117,7 @@ spec:
     protocol: TCP
     targetPort: 8080
     nodePort: 40003
-  selector:
+    selector:
     app: magedu-tomcat-app1-selector
 --------------------
 root@k8s-master01:~/k8s/yaml/magedu/tomcat-app1# kubectl apply -f tomcat-app1.yaml
@@ -6239,7 +6258,7 @@ ceph：
   nginx: 2c 2g 
   微服务： 2c 2g/2c 3g 
   mysql/ES  4c/6G  4c/8G
-  
+
 6.4.8.1 容器限制 
 root@k8s-master01:~/k8s/yaml/limit-rbac/limit-case# cat case1-pod-memory-limit.yml
 #apiVersion: extensions/v1beta1
@@ -6403,7 +6422,7 @@ spec:
     protocol: TCP
     targetPort: 443
     nodePort: 40443
-  selector:
+    selector:
     app: magedu-nginx-selector
 --------------------------
 root@k8s-master01:~/k8s/yaml/magedu/nginx# kubectl apply -f nginx-limit.yaml	#应用比值为1:4的cpu pod，此时应用成功
@@ -6574,7 +6593,7 @@ subjects:
 - kind: ServiceAccount
   name: magedu
   namespace: magedu
-roleRef:
+  roleRef:
   kind: Role
   name: magedu-role
   apiGroup: rbac.authorization.k8s.io
@@ -6635,26 +6654,26 @@ subjects:
 - apiGroup: rbac.authorization.k8s.io
   kind: Group			#O,        Subject: C = CN, ST = HangZhou, L = XS, O = k8s, OU = System, CN = kubernetes
   name: system:masters		
-root@k8s-master01:~/k8s/yaml/limit-rbac/limit-case# kubectl get clusterrolebinding kubernetes-crb -o yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
+  root@k8s-master01:~/k8s/yaml/limit-rbac/limit-case# kubectl get clusterrolebinding kubernetes-crb -o yaml
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
   creationTimestamp: "2022-03-04T13:45:04Z"
   name: kubernetes-crb
   resourceVersion: "214"
   uid: 6b6bfccb-c554-4e0f-a517-a878a65329d0
-roleRef:
+  roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: cluster-admin
-subjects:
+  subjects:
 - apiGroup: rbac.authorization.k8s.io
   kind: User			#CN,        Subject: C = CN, ST = HangZhou, L = XS, O = k8s, OU = System, CN = kubernetes  #kubernetes.pem和ca.pem CN都是kubernetes
   name: kubernetes
-root@k8s-master01:~/k8s/yaml/limit-rbac/limit-case# kubectl get clusterrolebinding admin-user -o yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
+  root@k8s-master01:~/k8s/yaml/limit-rbac/limit-case# kubectl get clusterrolebinding admin-user -o yaml
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
   annotations:
     kubectl.kubernetes.io/last-applied-configuration: |
       {"apiVersion":"rbac.authorization.k8s.io/v1","kind":"ClusterRoleBinding","metadata":{"annotations":{},"name":"admin-user"},"roleRef":{"apiGroup":"rbac.authorization.k8s.io","kind":"ClusterRole","name":"cluster-admin"},"subjects":[{"kind":"ServiceAccount","name":"admin-user","namespace":"kubernetes-dashboard"}]}
@@ -6662,11 +6681,11 @@ metadata:
   name: admin-user
   resourceVersion: "227520"
   uid: d031510b-3e5c-4745-9033-236fa0e00f0f
-roleRef:
+  roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: cluster-admin
-subjects:
+  subjects:
 - kind: ServiceAccount
   name: admin-user
   namespace: kubernetes-dashboard
@@ -6759,16 +6778,16 @@ clusters:
     certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR1RENDQXFDZ0F3SUJBZ0lVWTkvWDRUM3N6T0FsZktmbm1jV3I0MzdpdDUwd0RRWUpLb1pJaHZjTkFRRUwKQlFBd1lURUxNQWtHQTFVRUJoTUNRMDR4RVRBUEJnTlZCQWdUQ0VoaGJtZGFhRzkxTVFzd0NRWURWUVFIRXdKWQpVekVNTUFvR0ExVUVDaE1EYXpoek1ROHdEUVlEVlFRTEV3WlRlWE4wWlcweEV6QVJCZ05WQkFNVENtdDFZbVZ5CmJtVjBaWE13SUJjTk1qSXdNekEwTVRFeU1qQXdXaGdQTWpFeU1qQXlNRGd4TVRJeU1EQmFNR0V4Q3pBSkJnTlYKQkFZVEFrTk9NUkV3RHdZRFZRUUlFd2hJWVc1bldtaHZkVEVMTUFrR0ExVUVCeE1DV0ZNeEREQUtCZ05WQkFvVApBMnM0Y3pFUE1BMEdBMVVFQ3hNR1UzbHpkR1Z0TVJNd0VRWURWUVFERXdwcmRXSmxjbTVsZEdWek1JSUJJakFOCkJna3Foa2lHOXcwQkFRRUZBQU9DQVE4QU1JSUJDZ0tDQVFFQTNtYm0zaHM3WlJ3WEdEUktkUW9rR25QVjVNbUQKYUEzNnpaZ0VXWUJNSkIvZDBOSEFkQkZDY1dLb3ArNUF2SFk3elBjeGdNelpRZ1B4TU9DcU9CS09NUVJYNG4ydApENmYxbUZrMzFNRDBEMXJGVTBXcGYwanRiampNMmNEOW5wU2trcmZ4dDliWlh2NHRHNFpDUlB4U1RJbkxDU0RkClVNYnN6OUFXVkZNamtnSndUa3FpU2NIZitod1FvOWZVdVduekZTWWdGUUppUWtWRVZqaGErYU5DK2oyUjNOQjUKN1hDS1RHMFBUNS9JVVFEL2t2V0doL0NoZEZUQmREV0plL0d4cnpkYlAxejRQbnBvSTBvaThDN1MwakErVlJKRApMcS9WcE5TY2d1WFB6ZXNPZSs3Tk9Ub0hwZURyVGJxTER5aVRMbEVWNmRWWG5ScE9tdG9XdjI2OU13SURBUUFCCm8yWXdaREFPQmdOVkhROEJBZjhFQkFNQ0FRWXdFZ1lEVlIwVEFRSC9CQWd3QmdFQi93SUJBakFkQmdOVkhRNEUKRmdRVXhxbndaUFpNTEZUeUhJVzNzcWNyaGJmZEl0QXdId1lEVlIwakJCZ3dGb0FVeHFud1pQWk1MRlR5SElXMwpzcWNyaGJmZEl0QXdEUVlKS29aSWh2Y05BUUVMQlFBRGdnRUJBTFpndlVIOEh1SDRIYnJtUW80ejFOTWJKamZVCmlHaFYzdmpFRitIVHlhejByOU1HSlo5b1p3M2hpK0ZpUUJEaUFGSjNvTEVtWVEweDFLd2VlUnorQUlwOVV6QUEKaE5ETVB2YmlqTXl3b3JRNTdzN3BSWlMzejB5RHJ1MEh2R21WRkl6WjRzcm05TjZ2SnVORGUvbklBc0o5eitzbwpKN2doQ3k3Z0dqL2w5dXV2dmovNk8vNVJTVVc4WGE3NWZPR2ZESjFVdUdyemMzbE1mTkNwVUJwMFFXTXVtWHFRClJReHZuKzdRQWdQcitQRk9OLzZMSVkxYlZwNmkvUHhaZ2xjcHFnRjV4QUZ4VEFJYmRXdjVxTjVVQUNsWTFwOE8KVEwyeG9LQVdsQ1IydkdpVS8zbWJTZ2prd3JzRTRRZ3hweHdMdklUc2FNNWtINVF3YUMvalNIR0V3SlE9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
     server: https://192.168.13.50:6443
   name: cluster1
-contexts:
+    contexts:
 - context:
     cluster: cluster1
     namespace: magedu
     user: Jack
   name: cluster1
-current-context: cluster1
-kind: Config
-preferences: {}
-users:
+    current-context: cluster1
+    kind: Config
+    preferences: {}
+    users:
 - name: Jack
   user:
     client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUQwVENDQXJtZ0F3SUJBZ0lVU2lkVkR3UEJJNnl6SzR0NkVYNUVoWTJqRDZFd0RRWUpLb1pJaHZjTkFRRUwKQlFBd1lURUxNQWtHQTFVRUJoTUNRMDR4RVRBUEJnTlZCQWdUQ0VoaGJtZGFhRzkxTVFzd0NRWURWUVFIRXdKWQpVekVNTUFvR0ExVUVDaE1EYXpoek1ROHdEUVlEVlFRTEV3WlRlWE4wWlcweEV6QVJCZ05WQkFNVENtdDFZbVZ5CmJtVjBaWE13SUJjTk1qSXdOREF6TURZMU9EQXdXaGdQTWpBM01qQXpNakV3TmpVNE1EQmFNR0V4Q3pBSkJnTlYKQkFZVEFrTk9NUkV3RHdZRFZRUUlFd2hUYUdGdVoyaGhhVEVSTUE4R0ExVUVCeE1JVTJoaGJtZG9ZV2t4RERBSwpCZ05WQkFvVEEyczRjekVQTUEwR0ExVUVDeE1HVTNsemRHVnRNUTB3Q3dZRFZRUURFd1JLWVdOck1JSUJJakFOCkJna3Foa2lHOXcwQkFRRUZBQU9DQVE4QU1JSUJDZ0tDQVFFQXQwRS9lcVUyL3pZYm5xSU9hOGNWb0ppbjJVVlkKb2NBSGlBTlZzMEtBUm5RcENiM0Vsc1NzL3JKbDd3REUxaHFyNDJDQTBVK3V4UG54cWp2UHBzTlZIRnBoeW4rbwpQNEJvWENPMjNkaVcrM20rbVFIMmNac2JJL2JnNWlNcWUxWlYzNEFhZm9jZFhlNlYrNWxpci9CVGlNSDJGaWNkClF5aWJKRzFPOExlb3ltUHJKakxCMHRSWXNGQnR5QWtMQkgvTCtVU0ozbEtJSGRSc2l0NFpvVkVRdUV4WW4vb2IKN3RwdjFpaHRBR29UUUNvKzI2ZEQvYmYyWWdQWjBXeXppNXJLNWM1ZlpZQW51T2NKcDNCenpQdnZvMXNKOGN4MApOOXlYQVh6aWVaSVlxTDJIVStiK2xOR3dDZUJ2dStsWlRrQXNRSmVMcU1nK01KRFNmZERkdVl4T2pRSURBUUFCCm8zOHdmVEFPQmdOVkhROEJBZjhFQkFNQ0JhQXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0VHQ0NzR0FRVUYKQndNQ01Bd0dBMVVkRXdFQi93UUNNQUF3SFFZRFZSME9CQllFRlB0QXAxR2VTc3VzSGlwOVZMd1pDdnZFQUwwdQpNQjhHQTFVZEl3UVlNQmFBRk1hcDhHVDJUQ3hVOGh5RnQ3S25LNFczM1NMUU1BMEdDU3FHU0liM0RRRUJDd1VBCkE0SUJBUUJZWXdkNzJJSjFST1RwS3NaeHJxN2pZb0h3Wkk5VDNHaGZQaktpRVVpNlBNT2hoamd2NUE3cG8yZGgKMG91aUhINmNBc0dLdGNkcnpTYXhuRUh1aFVtMXlYYTZjRXZYMWxzMms1eHB4azNwczBzVkZPSi80cFZxWnR1cgpVdllIVXdvaXpmZkwvN3h4ektUOGFqMUh0VTVJL3pxclI2MWR1U2kzQ0VoK2NhVVF4MnNiZlJnUWp5RjNMWDJKCkhZWkc0bEhZM2l1R2VjR25hdmFqcllIUFJGUDFLRnF1akhJeWhpL3l4UGpMUzgvRStxQSt2aXhNbzRyQUpRdkEKc280enREVm9oU05WeXVCK2J3aVpBaUl6a0E5cG1CQUl0dEhrcXdEclk2OXI4UnovbEk1dkhkclNxZ0VnV1M4awpMT1FhVkVJTFltQ2cweUJ1bC9aTVBFbXFvUDl4Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
@@ -6807,40 +6826,40 @@ rules:
   resources: ["events"]
   ##RO-Role
   verbs: ["get", "watch", "list"]
-root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl apply -f magedu-role.yaml
-role.rbac.authorization.k8s.io/magedu-role configured
-root@k8s-master01:~/k8s/yaml/limit-rbac/role# cat magedu-role-user-bind.yaml	#创建rolebinding
-kind: RoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
+  root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl apply -f magedu-role.yaml
+  role.rbac.authorization.k8s.io/magedu-role configured
+  root@k8s-master01:~/k8s/yaml/limit-rbac/role# cat magedu-role-user-bind.yaml	#创建rolebinding
+  kind: RoleBinding
+  apiVersion: rbac.authorization.k8s.io/v1
+  metadata:
   name: role-bind-user-magedu
   namespace: magedu
-subjects:
+  subjects:
 - kind: User		#这里是用户绑定，还可以是Group，ServiceAccount
   name: Jack
   namespace: magedu
-roleRef:
+  roleRef:
   kind: Role
   name: magedu-role
   apiGroup: rbac.authorization.k8s.io
-root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl apply -f magedu-role-user-bind.yaml
-rolebinding.rbac.authorization.k8s.io/role-bind-user-magedu created
-root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl describe rolebinding role-bind-user-magedu -n magedu
-Name:         role-bind-user-magedu
-Labels:       <none>
-Annotations:  <none>
-Role:
+  root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl apply -f magedu-role-user-bind.yaml
+  rolebinding.rbac.authorization.k8s.io/role-bind-user-magedu created
+  root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl describe rolebinding role-bind-user-magedu -n magedu
+  Name:         role-bind-user-magedu
+  Labels:       <none>
+  Annotations:  <none>
+  Role:
   Kind:  Role
   Name:  magedu-role
-Subjects:
+  Subjects:
   Kind  Name  Namespace
   ----  ----  ---------
   User  Jack  magedu
-root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl describe role magedu-role -n magedu
-Name:         magedu-role
-Labels:       <none>
-Annotations:  <none>
-PolicyRule:
+  root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl describe role magedu-role -n magedu
+  Name:         magedu-role
+  Labels:       <none>
+  Annotations:  <none>
+  PolicyRule:
   Resources            Non-Resource URLs  Resource Names  Verbs
   ---------            -----------------  --------------  -----
   pods.*/exec          []                 []              [get list watch create]
@@ -6932,22 +6951,22 @@ clusters:
     certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUR1RENDQXFDZ0F3SUJBZ0lVWTkvWDRUM3N6T0FsZktmbm1jV3I0MzdpdDUwd0RRWUpLb1pJaHZjTkFRRUwKQlFBd1lURUxNQWtHQTFVRUJoTUNRMDR4RVRBUEJnTlZCQWdUQ0VoaGJtZGFhRzkxTVFzd0NRWURWUVFIRXdKWQpVekVNTUFvR0ExVUVDaE1EYXpoek1ROHdEUVlEVlFRTEV3WlRlWE4wWlcweEV6QVJCZ05WQkFNVENtdDFZbVZ5CmJtVjBaWE13SUJjTk1qSXdNekEwTVRFeU1qQXdXaGdQTWpFeU1qQXlNRGd4TVRJeU1EQmFNR0V4Q3pBSkJnTlYKQkFZVEFrTk9NUkV3RHdZRFZRUUlFd2hJWVc1bldtaHZkVEVMTUFrR0ExVUVCeE1DV0ZNeEREQUtCZ05WQkFvVApBMnM0Y3pFUE1BMEdBMVVFQ3hNR1UzbHpkR1Z0TVJNd0VRWURWUVFERXdwcmRXSmxjbTVsZEdWek1JSUJJakFOCkJna3Foa2lHOXcwQkFRRUZBQU9DQVE4QU1JSUJDZ0tDQVFFQTNtYm0zaHM3WlJ3WEdEUktkUW9rR25QVjVNbUQKYUEzNnpaZ0VXWUJNSkIvZDBOSEFkQkZDY1dLb3ArNUF2SFk3elBjeGdNelpRZ1B4TU9DcU9CS09NUVJYNG4ydApENmYxbUZrMzFNRDBEMXJGVTBXcGYwanRiampNMmNEOW5wU2trcmZ4dDliWlh2NHRHNFpDUlB4U1RJbkxDU0RkClVNYnN6OUFXVkZNamtnSndUa3FpU2NIZitod1FvOWZVdVduekZTWWdGUUppUWtWRVZqaGErYU5DK2oyUjNOQjUKN1hDS1RHMFBUNS9JVVFEL2t2V0doL0NoZEZUQmREV0plL0d4cnpkYlAxejRQbnBvSTBvaThDN1MwakErVlJKRApMcS9WcE5TY2d1WFB6ZXNPZSs3Tk9Ub0hwZURyVGJxTER5aVRMbEVWNmRWWG5ScE9tdG9XdjI2OU13SURBUUFCCm8yWXdaREFPQmdOVkhROEJBZjhFQkFNQ0FRWXdFZ1lEVlIwVEFRSC9CQWd3QmdFQi93SUJBakFkQmdOVkhRNEUKRmdRVXhxbndaUFpNTEZUeUhJVzNzcWNyaGJmZEl0QXdId1lEVlIwakJCZ3dGb0FVeHFud1pQWk1MRlR5SElXMwpzcWNyaGJmZEl0QXdEUVlKS29aSWh2Y05BUUVMQlFBRGdnRUJBTFpndlVIOEh1SDRIYnJtUW80ejFOTWJKamZVCmlHaFYzdmpFRitIVHlhejByOU1HSlo5b1p3M2hpK0ZpUUJEaUFGSjNvTEVtWVEweDFLd2VlUnorQUlwOVV6QUEKaE5ETVB2YmlqTXl3b3JRNTdzN3BSWlMzejB5RHJ1MEh2R21WRkl6WjRzcm05TjZ2SnVORGUvbklBc0o5eitzbwpKN2doQ3k3Z0dqL2w5dXV2dmovNk8vNVJTVVc4WGE3NWZPR2ZESjFVdUdyemMzbE1mTkNwVUJwMFFXTXVtWHFRClJReHZuKzdRQWdQcitQRk9OLzZMSVkxYlZwNmkvUHhaZ2xjcHFnRjV4QUZ4VEFJYmRXdjVxTjVVQUNsWTFwOE8KVEwyeG9LQVdsQ1IydkdpVS8zbWJTZ2prd3JzRTRRZ3hweHdMdklUc2FNNWtINVF3YUMvalNIR0V3SlE9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
     server: https://172.168.2.21:6443
   name: cluster1
-contexts:
+    contexts:
 - context:
     cluster: cluster1
     namespace: magedu
     user: Jack
   name: cluster1
-current-context: cluster1
-kind: Config
-preferences: {}
-users:
+    current-context: cluster1
+    kind: Config
+    preferences: {}
+    users:
 - name: Jack
   user:
     client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUQwVENDQXJtZ0F3SUJBZ0lVU2lkVkR3UEJJNnl6SzR0NkVYNUVoWTJqRDZFd0RRWUpLb1pJaHZjTkFRRUwKQlFBd1lURUxNQWtHQTFVRUJoTUNRMDR4RVRBUEJnTlZCQWdUQ0VoaGJtZGFhRzkxTVFzd0NRWURWUVFIRXdKWQpVekVNTUFvR0ExVUVDaE1EYXpoek1ROHdEUVlEVlFRTEV3WlRlWE4wWlcweEV6QVJCZ05WQkFNVENtdDFZbVZ5CmJtVjBaWE13SUJjTk1qSXdOREF6TURZMU9EQXdXaGdQTWpBM01qQXpNakV3TmpVNE1EQmFNR0V4Q3pBSkJnTlYKQkFZVEFrTk9NUkV3RHdZRFZRUUlFd2hUYUdGdVoyaGhhVEVSTUE4R0ExVUVCeE1JVTJoaGJtZG9ZV2t4RERBSwpCZ05WQkFvVEEyczRjekVQTUEwR0ExVUVDeE1HVTNsemRHVnRNUTB3Q3dZRFZRUURFd1JLWVdOck1JSUJJakFOCkJna3Foa2lHOXcwQkFRRUZBQU9DQVE4QU1JSUJDZ0tDQVFFQXQwRS9lcVUyL3pZYm5xSU9hOGNWb0ppbjJVVlkKb2NBSGlBTlZzMEtBUm5RcENiM0Vsc1NzL3JKbDd3REUxaHFyNDJDQTBVK3V4UG54cWp2UHBzTlZIRnBoeW4rbwpQNEJvWENPMjNkaVcrM20rbVFIMmNac2JJL2JnNWlNcWUxWlYzNEFhZm9jZFhlNlYrNWxpci9CVGlNSDJGaWNkClF5aWJKRzFPOExlb3ltUHJKakxCMHRSWXNGQnR5QWtMQkgvTCtVU0ozbEtJSGRSc2l0NFpvVkVRdUV4WW4vb2IKN3RwdjFpaHRBR29UUUNvKzI2ZEQvYmYyWWdQWjBXeXppNXJLNWM1ZlpZQW51T2NKcDNCenpQdnZvMXNKOGN4MApOOXlYQVh6aWVaSVlxTDJIVStiK2xOR3dDZUJ2dStsWlRrQXNRSmVMcU1nK01KRFNmZERkdVl4T2pRSURBUUFCCm8zOHdmVEFPQmdOVkhROEJBZjhFQkFNQ0JhQXdIUVlEVlIwbEJCWXdGQVlJS3dZQkJRVUhBd0VHQ0NzR0FRVUYKQndNQ01Bd0dBMVVkRXdFQi93UUNNQUF3SFFZRFZSME9CQllFRlB0QXAxR2VTc3VzSGlwOVZMd1pDdnZFQUwwdQpNQjhHQTFVZEl3UVlNQmFBRk1hcDhHVDJUQ3hVOGh5RnQ3S25LNFczM1NMUU1BMEdDU3FHU0liM0RRRUJDd1VBCkE0SUJBUUJZWXdkNzJJSjFST1RwS3NaeHJxN2pZb0h3Wkk5VDNHaGZQaktpRVVpNlBNT2hoamd2NUE3cG8yZGgKMG91aUhINmNBc0dLdGNkcnpTYXhuRUh1aFVtMXlYYTZjRXZYMWxzMms1eHB4azNwczBzVkZPSi80cFZxWnR1cgpVdllIVXdvaXpmZkwvN3h4ektUOGFqMUh0VTVJL3pxclI2MWR1U2kzQ0VoK2NhVVF4MnNiZlJnUWp5RjNMWDJKCkhZWkc0bEhZM2l1R2VjR25hdmFqcllIUFJGUDFLRnF1akhJeWhpL3l4UGpMUzgvRStxQSt2aXhNbzRyQUpRdkEKc280enREVm9oU05WeXVCK2J3aVpBaUl6a0E5cG1CQUl0dEhrcXdEclk2OXI4UnovbEk1dkhkclNxZ0VnV1M4awpMT1FhVkVJTFltQ2cweUJ1bC9aTVBFbXFvUDl4Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
     client-key-data: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFb3dJQkFBS0NBUUVBdDBFL2VxVTIvellibnFJT2E4Y1ZvSmluMlVWWW9jQUhpQU5WczBLQVJuUXBDYjNFCmxzU3MvckpsN3dERTFocXI0MkNBMFUrdXhQbnhxanZQcHNOVkhGcGh5bitvUDRCb1hDTzIzZGlXKzNtK21RSDIKY1pzYkkvYmc1aU1xZTFaVjM0QWFmb2NkWGU2Vis1bGlyL0JUaU1IMkZpY2RReWliSkcxTzhMZW95bVBySmpMQgowdFJZc0ZCdHlBa0xCSC9MK1VTSjNsS0lIZFJzaXQ0Wm9WRVF1RXhZbi9vYjd0cHYxaWh0QUdvVFFDbysyNmRECi9iZjJZZ1BaMFd5emk1cks1YzVmWllBbnVPY0pwM0J6elB2dm8xc0o4Y3gwTjl5WEFYemllWklZcUwySFUrYisKbE5Hd0NlQnZ1K2xaVGtBc1FKZUxxTWcrTUpEU2ZkRGR1WXhPalFJREFRQUJBb0lCQVFDTTcrYUZTYmxSY0dpdgppUTAwUU1uV1dIR0d2VG1jTk5iVitWS1k2a1ZEYWlVQnMrd1UxREFFTm1vRTlYOXM5dGhKcURlS1F4RXp0dEx3CnpNMDRBVFJjK1BvS3hrRThqV0kxc3RYNktwQjcyYmNIY0NYOFc0RDFHUE1BcS8wSkhHNHcxUklMUzVqL1cvWUgKcVlEbnRScFpyR3E1d04xVmdFNUpKclEybDlsOXhTc2ROazE3eEt3K2srNHhxcWdFRTJUTmsxRDlJeVpsYkhnYQpOQUgvcEVObmxuL1VTa0dyVjZtWTMzT0V1OFFWV2RTclo1bGw5Y05pY3gxUEtZMHRLMEw2QmZoRnNYU0RKUUkyCitpSFRvZWoraWR2dng1YUJQWDJaS3QyQTNmMVV3R1huRXM1SmE3QzUvcm5vME9FWmhsOVJydS93VG1CTG55Z2kKdGdJQmt1K0JBb0dCQU13VDZuWTVFWVZSTWx0elVJNDNYUkJVTUJLU201NnVqdzJvM0U3aUZqam4zSGRlMDBMQQpCQWRlSk1OWWg2UElFWDhzUURLNzhqTGRnN3kzMmd1UmNIRDQxUi96dGxvSDlHMlpHNnZHbkp1YU5SLzE5MzJqCi9Fa3ZDK3pXZU5GbWdLY2MzcUJHMTFqUUU5OHdYVFRrSjl3YTVYTkV3NE5BMWJBVk1xeU1ZREF0QW9HQkFPWGgKRmFETk1pZFJLTWpWZUhld0pHNFZKMmgxSDVhd1VHdUZiaXhPc21JMFJZWUNuT0dEd0xDNGlJeWd4YnJBR2wwaQppZHdvVmZPVnNoUGYraDF0UjdrR1RGQjhpQ3ByODNpaExONytYVEVldHV5Rkh4SUNzajkwZ2JlT25NVHFnM3ROClAvOWRtSnZRcG1mM09ZR2VSbDJnZGQxVno0eWtDNnRVcVZ6RnJUUGhBb0dBVEtDdHlQWmt2Y3BmUGpkdVovZ2gKMlovQzdUWmZlSlhTNFM0bWl2Z1pvQVJ2bytMWE1Ka282aHRQY29vclpEUWJYY1VmMWV6OFpGMEl1alBPaThsdwpqdnJnQzc5WEdUY2pjSU90QURMeld2bnNPTFFDMmdwWkVLRzV1SlJQaVZFVHZhdjVhL1V0cHd0NmFyT2VTOTNmCm1hWC93ZWh3QVRpM0JBYnhvQmlWaFlFQ2dZQi9FVFlsVm9kOG1DNFZKWHFibmkvazhhaUE0d3o4L0tUWGFrQUcKR2RJYzJvdjdrWUlxWGV1clE3V25GazkxOVM0ZGdUUDNFQXpDd21KVy9oMkJHcURrczRpSGpPNnZsRkJXdzdETAo2b3FVMWtlQzRlclV4OHpEcXFEeFY5RnNQNzFCOE9lSlByRlduN1Q4RHZvb25kYURkbWp3V2JpS0l6dVlEd28zCkQ4VzN3UUtCZ0Jyc1dKcFoxMGw3dVUrMnhTUkQ5QzhlNjNVRU5tcG93bjBQODNraStxOGhGVmZLdW5KTU9Od1cKRTJYdWovVWJrUnNQZmVxcGN2UFZkR1g0TUNJNVc1M094dW5PbExxQkZvS1hUd1gzTzR2MTRrMVdhWFdzdm15aQpxbS8zcmRSTkk1OStaM09aZm5WR3lWZkcyMm55amJzMkJTeTZ1cVNMQVZvcS9pczNzY0doCi0tLS0tRU5EIFJTQSBQUklWQVRFIEtFWS0tLS0tCg==
     token: eyJhbGciOiJSUzI1NiIsImtpZCI6ImQ3UV9STlJ4TEpQRS1XWmNHblFmaHJOUmdUaW5jMVJvSERqeE9VajR1LWcifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJtYWdlZHUiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlY3JldC5uYW1lIjoibWFnZWR1LXRva2VuLXF2bmJiIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6Im1hZ2VkdSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjJmYWZjZjBlLTRkYzUtNDVmOC1iOWY4LTE5MWIxOTdiNzVjOCIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDptYWdlZHU6bWFnZWR1In0.woEJpQGXMqDsp_RjcQrga-UoZ1NFAMcwgVhFaVInobrWIClEykQvrfFChFSwNWYvlgIWB5EqfnviQWUSATiqp5r1hH2sIY50HSQBFKuZKmXQuLf_NB2Y-4rF-paVuX6VxtnlmYz6wMWMCAsid7gBA_G7qF73oFJF5d8n2JHsIlUyrPh9BK0HJ3_vC7YxNBfC5OAH3knWcysVS1iEoN_y9RVHFytYgQqL2659S4XSBc76A7cneyQJ6ZsZEbZRyDJ6FxJs4cTJNPuaIcyMcIB1goX5bLIrj3LrHcd5A3rawXM4WEjdk4YbZVuMCCEeGXSHh1h6rPKnEkAjusoVQJIlzw
-#token前面有四个空格
+  #token前面有四个空格
 
 
 ##### 创建Jack普通用户，隶属于组homsom:ops
@@ -7013,16 +7032,16 @@ clusters:
     certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURsRENDQW55Z0F3SUJBZ0lVUmpZUEdzSUNJYk9DMXNPdE1sVDVNWXhXemtBd0RRWUpLb1pJaHZjTkFRRUwKQlFBd1lURUxNQWtHQTFVRUJoTUNRMDR4RVRBUEJnTlZCQWdUQ0VoaGJtZGFhRzkxTVFzd0NRWURWUVFIRXdKWQpVekVNTUFvR0ExVUVDaE1EYXpoek1ROHdEUVlEVlFRTEV3WlRlWE4wWlcweEV6QVJCZ05WQkFNVENtdDFZbVZ5CmJtVjBaWE13SUJjTk1qSXdOakl4TURVME5UQXdXaGdQTWpFeU1qQTFNamd3TlRRMU1EQmFNR0V4Q3pBSkJnTlYKQkFZVEFrTk9NUkV3RHdZRFZRUUlFd2hJWVc1bldtaHZkVEVMTUFrR0ExVUVCeE1DV0ZNeEREQUtCZ05WQkFvVApBMnM0Y3pFUE1BMEdBMVVFQ3hNR1UzbHpkR1Z0TVJNd0VRWURWUVFERXdwcmRXSmxjbTVsZEdWek1JSUJJakFOCkJna3Foa2lHOXcwQkFRRUZBQU9DQVE4QU1JSUJDZ0tDQVFFQTRZUHhlSUJmM2xuNWhhMUVaTnkxaHhJU21qTVoKUDd0bFlrWVZkd3pWVDFSVHNhN2ZMS1FESE5BVXJ2NWNPV05hbWVnL2sxVm5kbkt2M3VvS0xtVjhmWUdlcWlmTAp0WDUyZTJoSDN0dThoV3NNMmN4UFRKekViaHRxcStkSkJ4S0NYUjQ0TGFkRHhnY3RidnZPM3NuS3JjY1RmR0x4CkRaZU4rbW9uZFZMTGVKeXVhbmU0UkVWa25pcnRER2o3dHVMSGVGNnY3Ykw1YkVlcXMxL1ovdGFYQkZqMVZRQ2kKMkNWa0Z4bXo1MWR5WS9Yb1BGWmZ5N2lXcVBkWnFRVExSVDd6RGNxRCtHUnVOZjVtd1hzcWRBS0l6TFZpTjJOMwpzQmtKaGJCS2gzeGE4WlU5YTg4d0xkSXdyM0dZa2M0VU9WcWQzdC9WT255Szd2aWdhbVkyWXZmVGxRSURBUUFCCm8wSXdRREFPQmdOVkhROEJBZjhFQkFNQ0FRWXdEd1lEVlIwVEFRSC9CQVV3QXdFQi96QWRCZ05WSFE0RUZnUVUKNFZMaUNlUVFoaDd3NmRGQkw2U3R2ZWxrTWVNd0RRWUpLb1pJaHZjTkFRRUxCUUFEZ2dFQkFHYWw4L1hveks0bQpLM3JEaHpVdHg1TVVjbkFycGlwa2xKZmlXSWx0anJIRHcxS3loSWk5am5UYi92NzZyN1pmMnJVQ3dXdWdoQVdYCnBuYVF3N0RKMUcxaFFNc3dIZElZZEtFMGtOYU5RekhHNUxNY2pJSi9ydXZvTjZxZFoxalFlM2I5aVJiSUI5QlEKQm1md2xDMmtqalZlTi9GMnA3UERaT3hPeXNhTHdhdDBLN2lsTEZoQTZuSUVtSEJiK0pTQldWVFJvQWNMSERFSAo2ZlFrOEpCQWRqUTBUaVg2T1NHeDlGOEFsdDFjN2FVOFFSc2swL3g5UXZTRkxySXJkQnBDN2wrV2JZNnlzZTE4CjVhQkpUd0x5cFoySDJpb2FBL0lyN3FWbVNhM2NRanpycG4zanNHWVZBWENXSkJvaDNJbHAwc1dVVXpOaUQrcjcKYXlNeGhUQ0lxcFE9Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
     server: https://k8s-api.hs.com:6443
   name: k8s-pro
-contexts:
+    contexts:
 - context:
     cluster: k8s-pro
     namespace: default
     user: Jack
   name: k8s-pro-context
-current-context: k8s-pro-context
-kind: Config
-preferences: {}
-users:
+    current-context: k8s-pro-context
+    kind: Config
+    preferences: {}
+    users:
 - name: Jack
   user:
     client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUQyRENDQXNDZ0F3SUJBZ0lVSlJJTmRidGNtaitOYThiR2VMMHpOV0o2WC9Fd0RRWUpLb1pJaHZjTkFRRUwKQlFBd1lURUxNQWtHQTFVRUJoTUNRMDR4RVRBUEJnTlZCQWdUQ0VoaGJtZGFhRzkxTVFzd0NRWURWUVFIRXdKWQpVekVNTUFvR0ExVUVDaE1EYXpoek1ROHdEUVlEVlFRTEV3WlRlWE4wWlcweEV6QVJCZ05WQkFNVENtdDFZbVZ5CmJtVjBaWE13SUJjTk1qSXdOakkwTURZek9EQXdXaGdQTWpBM01qQTJNVEV3TmpNNE1EQmFNR2d4Q3pBSkJnTlYKQkFZVEFrTk9NUkV3RHdZRFZRUUlFd2hUYUdGdVoyaGhhVEVSTUE4R0ExVUVCeE1JVTJoaGJtZG9ZV2t4RXpBUgpCZ05WQkFvVENtaHZiWE52YlRwdmNITXhEekFOQmdOVkJBc1RCbE41YzNSbGJURU5NQXNHQTFVRUF4TUVTbUZqCmF6Q0NBU0l3RFFZSktvWklodmNOQVFFQkJRQURnZ0VQQURDQ0FRb0NnZ0VCQUxxQ1p3WlVHZWtBTEZpYnBnTTcKeFVVaGl2emFxTnpUTTQ1aHpqaG5pTHNTaUlMVWVBUDRjQ29BMURtQmRzQ2oxS2dRL25jdkNVM2ZVbHRnRlp6bApyWnFQeXFyZTN6NGF2UldWS1BoK215dDQ3K3J2UkZtdFVnempZVUZkeFJuNU9uY3hwc1FOVnpYbnY4UW9NdU1FCmxlWXJUekFwaGw4RkxwMkxnUlZxVDlNUk1NZzZDL2hYYmNrSXU3bXpjemRWZXJMMWNqVm82MFdlQUFJVzQ2eDYKdy9SRER6VW5ZMGRoQjVwclhWNm42WHBmbXZlZXVlUFUwRytaRUlOQit3cVhLemRVQVJsZ0c1YXB3YTRQTnhkUwppTENsMjlmNkJuYWpwSkljbTBNV21TNmMra3Rzc1pmVjJnSjJSYWlheUt4T0dLNVp3WDE2Q3lpUU0xcG9YS1VHCkt6TUNBd0VBQWFOL01IMHdEZ1lEVlIwUEFRSC9CQVFEQWdXZ01CMEdBMVVkSlFRV01CUUdDQ3NHQVFVRkJ3TUIKQmdnckJnRUZCUWNEQWpBTUJnTlZIUk1CQWY4RUFqQUFNQjBHQTFVZERnUVdCQlFEVnEyV3hFSGNIaWJsS2FuNAplVVllYUxqN0pUQWZCZ05WSFNNRUdEQVdnQlRoVXVJSjVCQ0dIdkRwMFVFdnBLMjk2V1F4NHpBTkJna3Foa2lHCjl3MEJBUXNGQUFPQ0FRRUEyancwSmJ0ckNSeHRhQU5sR2ZieEttSXl6REVXSlFKMHliMEdaNy9iZHp6Tk1wTmcKN0llaStlSUxlZmUrWm5FbXl3T0phWXV2YjIySmpKbHZXMWFjeTY5WURabjgvUDVKUkhURWJJZUcrYWpyZVhSeApJdlo2VytBdjlHQjlnUkoxcFlFV29TR2s5Rk9ONlQzVk1sQnlVczRlTjUxNC80OVY2elRRaGRCVHdJRW0wQVhQCmxUbmtUOXdwenRBR0RNYmFOQlp6L01MQ1VCZFlLZ05oam9hZ09GU29qSzkvYmhFZjMvbXJ4dDhTVWhQZ042UUQKWDhycml5YlNwY0dKL3BWcGhQdDQvNHVtM1ozcnZ1Y2p1VDdEVXVRVkNIVHdqTlJJZkhXS05tZjJYeER5ZmhLdApMdnU1OE9KcDhZOFZCVmlrRmlnZlIwVkljZFRWdi9oRi9YOXZsUT09Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K
@@ -7067,7 +7086,7 @@ metadata:
 subjects:
 - kind: User 
   name: Jack
-roleRef:
+  roleRef:
   kind: Role
   name: role-jack
   apiGroup: rbac.authorization.k8s.io
@@ -7117,7 +7136,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: sa-jack
-roleRef:
+  roleRef:
   kind: Role
   name: role-jack
   apiGroup: rbac.authorization.k8s.io
@@ -7200,8 +7219,8 @@ items:
     natOutgoing: true
     nodeSelector: all()
     vxlanMode: Never
-kind: IPPoolList
-metadata:
+  kind: IPPoolList
+  metadata:
   resourceVersion: "5014664"
 
 --定义 ippool 资源
@@ -7218,8 +7237,8 @@ items:
     natOutgoing: true
     nodeSelector: all()
     vxlanMode: Never
-calicoctl apply -f pool.yaml		#创建新的
-calicoctl patch ippool default-ipv4-ippool -p '{"spec": {"disabled": "true"}}'		#将旧的 ippool 禁用，最后创建 workload 测试
+  calicoctl apply -f pool.yaml		#创建新的
+  calicoctl patch ippool default-ipv4-ippool -p '{"spec": {"disabled": "true"}}'		#将旧的 ippool 禁用，最后创建 workload 测试
 
 
 
@@ -7394,7 +7413,7 @@ inhibit_rules: #抑制的规则
 	target_match:
 	  severity: 'warning' #警告级别
 	equal: ['alertname', 'dev', 'instance']
-###prometheus远程写入VictoriaMetrics，甚至可以替代prometheus
+      ###prometheus远程写入VictoriaMetrics，甚至可以替代prometheus
 
 
 #k8s手动部署prometheus
@@ -7663,7 +7682,7 @@ subjects:
 - namespace: monitoring
   kind: ServiceAccount
   name: monitor
-root@k8s-master01:~/k8s/yaml/prometheus-case# kubectl apply -f case3-1-prometheus-serviceaccount.yml
+  root@k8s-master01:~/k8s/yaml/prometheus-case# kubectl apply -f case3-1-prometheus-serviceaccount.yml
 
 ----配置prometheus-server
 root@k8s-master01:~/k8s/yaml/prometheus-case# cat case3-2-prometheus-deployment.yaml
@@ -8084,7 +8103,7 @@ scrape_configs:
       services: []
     - server: '172.168.2.29:8500'
       services: []
-    relabel_configs:
+      relabel_configs:
       - source_labels: [__meta_consul_service]
         regex: node.*
         action: keep
@@ -8121,10 +8140,10 @@ root@prometheus01:/usr/local/prometheus# cat prometheus.yml
     - names: ["_k8s._tcp.k8s.hs.com"]
       type: SRV
       refresh_interval: 10s
-root@prometheus01:/usr/local/prometheus# systemcel restart prometheus
---ubuntu下使用systemd-resolve需要刷新缓存
-root@prometheus01:/usr/local/prometheus# systemd-resolve --flush-caches
---去prometheusUI验证是否成功
+      root@prometheus01:/usr/local/prometheus# systemcel restart prometheus
+      --ubuntu下使用systemd-resolve需要刷新缓存
+      root@prometheus01:/usr/local/prometheus# systemd-resolve --flush-caches
+      --去prometheusUI验证是否成功
 
 #-------kube-state-metrics组件
 URL: https://github.com/kubernetes/kube-state-metrics
@@ -8133,19 +8152,19 @@ Kube-state-metrics:通过监听 API Server 生成有关资源对象的状态指�
 1. 使用rolebinding去绑定role和user,此时user有了名称空间级别的role权限
 2. 使用clusterrolebinding去绑定clusterrole和user，此时user有了集群级别的clusterrole权限
 3. 使用rolebinding绑定clusterrole和user，此时user有了名称空间的clusterrole权限，也就是user有了自己所在名称空间的所有关于clusterrole角色当中的权限
---部署kube-state-metrics 2.2.4，跟kubernetes版本有要求
-root@k8s-master01:~/k8s/yaml/prometheus-case# cat case5-kube-state-metrics-deploy.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: kube-state-metrics
-  namespace: kube-system
-spec:
-  replicas: 1
-  selector:
+   --部署kube-state-metrics 2.2.4，跟kubernetes版本有要求
+   root@k8s-master01:~/k8s/yaml/prometheus-case# cat case5-kube-state-metrics-deploy.yaml
+   apiVersion: apps/v1
+   kind: Deployment
+   metadata:
+    name: kube-state-metrics
+    namespace: kube-system
+   spec:
+    replicas: 1
+    selector:
     matchLabels:
       app: kube-state-metrics
-  template:
+    template:
     metadata:
       labels:
         app: kube-state-metrics
@@ -8214,7 +8233,7 @@ spec:
     targetPort: 8080
     nodePort: 31666
     protocol: TCP
-  selector:
+    selector:
     app: kube-state-metrics
 ---
 root@k8s-master01:~/k8s/yaml/prometheus-case# kubectl apply -f case5-kube-state-metrics-deploy.yaml
@@ -8230,7 +8249,7 @@ curl http://172.168.2.21:31666/metrics	#所有deploy,pod,node的状态
   - job_name: 'kube-state-metrics'
     static_configs:
     - targets: ["172.168.2.21:31666"]
-root@prometheus01:/usr/local/prometheus# systemctl restart prometheus.service
+    root@prometheus01:/usr/local/prometheus# systemctl restart prometheus.service
 
 --安装grafana
 sudo apt-get install -y adduser libfontconfig1
@@ -8252,13 +8271,13 @@ WEB访问：http://172.168.2.27:3000
       bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
       tls_config:
         insecure_skip_verify: true
-    bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
-    tls_config:
+      bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+      tls_config:
       insecure_skip_verify: true
-    relabel_configs:
+      relabel_configs:
     - action: labelmap
       regex: __meta_kubernetes_node_label_(.+)
-<!--     - action: labelmap
+      <!--     - action: labelmap
       regex: __meta_kubernetes_node_label_(.+)
     - target_label: __address__
       replacement: kubernetes.default.svc:443
@@ -8342,7 +8361,7 @@ spec:
     port: 80
     protocol: TCP
     targetPort: 8080
-  type: NodePort
+    type: NodePort
 ---
 root@k8s-master01:~/k8s/yaml/prometheus-case/app-monitor-case/tomcat/yaml# kubectl apply -f .
 
@@ -8351,8 +8370,8 @@ root@prometheus01:/usr/local/prometheus# cat prometheus.yml
   - job_name: 'kubernetes-tomcat-metrics'
     static_configs:
     - targets: ["172.168.2.21:31080"]
-root@prometheus01:/usr/local/prometheus# systemctl restart prometheus
-导入tomcat-模板
+    root@prometheus01:/usr/local/prometheus# systemctl restart prometheus
+    导入tomcat-模板
 
 
 
@@ -8407,34 +8426,34 @@ spec:
     port: 6379
     protocol: TCP
     targetPort: 6379
-  type: NodePort
-root@k8s-master01:~/k8s/yaml/prometheus-case/app-monitor-case/redis/yaml# cat redis-exporter-svc.yaml
-kind: Service  #service 类型
-apiVersion: v1
-metadata:
-  annotations:
+    type: NodePort
+    root@k8s-master01:~/k8s/yaml/prometheus-case/app-monitor-case/redis/yaml# cat redis-exporter-svc.yaml
+    kind: Service  #service 类型
+    apiVersion: v1
+    metadata:
+    annotations:
     prometheus.io/scrape: 'true'
     prometheus.io/port: "9121"
-  name: redis-exporter-service
-  namespace: studylinux-net
-spec:
-  selector:
+    name: redis-exporter-service
+    namespace: studylinux-net
+    spec:
+    selector:
     app: redis
-  ports:
+    ports:
   - nodePort: 31082
     name: prom
     port: 9121
     protocol: TCP
     targetPort: 9121
-  type: NodePort
+    type: NodePort
 ---
 --配置prometheus增加redis的监控
 root@prometheus01:/usr/local/prometheus# cat prometheus.yml
   - job_name: 'kubernetes-redis-metrics'
     static_configs:
     - targets: ["172.168.2.21:31082"]
-root@prometheus01:/usr/local/prometheus# systemctl restart prometheus
---redis模板14615
+    root@prometheus01:/usr/local/prometheus# systemctl restart prometheus
+    --redis模板14615
 
 
 
@@ -8515,7 +8534,7 @@ root@prometheus01:/usr/local/prometheus# cat prometheus.yml
   - job_name: 'kubernetes-haproxy-server-metrics'
     static_configs:
     - targets: ["172.168.2.12:9101"]
-root@prometheus01:/usr/local/prometheus# systemctl restart prometheus
+    root@prometheus01:/usr/local/prometheus# systemctl restart prometheus
 
 --haproxy模板367/2428
 
@@ -8533,13 +8552,13 @@ http {
     vhost_traffic_status_filter_by_host on;
 
 	server{
-        listen 8089;
-        #server_name 192.168.13.50;
+	    listen 8089;
+	    #server_name 192.168.13.50;
 		server_name 127.0.0.1
-        location /status {
-                vhost_traffic_status_display;
-                vhost_traffic_status_display_format html;		#还可以是json和prometheus格式
-        }
+	    location /status {
+	            vhost_traffic_status_display;
+	            vhost_traffic_status_display_format html;		#还可以是json和prometheus格式
+	    }
 	}
 }
 --下载nginx-vts-exporter进行监控
@@ -8612,11 +8631,11 @@ Events:  <none>
       bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
       tls_config:
         insecure_skip_verify: true
-    tls_config:
+      tls_config:
       ca_file: /usr/local/prometheus/k8s/ca.pem
       cert_file: /usr/local/prometheus/k8s/etcd.pem
       key_file: /usr/local/prometheus/k8s/etcd-key.pem   
-    relabel_configs:
+      relabel_configs:
     - source_labels: [__meta_kubernetes_service_label_component_kubernetes_io_name]	#此名称为上面创建service使用的label
       action: keep
       regex: etcd
@@ -9192,13 +9211,13 @@ global:
   smtp_auth_password: 'password'
 templates:
   - '/usr/local/alertmanager/email.tmpl'
-route:
-  receiver: 'dingding'		#配置告警通知时，最好将告警方式配置在这里，这里表示没有匹配到的告警将由此方式发出
-  group_by: ['alertname']
-  group_wait: 5s
-  group_interval: 1s
-  repeat_interval: 4h
-  routes:
+    route:
+    receiver: 'dingding'		#配置告警通知时，最好将告警方式配置在这里，这里表示没有匹配到的告警将由此方式发出
+    group_by: ['alertname']
+    group_wait: 5s
+    group_interval: 1s
+    repeat_interval: 4h
+    routes:
   - receiver: 'dingding'
     group_wait: 5s
     continue: true
@@ -9209,7 +9228,7 @@ route:
     continue: true
     match_re:
       alertname: .*[a-z].*
-receivers:
+    receivers:
 - name: 'email'
   email_configs:
   - to: '{{ template "email.to" . }}'
@@ -9219,7 +9238,7 @@ receivers:
   webhook_configs:
   - url: 'http://172.168.2.27:8060/dingtalk/dingding/send'
     send_resolved: true
-inhibit_rules:
+    inhibit_rules:
   - source_match:
       alertname: linuxNodeDown
     target_match:
@@ -9337,13 +9356,13 @@ global:
 templates:
   - '/usr/local/alertmanager/email.tmpl'
   - '/usr/local/alertmanager/wechat-new.tmpl'
-route:
-  receiver: 'webhook'
-  group_by: ['alertname']
-  group_wait: 5s
-  group_interval: 1s
-  repeat_interval: 4h
-  routes:
+    route:
+    receiver: 'webhook'
+    group_by: ['alertname']
+    group_wait: 5s
+    group_interval: 1s
+    repeat_interval: 4h
+    routes:
   - receiver: 'dingding'
     group_wait: 5s
     continue: true
@@ -9354,7 +9373,7 @@ route:
     continue: true
     match_re:
       alertname: .*[a-z].*
-receivers:
+    receivers:
 - name: 'email'
   email_configs:
   - to: '{{ template "email.to" . }}'
@@ -9371,7 +9390,7 @@ receivers:
     agent_id: 100002
     api_secret: G-mb4SP5Xn-Id75MjHrfbYzIkDLcbiLkunX0
     send_resolved: true
-inhibit_rules:
+    inhibit_rules:
   - source_match:
       alertname: linuxNodeDown
     target_match:
@@ -9874,13 +9893,13 @@ subjects:
 - namespace: monitoring
   kind: ServiceAccount
   name: monitor
-root@ansible:~/k8s/prometheus# cat 04-kube-state-metric.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
+  root@ansible:~/k8s/prometheus# cat 04-kube-state-metric.yaml
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
   name: kube-state-metrics
   namespace: kube-system
-spec:
+  spec:
   replicas: 1
   selector:
     matchLabels:
@@ -9954,7 +9973,7 @@ spec:
     targetPort: 8080
     nodePort: 30005
     protocol: TCP
-  selector:
+    selector:
     app: kube-state-metrics
 ---
 ---------------prometheus-config----------------
@@ -9967,10 +9986,10 @@ spec:
       bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
       tls_config:
         insecure_skip_verify: true
-    bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
-    tls_config:
+      bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+      tls_config:
       insecure_skip_verify: true
-    relabel_configs:
+      relabel_configs:
     - source_labels: [__address__]
       regex: '(.*):10250'
       replacement: '${1}:9100'
@@ -9978,7 +9997,7 @@ spec:
       action: replace
     - action: labelmap
       regex: __meta_kubernetes_node_label_(.+)
- 
+
   - job_name: 'kubernetes-node-cadvisor'
     metrics_path: /metrics
     scheme: https
@@ -9988,10 +10007,10 @@ spec:
       bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
       tls_config:
         insecure_skip_verify: true
-    bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
-    tls_config:
+      bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+      tls_config:
       insecure_skip_verify: true
-    relabel_configs:
+      relabel_configs:
     - action: labelmap
       regex: __meta_kubernetes_node_label_(.+)
     - target_label: __address__
@@ -10010,10 +10029,10 @@ spec:
       bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
       tls_config:
         insecure_skip_verify: true
-    bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
-    tls_config:
+      bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+      tls_config:
       insecure_skip_verify: true
-    relabel_configs:
+      relabel_configs:
     - action: labelmap
       regex: __meta_kubernetes_node_label_(.+)
 
@@ -10026,10 +10045,10 @@ spec:
       bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
       tls_config:
         insecure_skip_verify: true
-    bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
-    tls_config:
+      bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+      tls_config:
       insecure_skip_verify: true
-    relabel_configs:
+      relabel_configs:
     - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
       action: keep
       regex: default;kubernetes;https
@@ -10043,10 +10062,10 @@ spec:
       bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
       tls_config:
         insecure_skip_verify: true
-    bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
-    tls_config:
+      bearer_token_file: /usr/local/prometheus/k8s/prometheus_token
+      tls_config:
       insecure_skip_verify: true
-    relabel_configs:
+      relabel_configs:
     - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
       action: keep
       regex: true
