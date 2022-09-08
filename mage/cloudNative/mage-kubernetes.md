@@ -1,15 +1,10 @@
 # mage-kubernetes 1.21
 
-<pre>
+
 
 ## kubernetes高可用集群的典型架构
 
-
-
 ![kubernetes-HA](https://github.com/jacknotes/linux/raw/master/image/kubernetes-ha.jpg)
-
-
-
 
 ### 控制面组件：
 
@@ -57,7 +52,7 @@ metadata:
 
 ## 部署环境
 
-### k8s生产集群部署环境：
+##### k8s生产集群部署环境：
 kubernetes-master: 3个
 etcd: 3个
 harbor: 2个高可用
@@ -69,7 +64,7 @@ node: 48C 256G ssd/2T 10g/25g网卡 物理机
 master: 16c 16G ssd/200G 物理机或虚拟机
 etcd: 8c 16G ssd/150g
 
-### 测试环境配置：
+##### 测试环境配置：
 172.168.2.11	ansible
 172.168.2.21	kubernetes-master01		etcd01
 172.168.2.22	kubernetes-master02		etcd02
@@ -103,6 +98,7 @@ net.ipv4.ip_nonlocal_bind = 1
 ```
 
 ## k8s二进制部署高可用集群
+```
 1. cobbler安装ubuntu18.04.5并安装新版本ansible
 root@ansible:~# apt install -y python3-pip
 root@ansible:~# pip3 install ansible -i https://mirrors.aliyun.com/pypi/simple/
@@ -408,11 +404,12 @@ NAME           STATUS                     ROLES    AGE   VERSION
 注：
 -----etcd、kube-apiserver、kubelet此3个服务都有自己的一套证书，并且信任同一个CA，其中etcd启动服务时使用自己的一套证书配置启动。其中kubelet启动服务时也使用自己的一套证书配置启动。kube-apiserver除了也使用自己的一套证书配置启动外，还在服务配置了访问etcd的证书、私钥，kubelet的证书、私钥，kube-apiserver配置访问etcd和kubelet的证书私钥是跟kube-apiserver一样的证书私钥文件。当kube-apiserver访问etcd或者kubelet时使用自己的私钥加密，并将自己的公钥发送给etcd或者kubelet，从而etcd或kubetlet可以使用kube-apiserver的公钥解密。反之亦然。
 ----kube-controller-manager、kube-scheduler、kube-proxy他们的证书和私钥都配置在kubeconfig文件中
+```
 
 
 
-
-#####20220604----配置kube-controller-manager驱逐不健康节点的时间
+##### 20220604----配置kube-controller-manager驱逐不健康节点的时间
+```
 ###适用于kubernetes v1.13之前
 root@k8s-master01:~# cat /etc/systemd/system/kube-controller-manager.service
 [Unit]
@@ -561,8 +558,9 @@ root@k8s-master01:~/git/k8s-deploy/frontend-www-homsom-com-test/deploy# ssh 172.
   --node-monitor-period=5s \
   --node-monitor-grace-period=30s
 -----
+```
 
-
+```
 4.2.7 安装node
 --可以在安装node时调整相关配置，例如kube-proxy ipvs模式，ipvs调度算法等
 root@ansible:/etc/kubeasz# vim roles/kube-node/templates/kube-proxy-config.yaml.j2
@@ -1425,9 +1423,10 @@ NAME           STATUS                     ROLES    AGE    VERSION
 172.168.2.24   Ready                      node     40h    v1.21.5
 172.168.2.25   Ready                      node     40h    v1.21.5
 172.168.2.26   Ready                      node     121m   v1.21.5
+```
 
-
-
+### etcd配置
+```
 5 etcd客户端使用，数据备份与恢复
 etcd服务器配置：SSD硬件，大内存，物理机最好
 复制（镜像）集群: mysql,redis sentinal,etcd,zookeeper,rabbitmq 
@@ -1707,8 +1706,6 @@ root@k8s-master01:~# for ip in ${NODE_IPS}; do ETCDCTL_API=3 /usr/local/bin/etcd
 
 
 
-
-
 ###5.6 模拟etcd灾难故障
 root@k8s-master01:~/k8s# export NODE_IPS='172.168.2.21 172.168.2.22 172.168.2.23'
 root@k8s-master01:~/k8s# for ip in ${NODE_IPS}; do ETCDCTL_API=3 /usr/local/bin/etcdctl --endpoints=https://${ip}:2379 --cacert=/etc/kubernetes/ssl/ca.pem --cert=/etc/kubernetes/ssl/etcd.pem --key=/etc/kubernetes/ssl/etcd-key.pem --write-out=table endpoint status ; done
@@ -1811,8 +1808,10 @@ PLAY RECAP *********************************************************************
 172.168.2.21               : ok=8    changed=6    unreachable=0    failed=0
 172.168.2.22               : ok=8    changed=6    unreachable=0    failed=0
 172.168.2.23               : ok=8    changed=6    unreachable=0    failed=0
+```
 
-
+### kubernetes
+```
 5.8 KubernetesAPI简介
 1. 命令式API
 2. 声明式API
@@ -1844,10 +1843,10 @@ clusters:
     client-certificate-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUQxekNDQXIrZ0F3SUJBZ0lVYkRTc0dCeDZ1UEdLT2YxR1g5b1RKb1FmOEE0d0RRWUpLb1pJaHZjTkFRRUwKQlFBd1lURUxNQWtHQTFVRUJoTUNRMDR4RVRBUEJnTlZCQWdUQ0VoaGJtZGFhRzkxTVFzd0NRWURWUVFIRXdKWQpVekVNTUFvR0ExVUVDaE1EYXpoek1ROHdEUVlEVlFRTEV3WlRlWE4wWlcweEV6QVJCZ05WQkFNVENtdDFZbVZ5CmJtVjBaWE13SUJjTk1qSXdNekEwTVRNek5UQXdXaGdQTWpBM01qQXlNakF4TXpNMU1EQmFNR2N4Q3pBSkJnTlYKQkFZVEFrTk9NUkV3RHdZRFZRUUlFd2hJWVc1bldtaHZkVEVMTUFrR0ExVUVCeE1DV0ZNeEZ6QVZCZ05WQkFvVApEbk41YzNSbGJUcHRZWE4wWlhKek1ROHdEUVlEVlFRTEV3WlRlWE4wWlcweERqQU1CZ05WQkFNVEJXRmtiV2x1Ck1JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBNDZNMkRia0VQLzNEM0dMYkppVUgKNUN3U2l6SkFCRHJxbE84ZWlMV3QweVZRczRzOEtDUHNBVmMwOTU0dVNJVkp3aUJrMkt6MlBhOHpIS1dNQ1BobAp0LzdaNzdwdytkUUVJeUVXT3p3aWdJKzZ6bW11YmpYWFRSZVFxb2ZHc3UrOEFvVU1Ya2NsczhualhrZjIvY3l2CnVWdmpyVUNDSkV0bjFvT0dhWmhTTUZoRi93TEJpaFVOTEZsb1lmbWNTSGZZSThkVEhZWklLaUk5SUNZY2JCWDEKbFBKMEE1bmpNdUk3dHhDSklpSHJiM3dvaEVsNVdkcmhkWDJFcTR0Rjc1ckJ0YjF6Q0RoczlITmswU0NqTmxpQgowNmI1K2ZnVXUwKzZKY1RtY3o1aGxmaTJJa3hFZkova3EzaGtTaGJCandhK09wZGJ6NEV6bmFPUURLaFNkbDV2Ckh3SURBUUFCbzM4d2ZUQU9CZ05WSFE4QkFmOEVCQU1DQmFBd0hRWURWUjBsQkJZd0ZBWUlLd1lCQlFVSEF3RUcKQ0NzR0FRVUZCd01DTUF3R0ExVWRFd0VCL3dRQ01BQXdIUVlEVlIwT0JCWUVGS0RKeGJXZy9VNlpUZ1pwZzIwVwpTbXFTZGVZek1COEdBMVVkSXdRWU1CYUFGTWFwOEdUMlRDeFU4aHlGdDdLbks0VzMzU0xRTUEwR0NTcUdTSWIzCkRRRUJDd1VBQTRJQkFRQW4ra2hYUGM3MGFmaWptWEYvSnJJanZWWk9DODRHZGhoVzlzK091K2hPOWtMT3BaaVUKRXlHMGw4UWxCa3g5UXRwT0gxQytTS2w5OFZWYkxEdk9rQlI5NmRONHNVTEZRaUJqZDRoN2ozS0FhRkhGQkh4ZQpEMmhrRk5YMTVIU1FWNzc1RXVkMTRxTndKYkluN2hNUlgzeERMblZzM3FPWmFuN3F3KzNtVzVFOWVIbEVTS0dnCnl6L3NPRm1vNWpCNDdyMUFFYTArS1QvUUhJNWpUS3B1aGpEcGM2Yjlqc3NyUUVoNGIvTXVqZG16d1hWbDVHSmEKMlJxWk4rRlJvV1M1MnNWd0xsVG0vY0M4UjlIN1pKNE8rNnNSVFRiTFlBZ2hQQjVmdUd3RkY2OXdrbWZEOCtBMApTWE1LNHkrdllCaEV2ZjVVV3lSZXN1SXdEQVZGVXRzVGhIbEMKLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=ccc
     client-key-data: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBNDZNMkRia0VQLzNEM0dMYkppVUg1Q3dTaXpKQUJEcnFsTzhlaUxXdDB5VlFzNHM4CktDUHNBVmMwOTU0dVNJVkp3aUJrMkt6MlBhOHpIS1dNQ1BobHQvN1o3N3B3K2RRRUl5RVdPendpZ0krNnptbXUKYmpYWFRSZVFxb2ZHc3UrOEFvVU1Ya2NsczhualhrZjIvY3l2dVZ2anJVQ0NKRXRuMW9PR2FaaFNNRmhGL3dMQgppaFVOTEZsb1lmbWNTSGZZSThkVEhZWklLaUk5SUNZY2JCWDFsUEowQTVuak11STd0eENKSWlIcmIzd29oRWw1CldkcmhkWDJFcTR0Rjc1ckJ0YjF6Q0RoczlITmswU0NqTmxpQjA2YjUrZmdVdTArNkpjVG1jejVobGZpMklreEUKZkova3EzaGtTaGJCandhK09wZGJ6NEV6bmFPUURLaFNkbDV2SHdJREFRQUJBb0lCQVFEZDBjNzhkRXYxNTF5UwpSeXB4OHlmTGFqN3ZzUm04aFlUTmVHMXlua2N5TjJ4NmFMVklFQ2tMN1dUSjNqUVBxd0tDem5vMndlUjVtMTNkCkRseDA2VWlGa1N2aGRQWmVIQUdrRWJ2T0lQMGw5ZWo4OXZKb3BzS1VkdUFickk4dEVudE1vVVc2SU81V1VlYmoKbXBET0pFVWdCTERKeE5DTWVZWkgvSVpnSTNRRGNrb1RCWXJHR2pzQ096UUNQS3dTRG5ZYlFTM2IzcUtBZnVMYwpUNjczdnZPUFZWV1ROc3l4cExId2xWcFpZUWFCS09DVXZxdk81V05Xdmp2Q3NFeW85TjJxZmlVaDJqUk1ETzEwCnp0WnEvRWJ4NGxSaDMvcGYzcEVHK0lmK21JN2VYOCtjV0ZRYUxCZk1xTjd1UG5OOWsrUll6Nk8zWnVMcm9zN08KWkNiVWh0cWhBb0dCQVArdXdDaUNyMndIMlNsbzFYK0Z1VEh2SDFHamtydDE5UkJiMzlqMHdyNnJrMUMvYU13Ngp5bHgwdmg3WXRKWmc4NXJHTzFxV0lraWdyc21yNndQL3d2UzBmcUwza09qdm9ZUnBEV1dpRCtVaStSZTZlbzZRClZ2WGFNNmNvRmNCUm9taHhWVkFTVXRiZDJRQ3pIS2Zrb0trRm0yUStONWhtdTV3eW15SisvTk1wQW9HQkFPUHIKakd2NUlWVnhCbTRzV0VGcnZTNXgwS1FVSzRBelNQVVU4ME54d055WWdYVEVsa3ppTTFNeElyMmJpTjAwb2xCegpwbE4rOTlJRW45WFlRTHYwZUlseUhRMnZtWWh2Y2VFclU3WHRiTkdEOGhnQzJKdUV2TTlXTzIwajB0ejN5eGx4CkpiV3p0dW9QSXg5cUR2NlBIay80aXI2c05RaGNGMkdNS09QbFJZRUhBb0dBRGRHT0JTSjdCS1d2OFBML2h2TGQKUFh1ay82Nk5nYUF3YkgvcXF6a2ZSVnJValdxcTZVN01IUThhTDJTYTdmMnpiTXdGN1RGc0RPelNSWWdMSFo0MwpGUzZrSVg2cjBFc1RPYXJMMUpCYnQ1Q2FVZFA4UjdRNVh2UTZFbkN5TEVDOVBGUFR2bzRlK0FucGJvWS9xRHROCkM1V0gvblQyWUVBOUo0WDhxSEtnaTNFQ2dZRUFvQ25ZcGMrT1V5SjM2RmdWTlBQbkg0b3ZtZjNxaTg1K1NHdU8KZnlpaTVPSHVwd1cyc1JTTUNMd1FzN2xtdGp2VWpFQ1k4emZZSXFmSlFsY1ROb0dYYXM3Y0I5QU1Ua295ZG84aAo1a2lRSGJOaEh1cHhHT2h3WGlzMDIzOC9JTFNvN3BvS2ErTjhlSUptcGg2N3Byc2dEQWFXU1dOdWFROStCcmlkCnkzaEVIV1VDZ1lCTnpRR2Q0ZTNEcmJuTmN0SXhBZVFydW9qTzhPYnl1UzRIOVNsd250eUxUTDU2eWRKMFk5NFoKMDlDZFZHZW5MYjFsWVZQcnVmakZMQ3ZWMFAxVSsrZE53R2FETWhkVFFOVWErUnFUNmpYUnR6dlRHTFlzMmM5bQpsZGU3WUt4WFdITDBkSkRCQ29kSWllMlk3N01QQVBzYmJmdnBXTnk5eW9GMnY4ZWZGb3dpMEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=bbb
     token: eyJhbGciOiJSUzI1NiIsImtpZCI6ImQ3UV9STlJ4TEpQRS1XWmNHblFmaHJOUmdUaW5jMVJvSERqeE9VajR1LWcifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlcm5ldGVzLWRhc2hib2FyZCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJhZG1pbi11c2VyLXRva2VuLW00ZHBoIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImFkbWluLXVzZXIiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiI3ZTY3OTZjMS04NDcxLTRkYWItODU3Mi1hODg2YmY4NWQyZGUiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZXJuZXRlcy1kYXNoYm9hcmQ6YWRtaW4tdXNlciJ9.vetemWR84jzBdD4akQPvk3gKFNuxMpF4e0THKY3vmQ77wLEOOyxI7KWolTU6qYQAh11t-cTa4H0gtlvvQwA_IBBuYrl6sSDpFrAQhrD9AaAW2mcMb2ocXs70T-okZwTgginIaB4Yhes7psqI1NG9aHDbKDkk1ECg62ou96QKNOKgtXc1lfcpPRJHbP0j8sg3JGvXIsg4F5TAUjPkEu4lNQr8bKrPvTheqqQF2JphoOQObZ9J1AbKpinBrZlSD7QxEVJwCa4Q-T-hLr93Y1epbesJ6blna7MfCyX9y-qqqJ6mtgWoLlNNUhsGIgJ1sWeTDZli5lwU1INATLGkmlYglA
-
+```
 	
-	
-
+### 部署zookeeper集群
+```
 6.0 基于PV和PVC运行 zookeeper集群
 root@k8s-master01:~/k8s/dockerfile/zookeeper# docker pull elevy/slim_java:8
 root@k8s-master01:~/k8s/dockerfile/zookeeper# docker tag elevy/slim_java:8 192.168.13.197:8000/baseimages/slim_java:8
@@ -2166,8 +2165,10 @@ windows zookeeper客户端：https://github.com/vran-dev/PrettyZoo/releases/down
 
 6.1 构建基础镜像，业务镜像等，并推送到镜像仓库，实现nginx+tomcat动静分离
 NodePort --> nginx Service --> nginx --> 代理至后端tomcat，静态资源代理至本地NFS挂载目录
+```
 
-
+### 结合ceph实现web数据持久化
+```
 6.2 结合ceph实现web数据持久化
 k8s在使用ceph作为动态存储卷的时候，需要kube-controller-manager组件能够访问ceph，因此需要在包括k8s master及node节点在内的每一个node同步认证文件。
 ceph认证两种方式：
@@ -2724,7 +2725,10 @@ root@nginx-deployment-7755dbc9d9-m2qml:/usr/share/nginx/html# curl 172.20.217.90
 v111
 注：有状态应用使用RBD。共享存储使用cephFS。其它需要使用RadowsGW 
 注：在挂载根目录下创建目录来区分项目ID，例如创建 mkdir /usr/share/nginx/html{n56,n57}，两个项目区分就是n56,n57
+```
 
+#### pod状态及探针
+```
 6.3.0 pod状态及探针
 6.3.0.1 探针简介：
 --探针是由 kubelet 对容器执行的定期诊断，以保证Pod的状态始终处于运行状态，要执行诊断，kubelet 调用由容器实现的Handler(处理程序)，有三种类型的处理程序：
@@ -2940,10 +2944,13 @@ spec:
     type: NodePort
     selector:
     app: redis-deploy-6379
+```
 
-	
-	
 
+#### 应用案例	
+
+##### k8s运行redis
+```
 6.4 k8s运行redis
 使用kompose将docker-compose文件转成K8s yaml文件，可以提升效率，但是有些内容未不致，需要进行相应调整。
 redis.conf配置文件：
@@ -3060,8 +3067,10 @@ spec:
     zookeeper2-5f5fcb7f4d-s5pgp                      1/1     Running   1          2d1h
     zookeeper3-c857bb585-txchq                       1/1     Running   1          2d1h
     k8s集群外访问: 172.168.2.21:36379 auth:123456
+```
 
-
+##### k8s运行mysql主从
+```
 6.4.4 运行mysql主从
 statefulSet控制器绑定PV，因为pod名称是固定的，所以无论pod怎么删除怎么重建，pod和PV的绑定关系一直是固定的，不会变动，绑定关系持久保存在etcd当中。
 
@@ -3414,8 +3423,10 @@ Address 4: 172.20.217.104 mysql-0.mysql.magedu.svc.homsom.local
 bash-4.3# nslookup mysql-read.magedu.svc.homsom.local		#因为不是无头service，所以service有固定IP地址，从而不能使用mysql-0.mysql.magedu.svc.homsom.local进行解析
 Name:      mysql-read.magedu.svc.homsom.local
 Address 1: 10.68.32.249 mysql-read.magedu.svc.homsom.local
+```
 
-
+##### 运行java类型服务之jenkins
+```
 6.4.5 运行java类型服务--jenkins
 
 6.4.5.1 构建镜像
@@ -3585,9 +3596,13 @@ spec:
 root@k8s-master01:~/k8s/yaml/magedu/jenkins# kubectl exec -it magedu-jenkins-deployment-5f94c58f86-226hb bash -n magedu
 [root@magedu-jenkins-deployment-5f94c58f86-226hb /]# cat /root/.jenkins/secrets/initialAdminPassword
 7179a6bf7caa41d0b98ba67a88b9d70d
+```
 
+#### k8s部署WordPress
 
-6.4.6 k8s安装WordPress
+##### 部署nginx
+```
+6.4.6 k8s安装WordPress（LNMP）
 6.4.6.1 构建workpres nginx镜像
 ---
 root@k8s-master01:~/k8s/dockerfile/web/pub-images/nginx-base-wordpress# cat Dockerfile
@@ -3673,7 +3688,10 @@ docker push  192.168.13.197:8000/magedu/wordpress-nginx:${TAG}
 echo "镜像上传完成"
 root@k8s-master01:~/k8s/dockerfile/web/magedu/wordpress/nginx# ./build-command.sh
 root@k8s-master01:~/k8s/dockerfile/web/magedu/wordpress/nginx# ./build-command.sh v1
+```
 
+##### 部署php
+```
 6.4.6.3 构建php镜像
 ---
 root@k8s-master01:~/k8s/dockerfile/web/magedu/wordpress/php# cat Dockerfile
@@ -3725,7 +3743,10 @@ php_value[session.save_path]    = /opt/remi/php56/root/var/lib/php/session
 php_value[soap.wsdl_cache_dir]  = /opt/remi/php56/root/var/lib/php/wsdlcache
 ---
 root@k8s-master01:~/k8s/dockerfile/web/magedu/wordpress/php# ./build-command.sh v1
+```
 
+##### k8s运行nginx+php
+```
 6.4.6.4 k8s运行nginx+php
 root@k8s-master01:~/k8s/yaml/magedu/wordpress# cat wordpress.yaml
 kind: Deployment
@@ -3816,7 +3837,9 @@ magedu n56
 <?php
         phpinfo();
 ?>
-
+```
+##### 配置wordpress
+```
 6.4.6.6 上传wordpress站点代码到nginx+php的nfs目录下
 6.4.6.6.1 更改wordpress站点文件属主属组为nginx
 [root@wordpress-app-deployment-7d6d5c4c97-5tbrt nginx]# chown -R nginx.nginx /home/nginx/wordpress     
@@ -3837,9 +3860,10 @@ Address: 172.20.217.104
 root@k8s-master01:~/k8s# kubectl get svc -n magedu | grep word
 wordpress-app-spec           NodePort    10.68.65.16     <none>        80:30031/TCP,443:30033/TCP                     115m
 --访问http://172.168.2.21:30031进行配置
+```
 
-
-
+#### k8s部署dubbo微服务
+```
 6.4.6.7 dubbo微服务
 6.4.6.7.1 构建dubbo provider镜像
 root@k8s-master01:~/k8s/dockerfile/web/magedu/dubbo/provider# cat dubbo-demo-provider-2.1.5/conf/dubbo.properties | grep -Ev '#|^$'
@@ -4160,8 +4184,10 @@ magedu-provider-deployment   2/2     2            2           3h15m
 [20:30:41] Hello world5523, response form provider: 172.20.217.110:20880
 [20:30:43] Hello world5524, response form provider: 172.20.217.112:20880
 [20:30:45] Hello world5525, response form provider: 172.20.217.110:20880
+```
 
-
+#### k8s部署ingress-nginx
+```
 6.4.6.8 ingress-nginx部署及使用
 root@k8s-master01:~/k8s/yaml/ingress# kubectl apply -f ingress-controller-deploy.yaml
 root@k8s-master01:~/k8s/yaml/ingress# cat ingress-controller-deploy.yaml
@@ -4814,8 +4840,10 @@ metadata:
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: admission-webhook
   namespace: ingress-nginx
+```
 
-
+#### k8s部署metrics server
+```
 6.4.6.9 metrics server部署、hpa控制器
 hpa控制器用metrics server收集到的指标数据当作条件来自动伸缩pod
 hpa控制器伸缩pod需要deploy控制器使用资源限制(limit,request)才可进行自动伸缩
@@ -5068,9 +5096,10 @@ magedu-tomcat-app1-podautoscaler   Deployment/magedu-tomcat-app1-deployment   <u
 root@k8s-master01:~/k8s/yaml/magedu/tomcat-app1# kubectl get pods -n magedu | grep tomcat
 magedu-tomcat-app1-deployment-65747746b9-dfzfl   1/1     Running       1          3d5h
 magedu-tomcat-app1-deployment-65747746b9-zdj9l   1/1     Running       0          18s
+```
 
-
-
+#### Kubernetes for CICD
+```
 6.4.6.7 Kubernetes for CICD
 
 6.4.6.7.1 运行nginx pod 
@@ -5692,8 +5721,10 @@ main $1 $2
 ---------------
 灰度发布：需要在脚本中增加判断、编写灰度发布函数、通过灰度发布变量调用灰度发布函数，
 灰度发布方法：1. 通过kubectl rollout pause/resume来实现   2. 通过创建两个service来实现
+```
 
-
+#### k8s日志收集
+```
 6.4.7 日志收集 
 k8s结合ELK实现日志收集-elasticsearch v7.6.2
 系统日志
@@ -6200,7 +6231,10 @@ i18n.locale: "zh-CN"
 [root@elk ~]# systemctl restart kibana.service		#重启kibana服务
 [root@elk ~]# ss -tnl | grep 5601
 LISTEN     0      128    172.168.2.13:5601                     *:*
+```
 
+##### 其它
+```
 ---------k8s和ceph工作经验简历优化-------------
 1.kubernetes 高可用集群规划和部署
   master节点
@@ -6250,8 +6284,10 @@ ceph：
       关闭数据整理
     对ceph数据的PG进行后期的调整
 -------------------------------------------
+```
 
-
+#### 资源限制
+```
 6.4.8 资源限制 
 容器限制、pod限制、namespace限制
 常用业务资源分配：
@@ -6544,10 +6580,10 @@ kind: resourcequota
 namespace: magedu
 resourcequota: 48C96G
 例如: 有2个节点，每个节点为24C64G，并且每个pod为2C4G，共创建了24个pod，此时资源已经全部分配出去，当再创建第25个pod时将会失败。即使24个pod实际使用资源不足48C96G，此时第25个pod也会创建失败，因为namespace资源额度已经使用使用完，此时需要调整resourcequota或者调整yaml文件中的requset和limit值。
+``` 
 
-
-
-
+#### RBAC
+``` 
 6.5 访问控制，RBAC
 root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl create serviceaccount magedu -n  magedu
 serviceaccount/magedu created
@@ -7141,25 +7177,13 @@ subjects:
   name: role-jack
   apiGroup: rbac.authorization.k8s.io
 -------
+``` 
 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+### k8s网络
+``` 
 6.6 k8s网络，容器网络
 1. overlay网络模型--性能最差，扩展性最好
 2. 路由网络模型--性能其次，扩展性其次
@@ -7239,9 +7263,11 @@ items:
     vxlanMode: Never
   calicoctl apply -f pool.yaml		#创建新的
   calicoctl patch ippool default-ipv4-ippool -p '{"spec": {"disabled": "true"}}'		#将旧的 ippool 禁用，最后创建 workload 测试
+``` 
 
 
-
+#### k8s监控
+```
 6.7 k8s监控，prometheus
 开源监控解决方案：cacti,nagios,zabbix,smokeping,open-falcon,Nightingale(滴滴基于open-falcon开发开源),prometheus
 商业监控解决方案：监控宝，听云
@@ -8286,10 +8312,10 @@ WEB访问：http://172.168.2.27:3000
       target_label: __metrics_path__
       replacement: /api/v1/nodes/${1}/proxy/metrics -->
 ---
+```
 
-
-
-
+#### k8s监控扩展
+```
 #--监控扩展
 #----监控tomcat
 root@k8s-master01:~/k8s/yaml/prometheus-case/app-monitor-case/tomcat/tomcat-image# cat Dockerfile
@@ -8905,14 +8931,14 @@ total 16
           summary: "Kubernetes Etcd is Down"
           description: "job: {{ $labels.job }}, instance: {{$labels.instance}} is Down, Kubernetes Etcd database is down.(current value: {{ $value }})"
 ---
+```
 
 
 
 
-
-
-
-----#prometheus联绑集群
+#### prometheus联绑集群
+```
+#prometheus联绑集群
 环境：
 172.168.2.27	prometheus-server
 172.168.2.28	prometheus-federate01
@@ -9151,11 +9177,12 @@ root@prometheus03:/usr/local/prometheus/file_sd_configs# cat kubernetes-node.jso
   }
 ]
 root@prometheus02:/usr/local/prometheus/file_sd_configs# curl -XPOST http://localhost:9090/-/reload  		 #此时联绑server(prometheus-server)最大等待10s+15s=25s时间就可以查看到增加的master节点
+```
 
-
-
-----#alertmanager
-----#dingtalk告警
+##### alertmanager
+```
+#alertmanager
+##dingtalk告警
 DownloadURL: https://github.com/timonwong/prometheus-webhook-dingtalk/releases/download/v1.4.0/prometheus-webhook-dingtalk-1.4.0.linux-amd64.tar.gz
 １. 安装 
 root@prometheus01:/usr/local/src# tar xf prometheus-webhook-dingtalk-1.4.0.linux-amd64.tar.gz -C /usr/local/
@@ -9501,11 +9528,12 @@ alerting:
           - '172.168.2.27:9093'
           - '172.168.2.28:9093'
           - '172.168.2.29:9093'
-	
+```
 	
 	
 
-####promtheus远端存储----victoriametrics
+##### promtheus远端存储----victoriametrics
+```
 DownloadURL: https://github.com/VictoriaMetrics/VictoriaMetrics
 单机版下载：https://github.com/VictoriaMetrics/VictoriaMetrics/releases/download/v1.76.0/victoria-metrics-amd64-v1.76.0.tar.gz
 集群版下载：https://github.com/VictoriaMetrics/VictoriaMetrics/releases/download/v1.76.0/victoria-metrics-amd64-v1.76.0-cluster.tar.gz
@@ -9535,9 +9563,6 @@ root@prometheus01:/usr/local/prometheus# systemctl restart prometheus
 3. 测试数据是否在维多利亚存储成功
 访问维多利亚：http://172.168.2.27:8428/
 在UI查看数据是否存储成功：http://172.168.2.27:8428/vmui
-
-
-
 
 
 
@@ -9765,13 +9790,13 @@ root@prometheus01:/usr/local/prometheus# systemctl start prometheus
 
 7. 开启数据复制（可选）
 默认情况下，数据被 vminsert 的组件基于 hash 算法分别将数据持久化到不同的vmstorage 节点，一个数据被拆分成多份。可以启用 vminsert 组件支持的-replicationFactor=N 复制功能，将数据分别在各节点保存一份完整的副本以实现数据的高可用。
+```
 
 
 
 
-
-#######外部prometheus监控k8s
----------------
+##### 外部prometheus监控k8s
+```
 root@ansible:~/k8s/prometheus# ls
 01-cadvisor-deployment.yaml  02-node_exporter-deployment.yaml  03-monitoring-serviceaccount.yaml  04-kube-state-metric.yaml 
 root@ansible:~/k8s/prometheus# cat 01-cadvisor-deployment.yaml
@@ -10094,9 +10119,10 @@ spec:
     static_configs:
     - targets: ["172.168.2.21:30005"]
 -------------------------------
+```
 
-
-##k8s 健康检查端口信息
+##### k8s健康检查端口信息
+```
 #kube-proxy
 root@k8s-master02:~# curl http://192.168.13.31:10249/healthz
 ok
@@ -10131,13 +10157,14 @@ root@k8s-master02:/etc/kubernetes/ssl# curl -k https://192.168.13.31:10257/healt
 ok
 root@k8s-master02:/etc/kubernetes/ssl# curl -k https://192.168.13.31:10259/healthz
 ok
+```
 
 
 
 
 
-
-#####k8s报错
+##### k8s报错汇总
+```
 1. root@ansible:~/k8s/elk/k8s-elk/elk/es-data# kubectl describe pods es-master-0 -n ops-elk
 Warning  FailedScheduling  27s   default-scheduler  0/7 nodes are available: 7 persistentvolumeclaim "storage-es-master-0" bound to non-existent persistentvolume "pvc-a313a27d-9058-4dbf-a24c-0f7c7b54eddb".
 ----去etcd查看此key
@@ -10158,10 +10185,4 @@ statefulset.apps/es-master created
 root@ansible:~/k8s/elk/k8s-elk/elk/es-data# kubectl get pods -n ops-elk
 NAME          READY   STATUS     RESTARTS   AGE
 es-master-0   0/1     Init:0/2   0          3s		#此时正常了
-
-
-
-
-
-
-</pre>
+```
