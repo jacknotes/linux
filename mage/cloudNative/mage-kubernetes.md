@@ -53,6 +53,7 @@ metadata:
 ## 部署环境
 
 ##### k8s生产集群部署环境：
+```
 kubernetes-master: 3个
 etcd: 3个
 harbor: 2个高可用
@@ -63,8 +64,9 @@ node: 最少3个
 node: 48C 256G ssd/2T 10g/25g网卡 物理机
 master: 16c 16G ssd/200G 物理机或虚拟机
 etcd: 8c 16G ssd/150g
-
+```
 ##### 测试环境配置：
+```
 172.168.2.11	ansible
 172.168.2.21	kubernetes-master01		etcd01
 172.168.2.22	kubernetes-master02		etcd02
@@ -78,7 +80,7 @@ OS: ubuntu18
 DeployMethod: Binary Install    [DeployUrl](https://github.com/easzlab/kubeasz)
 注：etcd是镜像集群，任意etcd节点进行备份，任意etcd节点进行恢复即可。
 注：ubuntu20.04.3时区调整为24小时制
-```
+
 # ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/locltime
 # cat /etc/default/locale
 LANG=en_US.UTF-8
