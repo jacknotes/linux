@@ -1050,16 +1050,9 @@ NAME           STATUS                     ROLES    AGE     VERSION
 大版本更新：1.21  -->  1.22 --> 1.23		#需要经过严格测试更新，一般会有问题
 
 4.6.1 蓝绿升级(再部署一个集群，将所有pod运行在最新的k8s集群上，然后切换SLB，缺点是耗硬件资源)
-						client
-							|
-							|
-							--------------------
-												|	
----------------------				---------------------
-|					|				|					|
-|		1.20.0		|				|		1.20.4		|
-|					|				|					|
----------------------				---------------------
+client	->	slb	->	1.20.0(old version)
+				->	1.20.4(new version)
+
 
 4.6.2 滚动升级，不需要耗硬件资源
 测试升级流程：
@@ -1846,7 +1839,7 @@ clusters:
     client-key-data: LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVktLS0tLQpNSUlFcEFJQkFBS0NBUUVBNDZNMkRia0VQLzNEM0dMYkppVUg1Q3dTaXpKQUJEcnFsTzhlaUxXdDB5VlFzNHM4CktDUHNBVmMwOTU0dVNJVkp3aUJrMkt6MlBhOHpIS1dNQ1BobHQvN1o3N3B3K2RRRUl5RVdPendpZ0krNnptbXUKYmpYWFRSZVFxb2ZHc3UrOEFvVU1Ya2NsczhualhrZjIvY3l2dVZ2anJVQ0NKRXRuMW9PR2FaaFNNRmhGL3dMQgppaFVOTEZsb1lmbWNTSGZZSThkVEhZWklLaUk5SUNZY2JCWDFsUEowQTVuak11STd0eENKSWlIcmIzd29oRWw1CldkcmhkWDJFcTR0Rjc1ckJ0YjF6Q0RoczlITmswU0NqTmxpQjA2YjUrZmdVdTArNkpjVG1jejVobGZpMklreEUKZkova3EzaGtTaGJCandhK09wZGJ6NEV6bmFPUURLaFNkbDV2SHdJREFRQUJBb0lCQVFEZDBjNzhkRXYxNTF5UwpSeXB4OHlmTGFqN3ZzUm04aFlUTmVHMXlua2N5TjJ4NmFMVklFQ2tMN1dUSjNqUVBxd0tDem5vMndlUjVtMTNkCkRseDA2VWlGa1N2aGRQWmVIQUdrRWJ2T0lQMGw5ZWo4OXZKb3BzS1VkdUFickk4dEVudE1vVVc2SU81V1VlYmoKbXBET0pFVWdCTERKeE5DTWVZWkgvSVpnSTNRRGNrb1RCWXJHR2pzQ096UUNQS3dTRG5ZYlFTM2IzcUtBZnVMYwpUNjczdnZPUFZWV1ROc3l4cExId2xWcFpZUWFCS09DVXZxdk81V05Xdmp2Q3NFeW85TjJxZmlVaDJqUk1ETzEwCnp0WnEvRWJ4NGxSaDMvcGYzcEVHK0lmK21JN2VYOCtjV0ZRYUxCZk1xTjd1UG5OOWsrUll6Nk8zWnVMcm9zN08KWkNiVWh0cWhBb0dCQVArdXdDaUNyMndIMlNsbzFYK0Z1VEh2SDFHamtydDE5UkJiMzlqMHdyNnJrMUMvYU13Ngp5bHgwdmg3WXRKWmc4NXJHTzFxV0lraWdyc21yNndQL3d2UzBmcUwza09qdm9ZUnBEV1dpRCtVaStSZTZlbzZRClZ2WGFNNmNvRmNCUm9taHhWVkFTVXRiZDJRQ3pIS2Zrb0trRm0yUStONWhtdTV3eW15SisvTk1wQW9HQkFPUHIKakd2NUlWVnhCbTRzV0VGcnZTNXgwS1FVSzRBelNQVVU4ME54d055WWdYVEVsa3ppTTFNeElyMmJpTjAwb2xCegpwbE4rOTlJRW45WFlRTHYwZUlseUhRMnZtWWh2Y2VFclU3WHRiTkdEOGhnQzJKdUV2TTlXTzIwajB0ejN5eGx4CkpiV3p0dW9QSXg5cUR2NlBIay80aXI2c05RaGNGMkdNS09QbFJZRUhBb0dBRGRHT0JTSjdCS1d2OFBML2h2TGQKUFh1ay82Nk5nYUF3YkgvcXF6a2ZSVnJValdxcTZVN01IUThhTDJTYTdmMnpiTXdGN1RGc0RPelNSWWdMSFo0MwpGUzZrSVg2cjBFc1RPYXJMMUpCYnQ1Q2FVZFA4UjdRNVh2UTZFbkN5TEVDOVBGUFR2bzRlK0FucGJvWS9xRHROCkM1V0gvblQyWUVBOUo0WDhxSEtnaTNFQ2dZRUFvQ25ZcGMrT1V5SjM2RmdWTlBQbkg0b3ZtZjNxaTg1K1NHdU8KZnlpaTVPSHVwd1cyc1JTTUNMd1FzN2xtdGp2VWpFQ1k4emZZSXFmSlFsY1ROb0dYYXM3Y0I5QU1Ua295ZG84aAo1a2lRSGJOaEh1cHhHT2h3WGlzMDIzOC9JTFNvN3BvS2ErTjhlSUptcGg2N3Byc2dEQWFXU1dOdWFROStCcmlkCnkzaEVIV1VDZ1lCTnpRR2Q0ZTNEcmJuTmN0SXhBZVFydW9qTzhPYnl1UzRIOVNsd250eUxUTDU2eWRKMFk5NFoKMDlDZFZHZW5MYjFsWVZQcnVmakZMQ3ZWMFAxVSsrZE53R2FETWhkVFFOVWErUnFUNmpYUnR6dlRHTFlzMmM5bQpsZGU3WUt4WFdITDBkSkRCQ29kSWllMlk3N01QQVBzYmJmdnBXTnk5eW9GMnY4ZWZGb3dpMEE9PQotLS0tLUVORCBSU0EgUFJJVkFURSBLRVktLS0tLQo=bbb
     token: eyJhbGciOiJSUzI1NiIsImtpZCI6ImQ3UV9STlJ4TEpQRS1XWmNHblFmaHJOUmdUaW5jMVJvSERqeE9VajR1LWcifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJrdWJlcm5ldGVzLWRhc2hib2FyZCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJhZG1pbi11c2VyLXRva2VuLW00ZHBoIiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQubmFtZSI6ImFkbWluLXVzZXIiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC51aWQiOiI3ZTY3OTZjMS04NDcxLTRkYWItODU3Mi1hODg2YmY4NWQyZGUiLCJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6a3ViZXJuZXRlcy1kYXNoYm9hcmQ6YWRtaW4tdXNlciJ9.vetemWR84jzBdD4akQPvk3gKFNuxMpF4e0THKY3vmQ77wLEOOyxI7KWolTU6qYQAh11t-cTa4H0gtlvvQwA_IBBuYrl6sSDpFrAQhrD9AaAW2mcMb2ocXs70T-okZwTgginIaB4Yhes7psqI1NG9aHDbKDkk1ECg62ou96QKNOKgtXc1lfcpPRJHbP0j8sg3JGvXIsg4F5TAUjPkEu4lNQr8bKrPvTheqqQF2JphoOQObZ9J1AbKpinBrZlSD7QxEVJwCa4Q-T-hLr93Y1epbesJ6blna7MfCyX9y-qqqJ6mtgWoLlNNUhsGIgJ1sWeTDZli5lwU1INATLGkmlYglA
 ```
-	
+
 ### 部署zookeeper集群
 ```
 6.0 基于PV和PVC运行 zookeeper集群
@@ -6582,7 +6575,7 @@ kind: resourcequota
 namespace: magedu
 resourcequota: 48C96G
 例如: 有2个节点，每个节点为24C64G，并且每个pod为2C4G，共创建了24个pod，此时资源已经全部分配出去，当再创建第25个pod时将会失败。即使24个pod实际使用资源不足48C96G，此时第25个pod也会创建失败，因为namespace资源额度已经使用使用完，此时需要调整resourcequota或者调整yaml文件中的requset和limit值。
-``` 
+```
 
 #### RBAC
 ``` 
@@ -7179,7 +7172,7 @@ subjects:
   name: role-jack
   apiGroup: rbac.authorization.k8s.io
 -------
-``` 
+```
 
 
 
@@ -7265,7 +7258,7 @@ items:
     vxlanMode: Never
   calicoctl apply -f pool.yaml		#创建新的
   calicoctl patch ippool default-ipv4-ippool -p '{"spec": {"disabled": "true"}}'		#将旧的 ippool 禁用，最后创建 workload 测试
-``` 
+```
 
 
 #### k8s监控
@@ -9531,8 +9524,8 @@ alerting:
           - '172.168.2.28:9093'
           - '172.168.2.29:9093'
 ```
-	
-	
+
+​	
 
 ##### promtheus远端存储----victoriametrics
 ```
@@ -10179,7 +10172,7 @@ root@k8s-master01:~# etcdctl get / --prefix --keys-only | grep storage-es-master
 ----删除错误的key资源
 root@k8s-master01:~# etcdctl del /registry/persistentvolumeclaims/ops-elk/storage-es-master-0
 1
-----再将部署成功了
+----再次部署成功了
 root@ansible:~/k8s/elk/k8s-elk/elk/es-data# kubectl apply -f . -n ops-elk
 configmap/es-master created
 service/es-master created
