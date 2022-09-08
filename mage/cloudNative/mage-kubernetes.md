@@ -9,6 +9,9 @@
 
 [kubernetes github](https://github.com/kubernetes/kubernetes)
 
+
+### 组件
+```
 ### 控制面组件：
 
 etcd：多实例并行运行，通过Raft保证一致；
@@ -26,7 +29,6 @@ kube-proxy
 1. apiserver多实例运行: apiserver是无状态的，所有数据保存在etcd中，apiserver不做缓存。apiserver多个实例并行运行，通过Loadbalancer负载均衡用户的请求。
 2. scheduler和controller-manager单实例运行: scheduler和controller-manager会修改集群状态，多实例运行会产生竞争状态。通过--leader-elect机制，只有领导者实例才能运行，其它实例处于standby状态；当领导者实例宕机时，剩余的实例选举产生新的领导者。领导者选举的方法：多个实例抢占创建endpoints资源，创建成功者为领导者。比如多个scheduler实例抢占创建endpoints资源：kube-scheduler
 
-```
 sh# kubectl get endpoints kube-scheduler -n kube-system -o yaml
 apiVersion: v1
 kind: Endpoints
@@ -36,7 +38,6 @@ metadata:
   creationTimestamp: "2021-02-01T03:10:48Z"
 ......
 # 查询kube-scheduler endpoint资源，可以看到此时master1上的scheduler是active状态，其它实例则为standby。
-```
 
 3. kubelet和kube-proxy在工作节点上运行
 	1. kubelet负责：向apiserver创建一个node资源，以注册该节点；
@@ -51,7 +52,7 @@ metadata:
        3个kube-scheduler和kube-controller-manager关掉2个节点，只保留1个节点可以正常操作
 	   只保留1个kube-controller-manager，而kube-scheduler3个节点全部关闭，在创建deployment和service时候，任务会被创建成功，但是pod会被一直pending，因为pod没有调度器调度，此时开启一个kube-scheduler后，pending状态的pod正常运行。
        只保留1个kube-scheduler，而kube-controller-manager3个节点全部关闭，在创建deployment和service时候，任务不会被创建成功，因为kube-controller-manager没有运行，无法使用deployment控制器创建pod，虽然kube-scheduler运行，但是控制器没有运行，后面的调度任务也就不会被运行。
-
+```
 
 ## 部署环境
 
