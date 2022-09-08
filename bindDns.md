@@ -1,6 +1,8 @@
 # bind DNS
 
 
+![Linux](https://github.com/jacknotes/linux/raw/master/image/linux.jpg)
+[Linux bind doc](https://bind9.readthedocs.io/en/v9_18_6/)
 
 ## 节点环境信息
 ```
