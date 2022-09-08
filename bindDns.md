@@ -2,6 +2,7 @@
 
 
 ![Linux](https://github.com/jacknotes/linux/raw/master/image/linux.jpg)
+
 [Linux bind doc](https://bind9.readthedocs.io/en/v9_18_6/)
 
 ## 节点环境信息
@@ -429,6 +430,170 @@ Address:  172.168.2.219
 
 1. 此时可以将dns-slave01当做dns-master来使用了，在新的dns-master上进行配置dns解析都可以了。另外也可以为此dns-master添加dns-slave。
 2. 由于无论是bind的配置文件还是bind的zone文件都可以通过rndc reload来生效，所以此方法可以实现dns的高可用，就算挂了一台dns-master，也可以无缝将dns-slave提升为master，实现dns的角色无缝切换。
+
+
+### 四、把dns-slave01切换为dns-master、把dns-master切换为dns-slave
+
+```
+# dns-master切换为dns-slave
+root@dns-master:/etc/bind# cat /etc/bind/named.conf.options
+acl "trusted" {
+        172.168.2.34;    # dns-master
+        172.168.2.35;    # dns-slave01
+        172.168.2.0/24;  # server ip range
+        192.168.13.0/24;  # server ip range
+        192.168.10.0/24;  # client ip range
+};
+
+
+options {
+        directory "/var/cache/bind";
+        listen-on { 172.168.2.34; };   # dns-master private IP address - listen on private network only
+        recursion yes;                 # enables resursive queries
+        allow-recursion { trusted; };  # allows recursive queries from "trusted" clients
+        allow-transfer { none; };
+        forwarders {
+                8.8.8.8;
+                8.8.4.4;
+        };
+};
+root@dns-master:/etc/bind# cat /etc/bind/named.conf.local
+zone "jack.com" IN {
+        //type master;
+        //file "jack.com.zone"; // can write abs path
+        //also-notify { 172.168.2.35; }; // dns-slave01 address
+        type slave;
+        file "jack.com.zone"; // can write abs path
+        masterfile-format text;
+        masters { 172.168.2.35; };
+
+};
+
+zone "2.168.172.in-addr.arpa" IN {
+        //type master;
+        //also-notify { 172.168.2.35; }; // dns-slave01 address
+        type slave;
+        file "2.168.172.in-addr-arpa";
+        masterfile-format text;
+        masters { 172.168.2.35; };
+};
+root@dns-master:/etc/bind# named-checkconf
+root@dns-master:/etc/bind# systemctl start bind9
+
+
+# dns-slave切换为dns-master
+root@dns-slave01:/etc/bind# cat named.conf.options
+acl "trusted" {
+        172.168.2.34;    # dns-master
+        172.168.2.35;    # dns-slave01
+        172.168.2.0/24;  # server ip range
+        192.168.13.0/24;  # server ip range
+        192.168.10.0/24;  # client ip range
+};
+options {
+        directory "/var/cache/bind";
+        listen-on { 172.168.2.35; };   # dns-master private IP address - listen on private network only
+        recursion yes;                 # enables resursive queries
+        allow-recursion { trusted; };  # allows recursive queries from "trusted" clients, or "any" not limits.
+        allow-transfer { 172.168.2.34; };
+        forwarders {
+                8.8.8.8;
+                8.8.4.4;
+        };
+};
+root@dns-slave01:/etc/bind# cat named.conf.local
+zone "jack.com" IN {
+        type master;
+        file "jack.com.zone"; // can write abs path
+        also-notify { 172.168.2.34; };
+        //type slave;
+        //masterfile-format text;
+        //masters { 172.168.2.34; }; // dns-master address
+};
+
+zone "2.168.172.in-addr.arpa" IN {
+        type master;
+        file "2.168.172.in-addr-arpa";
+        also-notify { 172.168.2.34; };
+        //type slave;
+        //masterfile-format text;
+        //masters { 172.168.2.34; }; // dns-master address
+};
+root@dns-slave01:/etc/bind# rndc reload
+server reload successful
+
+# 增加新的dns-master serial版本号，使新的dns-slave能同步新的dns-master
+root@dns-slave01:/etc/bind# vim /var/cache/bind/jack.com.zone
+$ORIGIN .
+$TTL 600        ; 10 minutes
+jack.com                IN SOA  dns-master.jack.com. admin.jack.com. (
+                                2022000026 ; serial
+                                86400      ; refresh (1 day)
+                                3600       ; retry (1 hour)
+                                604800     ; expire (1 week)
+                                10800      ; minimum (3 hours)
+                                )
+                        NS      dns-master.jack.com.
+$ORIGIN jack.com.
+dns-master              A       172.168.2.34
+dns-slave01             A       172.168.2.35
+test                    A       172.168.2.219
+test2                   A       172.168.2.219
+test3                   A       172.168.2.219
+test4                   A       172.168.2.219
+test5                   A       172.168.2.219
+test6                   A       172.168.2.219
+root@dns-slave01:/etc/bind# rndc reload
+server reload successful
+
+# 查看新的dns-slave
+root@dns-master:/etc/bind# cat /var/cache/bind/jack.com.zone
+$ORIGIN .
+$TTL 600        ; 10 minutes
+jack.com                IN SOA  dns-master.jack.com. admin.jack.com. (
+                                2022000026 ; serial
+                                86400      ; refresh (1 day)
+                                3600       ; retry (1 hour)
+                                604800     ; expire (1 week)
+                                10800      ; minimum (3 hours)
+                                )
+                        NS      dns-master.jack.com.
+$ORIGIN jack.com.
+dns-master              A       172.168.2.34
+dns-slave01             A       172.168.2.35
+test                    A       172.168.2.219
+test2                   A       172.168.2.219
+test3                   A       172.168.2.219
+test4                   A       172.168.2.219
+test5                   A       172.168.2.219
+test6                   A       172.168.2.219
+
+
+# 客户端测试解析
+> server 172.168.2.34
+默认服务器:  dns-master.jack.com
+Address:  172.168.2.34
+
+> test6.jack.com
+服务器:  dns-master.jack.com
+Address:  172.168.2.34
+
+名称:    test6.jack.com		#解析成功
+Address:  172.168.2.219
+
+
+
+> server 172.168.2.35
+默认服务器:  dns-slave01.jack.com
+Address:  172.168.2.35
+
+> test6.jack.com
+服务器:  dns-slave01.jack.com
+Address:  172.168.2.35
+
+名称:    test6.jack.com
+Address:  172.168.2.219
+```
 
 
 
