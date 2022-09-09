@@ -1,6 +1,8 @@
 base:
   '*':
     - salt-minion
-prod:
-  '*':
-    - redis-cluster.redis
+    - custom
+# prod:
+#  '*':
+#    - redis-cluster.redis
+#    - keepalived.keepalived

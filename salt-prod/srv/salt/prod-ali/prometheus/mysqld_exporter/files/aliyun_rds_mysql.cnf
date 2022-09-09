@@ -1,0 +1,6 @@
+[client]
+host=rm-uf6926n1226lgjrj1.mysql.rds.aliyuncs.com
+port=3306
+user=mysqld_exporter
+password='lVPl5nwV8GriDhcP'
+

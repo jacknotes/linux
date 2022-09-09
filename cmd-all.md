@@ -2939,5 +2939,23 @@ vim test1.txt test2.txt
 --非空行必添加分号
 :.,+10s/.$/&;
   
+### 文件logo生成
+[root@prometheus ~]# yum install -y figlet 
+[root@prometheus ~]# figlet hello
+ _          _ _       
+| |__   ___| | | ___  
+| '_ \ / _ \ | |/ _ \ 
+| | | |  __/ | | (_) |
+|_| |_|\___|_|_|\___/ 
+                      
+[root@prometheus ~]# figlet jack
+   _            _    
+  (_) __ _  ___| | __
+  | |/ _` |/ __| |/ /
+  | | (_| | (__|   < 
+ _/ |\__,_|\___|_|\_\
+|__/                 
+
+
 
 </pre>

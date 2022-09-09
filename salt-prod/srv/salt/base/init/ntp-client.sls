@@ -8,6 +8,6 @@ TimeZone:
 
 cron-ntpdate:
   cron.present:
-    - name: ntpdate time.hs.com
+    - name: ntpdate time1.aliyun.com
     - user: root
     - minute: '*/5'

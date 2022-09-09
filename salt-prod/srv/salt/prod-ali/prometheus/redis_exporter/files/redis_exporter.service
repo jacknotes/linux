@@ -1,0 +1,17 @@
+[Unit]
+Description=https://prometheus.io
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/redis_exporter/redis_exporter \
+-redis.addr r-uf6xmb0g8fvlnp8ztk.redis.rds.aliyuncs.com:6379 \
+-redis.password prometheus:78lorcJGLba8b25v \
+-web.listen-address=0.0.0.0:9121
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+

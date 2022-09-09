@@ -1,0 +1,15 @@
+[global]
+error_log = /tmp/php-fpm.log
+[www]
+user = www
+group = www
+listen = /usr/local/php-fastcgi/php-fpm.sock
+listen.owner = www
+listen.group = www
+listen.mode = 0660
+pm = dynamic
+pm.max_children = 50
+pm.start_servers = 20
+pm.min_spare_servers = 10
+pm.max_spare_servers = 30
+pm.max_requests = 50000

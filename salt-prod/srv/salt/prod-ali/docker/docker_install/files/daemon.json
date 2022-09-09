@@ -1,0 +1,6 @@
+{
+	"exec-opts": ["native.cgroupdriver=systemd"],
+	"registry-mirrors": ["https://fz5yth0r.mirror.aliyuncs.com","http://hub-mirror.c.163.com","https://docker.mirrors.ustc.edu.cn","https://registry.docker-cn.com"],
+	"log-driver": "json-file",
+	"log-opts": {"max-size": "100m"}
+} 

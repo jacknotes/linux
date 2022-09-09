@@ -1,2 +1,2 @@
-redis-masterIP: 192.168.13.33
-redis-masterPort: 6379
+redis-masterIP: 192.168.13.160
+redis-masterPort: 6369

@@ -1,9 +1,0 @@
-127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
-::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
-
-199.16.156.40 github.global.ssl.fastly.net
-185.199.108.153 assets-cdn.github.com
-192.168.13.51 k8sMaster01.hs.com
-192.168.13.52 k8sNode01.hs.com
-192.168.13.53 k8sNode02.hs.com
-

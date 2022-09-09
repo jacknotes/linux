@@ -1,5 +1,5 @@
 include:
-  - init.salt-repo  
+  - init.repo-salt
 
 salt-minion:
   pkg.installed:

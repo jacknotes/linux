@@ -1,1 +1,1 @@
-Salt_Master: 172.168.2.222
+Salt_Master: 10.10.10.230

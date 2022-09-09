@@ -1,0 +1,76 @@
+#!/bin/sh
+#
+# redis - this script starts and stops the redis daemon
+#
+# chkconfig:   - 86 14
+# description: redis service shell 
+# processname: redis-server
+# config:      /usr/local/redis/redis-slave.conf
+# pidfile:     /var/run/redis_6379.pid
+
+ 
+# Source function library.
+. /etc/rc.d/init.d/functions
+ 
+# Source networking configuration.
+. /etc/sysconfig/network
+ 
+# Check that networking is up.
+[ "$NETWORKING" = "no" ] && exit 0
+ 
+redis_server="/usr/local/redis/bin/redis-server"
+prog=$(basename $redis_server)
+ 
+REDIS_SERVER_CONF_FILE="/usr/local/redis/redis-slave.conf"
+ 
+[ -f /etc/sysconfig/redis_server ] && . /etc/sysconfig/redis_server
+ 
+lockfile=/var/lock/subsys/redis_server.lock
+ 
+start() {
+    [ -x $redis_server ] || exit 5
+    [ -f $REDIS_SERVER_CONF_FILE ] || exit 6
+    echo -n $"Starting $prog: "
+    $redis_server $REDIS_SERVER_CONF_FILE
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && touch $lockfile
+    return $retval
+}
+ 
+stop() {
+    echo -n $"Stopping $prog: "
+    killproc $prog -QUIT
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && rm -f $lockfile
+    return $retval
+}
+ 
+restart() {
+    stop
+    sleep 1
+    start
+}
+ 
+status() {
+    /usr/bin/ps aux | /usr/bin/grep $prog | /usr/bin/grep -v 'grep' >& /dev/null && echo "$prog is running...." || echo "$prog is stop"
+}
+ 
+case "$1" in
+    start)
+        $1
+        ;;
+    stop)
+        $1
+        ;;
+    restart)
+        $1
+        ;;
+    status)
+        $1
+        ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart}"
+        exit 2
+esac

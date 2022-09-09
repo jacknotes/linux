@@ -1,0 +1,17 @@
+include:
+  - init.dns
+  - init.hosts
+  - init.history
+  - init.sysctl
+  - init.firewall
+  - init.ssh
+  - init.postfix
+  - init.tty-timeout
+  - init.ntp-client
+  - init.selinux
+  - init.tty-style
+  - init.repo-clear
+  - init.repo
+  - init.basePkg
+  - init.python-pip
+  - init.axel
