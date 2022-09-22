@@ -5232,6 +5232,21 @@ root@ubuntu18-node01:/etc/mysql# cat /var/log/mysql/error.log | grep -i password
 2022-01-21T07:12:08.048732Z 1 [Warning] root@localhost is created with an empty password ! Please consider switching off the --initialize-insecure option.
 2022-01-21T07:44:40.064990Z 1 [Note] A temporary password is generated for root@localhost: Qal4*LYjoJ#0
 
+### 两种初始化mysql方法
+```
+## method1 ./bin/mysql_install_db --user=mysql --datadir=/data/mysql
+root@mysql-slave02:~# cat /root/.mysql_secret
+# Password set for user 'root@localhost' at 2022-09-09 17:27:52
+>v%sZ0ie%3+0
+root@mysql-slave02:~# mysql -uroot -p
+Enter password:
+alter user root@'localhost' identified by 'your_password'
+
+## method2 ./bin/mysql_install_db --initialize --user=mysql --datadir=/data/mysql --basedir=/usr/local/mysql
+grep password /data/mysql/mysql.err
+```
+
+
 
 
 
@@ -5241,7 +5256,7 @@ master02: 192.168.13.163
 new master02: 192.168.13.164
 需求：将192.168.13.163迁移至192.168.13.164，192.168.13.160跟192.168.13.164成为主主集群
 
-1. 192.168.13.164安装mysql，并复制192.168.13.163复制器配置文件到192.168.13.164，重启192.168.13.164服务
+1. 192.168.13.164安装mysql，并复制192.168.13.163服务器配置文件到192.168.13.164，重启192.168.13.164服务
 2. 停止192.168.13.163 slave线程，并确保无任何客户端写入数据到192.168.13.163。
 3. 全库备份192.168.13.163并复制到192.168.13.164，记录192.168.13.163slave同步192.168.13.160master01执行到什么文件、什么位置，例如master_log_file='master-bin.000157',master_log_pos=111047299{其实可以直接从192.168.13.160进行全库备份，然后复制到192.168.13.164进行恢复，直接把192.168.13.160作为主}
  mysqldump -uroot -p --all-databases --triggers --routines --events --set-gtid-purged=OFF --flush-logs --master-data=2 --single-transaction > alldatabases.sql

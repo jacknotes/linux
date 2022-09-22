@@ -1966,5 +1966,30 @@ tail /usr/local/nginx/logs/error.log
 2021/09/27 16:07:11 [warn] 3432#0: *17371333 upstream server temporarily disabled while connecting to upstream, client: 172.168.2.224, server: 0.0.0.0:6443, upstream: "192.168.13.51:6443", bytes from/to client:0/0, bytes from/to upstream:0/0
 
 
+
+#健康检查--202209140935
+## tcp健康检查
+upstream dovepayupload_loop
+        {
+                server 192.168.13.204:8098;
+                server 192.168.13.205:8098;
+                check interval=3000 rise=2 fall=3 timeout=1000 type=tcp;
+        }
+## http健康检查
+upstream apolloconfig_uat_loop {
+    server 192.168.13.196:8085;
+	server 192.168.13.214:8085;
+    check interval=3000 rise=1 fall=3 timeout=1000 type=http;
+    check_http_send "HEAD / HTTP/1.0\r\n\r\n";
+    check_http_expect_alive http_2xx http_3xx;
+}
+
+upstream webserver { 
+	server httpd.jack.com:8080 weight=5 max_fails=2 fail_timeout=2; 
+	server tomcat.jack.com:8080 weight=5 max_fails=2 fail_timeout=2;
+}
+
+
+
 </pre>
 
