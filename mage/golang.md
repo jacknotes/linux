@@ -1,3 +1,5 @@
+
+
 ## day01
 
 
@@ -1104,11 +1106,11 @@ func defer_exe_time() (i int) {
 }
 
 func defer_panic() {
-	defer fmt.Println(1)
+	defer fmt.Println(1)	//先注册后执行，堆，LIFO
 	n := 0
 	// defer fmt.Println(1 / n) //在注册defer时就要计算1/n，发生panic，第3个defer根本就没有注册。发生panic时首先会去执行已注册成功的defer，然后打印错误调用堆栈，最后exit(2)
 	defer func() {
-		fmt.Println(1 / n)   //defer func 内部发生panic，main协程不会exit，其他defer还可以正常执行
+		fmt.Println(1 / n)   //defer func 内部发生panic，main协程不会exit，等外部其他注册成功的defer执行完成后再退出
 		defer fmt.Println(2) //上面那行代码发生发panic，所以本行的defer没有注册成功
 	}()
 	defer fmt.Println(3)
@@ -1142,11 +1144,12 @@ if res, err := divide(3, 0); err != nil {//函数调用方判断error是否为ni
 
 ## 自定义error
 type PathError struct {    //自定义error
-path string
-op string
-createTime string
-message string
-}func (err PathError) Error() string {    //error接口要求实现Error() string方法
+	path string
+	op string
+	createTime string
+	message string
+}
+func (err PathError) Error() string {    //error接口要求实现Error() string方法
 	return err.createTime + ": " + err.op + " " + err.path + " " + err.message
 }
 
@@ -1393,7 +1396,7 @@ slice的元素、map的key和value都可以是空接口类型
 #### 类型断言
 
 ```
-if v, ok := i.(int); ok {//若断言成功，则ok为true，v是具体的类型
+if v, ok := i.(int); ok {//i是interface, 若断言成功，则ok为true，v是具体的类型
 	fmt.Printf("i是int类型，其值为%d\n", v)
 } else {
 	fmt.Println("i不是int类型")
@@ -1426,6 +1429,891 @@ case int8, int32, byte: //如果case后面跟多种type，则v还是interface{}�
 
 
 
+#### 作业
+
+```
+package main
+
+import (
+	"errors"
+	"fmt"
+)
+
+// 1. 实现一个函数，接受若干个float64（用不定长参数），返回这些参数乘积的倒数，除数为0时返回error
+func prod1(args ...float64) (float64, error) {
+	var product float64 = 1.0
+	for _, arg := range args {
+		if arg == 0 {
+			return product, errors.New("divide by zero")
+		}
+		product *= arg
+	}
+	return 1.0 / product, nil
+}
+
+// 2. 上题用递归函数实现
+func prod(args ...float64) (float64, error) {
+	if len(args) == 0 {
+		return 0, errors.New("args is null")
+	}
+	first := args[0]
+	if first == 0 {
+		return 1.0, errors.New("divide by zero")
+	}
+	if len(args) == 1 {
+		return 1.0 / first, nil
+	}
+	remain := args[1:]
+	result, err := prod(remain...)
+	if err != nil {
+		return 1, err
+	} else {
+		return 1.0 / first * result, nil
+	}
+
+}
+
+// 3. 定义两个接口：鱼类和爬行动物，再定义一个结构体：青蛙，同时实现上述两个接口
+//定义鱼类接口
+type Fisher interface {
+	Swin()
+}
+
+//定义爬行动物接口
+type Crawler interface {
+	Craw()
+}
+
+type Frog struct {
+}
+
+func (Frog) Swin() {}
+func (Frog) Craw() {}
+
+// 4. 实现函数func square(num interface{}) interface{}，计算一个interface{}的平方，
+// interface{}允许是4种类型：float32、float64、int、byte
+
+func square(num interface{}) interface{} {
+	// return num * num		// 空接口是不能跟空接口相乘的
+	switch v := num.(type) {
+	case int:
+		return v * v
+	case float32:
+		return v * v
+	case float64:
+		return v * v
+	case byte:
+		return v * v
+	default:
+		fmt.Printf("unsupperted data type %T\n", num)
+		return nil
+	}
+}
+
+func square2(num interface{}) interface{} {
+	switch num.(type) {
+	case int:
+		v := num.(int) //类型断言，针对空接口并且在switch中使用
+		return v * v
+	case float32:
+		v := num.(int)
+		return v * v
+	case float64:
+		v := num.(int)
+		return v * v
+	case byte:
+		v := num.(int)
+		return v * v
+	default:
+		fmt.Printf("unsupperted data type %T\n", num)
+		return nil
+	}
+}
+
+func main() {
+	// args := []float64{2, 3, 4, 5, 0}
+	// result, err := prod1(args...)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// } else {
+	// 	fmt.Printf("result=%f\n", result)
+	// }
+
+	// res, err := prod(args...)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// } else {
+	// 	fmt.Printf("res=%f\n", res)
+	// }
+
+	var i int = 2
+	var b byte = 2
+	var d float32 = 2
+	var s float64 = 2
+	var w int32 = 2
+	fmt.Println(square(i))
+	fmt.Println(square(b))
+	fmt.Println(square(d))
+	fmt.Println(square(s))
+	fmt.Println(square(w))
+}
+```
+
+
+
+## day05
+
+### go面向对象编程
+
+
+
+#### 构造函数
+
+```
+//main.go 
+package main
+
+import "fmt"
+
+type User struct {
+	Name string
+	Age  int
+	Sex  byte
+}
+
+// 构造函数，返回结构体实例
+func NewUser(name string, age int, sex byte) *User {
+	return &User{
+		Name: name,
+		Age:  age,
+		Sex:  sex,
+	}
+}
+
+func NewDefaultUser() *User {
+	return &User{
+		Name: "",
+		Age:  -1,
+		Sex:  3,
+	}
+}
+
+func main() {
+	// u1 := &User{}
+	// u2 := NewDefaultUser()
+	// fmt.Printf("age=%d sex=%d\n", u1.Age, u1.Sex)
+	// fmt.Printf("age=%d sex=%d\n", u2.Age, u2.Sex)
+
+	u3 := GetUserInstance()
+	u4 := GetUserInstance()
+	u4.Age = 18
+	fmt.Printf("u3 age %d\n", u3.Age)
+	u5 := GetUserInstance()
+	fmt.Printf("u5 age %d\n", u5.Age)
+}
+-----
+//singleton.go
+package main
+
+import "sync"
+
+var (
+	user     *User
+	userOnce sync.Once
+	pe       *Peeple
+	pOnce    sync.Once
+)
+
+type Peeple struct {
+}
+
+// 单例模式
+func GetUserInstance() *User {
+	userOnce.Do(func() { //确保整上go进程之间只被执行一次
+		if user == nil {
+			user = NewDefaultUser()
+		}
+	})
+	return user
+}
+
+// 单例模式2
+func GetPeepleInstance() *Peeple {
+	userOnce.Do(func() { //确保整上go进程之间只被执行一次
+		if pe == nil {
+			pe = new(Peeple)
+		}
+	})
+	return pe
+}
+
+```
+
+
+
+#### 继承和组合
+
+```
+package main
+
+import "fmt"
+
+type Plane struct {
+	Color string
+}
+
+func (Plane) Fly() {
+	fmt.Println("plane fly")
+}
+
+type Human struct {
+}
+
+func (Human) Fly() {
+	fmt.Println("human fly")
+}
+
+type Bird struct { //组合
+	Plane //继承
+	Human
+}
+
+// func (b Bird) Fly() { //重写
+// 	b.Plane.Fly()
+// 	fmt.Println("bird fly")
+// }
+
+func main() {
+	b := Bird{}
+	fmt.Println(b.Plane.Color)
+	fmt.Println(b.Color)
+	b.Plane.Fly()
+	b.Human.Fly()
+	// b.Fly()
+
+}
+```
+
+
+
+#### 泛型
+
+```
+package main
+
+import "fmt"
+//没有泛型之前的解决办法
+func add4int (a, b int) int {
+	return a + b
+}
+//没有泛型之前的解决办法
+func add4string (a, b string) string {
+	return a + b
+}
+//定义泛型Addable
+type Addable interface{
+	type int, int8, int16, int32, uint8, uint16, float32, float64, complex128, string
+}
+//定义泛型Addable相关函数
+func add[T Addable](a, b T) T{
+	return a + b
+}
+
+func main(){
+	var a, b int=2, 5
+	var c, d string= "China", "People"
+
+	add4int(a, b)
+	add4string(c, d)
+	fmt.Println(add(a,b))
+	fmt.Println(add(c,d))
+}
+// go1.17泛型还在实验阶段，需要运行如下命令开启
+PS D:\share\golang-study\day05\generic> go run -gcflags=-G=3 .\main.go
+7
+ChinaPeople
+```
+
+
+
+#### 反射
+
+```
+# 反射介绍
+什么是反射?
+	在运行期间（不是编译期间）探知对象的类型信息和内存结构、更新变量、调用它们的方法
+何时使用反射?
+	函数的参数类型是interface{}，需要在运行时对原始类型进行判断，针对不同的类型采取不同的处理方式。比如json.Marshal(v interface{})
+	在运行时根据某些条件动态决定调用哪个函数，比如根据配置文件执行相应的算子函数
+使用反射的例子:
+type User struct {
+	Name string
+	Age int
+	Sex byte `json:"gender"`
+}
+user := User{
+	Name: "钱钟书",
+	Age: 57,
+	Sex: 1,
+}
+json.Marshal(user)
+{"Name":"钱钟书","Age":57,"gender":1}
+
+# 反射的弊端
+1. 代码难以阅读，难以维护
+2. 编译期间不能发现类型错误，覆盖测试难度很大，有些bug需要到线上运行很长时间才能发现，可能会造成严重用后果
+3. 反射性能很差，通常比正常代码慢一到两个数量级。在对性能要求很高，或大量反复调用的代码块里建议不要使用反射
+
+# 反射的基础数据类型
+
+原始类型 <-> 强制类型转换 <-> interface{} -> TypeOf() -> type -> New() -> value(相互转换)
+							    	  -> ValueOf() -> value -> type() -> type(相互转换)
+												   -> Interface() -> interface{}(相互转换)
+type Type interface {
+	Method(int) Method  //第i个方法
+	MethodByName(string) (Method, bool) //根据名称获取方法
+	NumMethod() int  //方法的个数
+	Name() string   //获取结构体名称
+	PkgPath() string //包路径
+	Size() uintptr  //占用内存的大小
+	String() string  //获取字符串表述
+	Kind() Kind  //数据类型
+	Implements(u Type) bool  //判断是否实现了某接口
+	AssignableTo(u Type) bool  //能否赋给另外一种类型
+	ConvertibleTo(u Type) bool  //能否转换为另外一种类型
+	Elem() Type  //解析指针
+	Field(i int) StructField  //第i个成员
+	FieldByIndex(index []int) StructField  //根据index路径获取嵌套成员
+	FieldByName(name string) (StructField, bool)  //根据名称获取成员
+	FieldByNameFunc(match func(string) bool) (StructField, bool)  //
+	Len() int  //容器的长度
+	NumIn() int  //输出参数的个数
+	NumOut() int  //返回参数的个数
+}
+获取类型相关的信息	reflect.Type
+
+reflect.Value
+type Value struct {
+	// 代表的数据类型
+	typ *rtype
+	// 指向原始数据的指针
+	ptr unsafe.Pointer
+}
+通过reflect.Value可以获取、修改原始数据类型里的值
+```
+
+
+
+#### 反射API
+
+```
+# 获取Type类型
+//通过TypeOf()得到Type类型
+typeUser := reflect.TypeOf(&common.User{}) 
+fmt.Println(typeUser)                     //*common.User
+fmt.Println(typeUser.Elem())       //common.User，Elem()对指针类型进行解析
+fmt.Println(typeUser.Kind())                 //ptr
+fmt.Println(typeUser.Elem().Kind())    //struct
+
+# 获取Field信息
+typeUser := reflect.TypeOf(common.User{})
+for i := 0; i < typeUser.NumField() ; i++ {//成员变量的个数
+field := typeUser.Field(i)
+fmt.Printf("%s offset %d anonymous %t type %s exported %t json tag %s\n", 
+field.Name, //变量名称
+field.Offset, //相对于结构体首地址的内存偏移量，string类型会占据16个字节
+field.Anonymous, //是否为匿名成员
+field.Type, //数据类型，reflect.Type类型
+field.IsExported(), //包外是否可见（即是否以大写字母开头）
+field.Tag.Get("json")) //获取成员变量后面``里面定义的tag
+}
+
+# 获取method信息
+typeUser := reflect.TypeOf(common.User{})
+methodNum := typeUser.NumMethod() //成员方法的个数。接收值为指针的方法不包含在内
+for i := 0; i < methodNum; i++ {
+	method := typeUser.Method(i)
+	fmt.Printf("method name:%s ,type:%s, exported:%t\n", 	method.Name, method.Type, method.IsExported())
+}
+
+# 获取函数信息
+typeFunc := reflect.TypeOf(Add) //获取函数类型
+argInNum := typeFunc.NumIn() //输入参数的个数
+for i := 0; i < argInNum; i++ {
+	argTyp := typeFunc.In(i)
+	fmt.Printf("第%d个输入参数的类型%s\n", i, argTyp)
+}
+
+# 赋值和转换关系
+type1.AssignableTo(type2)  //type1代表的类型是否可以赋值给type2代表的类型
+type1.ConvertibleTo(type2) //type1代表的类型是否可以转换成type2代表的类型
+java的反射可以获取继承关系，而go语言不支持继承，所以必须是相同的类型才能AssignableTo和ConvertibleTo
+
+# 是否实现接口
+typeOfPeople := reflect.TypeOf((*common.People)(nil)).Elem()  //通过reflect.TypeOf((*<interface>)(nil)).Elem()获得接口类型
+userType := reflect.TypeOf(&common.User{})
+userType.Implements(typeOfPeople)//判断User的指针类型是否实现了People接口
+User的值类型实现了接口，则指针类型也实现了接口；但反过来不行
+
+# reflect.Value
+userValue := reflect.ValueOf(common.User{
+	Id: 7,
+	Name: "杰克逊",
+	Weight: 65,
+	Height: 1.68,
+})
+user := userValue.Interface().(common.User)//通过Interface()函数把Value转为interface{}，再从interface{}强制类型转换，转为原始数据类型
+
+# 空Value
+var i interface{} //接口没有指向具体的值
+v := reflect.ValueOf(i)
+fmt.Printf("v持有值 %t\n", v.IsValid())
+var user *common.User = nil
+v = reflect.ValueOf(user) //Value指向一个nil
+fmt.Printf("v持有的值是nil %t\n", v.IsNil())
+var u common.User //只声明，里面的值都是默认值
+v = reflect.ValueOf(u)
+fmt.Printf("v持有的值是对应类型的默认值 %t\n", v.IsZero())
+
+# nil
+// nil is a predeclared identifier representing the zero value for a // pointer, channel, func, interface, map, or slice type.
+var nil Type // Type must be a pointer, channel, func, interface, map, or slice type
+应用举例：
+var s []int;  s==nil
+var err error; err==nil
+var foo func(int)string; foo==nil
+
+# Value转为Type
+userType := userValue.Type()
+userType.Kind() == userValue.Kind() == reflect.Struct
+
+
+# 代表指针的Value
+userPtrValue := reflect.ValueOf(&common.User{})
+userValue := userPtrValue.Elem() 
+userPtrValue = userValue.Addr() 
+user := userValue.Interface().(common.User)
+userPtr := userPtrValue.Interface().(*common.User)
+
+# 通过反射修改struct
+var s string = "hello"
+valueS := reflect.ValueOf(&s)  //必须传指针才能修改数据
+valueS.Elem().SetString("golang")  //需要先调Elem()把指针Value转为非指针Value
+user := common.User{}
+valueUser := reflect.ValueOf(&user)
+addrValue := valueUser.Elem().FieldByName("addr")
+if addrValue.CanSet() {
+	addrValue.SetString("北京")	//未导出成员的值不能修改
+}
+
+# 通过反射修改slice
+users := make([]*common.User, 1, 5)
+users[0] = &common.User{Id: 7}
+sliceValue := reflect.ValueOf(&users) //准备通过Value修改users，所以传指针
+sliceValue.Elem().Index(0).Elem().FieldByName("Name").SetString("令狐冲")
+
+sliceValue.Elem().SetLen(2)
+//调用reflect.Value的Set()函数修改其底层指向的原始数据
+sliceValue.Elem().Index(1).Set(reflect.ValueOf(&common.User{Id: 8,Name: "李达"}))
+
+
+# 通过反射修改map
+u1 := &common.User{Id: 7,Name: "杰克逊",}
+u2 := &common.User{Id: 8,Name: "杰克逊",}
+userMap := make(map[int]*common.User, 5)
+userMap[u1.Id] = u1
+mapValue := reflect.ValueOf(&userMap)     //注意传指针
+mapValue.Elem().SetMapIndex(reflect.ValueOf(u2.Id), reflect.ValueOf(u2))   //SetMapIndex 往map里添加一个key-value对
+
+
+# 通过反射调用函数
+valueFunc := reflect.ValueOf(Add)
+args := reflect.Value{reflect.ValueOf(3), reflect.ValueOf(5)}
+results := valueFunc.Call(args)   //函数返回是一个列表
+sum := results[0].Interface().(int)
+
+
+# 通过反射调用方法
+user := common.User{}
+valueUser := reflect.ValueOf(&user) //必须传指针，因为BMI()在定义的时候它是指针的方法
+bmiMethod := valueUser.MethodByName("BMI") //MethodByName()通过Name返回类的成员变量
+resultValue := bmiMethod.Call([]reflect.Value{}) //无参数时传一个空的切片
+result := resultValue[0].Interface().(float32)
+
+
+# 根据反射创建struct
+t := reflect.TypeOf(common.User{})
+value := reflect.New(t) //根据reflect.Type创建一个对象，得到该对象的指针，再根据指针提到reflect.Value
+value.Elem().FieldByName("Name").SetString("宋江")
+user := value.Interface().(*common.User) //把反射类型转成go原始数据类型
+
+
+# 根据反射创建slice
+var slice []common.User
+sliceType := reflect.TypeOf(slice)
+sliceValue := reflect.MakeSlice(sliceType, 1, 3) sliceValue.Index(0).Set(reflect.ValueOf(common.User{Id: 8}))
+users := sliceValue.Interface().([]common.User)
+
+
+# 根据反射创建map
+var userMap map[int]*common.User
+mapType := reflect.TypeOf(userMap)
+mapValue := reflect.MakeMapWithSize(mapType, 10) 
+user := &common.User{Id:7}
+key := reflect.ValueOf(user.Id)
+mapValue.SetMapIndex(key, reflect.ValueOf(user))//SetMapIndex 往map里添加一个key-value对
+userMap = mapValue.Interface().(map[int]*common.User)
+
+```
+
+
+
+
+
+#### day06
+
+
+
+##### go语言包与工程化
+
+1.用go mod管理工程
+
+2.包引入规则
+
+3.init调用链
+
+4.可见性
+
+
+
+###### 用go mod管理工程
+
+```
+# 创建项目
+go mod init $module_name
+$module_name和目录名可以不一样
+
+module go-course
+go 1.17
+require (
+	github.com/ethereum/go-ethereum v1.10.8
+	github.com/gin-gonic/gin v1.7.4
+)
+
+
+# 包查找规则
+依次从当前项目、$GOROOT、$GOPATH下寻找依赖包
+1. 从当前go文件所在的目录逐级向上查找go.mod文件（假设go.mod位于目录$mode_path下），里面定义了module_name，则引入包的路径为module_name/包相对于$mode_path的路径
+2. go标准库提供的包在$GOROOT/src下
+3. 第三方依赖包在$GOPATH/pkg/mod下
+
+
+# 包管理
+1. 从go1.7开始，go get只负责下载第三方依赖包，并把它加到go.mod文件里，由go install负责安装二进制文件
+	go get github.com/mailru/easyjson会在$GOPATH/pkg/mod目录下生成github.com/mailru/easyjson目录
+	go install github.com/mailru/easyjson/easyjson会在$GOPATH/bin下生成easyjson二进制可执行文件
+2. go mod tidy通过扫描当前项目中的所有代码来添加未被记录的依赖至go.mod文件或从go.mod文件中删除不再被使用的依赖
+
+```
+
+
+
+###### 包引入规则
+
+```
+# 包的声明
+* go文件的第一行声明 package xxx
+* 在包声明的上面可写关于包的注释，包注释也可以专门写在doc.go里
+* 包名跟目录名可以不同
+* 同一个目录下，所有go文件的包名必须一致
+
+# 包的引用
+* 可以直接使用同目录下其他go文件里的变量、函数、结构体
+* 跨目录使用则需要变量前加入包名，并且引入包所在的目录
+imoprt "go-course/package"
+mypackage.Add()
+mypackage是包名(Add函数所有go文件的package名称)，它所在的目录是go-course/package
+
+* 在import块里可以引用父目录，也可以引用子目录
+* 引用关系不能构成一个环
+* 在import的目录前面可以给包起一个别名
+imoprt asd "go-course/package"
+asd.Add()
+
+```
+
+
+
+###### init调用链
+
+```
+# init()函数
+* main函数是go程序的唯一入口，所以main函数只能存在一个
+* main函数必须位于main包中
+* 在main函数执行之前会先执行init()函数
+* 在一个目录，甚至一个go文件里，init()可以重复定义
+* 引入其他包时，相应包里的init()函数也会在main()函数之前被调用
+* init函数调用优先级：import包的顺序执行 -> 依赖包中依赖其它包时，最后被依赖的init()优先被执行
+
+```
+
+
+
+###### 可见性
+
+```
+# 可见性
+* 以小写字母开头命名的函数、变量、结构体只能在本包内访问
+* 以大写字母开头命名的函数、变量、结构体在其他包中也可以访问
+* 如果结构体名字以大写字母开头，而其成员变量、成员方法以小写字母开头，则这样的成员只能在本包内访问
+
+
+# internal包
+* Go中命名为internal的package，只有该package的上一级package才可以访问该package的内容
+* （internal的上一级目录）及其子孙目录之间可以任意import，但a目录和b目录不能import internal及其下属的所有目录
+目录结构：a -> b -> c -> d
+					-> internel -> e -> f -> e.go
+										  -> f.go
+										  -> x.go
+```
+
+
+
+##### go语言常用标准库
+
+##### 数学计算
+
+```
+# 数学常量
+math.E	//自然对数的底，2.718281828459045
+math.Pi	//圆周率，3.141592653589793
+math.Phi	//黄金分割，长/短，1.618033988749895
+math.MaxInt	//9223372036854775807
+uint64(math.MaxUint)	//得先把MaxUint转成uint64才能输出，18446744073709551615
+math.MaxFloat64	//1.7976931348623157e+308
+math.SmallestNonzeroFloat64	//最小的非0且正的浮点数，5e-324
+
+
+# NaN
+Not a Number
+f := math.NaN()
+math.IsNaN(f)
+
+
+# 常用函数
+math.Ceil(1.1)	//向上取整，2
+math.Floor(1.9)	//向下取整，1。 math.Floor(-1.9)=-2
+math.Trunc(1.9)	//取整数部分，1
+math.Modf(2.5)	//返回整数部分和小数部分，2  0.5
+math.Abs(-2.6)	//绝对值，2.6
+math.Max(4, 8)	//取二者的较大者，8
+math.Min(4, 8)	//取二者的较小者，4
+math.Mod(6.5, 3.5)	//x-Trunc(x/y)*y结果的正负号和x相同，3
+math.Sqrt(9)		//开平方，3
+math.Cbrt(9)		//开三次方，2.08008
+
+
+# 三角函数
+math.Sin(1)
+math.Cos(1)
+math.Tan(1)
+math.Tanh(1)
+
+
+# 对数和指数
+math.Log(5)	//自然对数，1.60943
+math.Log1p(4)	//等价于Log(1+p)，确保结果为正数，1.60943
+math.Log10(100)	//以10为底数，取对数，2
+math.Log2(8)	//以2为底数，取对数，3
+math.Pow(3, 2)	//x^y，9
+math.Pow10(2)	//10^x，100
+math.Exp(2)	//e^x，7.389
+
+
+# 随机数生成器
+rand.Seed(1) //如果对两次运行没有一致性要求，可以不设seed
+fmt.Println(rand.Int()) //随机生成一个整数
+fmt.Println(rand.Float32()) //随机生成一个浮点数
+fmt.Println(rand.Intn(100)) //100以内的随机整数，[0,100)
+arr := rand.Perm(100) //把[0,100)上的整数随机打乱
+rand.Shuffle(len(arr), func(i, j int) { //随机打乱一个给定的slice
+	arr[i], arr[j] = arr[j], arr[i]
+})
+
+
+# gonum
+gonum是用纯go语言(带一些汇编)开发的数值算法库，包含统计、矩阵、数值优化
+第三方库go get gonum.org/v1/gonum
+arr,brr := []float64{1, 2, 3, 4, 5}, []float64{6, 7, 8, 9, 10}
+fmt.Println(stat.Mean(arr, nil)) //均值
+fmt.Println(stat.Variance(arr, nil)) //方差
+fmt.Println(stat.Covariance(arr, brr, nil)) //协方差
+fmt.Println(stat.CrossEntropy(arr, brr)) //交叉熵
+
+```
+
+
+
+##### 时间函数
+
+```
+# 解析和格式化
+TIME_FMT := "2006-01-02 15:04:05"
+now := time.Now()
+ts := now.Format(TIME_FMT)
+loc, _ = time.LoadLocation("Asia/Shanghai")
+t, _ = time.ParseInLocation(TIME_FMT, ts, loc)
+
+
+# 时间运算
+diff1 := t1.Sub(t0) //计算t1跟t0的时间差，返回类型是time.Duration
+diff2 := time.Since(t0) //计算当前时间跟t0的时间差，返回类型是time.Duration
+diff3 := time.Duration(3 * time.Hour) //Duration表示两个时刻之间的距离
+t4 := t0.Add(diff3) 
+t4.After(t0)    //true
+
+
+# 时间的属性
+t0.Unix(), t0.UnixMilli(), t0.UnixMicro(), t0.UnixNano()
+t2.Year(), t2.Month(), t2.Day(), t2.YearDay()
+t2.Weekday().String(), t2.Weekday()
+t1.Hour(), t1.Minute(), t1.Second()
+
+
+# 定时执行
+tm := time.NewTimer(3 * time.Second)
+<-tm.C //阻塞3秒钟
+//do something
+tm.Stop()
+或者用：
+<-time.After(3 * time.Second) //阻塞3秒钟
+
+
+# 周期执行
+tk := time.NewTicker(1 * time.Second)
+for i := 0; i < 10; i++ {
+<-tk.C //阻塞1秒钟
+//do something
+}
+tk.Stop()
+```
+
+
+
+
+
+##### I/O操作
+
+```
+# 标准输入
+fmt.Println("please input two word")
+var word1 string 
+var word2 string
+fmt.Scan(&word1, &word2) //读入多个单词，空格分隔。如果输入了更多单词会被缓存起来，丢给下一次scan
+fmt.Println("please input an int")
+var i int
+fmt.Scanf("%d", &i) //类似于Scan，转为特定格式的数据
+
+
+# 打开文件
+func os.Open(name string) (*os.File, error)
+fout, err := os.OpenFile("data/verse.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
+os.O_WRONLY以只写的方式打开文件，os.O_TRUNC把文件之前的内容先清空掉，os.O_CREATE如果文件不存在则先创建，0666新建文件的权限设置
+
+
+# 读文件
+reader := bufio.NewReader(fin) //读文件文件建议用bufio.Reader
+for { //无限循环
+if line, err := reader.ReadString('\n'); err != nil { //指定分隔符
+if err == io.EOF {
+	break //已读到文件末尾
+} else {
+	fmt.Printf("read file failed: %v\n", err)
+}
+} else {
+	line = strings.TrimRight(line, "\n") //line里面是包含换行符的，需要去掉
+	fmt.Println(line)
+}
+}
+
+# 写文件
+defer fout.Close() //别忘了关闭文件句柄
+writer := bufio.NewWriter(fout)
+writer.WriteString("明月多情应笑我")
+writer.WriteString("\n") //需要手动写入换行符
+
+
+# 创建文件/目录
+os.Create(name string)//创建文件
+os.Mkdir(name string, perm fs.FileMode)//创建目录
+os.MkdirAll(path string, perm fs.FileMode)//增强版Mkdir，沿途的目录不存在时会一并创建
+os.Rename(oldpath string, newpath string)//给文件或目录重命名，还可以实现move的功能
+os.Remove(name string)//删除文件或目录，目录不为空时才能删除成功
+os.RemoveAll(path string)//增强版Remove，所有子目录会递归删除
+
+
+# 遍历目录
+if fileInfos, err := ioutil.ReadDir(path); err != nil {
+	return err
+} else {
+for _, fileInfo := range fileInfos {
+fmt.Println(fileInfo.Name())
+if fileInfo.IsDir() { //如果是目录，就递归子遍历
+	walk(filepath.Join(path, fileInfo.Name}
+}
+}
+
+
+# 日志
+默认的log输出到控制台
+log.Printf("%d+%d=%d\n", 3, 4, 3+4)
+log.Println("Hello Golang")
+log.Fatalln("Bye, the world") //日志输出后会执行os.Exit(1)
+指定日志输出到文件
+logWriter := log.New(fout, "[BIZ_PREFIX]", log.Ldate|log.Lmicroseconds) //通过flag参数定义日志的格式
+logWriter.Println("Hello Golang")
+
+
+# 调用系统命令
+cmd_path, err := exec.LookPath(“df”) //查看系统命令所在的目录，确保命令已安装
+cmd := exec.Command("df", "-h") //相当于命令df -h，注意Command的每一个参数都不能包含空格
+output, err := cmd.Output() //cmd.Output()运行命令并获得其输出结果
+cmd = exec.Command("rm", "./data/test.log")
+cmd.Run() //如果不需要获得命令的输出，直接调用cmd.Run()即可
+
+```
+
+
+
+
+
+##### 编码
+
+```
+# json
+json是go标准库里自带的序列化工具，使用了反射，效率比较低
+easyjson只针对预先定义好的json结构体对输入的json字符串进行纯字符串的截取，并将对应的json字段赋值给结构体
+easyjson -all xxx.go 生成go文件中定义的结构体对应的解析
+func easyjson.Marshal(v easyjson.Marshaler) ([]byte, error)
+func easyjson.Unmarshal(data []byte, v easyjson.Unmarshaler) error
+
+
+# base64
+任意byte数组都可以采用base64编码转为字符串，并且可以反解回byte数组
+编码和解码的方法是公开、确定的， base64不属于加密算法
+base64经常在http环境下用来传输较长的信息
+func (*base64.Encoding).EncodeToString(src []byte) string
+func (*base64.Encoding).DecodeString(s string) ([]byte, error)
+
+
+# 压缩和解压
+compress包下实现了zlib、bzip、gip、lzw等压缩算法
+writer := zlib.NewWriter(fout)//压缩
+writer.Write(bytes)
+reader, err := zlib.NewReader(fin) //解压
+io.Copy(os.Stdout, reader) 
+
+```
 
 
 
@@ -1433,4 +2321,681 @@ case int8, int32, byte: //如果case后面跟多种type，则v还是interface{}�
 
 
 
+#### day07
+
+
+
+##### go重点基础知识回顾
+
+##### 特征抽取
+
+##### 单元测试、基准测试
+
+```
+# 单元测试
+func TestStrCat(b *testing.T) {
+	hello := "hello"
+	golang := "golang"
+	fmt.Printf("%s %s\n", hello, golang)
+}
+
+go test -v go_test.go -timeout=20m -count=1
+-v 打印详情测试信息
+-timeout 默认10分钟超时
+-count 函数运行几次
+
+
+# 基准测试
+func BenchmarkStrCat(b *testing.B) {
+    hello := "hello"
+    golang := "golang"
+    for i := 0; i < b.N; i++ {
+        fmt.Printf("%s %s\n", 	hello, golang)
+    }
+}
+
+go test -bench=StrCat -run=^$ -benchmem -benchtime=2s -cpuprofile=data/cpu.prof -memprofile=data/mem.prof
+-bench 正则指定运行哪些基准测试
+-run 正则指定运行哪些单元测试
+-benchmem 输出内存分配情况
+-benchtime 每个函数运行多长时间
+
+
+# 测试代码规范
+单元测试和基准测试必须放在以_test.go为后缀的文件里。
+单元测试函数以Test开头，基准测试函数以Benchmark开头。
+单元测试以*testing.T为参数，函数无返回值。
+基准测试以*testing.B为参数，函数无返回值。
+
+
+# pprof
+proof是可视化性能分析工具，提供以下功能：
+CPU Profiling：按一定频率采集CPU使用情况
+Memory Profiling：监控内存使用情况，检查内存泄漏
+Goroutine Profiling：对正在运行的Goroutine进行堆栈跟踪和分析，检查协程泄漏
+
+
+# cpu监控
+go tool pprof data/cpu.prof
+常用命令：topn, list func, peek func, web
+
+
+# pprof web可视化
+go tool pprof -http=:8080 data/cpu.prof
+
+
+```
+
+
+
+
+
+#### day08*
+
+##### 常用加解密算法
+
+1.对称加密
+
+2.非对称加密
+
+3.哈希算法
+
+
+
+###### 对称加密(双向加密算法)
+
+```
+加密过程的每一步都是可逆的
+加密和解密用的是同一组密钥
+异或是最简单的对称加密算法
+
+# DES数组分级
+DES（Data Encryption Standard）数据加密标准，是目前最为流行的加密算法之一
+对原始数据（明文）进行分组，每组64位，最后一组不足64位时按一定规则填充
+每一组上单独施加DES算法
+
+# DES子密钥生成
+初始密钥64位，实际有效位56位，每隔7位有一个校验位
+根据初始密钥生成16个48位的子密钥
+
+# AES
+AES（Advanced Encryption Standard）高级加密标准，旨在取代DES
+
+```
+
+
+
+###### 非对称加密(双向加密算法)
+
+```
+使用公钥加密，使用私钥解密
+公钥和私钥不同
+公钥可以公布给所有人
+私钥只有自己保存
+相比于对称加密，运算速度非常慢
+
+# 对称加密和非对称加密结合使用
+小明要给小红传输机密文件，他俩先交换各自的公钥，然后：
+小明生成一个随机的AES口令，然后用小红的公钥通过RSA加密这个口令，并发给小红
+小红用自己的RSA私钥解密得到AES口令
+双方使用这个共享的AES口令用AES加密通信
+
+# RSA
+Ron Rivest，Adi Shamir，Leonard Adleman
+密钥越长，越难破解。 目前768位的密钥还无法破解（至少没人公开宣布）。因此可以认为1024位的RSA密钥基本安全，2048位的密钥极其安全
+RSA的算法原理主要用到了数论
+
+# RSA加密过程
+随机选择两个不相等的质数p和q。p=61, q=53
+计算p和q的乘积n。n=3233
+计算n的欧拉函数φ(n) = (p-1)(q-1)。 φ(n) =3120
+随机选择一个整数e，使得1< e < φ(n)，且e与φ(n) 互质。e=17
+计算e对于φ(n)的模反元素d，即求解e*d+ φ(n)*y=1。d=2753, y=-15
+将n和e封装成公钥，n和d封装成私钥。公钥=(3233，17)，公钥=(3233，2753)
+
+
+
+# 椭圆曲线加密
+ECC（Elliptic Curve Cryptography）椭圆曲线加密算法，相比RSA，ECC可以使用更短的密钥，来实现与RSA相当或更高的安全
+定义了椭圆曲线上的加法和二倍运算
+椭圆曲线依赖的数学难题是：k为正整数，P是椭圆曲线上的点（称为基点）, k*P=Q , 已知Q和P，很难计算出k
+
+```
+
+
+
+###### 哈希算法(单向加密算法)
+
+```
+# 哈希函数的基本特征
+输入可以是任意长度
+输出是固定长度
+根据输入很容易计算出输出
+根据输出很难计算出输入（几乎不可能）
+两个不同的输入几乎不可能得到相同的输出
+特点：单向性、唯一性
+
+# sha1
+SHA（Secure Hash Algorithm） 安全散列算法，是一系列密码散列函数，有多个不同安全等级的版本：SHA-1,SHA-224,SHA-256,SHA-384,SHA-512
+防伪装，防窜扰，保证信息的合法性和完整性
+填充。使得数据长度对512求余的结果为448
+在信息摘要后面附加64bit，表示原始信息摘要的长度
+初始化h0到h4，每个h都是32位
+h0到h4历经80轮复杂的变换
+把h0到h4拼接起来，构成160位，返回
+
+
+# md5
+MD5（Message-Digest Algorithm 5）信息-摘要算法5，算法流程跟SHA-1大体相似
+MD5的输出是128位，比SHA-1短了32位
+MD5相对易受密码分析的攻击，运算速度比SHA-1快
+
+
+
+# 哈希函数的应用
+用户密码的存储
+文件上传/下载完整性校验
+mysql大字段的快速对比
+
+
+#数字签名
+RSA+哈希函数
+```
+
+
+
+
+
+##### 数据结构与算法
+
+1.链表
+
+2.栈
+
+3.堆
+
+4.Trie树
+
+
+
+###### 链表
+
+```
+# 链表
+1. 单向链表
+2. 双向链表,go语言只实现了双向链表，功能包含单向链表，container/list是双向链表
+
+# 链表的应用：LRU缓存淘汰
+LRU(Least Recently Used)最近最少使用
+思路：缓存的key放到链表中，头部的元素表示最近刚使用
+如果命中缓存，从链表中找到对应的key，移到链表头部
+如果没命中缓存：
+如果缓存容量没超，放入缓存，并把key放到链表头部
+如果超出缓存容量，删除链表尾部元素，再把key放到链表头部
+
+
+# 循环链表
+双向循环链表，container/ring是双向循环链表
+
+# ring的应用：基于滑动窗口的统计
+最近100次接口调用的平均耗时、最近10笔订单的平均值、最近30个交易日股票的最高点
+ring的容量即为滑动窗口的大小，把待观察变量按时间顺序不停地写入ring即可
+
+```
+
+
+
+###### 栈
+
+先进后出
+
+
+
+###### 栈
+
+```
+堆是一棵二叉树
+大根堆：任意节点的值都大于等于其子节点。反之为小根堆
+
+# 堆的应用
+堆排序
+1. 构建堆O(N)
+2. 不断地删除堆顶O(NlogN)
+求集合中最大的K个元素
+1. 用集合的前K个元素构建小根堆
+2. 逐一遍历集合的其他元素，如果比堆顶小直接丢弃；否则替换掉堆顶，然后向下调整堆
+把超时的元素从缓存中删除
+1. 按key的到期时间把key插入小根堆中
+2. 周期扫描堆顶元素，如果它的到期时间早于当前时刻，则从堆和缓存中删除，然后向下调整堆
+
+
+# 堆的实现
+golang中的container/heap实现了小根堆，但需要自己定义一个类，实现以下接口：
+Len() int, Less(i, j int) bool, Swap(i, j int)
+Push(x interface{})
+Pop() x interface{}
+
+
+```
+
+
+
+
+
+###### trie树
+
+```
+根节点是总入口，不存储字符
+对于英文，第个节点有26个子节点，子节点可以存到数组里；中文由于汉字很多，用数组存子节点太浪费内存，可以用map存子节点。
+从根节点到叶节点的完整路径是一个term
+从根节点到某个中间节点也可能是一个term，即一个term可能是另一个term的前缀
+
+```
+
+
+
+
+
+
+
+#### day09
+
+##### go语言并发编程
+
+1.并发编程模型
+
+2.Goroutine的使用
+
+3.Channel的同步与异步
+
+
+
+###### 并发编程模型
+
+
+
+进程与线程
+
+```
+任何语言的并行，到操作系统层面，都是内核线程的并行。
+同一个进程内的多个线程共享系统资源，进程的创建、销毁、切换比线程大很多。
+从进程到线程再到协程, 其实是一个不断共享, 不断减少切换成本的过程。
+```
+
+协程 VS 线程
+
+|          | 协程                                       | 线程                                            |
+| -------- | ------------------------------------------ | ----------------------------------------------- |
+| 创建数量 | 轻松创建上百万个协程而不会导致系统资源衰竭 | 通常最多不能超过1万个                           |
+| 内存占用 | 初始分配4k堆栈，随着程序的执行自动增长删除 | 创建线程时必须指定堆栈且是固定的，通常以M为单位 |
+
+|          | 协程                                                         | 线程                                                         |
+| -------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 切换成本 | 协程切换只需保存三个寄存器，耗时约200纳秒                    | 线程切换需要保存几十个寄存器，耗时约1000纳秒                 |
+| 调度方式 | 非抢占式，由Go runtime主动交出控制权（对于开发者而言是抢占式） | 在时间片用完后，由 CPU 中断任务强行将其调度走，这时必须保存很多信息 |
+
+|          | 协程                                                         | 线程                                                         |
+| -------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| 创建销毁 | goroutine因为是由Go runtime负责管理的，创建和销毁的消耗非常小，是用户级的 | 创建和销毁开销巨大，因为要和操作系统打交道，是内核级的，通常解决的办法就是线程池 |
+
+```
+# 查看逻辑核心数
+fmt.Println(runtime.NumCPU())
+
+
+# MPG并发模型
+M(Machine)对应一个内核线程。
+P(Processor)虚拟处理器，代表M所需的上下文环境，是处理用户级代码逻辑的处理器。P的数量由环境变量中的GOMAXPROCS决定，默认情况下就是核数。
+G(Goroutine)本质上是轻量级的线程，G0正在执行，其他G在等待。
+M和内核线程的对应关系是确定的。
+G0阻塞(如系统调用)时，P与G0、M0解绑，P被挂到其他M上，然后继续执行G队列。
+G0解除阻塞后，如果有空闲的P，就绑定M0并执行G0；否则G0进入全局可运行队列(runqueue)。P会周期性扫描全局runqueue，使上面的G得到执行；如果全局runqueue为空，就从其他P的等待队列里偷一半G过来。
+
+```
+
+
+
+###### Goroutine的使用
+
+```
+func Add(a, b int) int {
+	fmt.Println("Add")
+	return a + b
+}
+go Add(2, 4)
+
+
+go func(a, b int) int {
+	fmt.Println("add")
+	return a + b
+}(2, 4)
+
+
+# 优雅地等子协程结束
+wg := sync.WaitGroup{}
+wg.Add(10) //加10
+for i := 0; i < 10; i++ {
+	go func(a, b int) { //开N个子协程
+		defer wg.Done() //减1
+		//do something
+	}(i, i+1)
+}
+wg.Wait() //等待减为0
+注：
+父协程结束后，子协程并不会结束
+main协程结束后，所有协程都会结束
+当main协程阻塞后并且无其它协程时、或者当多个协程都阻塞时,程序将会退出报fatal error:deadlock。
+协程并发使用时，list、slice、struct可以直接修改，但map不能直接修改（会报fatal error），可以使用sync.Map实现
+var mp sync.Map	//声明线程安全的map
+mp.Store(1, true)	//插入Key、value
+mp.Range(func(key, value interface{}) bool {	//调用range方法传入回调函数，打印key、value
+		fmt.Println(key, value)
+		return true
+	})
+
+
+# 闭包
+arr := []int{1, 2, 3, 4}
+for _, v := range arr {
+	go func(value int) {
+		fmt.Printf("%d\t", value)//1 4 2 3
+	}(v) //把v的副本传到协程内部
+}
+
+
+# sync.Once
+确保在高并发的场景下有些事情只执行一次，比如加载配置文件、关闭管道等
+var resource map[string]string
+var loadResourceOnce sync.Oncefunc LoadResource() {
+	loadResourceOnce.Do(func() {
+		resource["1"] = "A"
+	})
+}
+或
+type Singleton struct {}var singleton *Singleton
+var singletonOnce sync.Oncefunc GetSingletonInstance() *Singleton {
+	singletonOnce.Do(func() {
+		singleton = &Singleton{}
+	})
+	return singleton
+}
+
+
+# 捕获子协程的panic
+何时会发生panic:
+	运行时错误会导致panic，比如数组越界、除0
+	程序主动调用panic(error)
+panic会执行什么：
+	逆序执行当前goroutine的defer链（recover从这里介入）
+	打印错误信息和调用堆栈
+	调用exit(2)结束整个进程
+
+
+# defer
+defer在函数退出前被调用，注意不是在代码的return语句之前执行，因为return语句不是原子操作
+如果发生panic，则之后注册的defer不会执行
+defer服从先进后出原则，即一个函数里如果注册了多个defer，则按注册的逆序执行
+defer后面可以跟一个匿名函数
+
+
+# recover
+recover会阻断panic的执行
+func soo(a, b int) {
+	defer func() {
+		//recover必须在defer中才能生效
+		if err := recover(); err != nil {			fmt.Printf("soo函数中发生了panic:%s\n", err)
+		}
+	}()
+	panic(errors.New("my error"))
+}
+
+```
+
+
+
+###### Channel的同步与异步
+
+```
+# 共享内存(全局变量)
+多线程共享内存来进行通信
+通过加锁来访问共享数据，如数组、map或结构体
+go语言也实现了这种并发模型
+
+
+# CSP
+CSP即communicating sequential processes，在go语言里就是Channel
+CSP讲究的是“以通信的方式来共享内存”
+
+
+# 同步channel
+创建同步管道		syncChann := make(chan int)
+往管道里放数据	syncChann <- 1		生产者
+从管道取出数据	v := <- syncChann	消费者
+
+
+# channel的死锁问题
+Channel满了，就阻塞写；Channel空了，就阻塞读
+阻塞之后会交出cpu，去执行其他协程，希望其他协程能帮自己解除阻塞
+如果阻塞发生在main协程里，并且没有其他子协程可以执行，那就可以确定“希望永远等不来”，自已把自己杀掉，报一个fatal error:deadlock出来
+如果阻塞发生在子协程里，就不会发生死锁，因为至少main协程是一个值得等待的“希望”，会一直等（阻塞）下去
+
+
+# 异步channel
+channel底层维护一个环形队列，make时指定队列的长度，ch:=make(chan int,8) 
+队列满时，写阻塞；队列空时，读阻塞
+
+
+# chan struct{}
+channel仅作为协程间同步的工具，不需要传递具体的数据，管道类型可以用struct{}
+sc := make(chan struct{})
+sc <- struct{}{}
+空结构体变量的内存占用为0，因此struct{}类型的管道比bool类型的管道还要省内存
+
+
+# 关闭channel
+只有当管道关闭时，才能通过range遍历管道里的数据，否则会发生fatal error
+管道关闭后读操作会立即返回，如果缓冲已空会返回“0值”
+ele, ok := <-ch  	ok==true代表ele是管道里的真实数据
+向已关闭的管道里send数据会发生panic
+不能重复关闭管道，不能关闭值为nil的管道，否则都会panic
+
+
+# 数据传输
+管道充当缓冲池，削锋填谷，在处理慢的地方多开几个协程
+
+# 广播
+# 协调同步
+```
+
+
+
+
+
+
+
+##### go语言并发改进
+
+1.并发安全
+
+2.多路复用
+
+3.协程泄漏
+
+4.协程管理
+
+
+
+###### 并发安全
+
+```
+# 资源竞争
+多协程并发修改同一块内存，产生资源竞争
+go run或go build时添加-race参数检查资源竞争情况
+n++不是原子操作，并发执行时会存在脏写。n++分为3步：取出n，加1，结果赋给n。测试时需要开1000个并发协程才能观察到脏写
+a=n
+b=a+1
+n=b
+
+
+# 原子操作
+func atomic.AddInt32(addr *int32, delta int32) (new int32)
+func atomic.LoadInt32(addr *int32) (val int32)
+把n++封装成原子操作，解除资源竞争，避免脏写
+
+
+# 读写锁
+var lock sync.RWMutex		声明读写锁，无需初始化
+lock.Lock() lock.Unlock()	加写锁和释放写锁
+lock.RLock() lock.RUnlock()	加读锁和释放读锁
+任意时刻只可以加一把写锁，且不能加读锁
+没加写锁时，可以同时加多把读锁，读锁加上之后不能再加写锁
+
+
+# 容器的并发安全性
+数组、slice、struct允许并发修改（可能会脏写），并发修改map有时会发生panic
+如果需要并发修改map请使用sync.Map
+```
+
+
+
+###### 多路复用
+
+```
+# I/O模型
+操作系统级的I/O模型有：
+阻塞I/O
+非阻塞I/O
+信号驱动I/O
+异步I/O
+多路复用I/O
+
+
+# 文件描述符
+Linux下，一切皆文件。包括普通文件、目录文件、字符设备文件（键盘、鼠标）、块设备文件（硬盘、光驱）、套接字socket等等
+文件描述符（File descriptor，FD）是访问文件资源的抽象句柄，读写文件都要通过它
+文件描述符就是个非负整数，每个进程默认都会打开3个文件描述符：0标准输入、1标准输出、2标准错误
+由于内存限制，文件描述符是有上限的，可通过ulimit –n查看，文件描述符用完后应及时关闭
+
+
+# 阻塞I/O
+1. 执行系统调用，由用户态陷入内核态
+2. 文件描述符中还没有数据，阻塞
+3. 已有数据，操作系统将数据拷贝给应用程序
+4. 退出系统调用，交回控制权
+
+
+# 非阻塞I/O
+立即返回EAGAIN(一个负数)错误，表示文件描述符还在等待缓冲区中的数据
+不断轮询，期间可以执行其它任务，提高CPU利用率
+read和write默认是阻塞模式
+	ssize_t read(int fd, void *buf, size_t count); 
+	ssize_t write(int fd, const void *buf, size_t nbytes);
+通过系统调用fcntl可将文件描述符设置成非阻塞模式
+	int flags = fcntl(fd, F_GETFL, 0); 
+	fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+
+
+# 多路复用I/O
+select系统调用可同时监听1024个文件描述符的可读或可写状态
+poll用链表存储文件描述符，摆脱了1024的上限
+各操作系统实现了自己的I/O多路复用函数，如epoll、 evport 和kqueue 等
+步骤：
+1. 所有读写fd都没准备好
+2. 部分fd准备就绪，select返回可读或可写的事件个数
+3. 以O(N)遍历所有fd，对就绪的fd进行读写
+
+
+# go多路复用
+go多路复用函数以netpoll为前缀，针对不同的操作系统做了不同的封装，以达到最优的性能
+在编译go语言时会根据目标平台选择特定的分支进行编译
+
+
+# go channel多路复用
+select { //同时监听3个channel，哪个最先被case匹配到的将会执行并且退出select，如果外部是for循环将一直监听
+case n := <-countCh:
+	fmt.Println(n)
+case <-finishCh:
+	fmt.Println("finish")
+case <-abortCh:
+	fmt.Println("abort")
+}
+
+
+# timeout实现
+ctx, cancel := context.WithCancel(context.Background())
+调用cancel()将关闭ctx.Done()对应的管道
+ctx, cancel := context.WithTimeout(context.Background (),time.Microsecond*100)
+调用cancel()或到达超时时间都将关闭ctx.Done()对应的管道
+ctx.Done()管道关闭后读操作将立即返回
+
+```
+
+
+
+###### 协程泄漏
+
+```
+# 协程泄漏的原因
+协程阻塞，未能如期结束
+协程阻塞最常见的原因都跟channel有关
+由于每个协程都要占用内存，所以协程泄漏也会导致内存泄漏
+
+
+# 协程泄漏的排查
+import (
+	"net/http"
+	_ "net/http/pprof"
+)
+func main() {
+go func() {
+	if err := http.ListenAndServe("localhost:8080", nil); err != nil {
+		panic(err)
+	}
+}()
+}
+步骤：
+先把程序run起来
+1. 在浏览器访问127.0.0.1:8080/debug/pprof/goroutine?debug=1
+2. 在终端执行 go tool pprof http://0.0.0.0:8080/debug/pprof/goroutine
+通过list查看函数每行代码产生了多少协程，例如：list main.handle.func1
+3. 通过traces打印调用堆栈，main.handle.func1由于调用了chansend1而阻塞了1132个协程
+在pprof中输入web命令，相当于是traces命令的可视化
+4. 终端执行 go tool pprof --http=:8081 /Users/zhangchaoyang/pprof/pprof.goroutine.001.pb.gz 
+在source view下可看到哪行代码生成的协程最多
+```
+
+
+
+###### 协程管理
+
+```
+# goroutine的管理
+runtime.GOMAXPROCS(2)	分配2个逻辑处理器给调度器使用
+runtime.Gosched()	当前goroutine从当前线程退出，并放回到队列
+runtime.NumGoroutine()	查看当前存在的协程数
+通过带缓冲的channel可以实现对goroutine数量的控制
+
+
+# 优雅地退出守护协程
+守护协程：独立于控制终端和用户请求的协程，它一直存在，周期性执行某种任务或等待处理某些发生的事件。伴随着main协程的退出，守护协程也退出。
+kill命令不是杀死进程，它只是向进程发送信号kill –s pid，s的默认值是15。常见的终止信号如下：
+信号	值	说明
+SIGINT	2	Ctrl+C触发
+SIGKILL	9	无条件结束程序，不能捕获、阻塞或忽略
+SIGTERM	15	结束程序，可以捕获、阻塞或忽略
+代码：
+type Context interface {
+	Deadline() (deadline time.Time, ok bool)
+	Done() <-chan struct{}
+}
+func WithCancel(parent Context) (ctx Context, cancel CancelFunc)
+当Context的deadline到期或调用了CancelFunc后，Context的Done()管道会关闭，该管道上关联的读操作会解除阻塞，然后执行协程退出前的清理工作。
+
+
+# 协程管理组件
+go get github.com/x-mod/routine
+封装了常规的业务逻辑：初始化、收尾清理、工作协程、守护协程、监听term信号
+封装了常见的协程组织形式：并行、串行、定时任务、超时控制、重试、profiling
+
+```
 
