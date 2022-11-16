@@ -1238,11 +1238,11 @@ alerting:
 
 #alertmanager配置文件：
 --alertmanager参数
-resolve_timeout:该参数定义了当Alertmanager持续多长时间未接收到告警后标记告警状态为resolved（已解决）。该参数的定义可能会影响到告警恢复通知的接收时间，读者可根据自己的实际场景进行定义，其默认值为5分钟
+resolve_timeout:该参数定义了当Alertmanager持续多长时间未接收到告警后标记告警状态为resolved（已解决）。该参数的定义可能会影响到告警恢复通知的接收时间，可根据自己的实际场景进行定义，其默认值为5分钟
 group_by:使用group_by来定义分组规则,基于告警中包含的标签，如果满足group_by中定义标签名称，那么这些告警将会合并为一个通知发送给接收器
-group_wait:新分组默认等待30s批量发送
+group_wait:新分组默认等待30s批量发送，看是否有重复的告警
+group_interval:存在分组有新告警加入时，默认等待5m批量发送
 repeat_interval:发送成功的告警等待3h后重复发送，如果设置太小则会导致收到重复的垃圾邮件
-group_interval:存在分组有新告警加入等待5m批量发送
 告警的匹配有两种方式可以选择:
 match_re:通过设置match_re验证当前告警标签的值是否满足正则表达式的内容。
 match:通过设置match规则判断当前告警中是否存在标签labelname并且其值等于labelvalue
@@ -1359,12 +1359,12 @@ instance: localhost:9100
 
 #20210830--使用amtool进行命令行邮件告警
 例如：需要在"2021-08-30 11:28:01"进行邮件告警，则可以设置如下
-[root@prometheus alertmanager]# ./amtool --alertmanager.url=http://localhost:9093 alert add alertname=test team=ops instance='http://192.168.13.236:9093' --annotation=summary='summary of the alert' --annotation=description='description of the alert' --start="2021-08-30T03:28:01+08:00"
+[root@prometheus alertmanager]# ./amtool --alertmanager.url=http://localhost:9093 alert add alertname=test severity=High job=test instance='http://192.168.13.236:9093' --annotation=summary='summary of the alert' --annotation=description='description of the alert' --start="2021-08-30T03:28:01+08:00"
 [root@prometheus alertmanager]# ./amtool --alertmanager.url=http://localhost:9093 alert query
 Alertname  Starts At                Summary               
 test       2021-08-30 03:28:01 CST  summary of the alert  
 例如：需要对"2021-08-30 11:28:01"进行邮件恢复，则可以设置如下,结束时间不能大于当前时间，为了保险起见建议将恢复时间跟发送时间设成一样，在邮件中有resolved告知是恢复即可。
-[root@prometheus alertmanager]# ./amtool --alertmanager.url=http://localhost:9093 alert add alertname=test team=ops instance='http://192.168.13.236:9093' --annotation=summary='summary of the alert' --annotation=description='description of the alert' --end="2021-08-30T03:28:01+08:00"
+[root@prometheus alertmanager]# ./amtool --alertmanager.url=http://localhost:9093 alert add alertname=test severity=High job=test instance='http://192.168.13.236:9093' --annotation=summary='summary of the alert' --annotation=description='description of the alert' --end="2021-08-30T03:29:01+08:00"
 [root@prometheus alertmanager]# ./amtool --alertmanager.url=http://localhost:9093 alert query
 Alertname  Starts At  Summary  
 --查看接收告警方式
@@ -2879,6 +2879,92 @@ root@prometheus02:/usr/local/prometheus/file_sd_configs# curl -XPOST http://loca
 
 
 
+
+#20221116--alertmanager更新配置
+---------
+[root@prometheus alertmanager]# cat alertmanager.yml 
+global:
+  resolve_timeout: 5m
+  smtp_require_tls: false
+  smtp_smarthost: 'smtp.qiye.163.com:465'
+  smtp_hello: 'alertmanager'
+  smtp_from: 'prometheus@mm.com'
+  smtp_auth_username: 'prometheus@mm.com'
+  smtp_auth_password: 'password'
+templates:
+  - '/usr/local/alertmanager/email.tmpl'		#邮件模板
+  - '/usr/local/alertmanager/wechat.tmpl'		#企业微信模板
+route:
+  receiver: 'email'			#默认告警方式，当子route未匹配到时使用此告警方式
+  group_by: ['alertname']	#基于alertmanager名称进行分类汇总，可以写多个label进行分类汇总
+  group_wait: 30s			#当接收到新告警时等待30s时间，再进行合并发送
+  group_interval: 1m		#前后两组告警发送间隔时间
+  repeat_interval: 4h		#重复告警发送间隔时间
+  routes:
+  - receiver: 'email'		#子告警方式
+    group_wait: 30s
+    continue: true			#匹配到是否还向下匹配告警方式
+    match_re: 
+      job: .*[a-z].*		#正则表达式，匹配job为所有字母开头的告警
+  - receiver: 'webhook'		#钉钉告警
+    group_wait: 30s
+    continue: true
+    match_re: 
+      job: .*[a-z].*
+  - receiver: 'wechat'
+    group_wait: 30s
+    continue: true
+    match: 
+      severity: High		#匹配到告警级别为High的告警将通过微信进行告警
+receivers:
+- name: 'email'
+  email_configs:
+  - to: '{{ template "email.to" . }}'					#接收人的邮件地址
+    html: '{{ template "email.html" . }}'				#邮件内容的格式
+    headers:											#配置邮件头相关信息
+      subject: '{{ template "email.subject" . }}'		#配置邮件主题
+      To: "jack.li@mm.com, carl.gu@mm.com"				#配置收件人的邮件地址，当接收人有3个邮件地址时，这里只配置2个邮件地址，那么其它邮件地址将为密送到对方
+	  CC: "test@baidu.com"								#抽送人地址
+    send_resolved: true									#是否发送恢复邮件
+- name: 'webhook'
+  webhook_configs:
+  - url: 'http://192.168.13.235:8060/dingtalk/webhook1/send'		#钉钉webhook地址
+    send_resolved: true
+- name: 'wechat'
+  wechat_configs:
+  - corp_id: wx1c904f2b4e3533d6									#企业微信企业ID
+    to_user: '@all'												#发送给哪些用户ID, '@all'表示所有用户
+    #to_party: "2"												#部门ID
+    agent_id: 100												#应用id
+    api_secret: vlTm_qC0SI-qT67myk2XFK2aEMYpwl7mjLI0			#应用secret
+    message: '{{ template "wechat.default.message" . }}'		#发送到企业微信的内容格式，不写默认为'{{ template "wechat.default.message" . }}'
+    send_resolved: true
+inhibit_rules:													#抑制规则
+  - source_match_re:
+      alertname: linuxNodeDown|xenserverNodeDown				#正则匹配，当源告警名称为alertname=linuxNodeDown或alertname=xenserverNodeDown时
+    target_match_re:											#当目标告警为job=.*blackbox-tcp.*|.*blackbox-http.*......时
+      job: .*blackbox-tcp.*|.*blackbox-http.*|consul-apollo|.*elasticsearch_exporter|.*mysqld_exporter|.*nginx_exporter|.*redis_exporter|.*rabbitmq_exporter
+    equal: 
+      - ip														#当目标告警和源告警中有相同标签和值时进行抑制，例如都有标签: ip=192.168.13.100
+  - source_match_re:
+      alertname: windowsNodeDown|wmi_windows_NodeDown
+    target_match_re:
+      job: consul-mssql_exporter.*
+    equal: 
+      - ip
+  - source_match_re:
+      alertname: KubernetesNodeDown
+    target_match_re:
+      job: kubernetes.*
+    equal: 
+      - ip
+  - source_match_re:
+      alertname: DellHostNoDataAlert
+    target_match_re:
+      job: consul-snmp_idrac_exporter
+    equal: 
+      - ip
+---------
 
 
 </pre>

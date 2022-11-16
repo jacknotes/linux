@@ -9382,13 +9382,13 @@ global:
 templates:
   - '/usr/local/alertmanager/email.tmpl'
   - '/usr/local/alertmanager/wechat-new.tmpl'
-    route:
+route:
     receiver: 'webhook'
     group_by: ['alertname']
     group_wait: 5s
     group_interval: 1s
     repeat_interval: 4h
-    routes:
+  routes:
   - receiver: 'dingding'
     group_wait: 5s
     continue: true
@@ -9399,7 +9399,7 @@ templates:
     continue: true
     match_re:
       alertname: .*[a-z].*
-    receivers:
+receivers:
 - name: 'email'
   email_configs:
   - to: '{{ template "email.to" . }}'
@@ -9410,13 +9410,13 @@ templates:
   - url: 'http://172.168.2.27:8060/dingtalk/dingding/send'
     send_resolved: true
 - name: 'wechat'
-  wechat_configs:
+  wechat_configs:		#如果不写message，则default = '{{ template "wechat.default.message" . }}'
   - corp_id: ww51a66e1695615e
     to_user: '@all'
     agent_id: 100002
     api_secret: G-mb4SP5Xn-Id75MjHrfbYzIkDLcbiLkunX0
     send_resolved: true
-    inhibit_rules:
+inhibit_rules:
   - source_match:
       alertname: linuxNodeDown
     target_match:

@@ -1949,6 +1949,13 @@ root@ansible:/etc/kubeasz# cat playbooks/05.kube-node.yml
 
 
 
+### shell模块
+[root@prometheus ~]# ansible '~192.168.13.23[789]' -m shell -a "docker ps -a | awk '{print \$2}'"  #遇到特殊符号需要加入\转义，这样子ansible才能正常运行
+192.168.13.238 | CHANGED | rc=0 >>
+ID
+192.168.13.235:8000/pro/receiptclaim.service.hs.com:v20221108153418
+192.168.13.235:8000/pro/flightrefund.hs.com:v20221107115009
+
 
 
 

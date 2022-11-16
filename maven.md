@@ -190,6 +190,9 @@ rm -rf node_modules/
 npm cache clean -f
 npm install
 npm run build
+#npm缓存验证
+npm cache verify
+
 
 
 ##confluence备份
