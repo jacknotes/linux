@@ -2964,6 +2964,76 @@ inhibit_rules:													#抑制规则
       job: consul-snmp_idrac_exporter
     equal: 
       - ip
+--------- go template
+[root@prometheus alertmanager]# cat email.tmpl
+{{ define "email.subject" }}
+{{- $len := (len .Alerts.Firing) -}}
+{{ if gt $len 0 }}
+{{ range $index,$alert := .Alerts.Firing }}
+{{ if eq $index 0 }}
+[{{   .Status | toUpper }}:{{- $len -}}] {{ .Labels.alertname }} {{ .Labels.severity }}
+{{ end }}
+{{ end }}
+{{ else }}
+{{ range $index,$alert := .Alerts.Resolved }}
+{{ if eq $index 0 }}
+[{{   .Status | toUpper }}] {{ .Labels.alertname }} {{ .Labels.severity }}
+{{ end }}
+{{ end }}
+{{ end }}
+{{ end }}
+
+{{ define "email.to" }}jack.li@homsom.com, carl.gu@homsom.com, 595872348@qq.com{{ end }}
+
+{{ define "email.html" }}
+{{- if gt (len .Alerts.Firing) 0 -}}{{ range .Alerts }}
+<pre>
+状态：{{   .Status }} 
+Job: {{ .Labels.job }}
+实例: {{ .Labels.instance }} 
+信息: {{ .Annotations.summary }} 
+详情: {{ .Annotations.description }}
+开始时间: {{ (.StartsAt.Add 28800e9).Format "2006-01-02 15:04:05" }}
+</pre>
+{{ end }}{{ end -}}
+{{- if gt (len .Alerts.Resolved) 0 -}}{{ range .Alerts }}
+<pre>
+状态：{{   .Status }}
+Job: {{ .Labels.job }}
+实例: {{ .Labels.instance }}
+信息: {{ .Annotations.summary }}
+详情: {{ .Annotations.description }}
+开始时间: {{ (.StartsAt.Add 28800e9).Format "2006-01-02 15:04:05" }}
+恢复时间: {{ (.EndsAt.Add 28800e9).Format "2006-01-02 15:04:05" }}
+</pre>
+{{ end }}{{ end -}}
+{{ end }}
+---------
+
+[root@prometheus alertmanager]# cat wechat.tmpl 
+{{ define "wechat.default.message" }}
+{{- if gt (len .Alerts.Firing) 0 -}}{{ range .Alerts }}
+@警报
+=========start==========
+Job: {{ .Labels.job }}
+实例: {{ .Labels.instance }}
+信息: {{ .Annotations.summary }}
+详情: {{ .Annotations.description }}
+开始时间: {{ (.StartsAt.Add 28800e9).Format "2006-01-02 15:04:05" }}
+=========end============<br>
+{{ end }}{{ end -}}
+{{- if gt (len .Alerts.Resolved) 0 -}}{{ range .Alerts }}
+@恢复
+=========start==========
+Job: {{ .Labels.job }}
+实例: {{ .Labels.instance }}
+信息: {{ .Annotations.summary }}
+详情: {{ .Annotations.description }}
+开始时间: {{ (.StartsAt.Add 28800e9).Format "2006-01-02 15:04:05" }}
+恢复时间: {{ (.EndsAt.Add 28800e9).Format "2006-01-02 15:04:05" }}
+=========end============<br>
+{{ end }}{{ end -}}
+{{- end }}
 ---------
 
 
