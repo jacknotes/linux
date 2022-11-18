@@ -1989,7 +1989,70 @@ upstream webserver {
 	server tomcat.jack.com:8080 weight=5 max_fails=2 fail_timeout=2;
 }
 
+## nginx 7层调度算法
+http {
+    upstream backend {
+		ip_hash;
+        server backend1.example.com weight=5;
+        server backend2.example.com resolve;
+		server backend2.example.com down;
+        server 192.0.0.1 backup;
+    }
+	
+	upstream backend2 {
+		least_conn;
+        server backend1.example.com weight=5;
+        server backend2.example.com resolve;
+		server backend2.example.com down;
+        server 192.0.0.1 backup;
+    }
+}
 
+
+
+## nginx4层调度算法
+URL: https://docs.nginx.com/nginx/admin-guide/load-balancer/http-load-balancer/
+-----------------
+stream {
+    upstream stream_backend {
+        least_conn;
+        server backend1.example.com:12345 weight=5;
+        server backend2.example.com:12345 max_fails=2 fail_timeout=30s;
+        server backend3.example.com:12345 max_conns=3;
+    }
+    
+    upstream dns_servers {
+        least_conn;
+        server 192.168.136.130:53;
+        server 192.168.136.131:53;
+        server 192.168.136.132:53;
+    }
+    
+    server {
+        listen        12345;
+        proxy_pass    stream_backend;
+        proxy_timeout 3s;
+        proxy_connect_timeout 1s;
+    }
+    
+    server {
+        listen     53 udp;
+        proxy_pass dns_servers;
+    }
+    
+    server {
+        listen     12346;
+        proxy_pass backend4.example.com:12346;
+    }
+	
+	upstream stream_backend {
+		hash   $remote_addr consistent;
+		server backend1.example.com:12345 weight=5;
+		server backend2.example.com:12345;
+		server backend3.example.com:12346 max_conns=3;
+	}	
+}
+-----------------
 
 </pre>
 
