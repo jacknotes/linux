@@ -122,18 +122,18 @@ root@office:~/dzzoffice# docker-compose up -d
 
 
 ### 配置dzzoffice mysql用户
-
+```
 root@office:~/dzzoffice# docker exec -it dzzoffice_mysql_1 /bin/bash
 root@bfbd8207d529:/# mysql -uroot -phomsom
 mysql> grant all on dzzoffice.* to dzzoffice@'%' identified by 'tOk';
 mysql> flush privileges;
-
+```
 
 
 ### 访问dzzoffice并安装初始化
 
-http://IP:1800	#dzzoffice访问地址，
-http://IP:8000	#正常打开表示onlyoffice安装成功
+* http://IP:1800	#dzzoffice访问地址
+* http://IP:8000	#正常打开表示onlyoffice安装成功
 
 配置数据库信息，初始化安装
 ![](./image/dzzoffice-pro01.png)
@@ -157,6 +157,8 @@ http://IP:8000	#正常打开表示onlyoffice安装成功
 ![](./image/dzzoffice-pro06.png)
 
 ![](./image/dzzoffice-pro07.png)
+
+
 
 
 
