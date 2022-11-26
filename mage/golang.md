@@ -1970,7 +1970,9 @@ userMap = mapValue.Interface().(map[int]*common.User)
 
 
 
-#### day06
+#### 
+
+## day06
 
 
 
@@ -2321,9 +2323,9 @@ io.Copy(os.Stdout, reader)
 
 
 
-#### day07
 
 
+## day07
 
 ##### go重点基础知识回顾
 
@@ -2390,7 +2392,9 @@ go tool pprof -http=:8080 data/cpu.prof
 
 
 
-#### day08*
+
+
+## day08*
 
 ##### 常用加解密算法
 
@@ -2598,7 +2602,7 @@ Pop() x interface{}
 
 
 
-#### day09
+## day09
 
 ##### go语言并发编程
 
@@ -2998,4 +3002,2890 @@ go get github.com/x-mod/routine
 封装了常见的协程组织形式：并行、串行、定时任务、超时控制、重试、profiling
 
 ```
+
+
+
+
+
+## day10
+
+* Go语言Socket编程
+
+1.网络通信过程
+
+2.TCP CS架构实现
+
+3.UDP CS架构实现
+
+---
+
+##### 网络请求过程
+
+•DMA：网卡和磁盘数据拷贝到内存流程比较固定，不涉及到运算操作，且非常耗时。在磁盘嵌入一个DMA芯片，完成上述拷贝工作，把CPU解脱出来，让CPU专注于运算
+
+•mmap：用户空间和内核空间映射同一块内存空间，从而达到省略将数据从内核缓冲区拷贝到用户空间的操作，用户空间通过映射直接操作内核缓冲区的数据
+
+
+
+##### 网络进程标识
+
+•用三元给（ip地址，协议，端口号）唯一标示网络中的一个进程，如（172.122.121.111, tcp, 5656）
+
+•IPv4的地址位数为32位，分为4段，每段最大取值为255
+
+•IPv6的地址位数为128位，分为8段，各段用16进制表示，最大取值为ffff
+
+•端口：0~1023被熟知的应用程序占用（普通应用程序不可以使用），49152~65535客户端程序运行时动态选择使用
+
+
+
+##### go TCP编程接口
+
+func ResolveTCPAddr(net, addr string) (*TCPAddr, os.Error)
+
+•net参数是“tcp4”、“tcp6”、“tcp”中的任意一个，分别表示TCP（IPv4-only），TCP（IPv6-only）或者TCP（IPv4,、IPv6的任意一个）
+
+•addr表示域名或者IP地址，例如" www.qq.com:80" 或者"127.0.0.1:22"
+
+func DialTCP(network string, laddr, raddr *TCPAddr) (*TCPConn, error)
+
+•network参数是"tcp4"、"tcp6"、"tcp"中的任意一个
+
+•laddr表示本机地址，一般设置为nil
+
+•raddr表示远程的服务地址
+
+func net.DialTimeout(network string, address string, timeout time.Duration) (net.Conn, error)
+
+•创建连接时设置超时时间
+
+func (*net.conn) Write(b []byte) (int, error)
+
+•通过conn发送数据
+
+func (net.Conn).Read(b []byte) (n int, err error)
+
+•从conn里读取数据，如果没有数据可读，会阻塞
+
+func ioutil.ReadAll(r io.Reader) ([]byte, error)
+
+•从conn中读取所有内容，直到遇到error(比如连接关闭)或EOF
+
+func ListenTCP(network string, laddr *TCPAddr) (*TCPListener, error)
+
+•监听端口
+
+func (l *TCPListener) Accept() (Conn, error)
+
+•阻塞，直到有客户端请求建立连接
+
+func (*net.conn) Close() error
+
+•关闭连接
+
+func (c *TCPConn) SetReadDeadline(t time.Time) error func (c *TCPConn) SetWriteDeadline(t time.Time) error
+
+•设置从一个tcp连接上读取和写入的超时时间
+
+func (c *TCPConn) SetKeepAlive(keepalive bool) os.Error
+
+•当一个tcp连接上没有数据时，操作系统会间隔性地发送心跳包，如果长时间没有收到心跳包会认为连接已经断开
+
+
+
+##### 连接关闭
+
+•连接关闭后，再调用conn.Write()和conn.Read()会返回fatal error
+
+•如果对方已关闭连接， conn.Write()和conn.Read()是感知不到的，不会返回错误
+
+
+
+##### UDP的特征
+
+•不需要建立连接，直接收发数据，效率很高
+
+•面向报文。对应用层交下来的报文，既不合并也不拆分，直接加上边界交给IP层。TCP是面向字节流，TCP有一个缓冲，当应用程序传送的数据块太长，TCP就可以把它划分短一些再传送；如果应用程序一次只发送一个字节，TCP也可以等待积累有足够多的字节后再构成报文段发送出去。
+
+•从机制上不保证顺序（在IP层要对数据分段），可能会丢包（检验和如果出差错就会把这个报文丢弃掉）。在内网环境下分片乱序和数据丢包极少发生
+
+•支持一对一、一对多、多对一和多对多的交互通信
+
+•首部开销小，只占8个字节
+
+
+
+* Go语言WebSocket编程
+
+1.TLS协议及配置
+
+2.WebSocket协议解读
+
+3.WebSocket CS架构实现
+
+4.聊天室实现
+
+---
+
+##### TLS协议及配置
+
+###### TLS协议
+
+•很多应用层协议（http、ftp、smtp等）直接使用明文传输
+
+•TLS（Transport Layer Security，安全传输层)将应用层的报文进行加密后再交由TCP进行传输
+
+•TLS 在SSL v3.0 的基础上，提供了一些增强功能，两者差别很小
+
+| 保密性 | 信息加密传输（对称加密）           |
+| ------ | ---------------------------------- |
+| 完整性 | MAC检验（散列函数）                |
+| 认证   | 双方都可以配备证书，防止身份被冒充 |
+
+
+
+###### TLS的核心原理
+
+小明要给小红传输机密文件，他俩先交换各自的公钥，然后：
+
+1.小明生成一个随机的AES口令，然后用小红的公钥通过RSA加密这个口令，并发给小红
+
+2.小红用自己的RSA私钥解密得到AES口令
+
+3.双方使用这个共享的AES口令加密通信
+
+
+
+###### TLS证书
+
+证书(certificate, 缩写CRT) ，其实就是非对称加密中的公钥，加上一些别的信息组成的一个文件。
+
+TLS 通过两个证书来实现服务端身份验证，以及对称密钥的安全生成：
+
+•CA 证书：浏览器/操作系统自带，用于验证服务端的 TLS 证书的签名。保证服务端证书可信。
+
+•TLS 证书：客户端和服务端使用 TLS 证书进行协商，以安全地生成一个对称密钥。
+
+•如何验证证书主人的真实身份？权威CA机构
+
+•如何验证签名？私钥加密，公钥解密
+
+•向权威CA机构申请证书需要收费（也有短期免费的），如果所有通信全部在自家网站或APP内完成可以使用本地签名证书（即自己生成CA证书）
+
+
+
+###### 生成本地签名证书
+
+1.自己充当CA
+
+​	1.生成CA的私钥
+
+​	openssl genrsa -out ca.key 2048
+
+​	2.生成CA证书(certificate, 缩写CRT)，有效期1000天
+
+​	openssl req -x509 -new -nodes -key ca.key -subj "/CN=MaGeCA" -days 1000 -out ca.crt
+
+​	CA证书里面包含了CA的信息和CA的签名(使用CA私钥加密)
+
+2.由Server端生成证书签名请求(CertificateSigningRequest)
+
+​	1.生成server的私钥（从私钥里可以提取出公钥）
+
+​	openssl genrsa -out server.key 2048
+
+​	2.编写证书签名请求()的配置文件csr.conf，指定加密算法、授信域名、申请者信息等，规范参考[ (openssl.org)](https://www.openssl.org/docs/man1.1.1/man5/)
+
+​	3.根据配置文件和私钥，生成证书签名请求(包含了Server的公钥和一些身份信息)
+
+​	openssl req -new -key server.key -config csr.conf -out server.csr
+
+3.由CA签名，得到server的TLS证书，有效其365天。包含四部分：公钥+申请者信息 + 颁发者(CA)的信息+签名(使用 CA 私钥加密)
+
+openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 365 -out server.crt
+
+
+
+###### 客户端安装TLS证书
+
+•将服务端的TLS证书添加到 OS 的默认证书列表中
+
+•linux
+
+sudo cp server.crt /usr/local/share/ca-certificates/server.crt sudo update-ca-certificates
+
+•mac
+
+打开钥匙串，把刚刚生成的server.crt 拖到证书一栏里即可
+
+•编程：使用 HTTPS 客户端的 api 指定使用的 TLS 证书
+
+
+
+
+
+##### websocket VS http
+
+相似和关联：
+
+•都是应用层协议，都基于tcp传输协议
+
+•跟http有良好的兼容性，ws和http的默认端口都是80，wss和https的默认端口都是443
+
+•websocket在握手阶段采用http发送数据
+
+差异：
+
+•http是半双工，而websocket通过多路复用实现了全双工
+
+•http只能由client主动发起数据请求，而websocket还可以由server主动向client推送数据。在需要及时刷新的场景中，http只能靠client高频地轮询，浪费严重
+
+•http是短连接(也可以实现长连接, HTTP1.1 的连接默认使用长连接)，每次数据请求都得经过三次握手重新建立连接，而websocket是长连接
+
+•http长连接中每次请求都要带上header，而websocket在传输数据阶段不需要带header
+
+
+
+##### websocket应用场景
+
+WebSocket是HTML5下的产物，能更好的节省服务器资源和带宽
+
+•html5多人游戏
+
+•聊天室
+
+•协同编辑
+
+•基于实时位置的应用
+
+•股票实时报价
+
+•弹幕
+
+•视频会议
+
+
+
+##### websocket握手协议
+
+* Request Header
+
+Sec-Websocket-Version:13
+
+Upgrade:websocket
+
+Connection:Upgrade
+
+Sec-Websocket-Key:duR0pUQxNgBJsRQKj2Jxsw==
+
+* Response Header
+
+Upgrade:websocket
+
+Connection:Upgrade
+
+Sec-Websocket-Accept:a1y2oy1zvgHsVyHMx+hZ1AYrEHI=
+
+注：
+
+•Upgrade:websocket和Connection:Upgrade指明使用WebSocket协议
+
+•Sec-WebSocket-Version 指定Websocket协议版本
+
+•Sec-WebSocket-Key是一个Base64 encode的值，是浏览器随机生成的
+
+•服务端收到Sec-WebSocket-Key后拼接上一个固定的GUID，进行一次SHA-1摘要，再转成Base64编码，得到Sec-WebSocket-Accept返回给客户端。客户端对本地的Sec-WebSocket-Key执行同样的操作跟服务端返回的结果进行对比，如果不一致会返回错误关闭连接。如此操作是为了把websocket header跟http header区分开
+
+
+
+
+
+##### WebSocket CS架构实现
+
+###### go websocket API
+
+•安装第三方包
+
+go get github.com/gorilla/websocket
+
+•将 http 升级到 WebSocket 协议
+
+func (u *Upgrader) Upgrade(w http.ResponseWriter, r *http.Request, responseHeader http.Header) (*websocket.Conn, error) 
+
+•客户端发起握手，请求连接
+
+func (*websocket.Dialer) Dial(urlStr string, requestHeader http.Header) (*websocket.Conn, *http.Response, error)
+
+type Upgrader struct {
+
+   HandshakeTimeout time.Duration //websocket握手超时时间
+
+   ReadBufferSize, WriteBufferSize int //io操作的缓存大小
+
+   //http错误响应函数
+
+   Error func(w http.ResponseWriter, r *http.Request, status int, reason error)
+
+   //用于统一的链接检查，以防止跨站点请求伪造
+
+   CheckOrigin func(r *http.Request) bool
+
+}
+
+•websocket发送的消息类型有5种：TextMessag,BinaryMessage, CloseMessag,PingMessage,PongMessage
+
+•TextMessag和BinaryMessage分别表示发送文本消息和二进制消息
+
+•CloseMessage关闭帧，接收方收到这个消息就关闭连接
+
+•PingMessage和PongMessage是保持心跳的帧，发送方à接收方是PingMessage，接收方à发送方是PongMessage，目前浏览器没有相关api发送ping给服务器，只能由服务器发ping给浏览器，浏览器返回pong消息
+
+•启动http服务
+
+func http.ListenAndServe(addr string, handler http.Handler) error
+
+•http.Handler需要实现接口
+
+func ServeHTTP(w http.ResponseWriter, r *http.Request)
+
+
+
+
+
+
+
+## day11
+
+Go语言操作数据库
+
+
+
+###### 实战建议
+
+1. 写sql时一律使用小写
+2. 那表时先判断表是否已存在   if not exists
+3. 所有的列和表都加comment
+4. 字符串长度比较短时尽量使用char，定长有篮球内存对齐，读写性能更好，而varchar字段频繁修改时容易产生内存碎片
+5. 满足需求的前提下尽量使用短的数据类型，如tinyint vs int, float vs double, date vs datetime 
+
+###### null
+
+* default null 有别于default '' 和 default 0
+* is null, is not null 有别于!='', !=0
+* 尽量设为not null
+  * 有些DB索引列不允许包含null
+  * 对含中有null的列进行统计，结果可能不符合预期
+  * Null值有时会严重拖慢系统性能
+
+
+
+##### 规避慢查询
+
+* 大部分的慢查询都是因为没有正确地使用索引
+* 一次select不要超过1000行
+* 分布查询limit m,n会检索前m+n行，只是返回后n行，通常用id>x来代替这种分布方式 where id>10000 limit 0, 1000
+* 批量操作时最好一条sql语句搞定；其次打包成一个事务，一次性提交（高并发情况下减少对共享资源的争用）
+* 不要使用连表操作，join逻辑在业务代码里完成
+
+
+
+
+
+##### Go SQL驱动接口解读
+
+###### database/sql接口
+
+* Go官方没有提供数据库驱动，而是为开发数据库驱动定义了一些标准接口（即database/sql），开发者可以根据定义的接口来开发相应的数据库驱动
+* Go中支持MySQL的驱动比较多，如
+  * github.com/go-sql-driver/mysql 支持database/sql
+  * github.com/ziutek/mymysql 支持database/sql，也支持自定义的接口
+  * github.com/Philio/GoMySQL 不支持database/sql，自定义接口
+
+
+
+###### 创建表结构
+
+```
+use test;
+create table if not exists student(
+	id int not null auto_increment comment '主键自增id',
+	name char(10) not null comment '姓名',
+	province char(6) not null comment '省',
+	city char(10) not null comment '城市',
+	addr varchar(100) default '' comment '地址',
+	score float not null default 0 comment '考试成绩',
+	enrollment date not null comment '入学时间',
+	primary key (id), unique key idx_name (name),
+	key idx_location (province, city)
+)default CHARSET=utf8 comment '学员基本信息';
+```
+
+###### 使用go自带sql标准接口示例代码
+
+```
+// day11/common/tools.go
+package common
+
+import (
+	"fmt"
+	"os"
+)
+
+func CheckError(err error) {
+	if err != nil {
+		//stdout是行缓冲的，他的输出会放在一个buffer里面，只有到换行的时候，才会输出到屏幕。而stderr是无缓冲的，会直接输出
+		fmt.Fprintf(os.Stderr, "fatal error: %s\n", err.Error())
+		os.Exit(1)
+	}
+}
+
+
+------
+// day11/database/crud/main.go
+package main
+
+/*
+基于go最原始api操作数据库
+*/
+package main
+
+/*
+基于go最原始api操作数据库
+*/
+import (
+	"database/sql"
+	"day11/common"
+	"fmt"
+	"time"
+
+	_ "github.com/go-sql-driver/mysql"
+)
+
+var (
+	loc *time.Location
+)
+
+func init() {
+	loc, _ = time.LoadLocation("Asia/Shanghai")
+}
+
+// insert 插入数据
+func insert(db *sql.DB) {
+	//一条sql，插入2行记录
+	res, err := db.Exec("insert into student (name,province,city,enrollment) values ('小明','深圳','深圳','2021-04-18'),('小红','上海','上海','2022-04-18')")
+	common.CheckError(err)
+	lastID, err := res.LastInsertId() //ID自增，用过的id（即使对应的行已delete）不会重复使用
+	common.CheckError(err)
+	fmt.Printf("after insert last id %d\n", lastID)
+	rows, err := res.RowsAffected() //插入2行，所以影响2行
+	common.CheckError(err)
+	fmt.Printf("insert affect %d row\n", rows)
+}
+
+// replace 插入（覆盖）数据
+func replace(db *sql.DB) {
+	res, err := db.Exec("replace into student (name,province,city,enrollment) values ('小明','北京','北京','2021-04-18'),('小红','上海','上海','2022-04-18')")
+	common.CheckError(err)
+	lastID, err := res.LastInsertId() //ID自增，用过的id（即使对应的行已delete）不会重复使用
+	common.CheckError(err)
+	fmt.Printf("after replace last id %d\n", lastID) //id从0开始
+	rows, err := res.RowsAffected()                  //替换2行(删除旧id2行，插入新id2行)，所以影响4行
+	common.CheckError(err)
+	fmt.Printf("replace affect %d row\n", rows)
+}
+
+// update 修改数据
+func update(db *sql.DB) {
+	res, err := db.Exec("update student set score=score+10 where city='上海'") //上海加10分
+	common.CheckError(err)
+	lastID, err := res.LastInsertId() //0, 仅插入操作才会给LastInsertId赋值
+	common.CheckError(err)
+	fmt.Printf("after update last id %d\n", lastID)
+	rows, err := res.RowsAffected() //where city=?命中几行，就会影响几行
+	common.CheckError(err)
+	fmt.Printf("update affect %d row\n", rows)
+}
+
+// query 查询数据
+func query(db *sql.DB) {
+	rows, err := db.Query("select id,name,city,score from student where id > 2")
+	common.CheckError(err)
+	for rows.Next() { //没有数据或发生error时返回false
+		var id int
+		var score float32
+		var name, city string
+		err = rows.Scan(&id, &name, &city, &score) //通过scan把db里的数据赋给go变量
+		common.CheckError(err)
+		fmt.Printf("id=%d, score=%.2f, name=%s, city=%s \n", id, score, name, city)
+	}
+}
+
+// delete 删除数据
+func delete(db *sql.DB) {
+	//一条sql，插入2行记录
+	res, err := db.Exec("delete from student where id > 5 ") //上海加10分
+	common.CheckError(err)
+	rows, err := res.RowsAffected() //where city=?命中几行，就会影响几行
+	common.CheckError(err)
+	fmt.Printf("delete affect %d row\n", rows)
+}
+
+func main() {
+	db, err := sql.Open("mysql", "jack:homsom@tcp(192.168.15.203:3306)/test?charset=utf8")
+	common.CheckError(err)
+	// insert(db)
+	// replace(db)
+	// update(db)
+	// query(db)
+	// delete(db)
+}
+```
+
+
+
+
+
+
+
+###### Driver
+
+* 注册数据库驱动
+  * var d = Driver{proto: "tcp", raddr: "127.0.0.1:3306"}
+  * sql.Register("mysql",d)
+
+type Driver interface {
+
+​	Open(name string) (Conn, error)
+
+}
+
+###### Conn
+
+type Conn interface{
+
+​	Prepare(query string) (Stmt, error)
+
+​	Close() error
+
+​	Begin() (Tx, error)
+
+}
+
+* 把一个查询query传给Prepare，返回Stmt(statement)
+* Close关闭数据库连接
+* Begin返回一个事务Tx(transaction)
+
+###### Stmt
+
+type Stmt interface{
+
+​	Close() error
+
+​	NumInput() int
+
+​	Exec(args []Value) (Result, error)
+
+​	Query(args []Value) (Rows, error)
+
+}
+
+* Close关闭当前的链接状态
+* NumInput返回当前预留参数的个数
+* Exec执行Prepare准备好的sql，传入参数执行update/insert等操作，返回Result数据
+* Query执行Prepare准备好的sql，传入需要的参数执行select操作，返回Rows的结果集
+
+###### Tx
+
+type Tx interface{
+
+​	Commit() error
+
+​	Rollback() error
+
+}
+
+* Commit 提交事务
+* Rollback回滚事务
+
+###### Result
+
+type Result interface{
+
+​	LastInsertId() (int64, error)
+
+​	RowsAffected() (int64, error)
+
+}
+
+* LastInsertId返回由数据库执行插入操作得到的自增ID号
+* RowsAffected返回操作影响的数据条目数
+
+
+
+###### RowsAffected
+
+type RowsAffected int64
+
+func (RowsAffected) LastInsertId() (int64, error)
+
+func (v RowsAffected) RowsAffected() (int64, error)
+
+* RowsAffected是int64的别名，它实现了Result接口
+
+###### Rows
+
+type Rows interface{
+
+​	Columns() []string
+
+​	Close() error
+
+​	Next(dest []Value) error
+
+}
+
+* Columns是查询所需要的字段
+* Close关闭迭代器
+* Next返回下一条数据，把数据赋值给dest， dest里面的元素必须是driver.Value的值。如果最后没数据了，Next函数返回io.EOF
+
+###### Value
+
+type Value interface{}
+
+* Value要么是nil，要么是下面的任意一种
+  * int64
+  * float64
+  * bool
+  * []byte
+  * stirng
+  * time.Time
+
+###### ValueConverter
+
+type ValueConverter interfce {
+
+​	ConvertValue(v interface{}) (Value, error)
+
+}
+
+* 把数据库里的数据类型转换成Value允许的数据类型
+
+
+
+
+
+
+
+##### 通过Stmt执行操作
+
+###### Stmt
+
+* 定义一个sql模板
+
+stmt, err := db.Prepare("update student set score=score+? where city=?")
+
+* 多次使用模板
+
+res, err := stmt.Exec(10, "上海")
+
+res, err = stmt.Exec(9, "深圳")
+
+
+
+###### sql注入
+
+example 1:
+
+* sql = "select username,password from user where username='" + username + "' and password='" + password + "'";
+* 变量username和password从前端输入框获取，如果用户输入的username为lily, password为aaa' or '1' = '1'
+* 则完整的sql为select username,password from user where username='lily' and password='aaa' or '1' = '1'
+* 会返回表里的所有记录，如果记录数大于0就允许登录，则lily的账号被盗
+
+example 2:
+
+* sql = "insert into student (name) values ('" + username + "')";
+* 变量username从前端输入框获取，如果用户输入的username为lily');drop table student; --
+* 完整sql为insert into student (name) values ('lily'); drop table student;--'
+* 通过注释符--屏蔽掉了末尾的'),删除了整个表
+
+
+
+###### 防止sql注入
+
+* 前端输入要加正则校验、长度限制
+* 对特殊符号（<>&*;'"等）进行转义或编码转换(JSP处理，或后端处理)，Go的text/template包里面的HTMLEscapeString函数可以对字符串进行转义处理。
+* 不要将用户输入直接嵌入到sql语句中，而应该使用参数化查询接口，如Prepare、Query、Exec（query string, args ...interface{})
+* 使用专业的SQL注入检测工具进行检测，如sqlmap、SQLninja
+* 避免网站打印出SQL错误信息，以防止攻击者利用这些错误信息进行SQL注入
+
+
+
+###### SQL预编译
+
+* DB执行sql分为3步:
+  * 词法和语义解析
+  * 优化SQL语句，制定执行计划
+  * 执行并返回结果
+* SQL预编译技术是指将用户输入用占位符?代替，先对这个模板化的sql进行预编译，实际运行时再将用户输入代入
+* 除了可以防止SQL注入，还可以对预编译的SQL语句进行缓存，之后的运行就省去了解析优化SQL语句的过程
+
+
+
+###### Stmt代码示例
+
+```
+package main
+
+/*
+基于go最原始api操作数据库
+*/
+import (
+	"database/sql"
+	"day11/common"
+	"fmt"
+	"strconv"
+	"time"
+
+	_ "github.com/go-sql-driver/mysql"
+)
+
+const (
+	TIME_LAYOUT = "20060102"
+)
+
+var (
+	loc *time.Location
+)
+
+func init() {
+	loc, _ = time.LoadLocation("Asia/Shanghai")
+}
+
+// insert 通过stmt插入数据
+func insert(db *sql.DB) {
+	//一条sql，插入2行记录
+	stmt, err := db.Prepare("insert into student (name,province,city,enrollment) values (?,?,?,?),(?,?,?,?)")
+	common.CheckError(err)
+	date1, err := time.ParseInLocation(TIME_LAYOUT, "2021-03-18", loc)
+	common.CheckError(err)
+	date2, err := time.ParseInLocation(TIME_LAYOUT, "2021-03-31", loc)
+	common.CheckError(err)
+	res, err := stmt.Exec("小明", "深圳", "深圳", date1, "小红", "上海", "上海", date2)
+	common.CheckError(err)
+	lastID, err := res.LastInsertId() //ID自增，用过的id（即使对应的行已delete）不会重复使用
+	common.CheckError(err)
+	fmt.Printf("after insert last id %d\n", lastID)
+	rows, err := res.RowsAffected() //插入2行，所以影响2行
+	common.CheckError(err)
+	fmt.Printf("insert affect %d row\n", rows)
+}
+
+// replace 通过stmt插入（覆盖）数据
+func replace(db *sql.DB) {
+	//由于name字段上有唯一索引,insert重复的name会报错.而使用replace会先删除,再插入
+	stmt, err := db.Prepare("replace into student (name,province,city,enrollment) values (?,?,?,?),(?,?,?,?)")
+	common.CheckError(err)
+	//字符串解析为时间,注意要使用time.ParseInLocation()函数指定时区,time.Parse()函数使用默认的UTS时区
+	date1, err := time.ParseInLocation(TIME_LAYOUT, "2021-04-18", loc)
+	common.CheckError(err)
+	date2, err := time.ParseInLocation(TIME_LAYOUT, "2021-05-31", loc)
+	common.CheckError(err)
+	fmt.Printf("day of 2021-04-26 is %d\n", date2.Local().Day())
+	res, err := stmt.Exec("小明", "深圳", "深圳", date1, "小红", "上海", "上海", date2)
+	common.CheckError(err)
+	lastID, err := res.LastInsertId() //ID自增，用过的id（即使对应的行已delete）不会重复使用
+	common.CheckError(err)
+	fmt.Printf("after insert last id %d\n", lastID)
+	rows, err := res.RowsAffected() //插入2行，所以影响2行
+	common.CheckError(err)
+	fmt.Printf("insert affect %d row\n", rows)
+}
+
+// update 通过stmt修改数据
+func update(db *sql.DB) {
+	stmt, err := db.Prepare("update student set score=score+? where city=?") //上海加10分
+	common.CheckError(err)
+	res, err := stmt.Exec(10, "上海")
+	common.CheckError(err)
+	res, err = stmt.Exec(9, "深圳")
+	common.CheckError(err)
+	lastID, err := res.LastInsertId() //0, 仅插入操作才会给LastInsertId赋值
+	common.CheckError(err)
+	fmt.Printf("after update last id %d\n", lastID)
+	rows, err := res.RowsAffected() //where city=?命中几行，就会影响几行
+	common.CheckError(err)
+	fmt.Printf("update affect %d row\n", rows)
+}
+
+// query 通过stmt查询数据
+func query(db *sql.DB) {
+	stmt, err := db.Prepare("select id,name,city,score from student where id > ?")
+	common.CheckError(err)
+	rows, err := stmt.Query(2)
+	for rows.Next() { //没有数据或发生error时返回false
+		var id int
+		var score float32
+		var name, city string
+		err = rows.Scan(&id, &name, &city, &score) //通过scan把db里的数据赋给go变量
+		common.CheckError(err)
+		fmt.Printf("id=%d, score=%.2f, name=%s, city=%s \n", id, score, name, city)
+	}
+}
+
+// delete 通过stmt删除数据
+func delete(db *sql.DB) {
+	//一条sql，插入2行记录
+	stmt, err := db.Prepare("delete from student where id > ? ") //上海加10分
+	common.CheckError(err)
+	res, err := stmt.Exec(5)
+	common.CheckError(err)
+	rows, err := res.RowsAffected() //where city=?命中几行，就会影响几行
+	common.CheckError(err)
+	fmt.Printf("delete affect %d row\n", rows)
+}
+
+func hugeInsert(db *sql.DB) {
+	stmt, err := db.Prepare("insert into student (name,province,city,enrollment) values (?,?,?,?)")
+	common.CheckError(err)
+	date, err := time.ParseInLocation("20060102", "20211204", loc)
+	for i := 0; i < 100000; i++ {
+		stmt.Exec("曹操"+strconv.Itoa(i), "河南", "许昌", date)
+	}
+
+}
+
+// traversel1通过limit offset,n遍历表
+func traverse1(db *sql.DB) {
+	var offset int
+	begin := time.Now()
+	stmt, _ := db.Prepare("select id,name,province from student limit ?,100")
+	for i := 0; i < 100; i++ {
+		t0 := time.Now()
+		rows, _ := stmt.Query(offset)
+		offset += 100
+		fmt.Println(i, time.Since(t0))
+
+		for rows.Next() {
+			var id int
+			var name, province string
+			rows.Scan(&id, &name, &province)
+		}
+	}
+	fmt.Println("total:", time.Since(begin))
+}
+
+// traversel2通过limit offset n遍历表,推荐这种
+func traverse2(db *sql.DB) {
+	var maxid int
+	begin := time.Now()
+	stmt, _ := db.Prepare("select id,name,province from student where id > ? limit 100")
+	for i := 0; i < 100; i++ {
+		t0 := time.Now()
+		rows, _ := stmt.Query(maxid)
+		fmt.Println(i, time.Since(t0))
+
+		for rows.Next() {
+			var id int
+			var name, province string
+			rows.Scan(&id, &name, &province)
+			if id > maxid {
+				maxid = id
+			}
+		}
+	}
+	fmt.Println("total:", time.Since(begin))
+}
+
+func main() {
+	db, err := sql.Open("mysql", "jack:homsom@tcp(192.168.15.203:3306)/test?charset=utf8")
+	common.CheckError(err)
+	// insert(db)
+	// replace(db)
+	// update(db)
+	// query(db)
+	// delete(db)
+	// hugeInsert(db)
+	traverse1(db) //此方式慢,每次蚁指定的起始和结束位,如果查询10000,100,则会查询10100行
+	traverse2(db) //此方式查询块,每次查询前100行,此查询每次只查询100行
+}
+```
+
+
+
+
+
+
+
+#### ORM与NoSQL技术
+
+1. 开源工具SQLBuilder介绍
+2. 自己封装SQL构建器
+3. ORM技术与GORM
+4. Go操作MongoDB
+
+
+
+##### 开源SQLBuilder
+
+- Go-SQLBuilder是一个用于创建SQL语句的工具函数库，提供一系列灵活的、与原生SQL语法一致的链式函数。归属于艾润物联公司
+- go get -u github.com/parkingwang/go-sqlbuilder
+- Gendry是一个用于辅助操作数据库的Go包。基于go-sql-driver/mysql，它提供了一系列的方法来为你调用标准库database/sql中的方法准备参数
+- go get -u github.com/didi/gendry
+
+###### Go-SQLBuilder
+
+```
+// Go-SQLBuilder函数链，不带执行函数，需要调用原始Query()
+sql := gsb.NewContext().
+	Select("id","name","score","city").
+	From("student").
+	OrderBy("score").DESC().
+	Column("name").ASC().
+	Limit(10).Offset(20).
+	ToSQL()
+	
+// Gendry函数链，带执行函数
+where := map[string]interface{}{
+	"city": []string{"北京","上海","广州"}，
+	“score<": 30,
+	"addr": builder.IsNotNull,
+	"_orderby": "score desc",
+}
+fields := []string{"id","name","city","score"}
+//查询表、查询条件、显示字段，最后执行select
+_,_,err := builder.BuildSelect("student", where, fields)
+```
+
+
+
+##### 自己封装SQL构建器
+
+ ```
+ package main
+ 
+ import (
+ 	"fmt"
+ 	"strconv"
+ 	"strings"
+ )
+ 
+ // Builder 根据一个函数生成一小段sql
+ // select, where, limit,orderby 这些都是Builder
+ type Builder interface {
+ 	toString() string
+ 	getPrev() Builder
+ }
+ 
+ type LimitBuilder struct {
+ 	sb   strings.Builder
+ 	prev Builder
+ }
+ 
+ func newLimitBuilder(offset, n int) *LimitBuilder {
+ 	builder := &LimitBuilder{}
+ 	//通过strings.Builder实现高效的字符串连接
+ 	builder.sb.WriteString(" limit ")
+ 	builder.sb.WriteString(strconv.Itoa(offset))
+ 	builder.sb.WriteString(",")
+ 	builder.sb.WriteString(strconv.Itoa(n))
+ 	return builder
+ }
+ 
+ func (self *LimitBuilder) toString() string {
+ 	return self.sb.String()
+ }
+ 
+ func (self *LimitBuilder) getPrev() Builder {
+ 	return self.prev
+ }
+ 
+ func (self *LimitBuilder) ToString() string {
+ 	var root Builder
+ 	root = self                 //因为self不能变，所以用root承接转换
+ 	for root.getPrev() != nil { //找到最前面的root Builder
+ 		root = root.getPrev()
+ 	}
+ 	return root.toString()
+ }
+ 
+ type OrderByBuilder struct {
+ 	sb    strings.Builder
+ 	limit *LimitBuilder
+ 	prev  Builder
+ }
+ 
+ func newOrderByBuilder(column string) *OrderByBuilder {
+ 	builder := &OrderByBuilder{}
+ 	builder.sb.WriteString(" order by ")
+ 	builder.sb.WriteString(column)
+ 	return builder
+ }
+ 
+ func (self *OrderByBuilder) getPrev() Builder {
+ 	return self.prev
+ }
+ 
+ func (self *OrderByBuilder) toString() string {
+ 	if self.limit != nil {
+ 		self.sb.WriteString(self.limit.toString())
+ 	}
+ 	return self.sb.String()
+ }
+ 
+ func (self *OrderByBuilder) ToString() string {
+ 	var root Builder
+ 	root = self
+ 	for root.getPrev() != nil {
+ 		root = root.getPrev()
+ 	}
+ 	return root.toString()
+ }
+ 
+ func (self *OrderByBuilder) Asc() *OrderByBuilder {
+ 	self.sb.WriteString(" asc")
+ 	return self
+ }
+ 
+ func (self *OrderByBuilder) Desc() *OrderByBuilder {
+ 	self.sb.WriteString(" desc")
+ 	return self
+ }
+ 
+ func (self *OrderByBuilder) Limit(offset, n int) *LimitBuilder {
+ 	limit := newLimitBuilder(offset, n)
+ 	limit.prev = self
+ 	self.limit = limit
+ 	return limit
+ }
+ 
+ type WhereBuilder struct {
+ 	sb      strings.Builder
+ 	orderby *OrderByBuilder
+ 	limit   *LimitBuilder
+ 	prev    Builder
+ }
+ 
+ func newWhereBuilder(condition string) *WhereBuilder {
+ 	builder := &WhereBuilder{}
+ 	builder.sb.WriteString(" where ")
+ 	builder.sb.WriteString(condition)
+ 	return builder
+ }
+ 
+ func (self *WhereBuilder) getPrev() Builder {
+ 	return self.prev
+ }
+ 
+ func (self *WhereBuilder) toString() string {
+ 	if self.orderby != nil {
+ 		self.sb.WriteString(self.orderby.toString())
+ 	}
+ 	if self.limit != nil {
+ 		self.sb.WriteString(self.limit.toString())
+ 	}
+ 	return self.sb.String()
+ }
+ 
+ func (self *WhereBuilder) ToString() string {
+ 	var root Builder
+ 	root = self
+ 	for root.getPrev() != nil {
+ 		root = root.getPrev()
+ 	}
+ 	return root.toString()
+ }
+ 
+ func (self *WhereBuilder) Orderby(column string) *OrderByBuilder {
+ 	orderby := newOrderByBuilder(column)
+ 	orderby.prev = self
+ 	self.orderby = orderby
+ 	return orderby
+ }
+ 
+ func (self *WhereBuilder) Limit(offset, n int) *LimitBuilder {
+ 	limit := newLimitBuilder(offset, n)
+ 	limit.prev = self
+ 	self.limit = limit
+ 	return limit
+ }
+ 
+ func (self *WhereBuilder) And(condition string) *WhereBuilder {
+ 	self.sb.WriteString(" and ")
+ 	self.sb.WriteString(condition)
+ 	return self
+ }
+ 
+ func (self *WhereBuilder) Or(condition string) *WhereBuilder {
+ 	self.sb.WriteString(" or ")
+ 	self.sb.WriteString(condition)
+ 	return self
+ }
+ 
+ type SelectBuilder struct {
+ 	sb    strings.Builder
+ 	table string
+ 	where *WhereBuilder
+ }
+ 
+ func NewSelectBuilder(table string) *SelectBuilder {
+ 	builder := &SelectBuilder{
+ 		table: table,
+ 	}
+ 	builder.sb.WriteString("select ")
+ 	return builder
+ }
+ 
+ func (self *SelectBuilder) Column(columns string) *SelectBuilder {
+ 	self.sb.WriteString(columns)
+ 	self.sb.WriteString(" from ")
+ 	self.sb.WriteString(self.table)
+ 	return self
+ }
+ 
+ func (self *SelectBuilder) Where(condition string) *WhereBuilder {
+ 	where := newWhereBuilder(condition)
+ 	self.where = where
+ 	where.prev = self
+ 	return where
+ }
+ 
+ func (self *SelectBuilder) toString() string {
+ 	if self.where != nil {
+ 		self.sb.WriteString(self.where.toString())
+ 	}
+ 	return self.sb.String()
+ }
+ 
+ func (self *SelectBuilder) getPrev() Builder {
+ 	return nil
+ }
+ 
+ func (self *SelectBuilder) ToString() string {
+ 	var root Builder
+ 	root = self
+ 	for root.getPrev() != nil {
+ 		root = root.getPrev()
+ 	}
+ 	return root.toString()
+ }
+ 
+ func main() {
+ 	sql := NewSelectBuilder("student").Column("id,name,city").
+ 		Where("id>0").
+ 		And("city='许昌'").
+ 		Or("city='北京'").
+ 		Orderby("name").Desc().
+ 		Limit(0, 10).
+ 		ToString()
+ 	fmt.Println(sql)
+ }
+ ```
+
+
+
+##### ORM技术与GORM
+
+ORM
+
+* ORM即Object Relational Mapping，对象关系映射
+* Relational指各种sql类的关系型数据库
+* Object指面向对象编程(object-oriented rogramming)中的对象
+* ORM在数据库记录和程序对象之间做一层映射转换，使程序中不用再去编写原生SQL，而是面向对象的思想去编写类、对象、调用相应的方法来完成数据库操作
+
+GORM
+
+* go get -u gorm.io/gorm
+* go get -u gorm.io/driver/mysql
+* GORM是一个全能的、友好的、基于golang的ORM库
+* GORM倾向于约定，而不是配置。默认情况下，GORM使用ID作为主键，使用结构体名的【蛇形复数】作为表名，字段名的【蛇形】作为列名，并使用CreatedAt、UpdatedAt字段追踪创建、更新时间
+* 驼峰命名：UpdateAt
+* 蛇形命名：update_at
+
+```
+dsn := "root:@tcp(127.0.0.1:3306)/test?charset=utf8mb4&parseTime=True"
+db,err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+student := Student{Name: "光绪",Province: "北京",City: "北京",Score: 38,Enrollment: time.now()}
+db.Create(&student)
+```
+
+
+
+```
+//go get gorm.io/gorm
+//go get gorm.io/driver/mysql
+
+package main
+
+import (
+	"fmt"
+
+	"gorm.io/driver/mysql"
+	"gorm.io/gorm"
+)
+
+//对应到"students"这个表名
+type Student struct {
+	Ids  int     `gorm:"column:id;primaryKey"` // students表的字段id, Ids对应主键 id字段
+	Name string  // name
+	Rank float32 `gorm:"column:score"` // score
+	// Score float32 // score
+	// UpdateAt time.Time //update_at
+	// Province string // province
+}
+
+// 将Student的表名对应student，如果不写TableName()，则默认对应的表名是students(带s复数),而真实表名只有student
+func (Student) TableName() string {
+	return "student"
+}
+
+// 查询
+func query(db *gorm.DB) {
+	var student Student
+	db.Where("score=?", 0).Take(&student) //随机取一个字段
+	// db.Where("score=?", 0).Last(&student)
+	fmt.Println(student.Ids)
+	fmt.Println(student.Name)
+	fmt.Println(student.Rank)
+
+	var students []Student
+	db.Where("city in ?", []string{"北京", "上海"}).Find(&students) //find查询多行
+	for _, student := range students {
+		fmt.Println(student.Ids)
+		fmt.Println(student.Name)
+		fmt.Println(student.Rank)
+	}
+
+	student = Student{}                  //单选接收结构
+	students = []Student{}               //多行接收结构
+	db.Find(&students, []int{8, 12, 56}) // where id in(8,12,56), 默认使用主键id
+	for _, student := range students {
+		fmt.Println(student.Ids)
+	}
+
+	students = []Student{}                                   //多行接收结构，清空
+	db.Select("id,name,score").Where(map[string]interface{}{ //select显示字段
+		"city":  []string{"北京", "上海"}, //city in
+		"score": 0,                    //score =
+	}).Or("addr is not null").Order("score desc").Find(&students).Limit(10)
+	for _, student := range students {
+		fmt.Println(student.Ids)
+		fmt.Println(student.Name)
+		fmt.Println(student.Rank)
+	}
+}
+
+func insert(db *gorm.DB) {
+	student := Student{Ids: 2, Name: "abc", Rank: 100}
+	db.Create(&student) //插入1行
+
+	arr := []Student{student, student, student}
+	db.Create(arr)                //插入多行
+	db.CreateInBatches(arr, 1000) //如果arr有10000行，分批插入，每次1000行
+}
+
+func update(db *gorm.DB) {
+	var student Student
+	//更新Student{}这个表，set city="北京" where score=100，更新一列
+	db.Model(&student).Where("score=100").Update("city", "北京")
+	//更新Student{}这个表，set city="北京",province="北京" where score=100，更新多列
+	db.Model(&student).Where("score=100").Updates(map[string]interface{}{
+		"city":     "北京",
+		"province": "北京",
+	})
+
+	student.Ids = 8
+	db.Model(&student).Update("city", "北京") //where id=8 set city="北京"
+}
+
+func delete(db *gorm.DB) {
+	var student Student
+	//删除student结构体对应的表中city in ("北京", "上海")
+	db.Where("city in ?", []string{"北京", "上海"}).Delete(&student)
+
+	student.Ids = 8
+	// delete from student where id=8
+	db.Delete(&student)
+}
+
+// 事务，原子操作
+func transaction(db *gorm.DB) {
+	tx := db.Begin()
+	for i := 0; i < 100; i++ {
+		student := Student{Ids: 2, Name: "abc", Rank: 100}
+		db.Create(&student) //插入1行
+	}
+	tx.Commit()
+}
+
+func main() {
+	dsn := "jack:homsom@tcp(192.168.15.203:3306)/test?charset=utf8mb4&parseTime=True"
+	db, _ := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	query(db)
+}
+```
+
+
+
+
+
+##### MongoDB
+
+* NoSQL泛指非关系型数据库，如mongo, redis, HBase
+* mongo使用高效的二进制数据存储，文件存储格式为BSON（一种json的扩展，比json性能更好，功能更强大）
+* MySQL中表的概念在mongo里叫集合(collection)，MySQL中行的概念在mongo中叫文档(document)，一个文档看上去像一个json
+
+
+
+###### 运行mogodb
+
+```console
+docker run -d --name mongodb --restart always \
+	-e MONGO_INITDB_ROOT_USERNAME=mongoadmin \
+	-e MONGO_INITDB_ROOT_PASSWORD=homsom \
+	-p 27017:27017 \
+	-v /data/mongodb/db:/data/db \
+	mongo:6.0.3
+
+& docker ps -a 
+CONTAINER ID        IMAGE               COMMAND                  CREATED             STATUS              PORTS                      NAMES
+b1ae3382a6fc        mongo:6.0.3         "docker-entrypoint.s…"   3 seconds ago       Up 2 seconds        0.0.0.0:27017->27017/tcp   mongodb
+
+```
+
+
+
+###### mongo常用命令
+
+* use test; 	切换test库，如果没有则创建
+* db.createUser({user: "tester", pwd: "123456", roles: [{role: "dbAdmin", db: "test"}]});   //创建用户
+* db.createCollection("student");   创建collection
+* db.student.createIndex({"name": 1});    在name上创建索引，不是唯一索引，1升序, -1降序
+* db.student.insertOne({name: "张三", city: "北京"});   插入一行
+* db.student.find({name: "张三"});    查询用户
+* db.student.find();   查询所有
+* db.student.update({name: "张三"}, {name: "张三", city: "上海"});
+* db.student.deleteOne({name: "张三"});  删除一行，不要One则可以删除多行
+
+
+
+###### 安装go mongo-driver
+
+* go get go.mongodb.org/mongo-driver
+* go get go.mongodb.org/mongo-driver/x/bsonx/bsoncore@v1.7.1
+* go get go.mongodb.org/mongo-driver/x/mongo/driver@v1.7.1
+* go get go.mongodb.org/mongo-driver/mongo/options@v1.7.1
+* go get go.mongodb.org/mongo-driver/x/mongo/driver/topology@v1.7.1
+* go get go.mongodb.org/mongo-driver/mongo@v1.7.1
+
+###### 连接db
+
+```
+option := options.Client().ApplyURI("mongodb://192.168.15.203:27017").
+	SetConnectTimeout(time.Second).
+	SetAuth(option.Credential{Username: "mongoadmin",Password: "homsom", AuthSource: "test"})	//指定用户名和密码、AuthSource代表Database
+client,err := mongo.Connect(context.Background(), option)
+err = client.Pring(ctx, nil)	//注意: Ping成功才代表连接成功
+```
+
+###### 查询mongo
+
+```
+sort := base.D{{"name", 1}}	//1升序，-1降序
+filter := bson.D{{"score",bson.D{{"&gt", 3}}}} //score > 3
+findOption := options.Find()
+findOption.SetSort(sort)	//按name升序排序
+findOption.SetLimit(10)		//最多返回10个
+findOption.SetSkip(3)	//跳过前3个
+cursor,err := collection.Find(ctx, filter, findOption)
+```
+
+
+
+###### 代码
+
+```
+package main
+
+/*
+go get go.mongodb.org/mongo-driver
+go get go.mongodb.org/mongo-driver/x/bsonx/bsoncore
+go get go.mongodb.org/mongo-driver/x/mongo/driver
+go get go.mongodb.org/mongo-driver/mongo/options
+go get go.mongodb.org/mongo-driver/x/mongo/driver/topology
+go get go.mongodb.org/mongo-driver/mongo
+
+db.createUser({user: "tester", pwd: "123456", roles: [{role: "dbAdmin", db: "test"}]});
+db.grantRolesToUser("tester", [ { role: "readWrite", db: "test" } ]);
+*/
+
+import (
+	"fmt"
+	"os"
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"golang.org/x/net/context"
+)
+
+type Student struct {
+	Name  string // name
+	City  string
+	Score float32
+}
+
+func CheckError(err error) {
+	if err != nil {
+		//stdout是行缓冲的，他的输出会放在一个buffer里面，只有到换行的时候，才会输出到屏幕。而stderr是无缓冲的，会直接输出
+		fmt.Fprintf(os.Stderr, "fatal error: %s\n", err.Error())
+		os.Exit(1)
+	}
+}
+
+func create(ctx context.Context, collection *mongo.Collection) {
+	//插入一个doc
+	doc := Student{Name: "张三", City: "北京", Score: 39}
+	res, err := collection.InsertOne(ctx, doc)
+	CheckError(err)
+	fmt.Printf("insert id %d doc\n", res.InsertedID) //每个doc都会有一个全世界唯一的ID(时间+空间唯一)
+
+	//插入多个docs
+	docs := []interface{}{Student{Name: "张三", City: "北京", Score: 39}, Student{Name: "张三", City: "北京", Score: 39}}
+	manyRes, err := collection.InsertMany(ctx, docs)
+	CheckError(err)
+	fmt.Printf("insert %d doc\n", manyRes.InsertedIDs)
+}
+
+func query(ctx context.Context, client *mongo.Client) {
+	collection := client.Database("test").Collection("student")
+	filter := bson.D{{"score", bson.D{{"&gt", 3}}}} //score >3
+	findOption := options.Find()
+	sort := bson.D{{"name", 1}}
+	findOption.SetSort(sort)
+	findOption.SetLimit(10)
+	cursor, err := collection.Find(ctx, filter, findOption)
+	CheckError(err)
+	for cursor.Next(ctx) {
+		var stu Student
+		cursor.Decode(&stu)
+	}
+}
+
+func delete(ctx context.Context, collection *mongo.Collection) {
+	filter := bson.D{{"name", "张三"}}
+	res, err := collection.DeleteMany(ctx, filter)
+	CheckError(err)
+	fmt.Printf("delete %d doc\n", res)
+}
+
+func update(ctx context.Context, collection *mongo.Collection) {
+	filter := bson.D{{"city", "北京"}}
+	update := bson.D{{"$inc", bson.D{{"score", 5}}}}       //increment,让score+5
+	res, err := collection.UpdateMany(ctx, filter, update) //多行更新
+	CheckError(err)
+	fmt.Printf("update %d doc\n", res)
+}
+
+func main() {
+	var ctx context.Context
+	option := options.Client().ApplyURI("mongodb://192.168.15.203:27017").SetConnectTimeout(time.Second * 2).
+		SetAuth(options.Credential{Username: "tester", Password: "123456", AuthSource: "test"})
+	// option := options.Client().ApplyURI("mongodb://192.168.15.203:27017").SetConnectTimeout(time.Second * 2).
+	// 	SetAuth(options.Credential{Username: "mongoadmin", Password: "homsom", AuthSource: "test"})
+	client, _ := mongo.Connect(ctx, option)
+	err := client.Ping(ctx, nil)
+	if err == nil {
+		fmt.Println("连接mongo成功")
+		defer client.Disconnect(ctx)
+	} else {
+		fmt.Println("连接mongo失败")
+		return
+	}
+	query(ctx, client)
+
+}
+```
+
+
+
+
+
+
+
+## day12
+
+
+
+### Go语言http标准库解读
+
+1. http协议
+2. go语言http标准库
+3. http router
+4. 请求校验
+5. http中间件
+6. 打造自己的web框架
+
+
+
+#### http协议
+
+* http：超文本传输协议Hyper Text Transfer Protocol
+* http属于应用层协议，它在传输层用的是Tcp协议
+* 无状态，对事务处理没有记忆能力（对比TCP协议里的确认号）。如果要保存状态需要引用其他技术。如cookie
+* 无连接，每次连接只处理一个请求。早期带宽和计算资源有限，这么做是为了追求传输速度快，后来通过Connection: Keep-Alive实现长连接。http1.1废弃了Keep-Alive，默认支持长连接。
+
+
+
+###### 请求方法
+
+http 1.0 和 http 1.1版本，http1.1兼容http1.0请求方法
+
+```
+// http 1.0
+GET: 请求获取Request-URI所标识的资源
+POST: 向URI提交数据（例如提交表单或上传数据）
+HEAD: 类似于GET，返回的响应中没有具体的内容，用于获取报头
+// http 1.1
+PUT: 对服务器上已存在的资源进行更新
+DELETE: 请求服务器删除指定的页面
+CONNECT: HTTP/1.1预留，能够将连接改为管道方式的代理服务器
+OPTIONS: 查看服务端性能
+TRACE: 回显服务器收到的请求，主要用于测试或诊断
+PATCH: 同PUT，可只对资源的一部分更新，资源不存在时会创建
+
+* 实际中server对各种request method的处理方式可能不是按协议标准来的，比如server收到PUT请求时偏偏执行DELETE操作，同理仅用一个GET方法也能实现增删改查的全部功能
+* 大多数浏览器只支持GET和POST
+```
+
+
+
+###### URL
+
+* URI：uniform resource identifier，统一资源标识符，用来唯一的标识 一个资源
+* URL：uniform resource locator，统一资源定位器，它是一种具体的URI，指明了如何 locate这个资源
+* URL举例：
+  * http://www.qq.com:8080/news/tech/43253.html?id=431&name=tech123#pic    //#pic为锚点 
+
+
+
+###### 请求头
+
+| Header          | 解释                                                         | 示例                                            |
+| --------------- | ------------------------------------------------------------ | ----------------------------------------------- |
+| Accept          | 指定客户端能够接收的内容类型                                 | Accept: text/plain, text/html                   |
+| Accept-Charset  | 浏览器可以接受的字符编码集                                   | Accept-Charset: iso-8859-5                      |
+| Accept-Encoding | 指定浏览器可以支持的web服务器返回内容压缩编码类型            | Accept-Encoding: compress, gzip                 |
+| Accept-Language | 浏览器可授受的语言                                           | Accept-Language: en, zh                         |
+| Authorization   | HTTP授权的授权证书                                           | Authorization: Basic AFLAJOIEFsljakfksjafjafa== |
+| Cache-Conntrol  | 指定请求和响应遵循的缓存机制                                 | Cache-Control: no-cache                         |
+| Connection      | 表示是否需要持久连接（HTTP 1.1默认进行持久连接）             | Connection: close                               |
+| Cookie          | HTTP请求发送时，会把保存在该请求域名下的所有cookie值一起发送给web服务器 | Cookie: $Version=1;Skin=new;                    |
+| Content-Length  | 请求的内容长度                                               | Content-Length: 3498                            |
+| Content-Type    | 指定正文（body）的数据格式                                   | Content-Type: application/x-www-form-urlencoded |
+| User-Agent      | 浏览器信息                                                   | Mozilla/5(Windows NT6.1;Win64;x64)              |
+
+###### Content-Type
+
+* application/x-www-form-urlencoded
+
+  * 浏览器的原生form表单，如果不设置Content-Type属性，则默认以application/x-www-form-urlencoded方式传输数据
+  * 正文例如：name=manu&message=this_is_great
+
+* multipart/form-data
+
+  * 上传文件时使用multipart/form-data，支持多种文件格式
+  * 正文例如：name="text"name="file";filename="chrome.png"Content-type: image/png.. content of chrome.org
+
+* application/json
+
+  * 正文例如：{"title":"test","sub":[1,2,3]}
+
+* text/xml:
+
+  * 正文例如：
+
+    ```
+    <?xml version="1.0"?><methodCall>
+    <methodName>examples.getStateName</methodName>
+    </methodCall>
+    ```
+
+    
+
+###### 请求正文
+
+* GET请求没有请求正文
+* POST可以包含GET
+
+```
+POST ／post?id=1234&page=1 HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+
+name=manu&message=this_is_great
+```
+
+
+
+###### GET和POST的区别
+
+* get的请求参数全部在url里，参数变时url就变；post可以把参数放到请求正文里，参数变时url不变
+* 虽然http协议并没有对url和请求正文做长度限制，但在实际中浏览器对url的长度限制比请求正文要小很多，所以post可以提交的数据比get要大得多
+* get比post更容易受到攻击（源于get的参数直接暴露在url里）
+
+
+
+###### 响应信息中的状态及话术
+
+| code | phrase                | 说明                               |
+| ---- | --------------------- | ---------------------------------- |
+| 200  | Ok                    | 请求成功                           |
+| 400  | Bad Request           | 客户端有语法错误，服务端不理解     |
+| 401  | Unauthorized          | 请求未经授权                       |
+| 403  | Forbidden             | 服务端拒绝提供服务                 |
+| 404  | Not Found             | 请求资源不存在                     |
+| 500  | Internal Server Error | 服务器发生不可预期的错误           |
+| 503  | Server Unavailable    | 服务器当前有问题，过段时间可能恢复 |
+
+###### 响应头
+
+| Header           | 解释                             | 示例                                  |
+| ---------------- | -------------------------------- | ------------------------------------- |
+| Allow            | 对某网络资源的有效的请求行为     | Allow: GET,HEAD                       |
+| Date             | 原始服务器消息发出的时间         | Date: Tue,15 Nov 2010 08:12:31 GMT    |
+| Content-Encoding | 服务器支持的返回内容压缩编码类型 | Content-Encoding: gzip                |
+| Content-Language | 响应体的语言                     | Content-Language: en,zh               |
+| Content-Length   | 响应体的长度                     | Content-Length: 348                   |
+| Cache-Control    | 指定请求和响应遵循的缓存机制     | Cache-Control: no-cache               |
+| Content-Type     | 返回内容的MIME类型               | Content-Type: text/html;charset=utf-8 |
+
+
+
+#### go语言http标准库
+
+##### http server
+
+```
+package main
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+)
+
+type MyHandler struct{}
+
+func (MyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, "hello boy")
+}
+
+func HelloHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Printf("method: %s\n", r.Method)
+	fmt.Printf("host: %s\n", r.Host)
+	fmt.Printf("url: %s\n", r.URL)
+	fmt.Printf("proto: %s\n", r.Proto)
+	fmt.Printf("req header\n")
+	for k, v := range r.Header {
+		fmt.Printf("%s: %s\n", k, v)
+	}
+	fmt.Println("req body")
+	io.Copy(os.Stdout, r.Body)
+	os.Stdout.WriteString("\n")
+	fmt.Fprint(w, "hello boy") //Fprint = follow print,把返回的内容写入到http.ResponseWriter
+}
+
+func HelloHandlergirl(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, "hello girl") //Fprint = follow print
+}
+
+func main() {
+	//方法1,访问此端口只能由1个函数处理
+	// http.ListenAndServe(":5656", MyHandler{})
+
+	//方法2,访问此端口的多个目录可以由多个函数处理
+	http.HandleFunc("/", HelloHandler) //路由，请求到目录时去执行HelloHandler
+	http.HandleFunc("/g", HelloHandlergirl)
+	//ListenAndServe如果不发生error会一直阻塞。为每一个请求创建一个协程去处理。
+	http.ListenAndServe(":5656", nil)
+}
+
+```
+
+##### http client
+
+```
+package main
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"strings"
+	"time"
+)
+
+func get() {
+	if resp, err := http.Get("http://127.0.0.1:5656/g"); err != nil {
+		panic(err)
+	} else {
+		//注意一定要调用resp.Body.Close()，否则会协和泄露（同时引发内存泄漏）
+		defer resp.Body.Close()
+		io.Copy(os.Stdout, resp.Body) //把resp.Body输出到标准输出流
+		os.Stdout.WriteString("\n")
+	}
+}
+
+func post() {
+	reader := strings.NewReader("hello server")
+	if resp, err := http.Post("http://127.0.0.1:5656", "text/plain", reader); err != nil {
+		panic(err)
+	} else {
+		defer resp.Body.Close()
+		fmt.Printf("proto: %s\n", resp.Proto)
+		fmt.Printf("status: %s\n", resp.Status)
+		fmt.Printf("resp header\n")
+		for k, v := range resp.Header {
+			fmt.Printf("%s: %s\n", k, v)
+		}
+		fmt.Println("resp body")
+		io.Copy(os.Stdout, resp.Body)
+		os.Stdout.WriteString("\n")
+	}
+}
+
+// 自定义请求
+func doRequest() {
+	reader := strings.NewReader("hello server")
+	//可以使用post、get方法请求，get请求时可以传入body，服务端也会获取到
+	if req, err := http.NewRequest("get", "http://127.0.0.1:5656", reader); err != nil {
+		panic(err)
+	} else {
+		req.Header.Add("User-Agent", "12345")
+		req.Header.Add("key", "golang")
+		//定义一个cookie
+		req.AddCookie(&http.Cookie{
+			Name:   "auth",
+			Value:  "here is password",
+			Path:   "/",
+			Domain: "localhost",
+		})
+
+		// 新建客户端，期待客户端500ms拿到响应
+		client := http.Client{Timeout: 500 * time.Millisecond}
+		// 客户端执行自定义请求
+		if resp, err := client.Do(req); err != nil {
+			panic(err)
+		} else {
+			defer resp.Body.Close()
+			fmt.Printf("proto: %s\n", resp.Proto)
+			fmt.Printf("status: %s\n", resp.Status)
+			fmt.Printf("resp header\n")
+			for k, v := range resp.Header {
+				fmt.Printf("%s: %s\n", k, v)
+			}
+			fmt.Println("resp body")
+			io.Copy(os.Stdout, resp.Body)
+			os.Stdout.WriteString("\n")
+		}
+	}
+}
+
+func postForm() {
+	//url.Values就是用户提交的表单数据，服务端从body中获取
+	if resp, err := http.PostForm("http://127.0.0.1:5656", url.Values{"name": []string{"jack"}, "age": []string{"18"}, "pass": []string{"ljkfldsf"}}); err != nil {
+		panic(err)
+	} else {
+		defer resp.Body.Close()
+		fmt.Printf("proto: %s\n", resp.Proto)
+		fmt.Printf("status: %s\n", resp.Status)
+		fmt.Printf("resp header\n")
+		for k, v := range resp.Header {
+			fmt.Printf("%s: %s\n", k, v)
+		}
+		fmt.Println("resp body")
+		io.Copy(os.Stdout, resp.Body)
+		os.Stdout.WriteString("\n")
+	}
+}
+
+func main() {
+	// get()
+	// post()
+	// doRequest()
+	postForm()
+}
+
+```
+
+
+
+##### 第三方包 httprouter
+
+* go get -u github.com/julienschmidt/httprouter
+* Router实现了http.Handler接口
+* 为各种request method提供了便捷的路由方式
+* 支持restrul请求方式
+* 支持ServeFiles访问静态文件
+* 可以自定义捕获panic的方法
+
+go get -u github.com/julienschmidt/httprouter
+
+go run server.go
+
+```go
+package main
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+
+	"github.com/julienschmidt/httprouter"
+)
+
+func getHandler1(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	fmt.Printf("method: %s\n", r.Method)
+	fmt.Printf("request body\n")
+	io.Copy(os.Stdout, r.Body)
+	fmt.Println()
+
+	w.Write([]byte("hi boy, you request " + r.Method))
+}
+
+func getHandler2(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	fmt.Printf("method: %s\n", r.Method)
+	fmt.Printf("request body\n")
+	io.Copy(os.Stdout, r.Body)
+	fmt.Println()
+
+	var a = 4
+	var b = 0
+	var _ = a / b
+	w.Write([]byte("hi girl, you request " + r.Method))
+}
+
+func getHandler3(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	fmt.Printf("method: %s\n", r.Method)
+	fmt.Printf("request body\n")
+	io.Copy(os.Stdout, r.Body)
+	fmt.Println()
+
+	w.Write([]byte("hi girl，handler func 33333, you request " + r.Method))
+}
+
+func postHandler1(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	fmt.Printf("method: %s\n", r.Method)
+	fmt.Printf("request body\n")
+	io.Copy(os.Stdout, r.Body)
+	fmt.Println()
+
+	w.Write([]byte("hi girl, you request " + r.Method))
+}
+
+func postHandler2(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	fmt.Printf("method: %s\n", r.Method)
+	fmt.Printf("request body\n")
+	io.Copy(os.Stdout, r.Body)
+	fmt.Println()
+
+	w.Write([]byte("hi girl, you request " + r.Method))
+}
+
+// HostMap是map类型的别名
+type HostMap map[string]http.Handler
+
+// HostMap实现ServerHTTP方法，实现Handler接口
+func (hm HostMap) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if handler, exists := hm[r.Host]; exists {
+		handler.ServeHTTP(w, r)
+	} else {
+		http.Error(w, "Forbidden", 403)
+	}
+}
+
+func main() {
+	router := httprouter.New()
+	router.GET("/", getHandler1)
+	router.GET("/g", getHandler2)
+
+	router.POST("/", postHandler1)
+	router.POST("/g", postHandler2)
+
+	// :name :type *addr是变量名称,  例如：/user/jack/vip/sh/xuhui/it  :name=jack, :type=vip *addr=sh/xuhui/it
+	router.POST("/user/:name/:type/*addr", func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
+		fmt.Printf("name=%s, type=%s, addre=%s", p.ByName("name"), p.ByName("type"), p.ByName("addr"))
+	})
+
+	// router的自定义panic处理函数
+	router.PanicHandler = func(w http.ResponseWriter, r *http.Request, i interface{}) {
+		fmt.Println("panic happen")
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "error: %s", i) //i就是panic的原因，写入到响应流中
+	}
+
+	//第二个router2
+	router2 := httprouter.New()
+	router2.GET("/", getHandler3)
+
+	hm := make(HostMap)
+	hm["book.dianshang:5656"] = router
+	hm["food.dianshang:5656"] = router2
+
+	// router实现了http.Handler
+	// http.ListenAndServe(":5656", router)
+	// hm也是一个Handler，它实现了ServeHTTP方法
+	http.ListenAndServe(":5656", hm)
+}
+```
+
+go run client.go
+
+```go
+package main
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"os"
+	"strings"
+	"time"
+)
+
+func get() {
+	// if resp, err := http.Get("http://127.0.0.1:5656/g"); err != nil {
+	// if resp, err := http.Get("http://book.dianshang:5656/"); err != nil {
+	if resp, err := http.Get("http://food.dianshang:5656/"); err != nil {
+		panic(err)
+	} else {
+		//注意一定要调用resp.Body.Close()，否则会协和泄露（同时引发内存泄漏）
+		defer resp.Body.Close()
+		fmt.Printf("proto: %s\n", resp.Proto)
+		fmt.Printf("status: %s\n", resp.Status)
+		fmt.Printf("resp header\n")
+		for k, v := range resp.Header {
+			fmt.Printf("%s: %s\n", k, v)
+		}
+		fmt.Println("resp body")
+		io.Copy(os.Stdout, resp.Body)
+		os.Stdout.WriteString("\n")
+	}
+}
+
+func post() {
+	reader := strings.NewReader("hello server")
+	if resp, err := http.Post("http://127.0.0.1:5656/user/jack/vip/sh/xuhui/it", "text/plain", reader); err != nil {
+		panic(err)
+	} else {
+		defer resp.Body.Close()
+		fmt.Printf("proto: %s\n", resp.Proto)
+		fmt.Printf("status: %s\n", resp.Status)
+		fmt.Printf("resp header\n")
+		for k, v := range resp.Header {
+			fmt.Printf("%s: %s\n", k, v)
+		}
+		fmt.Println("resp body")
+		io.Copy(os.Stdout, resp.Body)
+		os.Stdout.WriteString("\n")
+	}
+}
+
+// 自定义请求
+func doRequest() {
+	reader := strings.NewReader("hello server")
+	//可以使用post、get方法请求，get请求时可以传入body，服务端也会获取到
+	if req, err := http.NewRequest("get", "http://127.0.0.1:5656", reader); err != nil {
+		panic(err)
+	} else {
+		req.Header.Add("User-Agent", "12345")
+		req.Header.Add("key", "golang")
+		//定义一个cookie
+		req.AddCookie(&http.Cookie{
+			Name:   "auth",
+			Value:  "here is password",
+			Path:   "/",
+			Domain: "localhost",
+		})
+
+		// 新建客户端，期待客户端500ms拿到响应
+		client := http.Client{Timeout: 500 * time.Millisecond}
+		// 客户端执行自定义请求
+		if resp, err := client.Do(req); err != nil {
+			panic(err)
+		} else {
+			defer resp.Body.Close()
+			fmt.Printf("proto: %s\n", resp.Proto)
+			fmt.Printf("status: %s\n", resp.Status)
+			fmt.Printf("resp header\n")
+			for k, v := range resp.Header {
+				fmt.Printf("%s: %s\n", k, v)
+			}
+			fmt.Println("resp body")
+			io.Copy(os.Stdout, resp.Body)
+			os.Stdout.WriteString("\n")
+		}
+	}
+}
+
+func postForm() {
+	//url.Values就是用户提交的表单数据，服务端从body中获取
+	if resp, err := http.PostForm("http://127.0.0.1:5656", url.Values{"name": []string{"jack"}, "age": []string{"18"}, "pass": []string{"ljkfldsf"}}); err != nil {
+		panic(err)
+	} else {
+		defer resp.Body.Close()
+		fmt.Printf("proto: %s\n", resp.Proto)
+		fmt.Printf("status: %s\n", resp.Status)
+		fmt.Printf("resp header\n")
+		for k, v := range resp.Header {
+			fmt.Printf("%s: %s\n", k, v)
+		}
+		fmt.Println("resp body")
+		io.Copy(os.Stdout, resp.Body)
+		os.Stdout.WriteString("\n")
+	}
+}
+
+func main() {
+	get()
+	// post()
+	// doRequest()
+	// postForm()
+}
+```
+
+
+
+##### 请求校验
+
+
+
+###### XSS
+
+* 跨站脚本攻击Cross-Site Scripting，XSS(为了区别CSS)。通过注入脚本获取敏感信息
+
+```html
+<html>
+<head>
+	<title>留言板</title>
+</head>
+<body>
+	<div id="board">
+		<!--从数据库中读出用户的留言内容，展示在这里-->
+		<script>alert("hey!you are atacked")</script>
+	</div>
+</body>
+</html>
+```
+
+
+
+###### CSRF
+
+* Cross-Site request forgery，跨站请求伪造（目前已经禁止跨域读取Cookie，这种方式早已经过时）
+
+1. 登录A网站（银行网站）的个人中心
+
+​	www.bank.com/my.php
+
+2. 登录危险的B网站
+
+​	<img src=http://www.bank.com/Transfer.php?toBacknId=11&money=1000>
+
+​	从B网站向A网站发起了转账请求（携带着A网站的认证Cookie）
+
+
+
+###### jsonp
+
+* 主流浏览器不允许跨域访问数据（相同域名不同端口也属于跨域）
+
+* "<script>标签的src属性不受"同源策略"限制，可以进行跨域来满足我们正常的跨域请求"
+
+* 通过script的src请求返回的数据，浏览器会当成js脚本去处理。所以服务端可以返回一个在客户端存在的js函数
+
+  
+
+###### validator
+
+go get github.com/go-playground/validator
+
+```
+type RegistRequest struct{
+	UserName string `validate: "gt=0"`	//>0 长度大于0
+	PassWord string `validate: "min=6 max=12"`	//密码长度[6, 12]
+	PassRepeat string `validate: "eqfield=PassWord"`	//跨字段相等校验
+	Email string `validate: "email"`	//需要满足email的格式
+}
+```
+
+范围约束
+
+* 对于字符串、切片、数组和map，约束其长度。len=10，min=6，max=10，gt=10
+* 对于数值，约束其取值。min, max, eq, ne, gt, gte, lt, lte, oneof=6 8,
+
+跨字段约束
+
+* 跨字段就在范围约束的基础上加field后缀
+  * PassRepeat string `validate: "eqfield=PassWord"`
+* 如果还跨结构体(cross struct)就在跨字段的基础上在field前面加cs
+  * PassRepeat string `validate: "eqcsfield=Next.Pass"`	//Next是在本结构体中嵌套的结构体
+
+字符串约束
+
+* contains包含子串
+* containsany包含任意unicode字符，containsany=abcd
+* containsrune包含rune字符，containsrune="笑脸"
+* excludes不包含子串
+* excludesall不包含任意的unicode字符，excludesall=abcd
+* excludesrune不包含rune字符，excludesrune="笑脸"
+* startswith以子串为前缀
+* endswith以子串为后缀
+
+唯一性uniq
+
+* 对于数组和切片，约束没有重复的元素
+* 对于map，约束没有重复的value
+* 对于元素类型为结构体的切片，unique约束结构体对象的某个字段不重复，通过unique=field指定这个字段名
+  * Friends []Users `validate: "unique=Name"`
+
+自定义约束
+
+```go
+func validateEmail(fl validator.FieldLevel) bool{
+	input := fl.Field().String()
+	if pass,_ := regexp.MatchString(`^([\w\.\_]{2,10})@(\w{1,})\.([a-z]{2,4})$`,input); pass {
+	return true
+	} 
+	return false
+}
+
+//注册一个自定义的validator
+var val = validator.New()
+val.RegisterValidation("my_email",validateEmail )
+
+// 定义结构体字体
+Email string `validate: "my_exmil"`	//使用注册的自定义约束my_email，会调用validateEmail进行校验
+```
+
+example:
+
+```go
+package main
+
+import (
+	"fmt"
+	"regexp"
+
+	"github.com/go-playground/validator"
+)
+
+var val = validator.New()
+
+type RegistRequest struct {
+	UserName   string `validate:"gte=5,excludes=小姐"`
+	PassWord   string `validate:"min=8,max=20"`
+	PassRepeat string `validate:"eqfield=PassWord"`
+	Email      string `validate:"my_email_check"`
+	Friends    []int  `validate:"unique"`
+}
+
+func validateEmail(fl validator.FieldLevel) bool {
+	input := fl.Field().String()
+	if match, _ := regexp.MatchString(`^([\w\.\_]{2,10})@(\w{1,})\.([a-z]{2,4})$`, input); match {
+		return true
+	}
+	return false
+}
+
+func main() {
+	val.RegisterValidation("my_email_check", validateEmail)
+
+	request := RegistRequest{
+		UserName:   "abc大姐",
+		PassWord:   "12345678",
+		PassRepeat: "12345678",
+		Email:      "abc@qq.com",
+		Friends:    []int{1, 2, 3},
+	}
+
+	//会校验通过
+	if err := val.Struct(request); err != nil {
+		fmt.Println(err)
+	}
+
+	//会校验不通过
+	if err := val.Struct(3); err != nil {
+		fmt.Println(err)
+	}
+}
+```
+
+
+
+##### 中间件的作用
+
+* 将业务代码和非业务代码解耦
+* 非业务代码：限流、超时控制、写日志等
+
+
+
+##### 中间件实现的原理
+
+* 传入一个htto.Handler，外面套上一些非业务功能代码，再返回一个http.Handler。
+* 支持中间件层层嵌套。通过HandlerFunc把一个func(rw http.ResponseWriter,r *http.Request)函数转为Handler
+
+```go
+func timeMiddleWare(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
+		begin := time.Now()
+		next.ServeHTTP(rw, r)
+		timeElapsed := time.Since(begin)
+		log.Printf("request %s use %d ms\n", r.URL.Path, timeElapsed.Milliseconds())
+	})
+}
+```
+
+example:
+
+```
+package main
+
+import (
+	"log" //工作当中使用glog
+	"net/http"
+	"time"
+)
+
+func biz1Handler(w http.ResponseWriter, r *http.Request) {
+	w.Write([]byte("hi boy"))
+}
+
+func biz2Handler(w http.ResponseWriter, r *http.Request) {
+	time.Sleep(100 * time.Microsecond)
+	w.Write([]byte("hi girl"))
+}
+
+// 计时中间件，加了时间处理
+func timeMiddleWare(next http.Handler) http.Handler {
+	f := func(w http.ResponseWriter, r *http.Request) {
+		begin := time.Now()
+		next.ServeHTTP(w, r)
+		timeElapsed := time.Since(begin)
+		log.Printf("request %s use %d ns\n", r.URL.Path, timeElapsed.Nanoseconds())
+	}
+	return http.HandlerFunc(f)
+}
+
+// 限流中间件
+var limitCh = make(chan struct{}, 100) //管道存放struct，占用内存小，占用1位
+
+func limitMiddleWare(next http.Handler) http.Handler {
+	f := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		limitCh <- struct{}{} //往管道放struct{}{}，共100,如果管道此时放第101个strut{}{},则会阻塞无法处理http请求
+		log.Printf("cuncurrence %d\n", len(limitCh))
+		next.ServeHTTP(w, r)
+		<-limitCh
+
+	})
+	return http.HandlerFunc(f)
+}
+
+type middleware func(http.Handler) http.Handler
+// 定义Router结构体实现中间件封装的嵌套
+type Router struct {
+	middlewareChain []middleware
+	mux             map[string]http.Handler //路由
+}
+
+// 构造函数，对Router进行初始化
+func NewRouter() *Router {
+	return &Router{
+		middlewareChain: make([]middleware, 0, 10),
+		mux:             make(map[string]http.Handler, 10),
+	}
+}
+
+func (self *Router) Use(m middleware) {
+	self.middlewareChain = append(self.middlewareChain, m)
+}
+
+func (self *Router) Add(path string, handler http.Handler) {
+	var mergedHandler = handler
+	for i := 0; i < len(self.middlewareChain); i++ {
+		mergedHandler = self.middlewareChain[i](mergedHandler)
+	}
+	self.mux[path] = mergedHandler
+}
+
+func main() {
+	// http.Handle("/boy", timeMiddleWare(http.HandlerFunc(biz1Handler))) //biz1Handler函数参数 == http.HandlerFunc的函数参数
+	// http.Handle("/girl", limitMiddleWare(http.HandlerFunc(biz2Handler)))
+
+	// http.Handle("/boy", limitMiddleWare(timeMiddleWare(http.HandlerFunc(biz1Handler)))) //biz1Handler函数参数 == http.HandlerFunc的函数参数
+	// http.Handle("/girl", timeMiddleWare(limitMiddleWare(http.HandlerFunc(biz2Handler))))
+
+	//由于使用timeMiddleWare(limitMiddleWare(http.HandlerFunc(biz2Handler))))这种方式嵌套中间件，如果中间件大多则太过难懂，自己封装函数实现中间件嵌套
+	router := NewRouter()
+	router.Use(limitMiddleWare)
+	router.Use(timeMiddleWare)
+	router.Add("/boy", http.HandlerFunc(biz1Handler))
+	router.Add("/girl", http.HandlerFunc(biz2Handler))
+
+	for path, h := range router.mux {
+		// fmt.Println(h)
+		http.Handle(path, h)
+	}
+
+	http.ListenAndServe(":5656", nil)
+}
+
+```
+
+
+
+##### 打造自己的Web框架
+
+* 框架的作用：节省封装的开发时间，统一各团队的编码风格，节省沟通和排查问题的时间
+* Web框架需要具备的功能
+  * request参数获取
+  * 参数校验。validator
+  * 路由。httprouter
+  * response生成和渲染
+  * 中间件
+  * 会话管理
+
+
+
+##### Gorilla工具集
+
+* mux
+  * 一款强大的HTTP路由和URL匹配器
+* websocket
+  * 一个快速且被广泛应用的WebSocket实现
+* sessions
+  * 支持将会话跟踪信息保存到Cookie或文件系统
+* handler
+  * 为http服务提供很多有用的中间件
+* schema
+  * 表单数据和go struct互相转换
+* csrf
+  * 提供防止跨站点请求攻击的中间件
+
+
+
+
+
+
+
+### Go语言http框架使用
+
+1. Gin框架使用
+2. Beego框架介绍
+
+
+
+#### Gin框架
+
+* Gin是一款高性能的、简单轻巧的http Web框架
+* go get -u github.com/gin-gonic/gin
+* 学习gin.Context，体会一下go中Context接口的典型实现
+
+
+
+##### 路由
+
+* Gin的路由是基于httprouter做的
+* 支持GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD
+* 支持路由分组，不用重复写上级路径
+
+
+
+##### 参数获取
+
+* c.Query() 从GET请求的URL中获取参数
+* c.PostForm() 从post表单中获取参数
+* c.Param() 从Restful风格的url中获取参数
+* c.FormFile() 获取上传的文件，消息类型为form-data
+* c.MultipardForm() multipart/form-data可以上传多个form-data 并且用分隔黏土进行分割
+
+
+
+##### 参数绑定
+
+```
+type Student struct{
+	Name String `form:"username" json:"user" uri:"user" xml:"user" yaml:"user" binding:"required"`
+	Addr String `form:"addr" json:"addr" uri:"addr" xml:"addr" yaml:"addr" binding:"required"`
+}
+var stu Student
+ctx.ShouldBindJSON(&stu)
+```
+
+
+
+##### Gin生成response
+
+* c.String() response Context-Type=text/plain
+* c.JSON() response.Context-Type=application/json
+* c.XML() responnse.Context-Type=application/xml
+* c.HTML() 前端写好模板，后端往里面填值
+* c.Redirect() 重写向
+
+```go
+package main
+
+import (
+	"fmt"
+	"net/http"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator"
+)
+
+func url(engine *gin.Engine) {
+	//如果返回html格式信息给客户端，需要先加载
+	engine.LoadHTMLFiles("data/home.html")
+	// gin框架传入context
+	engine.GET("/student", func(c *gin.Context) { //回调函数，请求/student的参数都会被放到gin.Context中
+		// name := c.Query("name")
+		// addr := c.DefaultQuery("addr", "china")
+		//写信息给客户端，响应信息
+		// c.String(http.StatusOK, name+" live in "+addr)
+		//响应json格式信息给客户端
+		// c.JSON(http.StatusOK, gin.H{"name": name, "address": addr})
+		//响应html格式信息给客户端，引用加载好的html文件，只需要调用文件名即可
+		// c.HTML(http.StatusOK, "home.html", nil)	//nil可以用gin.H{"name": name, "address": addr}，为home.html模板传参
+		//重写向请求
+		c.Redirect(http.StatusMovedPermanently, "http://127.0.0.1:5656/student/dd/shanghai/xuhui")
+	})
+}
+
+func post(engine *gin.Engine) {
+	engine.POST("/student", func(c *gin.Context) {
+		name := c.PostForm("name")
+		addr := c.DefaultPostForm("addr", "china") //如果参数不存在将会赋个默认值
+		// c.String(http.StatusOK, name+" live in "+addr)
+		c.XML(http.StatusOK, gin.H{"name": name, "address": addr})
+	})
+}
+
+// restful风格接口
+func restful(engine *gin.Engine) {
+	engine.GET("/student/:name/*addr", func(c *gin.Context) {
+		Name := c.Param("name")
+		Addr := c.Param("addr")
+		c.String(http.StatusOK, Name+" live in "+Addr)
+	})
+}
+
+func upload_file(engine *gin.Engine) {
+	engine.POST("/upload", func(c *gin.Context) {
+		file, err := c.FormFile("file") //上传的文件名称
+		if err != nil {
+			fmt.Println(err)
+			c.String(http.StatusInternalServerError, "upload file failed")
+		} else {
+			c.SaveUploadedFile(file, "./data/"+file.Filename)
+			c.String(http.StatusOK, file.Filename)
+		}
+	})
+}
+
+// http请求的参数跟结构体的成员一一对应
+type Student struct {
+	Name string `form:"username" json:"name" uri:"user" xml:"user" yaml:"user" binding:"required"`
+	Addr string `form:"addr" json:"addr" uri:"addr" xml:"addr" yaml:"addr"`
+}
+
+// 表单参数绑定
+func formBind(engine *gin.Engine) {
+	engine.POST("stu/form", func(c *gin.Context) {
+		var stu Student
+		// 从c中逐一拿出参数跟stu属性一一绑定
+		if err := c.ShouldBind(&stu); err == nil {
+			fmt.Printf("name=%s, addr=%s\n", stu.Name, stu.Addr)
+			c.String(http.StatusOK, stu.Name+" live in "+stu.Addr)
+		} else {
+			fmt.Println(err)
+			c.String(http.StatusInternalServerError, "bind faiiled")
+		}
+	})
+}
+
+// json参数绑定
+func jsonBind(engine *gin.Engine) {
+	engine.POST("stu/json", func(c *gin.Context) {
+		var stu Student
+		// 从c中逐一拿出参数跟stu属性一一绑定
+		if err := c.ShouldBindJSON(&stu); err == nil {
+			fmt.Printf("name=%s, addr=%s\n", stu.Name, stu.Addr)
+			c.String(http.StatusOK, stu.Name+" live in "+stu.Addr)
+		} else {
+			fmt.Println(err)
+			c.String(http.StatusInternalServerError, "bind faiiled")
+		}
+	})
+}
+
+func main() {
+	//创建引擎
+	engine := gin.Default()
+
+	url(engine)
+	post(engine)
+	restful(engine)
+	upload_file(engine)
+	formBind(engine)
+	jsonBind(engine)
+
+	engine.Run(":5656")
+}
+```
+
+```html
+//home.html
+<html>
+<head>
+	<title>留言板</title>
+</head>
+<body>
+	<div id="board">
+		<!--从数据库中读出用户的留言内容，展示在这里-->
+		<script>alert("hey!you are atacked")</script>
+	</div>
+</body>
+</html>
+```
+
+
+
+##### Gin参数检验
+
+* 基于go-playground/validator
+
+```
+type Student struct{
+	Name string `form:"name" binding:"required"`	//必须上传name参数
+	Score int `form:"score" binding:"gt=0"`	//score必须为正数
+	Enrollment time.Time `form:"enrollment" binding:"required,before_today" time.format:"2006-01-02 15:04:05" time_utc:"8"`	//入学时间必须早于今天（before_today为自定义约束）,日期格式东8区
+	Graduation time.Time `form:"graduation" binding:"required,gtfield=Enrollment" time.format:"2006-01-02" time_utc:"8"`	//毕业时间要晚于入学时间
+}
+```
+
+example:
+
+```go
+type Stu struct {
+	Name       string    `form:"name" binding:"required"`                                                                   //必须上传name参数
+	Score      int       `form:"score" binding:"gt=0"`                                                                      //score必须为正数
+	Enrollment time.Time `form:"enrollment" binding:"required,before_today" time.format:"2006-01-02 15:04:05" time_utc:"8"` //入学时间必须早于今天（before_today为自定义约束）,日期格式东8区
+	Graduation time.Time `form:"graduation" binding:"required,gtfield=Enrollment" time.format:"2006-01-02" time_utc:"8"`    //毕业时间要晚于入学时间
+}
+
+var beforeToday validator.Func = func(fl validator.FieldLevel) bool {
+	if date, ok := fl.Field().Interface().(time.Time); ok {
+		now := time.Now()
+		if date.Before(now) {
+			return true
+		} else {
+			return false
+		}
+	}
+	return false
+}
+
+func main(){
+	engine := gin.Default()
+	url(engine)
+	post(engine)
+	restful(engine)
+	upload_file(engine)
+	formBind(engine)
+	jsonBind(engine)
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		v.RegisterValidation("before_today", beforeToday)
+	}
+	engine.Run(":5656")
+}
+```
+
+
+
+##### Gin中间件
+
+```go
+// 定义限流中间件最大并发连接数
+var limitCh = make(chan struct{}, 100) //管道存放struct，占用内存小，占用1位，最多并发处理100个请求
+// 时间中间件
+func timeMiddleWare() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		begin := time.Now()
+		ctx.Next() //执行业务逻辑
+		timeElapsed := time.Since(begin)
+		log.Printf("request %s use %d ns\n", ctx.Request.URL.Path, timeElapsed.Nanoseconds())
+	}
+}
+
+// 限流中间件
+func limitMiddleWare() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		limitCh <- struct{}{} //往管道放struct{}{}，共100,如果管道此时放第101个strut{}{},则会阻塞无法处理http请求
+		log.Printf("cuncurrence %d\n", len(limitCh))
+		ctx.Next() //执行业务逻辑
+		<-limitCh
+	}
+}
+
+func main() {
+	//创建引擎
+	engine := gin.Default()
+
+	// url(engine)
+	// post(engine)
+	// restful(engine)
+	// upload_file(engine)
+	// formBind(engine)
+	// jsonBind(engine)
+
+	// if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+	// 	v.RegisterValidation("before_today", beforeToday)
+	// }
+
+	engine.Use(timeMiddleWare()) //全局使用中间件
+	engine.GET("/", func(ctx *gin.Context) {
+		ctx.String(http.StatusOK, "hi boy")
+	})
+	engine.GET("girl", limitMiddleWare(), func(ctx *gin.Context) { //局部使用中间件
+		ctx.String(http.StatusOK, "hi girl")
+	})
+
+	engine.Run(":5656")
+}
+```
+
+
+
+##### Gin会话
+
+* http是无状态的，即服务端不知道两次请求是否来自于同一个客户端
+* Cookie由服务端生成，发送给客户端，客户端保存在本地
+* 客户端每次发起请求时把Cookie带上，以证明自己的身份
+* HTTP请求中的Cookie头只会包含name和value信息（服务端 只能取到name和value），domain、path、expires等cookie属性是由浏览器使用的，对服务器来说没有意义
+* Cookie可以被浏览器禁用
+
+examples:
+
+```
+//cookie_server.go
+package main
+
+import (
+	"encoding/base64"
+	"fmt"
+	"net/http"
+	"strconv"
+	"sync"
+	"time"
+
+	"github.com/gin-gonic/gin"
+)
+
+var (
+	authMap sync.Map //协程安全的map
+)
+
+// cookie name需要符合规则，否则该cookie会被Gin框架默默地丢弃掉
+func getCookieName(ctx *gin.Context) string {
+	return base64.StdEncoding.EncodeToString([]byte(ctx.Request.RemoteAddr))
+}
+
+// 登录
+func login(engine *gin.Engine) {
+	engine.POST("/login", func(ctx *gin.Context) {
+		//为客户端生成cookie
+		cookie_key := getCookieName(ctx)
+		cookie_value := strconv.Itoa(time.Now().Nanosecond())
+		//服务端维护所有客户端的cookie，用于对客户端进行认证
+		authMap.Store(cookie_key, cookie_value)
+		ctx.SetCookie(cookie_key, cookie_value,
+			3000,        //maxAge, cookie的有效时间，单位秒
+			"/",         //path, cookie存放目录
+			"localhost", //cookie从属的域名
+			false,       //是否只能通过https访问
+			true,        //是否允许别人通过js获取自己的cookie
+		)
+		fmt.Printf("set cookie %s = %s to client\n", cookie_key, cookie_value)
+		ctx.String(http.StatusOK, "登录成功")
+	})
+}
+
+// 认证中间件
+func authMiddleWare() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		cookie_key := getCookieName(ctx)
+		var cookie_value string
+		//读取客户端的cookie
+		for _, cookie := range ctx.Request.Cookies() {
+			if cookie.Name == cookie_key {
+				cookie_value = cookie.Value
+				break
+			}
+		}
+
+		//验证Cookie Value是否正确
+		if v, ok := authMap.Load(cookie_key); !ok {
+			fmt.Printf("INVALID auth cookie %s = %s\n", cookie_key, cookie_value)
+			ctx.JSON(http.StatusForbidden, gin.H{cookie_key: cookie_value})
+			ctx.Abort() //验证不通过，调用Abort进行中断连接
+		} else {
+			if v.(string) == cookie_value {
+				ctx.Next() //本中间件顺利通过，执行下一步任务
+			} else {
+				fmt.Printf("INVALID auth cookie %s = %s\n", cookie_key, cookie_value)
+				ctx.JSON(http.StatusForbidden, gin.H{cookie_key: cookie_value})
+				ctx.Abort() //验证不通过，调用Abort进行中断连接
+			}
+		}
+	}
+}
+
+//用户中心
+func userCenter(engine *gin.Engine) {
+	engine.POST("/center", authMiddleWare(), func(ctx *gin.Context) { //为"/center"加个认证中间件
+		ctx.String(http.StatusOK, "您已经通过身份认证，这里是你的私人空间")
+	})
+
+	engine.POST("/account", authMiddleWare(), func(ctx *gin.Context) { //为"/account"加个认证中间件
+		ctx.String(http.StatusOK, "您已经通过身份认证，这里是你的私人空间")
+	})
+
+	engine.POST("/home", func(ctx *gin.Context) {
+		ctx.String(http.StatusOK, "您已经通过身份认证，这里是你的私人空间")
+	})
+}
+
+func main() {
+	engine := gin.Default()
+	//路由
+	login(engine)
+	userCenter(engine)
+
+	engine.Run(":5656")
+}
+```
+
+```
+//cookie_client.go
+package main
+
+import (
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+)
+
+func authLogin() {
+	if resp, err := http.Post("http://127.0.0.1:5656/login", "text/plain", nil); err != nil {
+		panic(err)
+	} else {
+		fmt.Println("response body")
+		io.Copy(os.Stdout, resp.Body)
+		os.Stdout.WriteString("\n")
+		loginCookies := resp.Cookies()
+		resp.Body.Close()
+		if req, err := http.NewRequest("POST", "http://127.0.0.1:5656/center", nil); err != nil {
+			panic(err)
+		} else {
+			//下次请求带上cookie
+			for _, cookie := range loginCookies {
+				fmt.Printf("receive cookie %s = %s\n", cookie.Name, cookie.Value)
+				// cookie.Value += "1"
+				req.AddCookie(cookie)
+			}
+			client := &http.Client{}
+			if resp, err := client.Do(req); err != nil {
+				fmt.Println(err)
+			} else {
+				defer resp.Body.Close()
+				fmt.Println("response body")
+				io.Copy(os.Stdout, resp.Body)
+				os.Stdout.WriteString("\n")
+			}
+		}
+	}
+}
+
+func main() {
+	authLogin()
+}
+```
+
+
+
+
+
+
+
+### Beego
+
+#### 用bee工具创建web项目
+
+```
+go get github.com/astaxie/beego
+go get github.com/beego/bee
+cd $GOPATH/src	//自己存放的项目目录
+bee new myweb
+cd myweb
+go build -mod=mod
+bee run
+```
+
+
+
+#### MVC
+
+* View
+  * 前端页面，static下面
+* Controller
+  * 处理业务逻辑，controllers下面
+* Model
+  * 把Controller层重复的代码抽象出来，models下面
+* 在Model层可以使用beego提供的ORM功能
+
+
+
+#### Beego介绍
+
+* beego是一个大而全的http框架，用于快速开发go应用程序。而gin是一个小而美的框架
+* bee工具提供诸多命令，帮助我们进行beego项目的创建、热编译、开发、测试和部署
+* beego的八大模块互相独立，高度解耦，开发者可任意选取
+  * 日志模块
+  * ORM模块
+  * Context模块。封装了request和response
+  * Cache模块。封装了memcache、redis、ssdb
+  * Config模块。解析.ini、.yaml、.xml、.json、.env等配置文件
+  * httplib模块
+  * Session模块。session保存在服务端，用于标识客户身份，跟踪会话
+  * toolbox模块。健康检查、性能调试、访问统计、计划任务
+
+
+
+
+
+
+
+
+
+
+
+
 
