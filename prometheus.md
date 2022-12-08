@@ -2897,7 +2897,7 @@ templates:
 route:
   receiver: 'email'			#默认告警方式，当子route未匹配到时使用此告警方式
   group_by: ['alertname']	#基于alertmanager名称进行分类汇总，可以写多个label进行分类汇总
-  group_wait: 30s			#当接收到新告警时等待30s时间，再进行合并发送
+  group_wait: 30s			#当接收到新告警时等待30s时间，再进行合并发送，经过实践，时间设为1s为最佳
   group_interval: 1m		#前后两组告警发送间隔时间
   repeat_interval: 4h		#重复告警发送间隔时间
   routes:

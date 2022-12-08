@@ -2302,6 +2302,27 @@ Port:
 容器/hsredis没有重启策略
 
 
+#获取容器关键信息--20221208
+[root@docker01 ~]# docker inspect -f 'HostName:{{.Config.Hostname}} Name:{{.Name}} RestartPolicy:{{.HostConfig.RestartPolicy.Name}}{{println}}ContainerIP:{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}{{println}}Ports:{{println}}{{range $k,$v := .NetworkSettings.Ports}}  {{$k}} -> {{range $v}}{{.HostIp}}:{{.HostPort}}{{end}}{{println}}{{end}}{{/*date mount*/}}DataMount:{{println}}{{range .Mounts}}  {{.Source}}:{{.Destination}}{{println}}{{end}}' `docker ps -qa`
+HostName:8cd00684eb19 Name:/pro_hoteloperation RestartPolicy:no
+ContainerIP:172.17.0.27
+Ports:
+  80/tcp -> 0.0.0.0:12460
+DataMount:
+
+HostName:3f99b6adf207 Name:/elk RestartPolicy:always
+ContainerIP:172.17.0.8
+Ports:
+  5044/tcp -> 0.0.0.0:5044
+  5601/tcp -> 0.0.0.0:80
+  9200/tcp -> 0.0.0.0:9200
+  9300/tcp -> 0.0.0.0:9300
+DataMount:
+  /home/docker_files:/home/docker_files
+  /home/var/lib/docker/volumes/18917e959ccedd96cb7f3641ea229454bcd7cf0e0b104f49845856f2752e2dfe/_data:/var/lib/elasticsearch
+
+
+
 
 
 #iperf3 ----测试客户端到服务端的网速
