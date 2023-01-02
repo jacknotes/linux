@@ -5885,7 +5885,1988 @@ bee run
 
 
 
+## day13(开始项目实战)
 
+
+
+### 文件中转站项目
+
+---
+
+
+
+课件项目地址：https://gitee.com/infraboard/go-course/   
+
+本天课件地址：https://gitee.com/infraboard/go-course/blob/go7/day08/design.md
+
+自己项目地址：https://github.com/jacknotes/go-share-examples
+
+
+
+#### 依赖存储条件
+
+* 需要开通阿里云OSS，用于存储数据
+
+* 在OSS中创建一个Bucket，例如名称叫：devopscloud-station，Bucket ACL为公共读 
+
+* 创建一个子账户，在RAM访问控制中创建，例如：devopscloud-station，并为这个子账户创建AccessKey和Secret
+
+  * AK: LTAI5xyPSts
+    SK: Yx14Ls6npgMSAhohVgCb
+
+* 为这个子账户添加授权，授权OSS读写权限，在OSS中找到新建的bucket，权限控制-->Bucket授权管理-->新增授权-->授权用户为子账户，权限为读写权限 
+
+  
+
+#### 简易版文件中转站
+
+大家可能会遇到这种场景:
+
+- 容器里面的日志帮忙拉下来下,我要定位下问题
+- 我有一个安装包下载不下来，我需要上传到服务器
+- 我有一些比较重要的日志, 需要定期归档到云端, 避免占用本地空间
+
+如何解决这个问题:
+
+- 自己搭建一个文件服务器, 你帮他上传
+- 然用户使用系统上的工具自己做一个文件服务器
+
+```
+1. nohup python -m SimpleHTTPServer [port] & 快速搭建一个http服务
+2. nc ...
+```
+
+
+
+#### 解决方案
+
+由于可能面临复杂网络下(多层跳板机)的上传和下载问题, 通过点对点传(比如scp之类)的很难行得通，所有选择用中转站的方式，比如oss
+
+oss在产品开发过程中也经常用到比如:
+
+- 用户上传了一个视频，我需要找个地方存储
+- 用户上传了一些图片, 我需要找个地方存储
+
+#### 寻找现成工具
+
+我们寻找有没有现有的客户端:
+
+- 阿里有oss browser, cli也可以使用
+- 多个云商客户端不能通用
+
+#### 自己做一个简单的工具
+
+1. 查看[阿里云 oss sdk使用样例](https://gitee.com/link?target=https%3A%2F%2Fgithub.com%2Faliyun%2Faliyun-oss-go-sdk)
+
+```
+// github.com/aliyun/aliyun-oss-go-sdk/tree/master/oss
+client, err := oss.New("Endpoint", "AccessKeyId", "AccessKeySecret")
+if err != nil {
+    // HandleError(err)
+}
+
+bucket, err := client.Bucket("my-bucket")
+if err != nil {
+    // HandleError(err)
+}
+
+err = bucket.PutObjectFromFile("my-object", "LocalFile")
+if err != nil {
+    // HandleError(err)
+}
+```
+
+
+
+#### 项目代码地址
+
+https://github.com/jacknotes/go-share-examples.git
+
+
+
+#### 工具编译
+
+Golang 支持交叉编译，在一个平台上生成另一个平台的可执行程序
+
+![](../image/golang-001.jpg)
+
+```bash
+# Windows 下编译 Linux 64位可执行程序
+set CGO_ENABLED=0
+set GOOS=linux
+set GOARCH=amd64
+go build main.go
+
+# 编译工具
+$ go build -o cloud-station-cli.exe cloud-station/simple/main.go 
+```
+
+
+
+
+
+#### 工程化开发
+
+```
+$ cd cloud-station/pro/
+$ pwd
+/d/share/golang-study/day13-go-share-examples/go-share-examples/cloud-station/pro
+$ go mod init "jacknotes/go-share-examples/cloud-station/pro"	//在工程下面新建子工程，父工程为jacknotes/go-share-examples
+$ ls
+go.mod  main.go
+$ code . //在子工程go.mod下打开VScode, 命令为: code .
+```
+
+
+
+#### 使用VScode单元测试时进行环境注入
+
+1. 点击最左侧栏运行和调试（ctrl + shift + d）--> 创建launch.json文件 --> 选择GO debug默认配置
+2. 回到代码界面，此时最顶级将会生成/.vscode/launch.json目录及文件
+3. 在/.vscode目录下新建settings.json，并输出如下内容
+
+```
+{
+    "go.testEnvFile": "${workspaceFolder}/etc/test.env"
+}
+# 表示环境变量文件在当前工作区下/etc/test.env，/etc是顶级目录,变量参数是key=value
+ALI_OSS_ENDPOINT="oss.aliyuncs.com"
+ALI_AK="LTAI5tBkStsHx"
+ALI_SK="Yx14LsgCbVPF7"
+ALI_BUCKET_NAME="devopscloud-station"
+```
+
+4. 可以在单元测试中使用fmt.println(ep, ak)进行变量打印，看变量否赋值成功。
+5. 在单元测试代码中点击"run test"时，不会默认加上-v参数，为了单元测试详细，需要更改vscode配置，加上-v参数。更改配置方法：左下角设置 --> 设置 --> 用户/工作区 --> 搜索框搜索"test" --> 选择扩展下的GO --> 右边找到GO:test flags --> 点击在settings.json中编辑
+
+![](../image/dev/test01.png)
+
+```
+{
+    "go.formatTool": "goimports",
+    "security.workspace.trust.untrustedFiles": "open",
+    "go.toolsManagement.autoUpdate": true,
+    "workbench.colorTheme": "Quiet Light",
+    "vscodeGoogleTranslate.preferredLanguage": "English",
+    "commentTranslate.targetLanguage": "zh-CN",
+    "commentTranslate.source": "Bing",
+    "go.testFlags": [
+      "-v"	//加上-v参数并保存
+    ]
+}
+```
+
+![](../image/dev/test02.png)
+
+注：cached表示是缓存的上次测试，需要再次运行时必需更改代码，哪怕你加个空格保存后，才可以进行当前测试。
+
+
+
+#### 客户端接口CLI
+
+借助第三方库，github.com/spf13/cobra
+
+
+
+##### 改进敏感信息
+
+借助第三方库，github.com/AlecAivazis/survey
+
+
+
+##### 添加进度条
+
+1. 使用oss自带的方法oss.Progress() 并传入ProgressListener对象，
+
+```
+type OssProgressListener struct {
+}
+
+func NewOssProgressListener() *OssProgressListener {
+	return &OssProgressListener{}
+}
+
+// OssProgressListener实现ProgressListener接口
+func (l *OssProgressListener) ProgressChanged(event *oss.ProgressEvent) {
+	// 调试事件返回的信息
+	fmt.Println(event)
+}
+
+// 
+listener := oss.Progress(NewOssProgressListener()) // 传入对象进度条对象，得出Option
+err = bucket.PutObjectFromFile(objectKey, fileName, listener) 
+```
+
+
+
+借助第三方库显示进度条，github.com/schollz/progressbar
+
+
+
+
+
+
+
+
+
+## day14(CRUD Demo)
+
+课件项目地址：https://gitee.com/infraboard/go-course/   
+
+本天课件地址：https://gitee.com/infraboard/go-course/blob/go6/day14/demo-api.md
+
+自己项目地址：https://github.com/jacknotes/restful-api-demo
+
+
+
+```
+/ model.go
+package host
+
+import (
+	"github.com/go-playground/validator/v10"
+)
+
+var (
+	validate = validator.New()
+)
+
+// 为了后期做资源解锁分两张表存储，<ip> ---> Host, IP, SLB, Redis, Mysql
+type Host struct {
+	ResourceHash string //         `json:"resource_hash"`
+	DescribeHash string //        `json:"describe_hash"`
+	*Resource
+	*Describe
+}
+
+func (h *Host) Validate() error {
+	return validate.Struct(h)
+}
+
+type Vendor int
+
+const (
+	ALI_CLOUD Vendor = iota
+	TX_CLOUD
+	HW_CLOUD
+)
+
+// 主机元数据信息
+type Resource struct {
+	Id     string `json:"id" validate:"required"`     // 全局唯一Id
+	Vendor Vendor `json:"vendor" validate:"required"` // 厂商
+	Region string `json:"region" validate:"required"` // 地域
+	Zone   string `json:"zone"`                       // 区域
+	// 使用的13位时间戳
+	// 为什么不用数据库Datetime，如果使用数据库的时间，数据库会默认加上时区
+	CreateAt    int64             `json:"create_at" validate:"required"`  // 创建时间
+	ExpireAt    int64             `json:"expire_at"`                      // 过期时间
+	Category    string            `json:"category"`                       // 种类
+	Type        string            `json:"type"`                           // 规格
+	InstanceId  string            `json:"instance_id"`                    // 实例ID
+	Name        string            `json:"name" validate:"required"`       // 名称
+	Description string            `json:"description"`                    // 描述
+	Status      string            `json:"status" validate:"required"`     // 服务商中的状态
+	Tags        map[string]string `json:"tags"`                           // 标签
+	UpdateAt    int64             `json:"update_at"`                      // 更新时间
+	SyncAt      int64             `json:"sync_at"`                        // 同步时间
+	SyncAccount string            `json:"sync_accout"`                    // 同步的账号
+	PublicIP    string            `json:"public_ip"`                      // 公网IP
+	PrivateIP   string            `json:"private_ip" validate:"required"` // 内网IP
+	PayType     string            `json:"pay_type"`                       // 实例付费方式
+}
+
+type Describe struct {
+	CPU                     int    `json:"cpu" validate:"required"`    // 核数
+	Memory                  int    `json:"memory" validate:"required"` // 内存
+	GPUAmount               int    `json:"gpu_amount"`                 // GPU数量
+	GPUSpec                 string `json:"gpu_spec"`                   // GPU类型
+	OSType                  string `json:"os_type"`                    // 操作系统类型，分为Windows和Linux
+	OSName                  string `json:"os_name"`                    // 操作系统名称
+	SerialNumber            string `json:"serial_number"`              // 序列号
+	ImageID                 string `json:"image_id"`                   // 镜像ID
+	InternetMaxBandwidthOut int    `json:"internet_max_bandwidth_out"` // 公网出带宽最大值，单位为 Mbps
+	InternetMaxBandwidthIn  int    `json:"internet_max_bandwidth_in"`  // 公网入带宽最大值，单位为 Mbps
+	KeyPairName             string `json:"key_pair_name"`              // 秘钥对名称
+	SecurityGroups          string `json:"security_groups"`            // 安全组  采用逗号分隔
+}
+
+// 查询主机列表信息 返回参数
+type Set struct {
+	Total int64
+	Items []*Host
+}
+```
+
+
+
+
+
+
+
+### mysql数据库建表
+
+```
+// resource
+CREATE TABLE `resource` (
+  `id` char(64) CHARACTER SET latin1 NOT NULL,
+  `vendor` tinyint(1) NOT NULL,
+  `region` varchar(64) CHARACTER SET latin1 NOT NULL,
+  `zone` varchar(64) CHARACTER SET latin1 NOT NULL,
+  `create_at` bigint(13) NOT NULL,
+  `expire_at` bigint(13) NOT NULL,
+  `category` varchar(64) CHARACTER SET latin1 NOT NULL,
+  `type` varchar(120) CHARACTER SET latin1 NOT NULL,
+  `instance_id` varchar(120) CHARACTER SET latin1 NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `description` varchar(255) NOT NULL,
+  `status` varchar(255) CHARACTER SET latin1 NOT NULL,
+  `update_at` bigint(13) NOT NULL,
+  `sync_at` bigint(13) NOT NULL,
+  `sync_accout` varchar(255) CHARACTER SET latin1 NOT NULL,
+  `public_ip` varchar(64) CHARACTER SET latin1 NOT NULL,
+  `private_ip` varchar(64) CHARACTER SET latin1 NOT NULL,
+  `pay_type` varchar(255) CHARACTER SET latin1 NOT NULL,
+  `describe_hash` varchar(255) NOT NULL,
+  `resource_hash` varchar(255) NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `name` (`name`) USING BTREE,
+  KEY `status` (`status`) USING HASH,
+  KEY `private_ip` (`public_ip`) USING BTREE,
+  KEY `public_ip` (`public_ip`) USING BTREE,
+  KEY `instance_id` (`instance_id`) USING HASH
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+
+
+// host
+CREATE TABLE `host` (
+  `resource_id` varchar(64) NOT NULL,
+  `cpu` tinyint(4) NOT NULL,
+  `memory` int(13) NOT NULL,
+  `gpu_amount` tinyint(4) NOT NULL,
+  `gpu_spec` varchar(255) NOT NULL,
+  `os_type` varchar(255) NOT NULL,
+  `os_name` varchar(255) NOT NULL,
+  `serial_number` varchar(120) NOT NULL,
+  `image_id` char(64) NOT NULL,
+  `internet_max_bandwidth_out` int(10) NOT NULL,
+  `internet_max_bandwidth_in` int(10) NOT NULL,
+  `key_pair_name` varchar(255) NOT NULL,
+  `security_groups` varchar(255) NOT NULL,
+  PRIMARY KEY (`resource_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+```
+
+#### navicat语句测试
+
+```
+INSERT INTO resource (
+		id,vendor,region,zone,create_at,expire_at,category,type,instance_id,
+		name,description,status,update_at,sync_at,sync_accout,public_ip,
+		private_ip,pay_type,resource_hash,describe_hash
+	) VALUES ("001","0","hd2","sh","20221204","20231204","cat","t","in","name","des","st","20221206","20221206","test","223.6.6.6","10.10.10.1","yf","123","deshash");
+	
+select * from resource;
+```
+
+
+
+### HTTP API暴露
+
+我们服务核心逻辑已经编码完成, 剩下得就是通过我们想要的协议暴露给用户使用, 我们通过HTTP协议暴力, API以[RestFull风格来设计](https://gitee.com/link?target=http%3A%2F%2Fwww.nbtuan.vip%2F2017%2F10%2F03%2Frestful-vs-soap%2F)
+
+
+
+
+
+### 组装功能，实现启动入口
+
+为程序提供cli启动命令, 类似于
+
+```
+demo-api start
+```
+
+服务启动流程大致如下:
+
+- 读取配置, 初始化全局变量
+- 初始化全局日志配置, 加载全局日志实例
+- 初始化服务层, 将我们的服务实例注册到 Ioc
+- 创建服务, 监听中断信号
+- 启动服务
+
+
+
+
+
+
+
+
+
+## day15(从RPC到GRPC)
+
+
+
+###  编译优化
+
+正常情况下我们这样编译我们的程序
+
+```
+$ go build -o demo-api main.go
+```
+
+打包出来的程序有13M的样子, 如果想要编译的产物变小可以 通过编译进行一些优化:
+
+通过ldflags可以传递一些参数，控制编译的过程
+
+- -s 的作用是去掉符号信息。去掉符号表，golang panic 时 stack trace 就看不到文件名及出错行号信息了。
+- -w 的作用是去掉 DWARF tables 调试信息。结果就是得到的程序就不能用 gdb 调试了
+
+```
+go build -ldflags "-s -w" -o demo-api main.go
+```
+
+产物从 13M --> 11M, 如果你程序越来越复杂，产物越大, 优化后还是很可观的
+
+
+
+###  工程化
+
+刚开始我们这样run和build
+
+```
+go run main.go -f etc/demo-api.toml start
+go build -ldflags "-s -w" -o demo-api main.go	//
+```
+
+但是虽然你工程越来越复杂, 需要的周边工具和脚本会越来越多, 比如:
+
+- 代码风格检查
+- 覆盖率测试
+- 静态检查
+- ...
+
+因此我们需要引入Makefile来管理我们的工程
+
+
+
+### Makefile
+
+#### 安装make
+
+macOS/Linux的同学 直接用包管理工具安装就可以了, windows的同学请参考:
+
+1. 下载 mingw-get-setup.exe 包（[链接）](https://osdn.net/projects/mingw/)
+2. 执行.\mingw-get-setup.exe install mingw32-make(需要用上 墙 才能下载)
+3. 最后重命名 mingw32-make.exe为make.exe即可
+
+#### 编写Makefile
+
+我们把常用的功能添加成make指令如下:
+
+```
+PROJECT_NAME=restful-api-demo
+MAIN_FILE=main.go
+PKG := "github.com/jacknotes/$(PROJECT_NAME)"
+PKG_LIST := $(shell go list ${PKG}/... | grep -v /vendor/)
+GO_FILES := $(shell find . -name '*.go' | grep -v /vendor/ | grep -v _test.go)
+PKG_CONFIG := "etc/restful-api.toml"
+
+.PHONY: all dep lint vet test test-coverage build clean
+
+all: build
+
+dep: ## Get the dependencies
+	@go mod tidy
+
+lint: ## Lint Golang files
+	@golint -set_exit_status ${PKG_LIST}
+
+vet: ## Run go vet
+	@go vet ${PKG_LIST}
+
+test: ## Run unittests
+	@go test -short ${PKG_LIST}
+
+test-coverage: ## Run tests with coverage
+	@go test -short -coverprofile cover.out -covermode=atomic ${PKG_LIST} 
+	@cat cover.out >> coverage.txt
+
+build: dep ## Build the binary file
+	@go build -ldflags "-s -w" -o dist/${PROJECT_NAME} $(MAIN_FILE)
+
+linux: dep ## Build the binary file
+	@GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o ${PROJECT_NAME} $(MAIN_FILE)
+
+windows: dep ## Build the binary file
+	@GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o ${PROJECT_NAME} $(MAIN_FILE)
+
+mac: dep ## Build the binary file
+	@GOOS=darwin GOARCH=amd64 go build -ldflags "-s -w" -o ${PROJECT_NAME} $(MAIN_FILE)
+
+freeBSD: dep ## Build the binary file
+	@GOOS=freebsd GOARCH=amd64 go build -ldflags "-s -w" -o ${PROJECT_NAME} $(MAIN_FILE)
+
+run: ## Run Develop server
+	@go run $(MAIN_FILE) start -f ${PKG_CONFIG}
+
+clean: ## Remove previous build
+	@rm -f dist/*
+	@ rm -f cover.out coverage.txt 
+
+push: # push git to multi repo
+	@git push
+
+help: ## Display this help screen
+	@grep -h -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+```
+
+
+
+### RPC
+
+rpc服务最多的优点就是 我们可以像使用本地函数一样使用 远程服务上的函数, 因此有几个关键点:
+
+- 远程连接: 类似于我们的pkg
+- 函数名称: 要表示的函数名称
+- 函数参数: 这个需要符合RPC服务的调用签名, 及第一个参数是请求，第二个参数是响应
+- 函数返回: rpc函数的返回是 连接异常信息, 真正的业务Response不能作为返回值
+
+```go
+// service
+package service
+
+const (
+	Name = "HelloService"
+)
+
+type Service interface {
+	Hello(name string, response *string) error
+}
+----
+// server
+package main
+
+import (
+	"fmt"
+	"net"
+	"net/rpc"
+
+	"github.com/jacknotes/grpc-demo/rpc/service"
+)
+
+// var _ Service = &HelloService{}
+// 我们声明了一个空指针，强制把这个指针转换成了一个*HelloService类型
+// var _ service.Service = (*HelloService)(nil)
+
+type HelloService struct{}
+
+// 业务场景
+// 该函数需要被客户端调用
+// 改造成符合rpc规范的 函数签名
+// 1. 第一个参数request, interface{}类型
+// 2. 第二个参数是一个响应response,interface{}类型，必须是一个指针，需要回写到response
+// 3. 返回一个error，不过一般我们通过response进行返回错误信息
+func (s *HelloService) Hello(name string, response *string) error {
+	*response = fmt.Sprintf("Hello, %s", name)
+	return nil
+}
+
+func main() {
+	// 把要提供的服务注册给RPC框架
+	err := rpc.RegisterName(service.Name, new(HelloService))
+	if err != nil {
+		panic(err)
+	}
+
+	// 监听Socket
+	listener, err := net.Listen("tcp", ":1234")
+	if err != nil {
+		panic(err)
+	}
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			panic(err)
+		}
+
+		// 前面都是tcp的知识，到这里RPC就接管了
+		// 因此，你可以认为RPC帮我们封装消息到函数调用的这个逻辑，
+		// 提升了工作效率，逻辑比较简洁，可以看看相关代码
+		go rpc.ServeConn(conn)
+	}
+}
+----
+// client
+package main
+
+import (
+	"fmt"
+	"net/rpc"
+
+	"github.com/jacknotes/grpc-demo/rpc/service"
+)
+
+// 我们声明了一个空指针，强制把这个指针转换成了一个*HelloServiceClient类型
+// var _ service.Service = (*HelloServiceClient)(nil)
+
+type HelloServiceClient struct {
+	client *rpc.Client
+}
+
+// 客户端构建函数
+func NewHelloServiceClient(network, address string) (service.Service, error) {
+	// 首先是通过rpc.Dial拨号RPC服务, 建立连接
+	client, err := rpc.Dial(network, address)
+	if err != nil {
+		return nil, err
+	}
+
+	return &HelloServiceClient{
+		client: client,
+	}, nil
+}
+
+// 对于RPC客户端来说，我们就需要包装客户端的调用
+func (c *HelloServiceClient) Hello(name string, response *string) error {
+	// 然后通过client.Call调用具体的RPC方法
+	// 在调用client.Call时:
+	// 		第一个参数是用点号链接的RPC服务名字和对象的方法名字，
+	// 		第二个参数是 请求参数
+	//      第三个是请求响应, 必须是一个指针, 有底层rpc服务帮你赋值
+	return c.client.Call(service.Name+".Hello", name, response)
+}
+
+func main() {
+	client, err := NewHelloServiceClient("tcp", "127.0.0.1:1234")
+	if err != nil {
+		panic(err)
+	}
+	var response string
+	client.Hello("World", &response)
+	fmt.Println(response)
+}
+```
+
+
+
+### gob编码(go binary)
+
+* 标准库的RPC默认采用Go语言特有的gob编码, 标准库gob是golang提供的“私有”的编解码方式，它的效率会比json，xml等更高，特别适合在Go语言程序间传递数据
+
+* gob的使用很简单, 和之前使用base64编码理念一样, 有 Encoder和Decoder
+
+
+
+### Json ON TCP
+
+gob是golang提供的“私有”的编解码方式，因此从其它语言调用Go语言实现的RPC服务将比较困难
+
+因此我们可以选用所有语言都支持的比较好的一些编码:
+
+- MessagePack: 高效的二进制序列化格式。它允许你在多种语言(如JSON)之间交换数据。但它更快更小
+- JSON: 文本编码
+- XML：文本编码
+- Protobuf 二进制编码
+
+Go语言的RPC框架有两个比较有特色的设计：
+
+- RPC数据打包时可以通过插件实现自定义的编码和解码；
+- RPC建立在抽象的io.ReadWriteCloser接口之上的，我们可以将RPC架设在不同的通讯协议之上。
+
+这里我们将尝试通过官方自带的net/rpc/jsonrpc扩展实现一个跨语言的RPC。
+
+```go
+// server
+func main() {
+	// 把要提供的服务注册给RPC框架
+	err := rpc.RegisterName(service.Name, new(HelloService))
+	if err != nil {
+		panic(err)
+	}
+
+	// 监听Socket
+	listener, err := net.Listen("tcp", ":1234")
+	if err != nil {
+		panic(err)
+	}
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			panic(err)
+		}
+
+		// 前面都是tcp的知识，到这里RPC就接管了,默认是gob类型的rpc
+		// 因此，你可以认为RPC帮我们封装消息到函数调用的这个逻辑，
+		// 提升了工作效率，逻辑比较简洁，可以看看相关代码
+		// go rpc.ServeConn(conn)
+
+		// json on tcp 类型的rpc
+		go rpc.ServeCodec(jsonrpc.NewServerCodec(conn))
+	}
+}
+----
+
+// client
+func NewHelloServiceClient(network, address string) (service.Service, error) {
+	// 首先是通过rpc.Dial拨号RPC服务, 建立连接
+	conn, err := net.Dial(network, address)
+	if err != nil {
+		return nil, err
+	}
+
+	// 客户端实现了基于JSON的编解码
+	client := rpc.NewClientWithCodec(jsonrpc.NewClientCodec(conn))
+
+	return &HelloServiceClient{
+		client: client,
+	}, nil
+}
+```
+
+验证功能是否正常
+
+由于没有合适的tcp工具, 比如nc, 同学可以下来自己验证
+
+```bash
+$ echo -e '{"method":"HelloService.Hello","params":["hello"],"id":1}' | nc localhost 1234
+{"id":1,"result":"hello:hello","error":null}
+```
+
+
+
+### Json ON HTTP
+
+Go语言内在的RPC框架已经支持在Http协议上提供RPC服务, 为了支持跨语言，编码我们依然使用Json
+
+新的RPC服务其实是一个类似REST规范的接口，接收请求并采用相应处理流程
+
+首先我们依然要解决JSON编解码的问题, 我们需要将HTTP接口的Handler参数传递给jsonrpc, 因此需要满足jsonrpc接口, 因此我们需要提前构建也给conn io.ReadWriteCloser, writer现成的 reader就是request的body, 直接内嵌就可以
+
+```
+func NewRPCReadWriteCloserFromHTTP(w http.ResponseWriter, r *http.Request) *RPCReadWriteCloser {
+	return &RPCReadWriteCloser{w, r.Body}
+}
+
+type RPCReadWriteCloser struct {
+	io.Writer
+	io.ReadCloser
+}
+```
+
+服务端:
+
+```
+func main() {
+	rpc.RegisterName("HelloService", new(HelloService))
+
+	// RPC的服务架设在“/jsonrpc”路径，
+	// 在处理函数中基于http.ResponseWriter和http.Request类型的参数构造一个io.ReadWriteCloser类型的conn通道。
+	// 然后基于conn构建针对服务端的json编码解码器。
+	// 最后通过rpc.ServeRequest函数为每次请求处理一次RPC方法调用
+	http.HandleFunc("/jsonrpc", func(w http.ResponseWriter, r *http.Request) {
+		conn := NewRPCReadWriteCloserFromHTTP(w, r)
+		rpc.ServeRequest(jsonrpc.NewServerCodec(conn))
+	})
+
+	http.ListenAndServe(":1234", nil)
+}
+```
+
+![rpc-json-on-http](..\image\golang\rpc-json-on-http01.png)
+
+注： 这种用法常见于你的rpc服务需要暴露多种协议的时候, 其他时候还是老老实实写Restful API
+
+
+
+
+
+
+
+
+
+### protobuf(Protocol Buffers)编解码
+
+Protobuf是Protocol Buffers的简称，它是Google公司开发的一种数据描述语言，并于2008年对外开源。Protobuf刚开源时的定位类似于XML、JSON等数据描述语言，通过附带工具生成代码并实现将结构化数据序列化的功能。但是我们更关注的是Protobuf作为接口规范的描述语言，可以作为设计安全的跨语言PRC接口的基础工具
+
+
+
+#### 为什么选择Protobuf
+
+一般而言我们需要一种编解码工具会参考:
+
+- 编解码效率
+- 高压缩比
+- 多语言支持
+
+之前我们的RPC要么使用的Gob, 要么使用的json, 接下来我们将使用probuf
+
+首先创建hello.proto文件，其中包装HelloService服务中用到的字符串类型
+
+```protobuf
+syntax = "proto3";
+
+package hello;
+option go_package="github.com/jacknotes/grpc-demo/protobuf";    // go mod名称加protobuf路径，生成到这里面来
+
+message String {
+    string value = 1;
+}
+```
+
+- syntax: 表示采用proto3的语法。第三版的Protobuf对语言进行了提炼简化，所有成员均采用类似Go语言中的零值初始化（不再支持自定义默认值），因此消息成员也不再需要支持required特性。
+- package：指明当前是main包（这样可以和Go的包名保持一致，简化例子代码），当然用户也可以针对不同的语言定制对应的包路径和名称。
+- option：protobuf的一些选项参数, 这里指定的是要生成的Go语言package路径, 其他语言参数各不相同
+- message: 关键字定义一个新的String类型，在最终生成的Go语言代码中对应一个String结构体。String类型中只有一个字符串类型的value成员，该成员编码时用1编号代替名字
+
+关于数据编码:
+
+```
+在XML或JSON等数据描述语言中，一般通过成员的名字来绑定对应的数据。但是Protobuf编码却是通过成员的唯一编号来绑定对应的数据，因此Protobuf编码后数据的体积会比较小，但是也非常不便于人类查阅。我们目前并不关注Protobuf的编码技术，最终生成的Go结构体可以自由采用JSON或gob等编码格式，因此大家可以暂时忽略Protobuf的成员编码部分
+```
+
+但是我们如何把这个定义文件(IDL: 接口描述语言), 编译成不同语言的数据结构喃? 着就需要我们安装protobuf的编译器
+
+
+
+#### 安装编译器
+
+protobuf的编译器叫: protoc(protobuf compiler), 我们需要到这里下载编译器: [Github Protobuf](https://github.com/protocolbuffers/protobuf/releases/download/v3.19.6/protoc-3.19.6-win64.zip)
+
+这个压缩包里面有:
+
+- include, 头文件或者库文件
+- bin, protoc编译器，将protoc执行文件放到path路径下
+- readme.txt, 一定要看，按照这个来进行安装
+
+#### 安装编译器库
+
+include 下的库文件需要安装到: /usr/local/include/
+
+linux/unix系统直接:
+
+```
+mv include/google /usr/local/include
+```
+
+windows系统:
+
+```
+1. 将"D:\Program Files (x86)\protoc\bin\protoc.exe"路径放到Path变量中
+
+2. $ where git	#查找git安装目录，可以看出安装目录为C:\Program Files\Git\
+C:\Program Files\Git\mingw64\bin\git.exe
+C:\Program Files\Git\cmd\git.exe
+
+3. C:\Program Files\Git\usr\local\include	#在C:\Program Files\Git\下需要创建子目录
+
+4. 复制"D:\Program Files (x86)\protoc\include\google"到"C:\Program Files\Git\usr\local\include"中
+```
+
+#### 验证安装
+
+```
+$ protoc --version
+libprotoc 3.19.6
+```
+
+#### 安装Go语言插件
+
+Protobuf核心的工具集是C++语言开发的，在官方的protoc编译器中并不支持Go语言。要想基于上面的hello.proto文件生成相应的Go代码，需要安装相应的插件
+
+```
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+```
+
+接下来 我们就可以使用protoc 来生成我们对于的Go语言的数据结构
+
+#### 编译proto文件
+
+- -I：-IPATH, --proto_path=PATH, 指定proto文件搜索的路径, 如果有多个路径 可以多次使用-I 来指定, 如果不指定默认为当前目录
+- --go_out: --go指插件的名称, 我们安装的插件为: protoc-gen-go, 而protoc-gen是插件命名规范, go是插件名称, 因此这里是--go, 而--go_out 表示的是 go插件的 out参数, 这里指编译产物的存放目录
+- --go_opt: protoc-gen-go插件opt参数, 这里的module指定了go module, 生成的go pkg 会去除掉module路径，生成对应pkg
+- pb/hello.proto: 我们proto文件路径
+
+```
+syntax = "proto3";
+
+package hello;
+option go_package="github.com/jacknotes/grpc-demo/protobuf";    // go mod名称加protobuf路径，生成到这里面来
+
+message String {
+    string value = 1;
+}
+```
+
+```
+$ pwd
+/d/share/golang-study/day15-grpc-demo/grpc-demo/protobuf
+
+
+$ protoc -I=. --go_out=. --go_opt=module="github.com/jacknotes/grpc-demo/protobuf" hello.proto 	// --go_opt=module="github.com/jacknotes/grpc-demo/protobuf"意为忽略此前缀，否则会在当前目录下自己添加层级目录
+
+$ ll
+total 5
+-rw-r--r-- 1 jack 197121 4077 12月 12 21:24 hello.pb.go	#生成的protobuf文件
+-rw-r--r-- 1 jack 197121  204 12月 12 20:46 hello.proto
+
+$ go mod tidy
+go: finding module for package google.golang.org/protobuf/runtime/protoimpl
+go: finding module for package google.golang.org/protobuf/reflect/protoreflect
+go: found google.golang.org/protobuf/reflect/protoreflect in google.golang.org/protobuf v1.28.1
+go: found google.golang.org/protobuf/runtime/protoimpl in google.golang.org/protobuf v1.28.1
+
+```
+
+注：团队开发一定要保证各方版本一致，否则会导致重新编译、覆盖等麻烦，此后就可以直接引用protobuf.String了
+
+protoc-gen-go v1.28.1、 protoc  v3.19.6
+
+
+
+
+
+### protobuf on TCP
+
+[参考链接]([day15/protobuf.md · infraboard/go-course - 码云 - 开源中国 (gitee.com)](https://gitee.com/infraboard/go-course/blob/master/day15/protobuf.md))
+
+
+
+
+
+
+
+## day16
+
+
+
+### proto3语法入门
+
+[链接][day15/proto3_synx.md · infraboard/go-course - 码云 - 开源中国 (gitee.com)](https://gitee.com/infraboard/go-course/blob/master/day15/proto3_synx.md#any)
+
+
+
+### protobuf example
+
+```
+syntax = "proto3";
+
+package grpc.demo.hello;
+option go_package="github.com/jacknotes/grpc-demo/protobuf";    // go mod名称加protobuf路径，生成到这里面来
+
+
+// 这里是应用其他的proto文件, 后面会讲 ipmort用法
+import "google/protobuf/any.proto";
+
+message Response {
+  int32 code = 1;
+  google.protobuf.Any data = 2;
+}
+
+
+message String {
+    string value = 1;       // 等价于Value string中go变量的写法，probobuf字段默认大写，为全部导出，不可配置为小写
+    optional string key = 2;    // Key string , 为入optional后运行为nil "" null
+    optional bool enabled = 3;  // 默认enabled=false,  添加了optional则默认是nil了，enabled != nil 时才添加过滤条件
+    double metric_value = 4;    // float64，会默认把蛇形转换为大驼峰形
+
+    map<string,int32> values = 5;  //map<string,string> 为key和value的类型
+
+    String1 string1 = 6; // 结构体嵌套
+}
+
+message String1 {
+    reserved 4,6 to 10;     //保留编号，后面不允许使用
+    string value = 1;       // 等价于Value string中go变量的写法，probobuf字段默认大写，为全部导出，不可配置为小写
+    optional string key = 2;    // Key string , 添加了optional则默认是nil了，为入optional后运行为nil "" null
+    optional bool enabled = 3;  // 默认enabled=false,  enabled != nil 时才添加过滤条件
+
+    repeated Option option = 5; // Option的数组
+}
+
+// 定义枚举类型
+enum Option {
+    // 允许别名
+    option allow_alias = true;
+    // 枚举选项, 必须从0编号开始，0编号标识的是枚举的默认值
+    A = 0;      // A后面版本会弃用
+    B = 1;
+    C = 2;
+    D = 0;      // D默认不能定义0编号，但是需要跟A编号一样，则需要开启允许别名
+}
+
+
+message Sub1 {
+    string name = 1;
+}
+
+message Sub2 {
+    string name = 1;
+}
+
+message SampleMessage {
+    oneof test_one_of {
+        Sub1 sub1 = 1;
+        Sub2 sub2 = 2;
+    }
+}
+---
+syntax = "proto3";
+
+package grpc.demo.pkg;
+option go_package="github.com/jacknotes/grpc-demo/protobuf";    // go mod名称加protobuf路径，生成到这里面来
+
+// 导入包grpc.demo.hello，根据执行位置而定
+import "protobuf/hello.proto";
+
+
+message Pkg1 {
+    grpc.demo.hello.Response response = 1;
+}
+
+---
+// main.go 
+package main
+
+import (
+	"fmt"
+
+	"github.com/jacknotes/grpc-demo/protobuf"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
+)
+
+func main() {
+	s1 := &protobuf.String{
+		Value: "number 1中文",
+	}
+
+	payload, err := proto.Marshal(s1)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(payload)
+	// fmt.Println(string(payload))
+
+	s2 := &protobuf.String{}
+	proto.Unmarshal(payload, s2)
+	fmt.Println(s2)
+
+	// Oneof 使用
+	sm := &protobuf.SampleMessage{
+		TestOneOf: &protobuf.SampleMessage_Sub2{
+			Sub2: &protobuf.Sub2{Name: "test"},
+		},
+	}
+	fmt.Println(sm.GetSub1()) // <nil>
+	fmt.Println(sm.GetSub2()) // name:"test"
+
+	// any 使用
+	// 把sub2转化为any类型
+	sub2, _ := anypb.New(&protobuf.Sub2{Name: "test"})
+	resp := &protobuf.Response{
+		Code: 0,
+		Data: sub2,
+	}
+	fmt.Println(resp)
+
+	sub3 := &protobuf.Sub2{}
+	sub2.UnmarshalTo(sub3)
+	fmt.Println(sub3)
+}
+```
+
+
+
+```
+// README.md
+$ ls /c/Program\ Files/Git/usr/local/include/google/protobuf/
+any.proto  compiler/         duration.proto  field_mask.proto      struct.proto     type.proto
+api.proto  descriptor.proto  empty.proto     source_context.proto  timestamp.proto  wrappers.proto
+
+$ protoc -I=. -I='/c/Program Files/Git/usr/local/include' --go_out=./protobuf/ --go_opt=module="github.com/jacknotes/grpc-demo/protobuf" .
+/protobuf/hello.proto
+```
+
+
+
+### GRPC入门
+
+```protobuf
+// hello.proto
+syntax = "proto3";
+
+package grpc.demo.protocol;
+option go_package="github.com/jacknotes/grpc-demo/grpc/protocol";    // go mod名称加protobuf路径，生成到这里面来
+
+// grpc 需要定义rpc， 需要安装插件，才能让protobuf生成grpc代码
+// 安装protoc-gen-go-grpc插件 go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+service HelloService {
+    // Hello rpc函数的名称
+    // Request rpc函数的参数
+    // Response rpc函数的返回参数
+    rpc Hello(Request) returns (Response);
+}
+
+message Request {
+    string value = 1;
+}
+
+message Response {
+    string value = 1;
+}
+
+```
+
+```
+# 安装protoc-gen-go-grpc插件，从protobuf编译生成grpc相关代码
+$ go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1.0
+$ protoc-gen-go-grpc.exe --version
+protoc-gen-go-grpc 1.1.0
+
+# 进入protocol目录
+cd protocol
+
+# 生成grpc 和 protobuf编译文件, 需要加入 --go-grpc_out和--go-grpc_opt参数
+protoc -I=. -I='/c/Program Files/Git/usr/local/include' --go_out=. --go-grpc_out=.  --go_opt=module="github.com/jacknotes/grpc-demo/grpc/protocol" --go-grpc_opt=module="github.com/jacknotes/grpc-demo/grpc/protocol" hello.proto
+```
+
+```go
+// hello grpc server.go
+package main
+
+import (
+	"context"
+	"fmt"
+	"net"
+
+	"github.com/jacknotes/grpc-demo/grpc/protocol"
+	"google.golang.org/grpc"
+)
+
+type Service struct {
+	// 结构体嵌套(必须是匿名)，等价于继承UnimplementedHelloServiceServer，而UnimplementedHelloServiceServer实现了
+	// HelloServiceServer接口，所以Service间接实现了HelloServiceServer接口
+	protocol.UnimplementedHelloServiceServer
+}
+
+// 重写protocol.UnimplementedHelloServiceServer的方法Hello,简单加个hello前缀
+func (s *Service) Hello(ctx context.Context, req *protocol.Request) (*protocol.Response, error) {
+	return &protocol.Response{
+		Value: "hello: " + req.Value,
+	}, nil
+}
+
+func main() {
+	// 如何把Service 作为一个rpc暴露出去，提供服务
+	server := grpc.NewServer()
+
+	// Service生成的代码里面，提供了注册函数，把自己注册到grpc的servr内
+	protocol.RegisterHelloServiceServer(server, new(Service))
+
+	// 开启grpc服务
+	ls, err := net.Listen("tcp", ":1234")
+	if err != nil {
+		panic(err)
+	}
+	// 监听grpc服务
+	if err := server.Serve(ls); err != nil {
+		fmt.Println(err)
+	}
+}
+---
+// hello grpc client.go
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/jacknotes/grpc-demo/grpc/protocol"
+	"google.golang.org/grpc"
+)
+
+func main() {
+	// grpc.WithInsecure()表示不使用tls
+	conn, err := grpc.Dial("127.0.0.1:1234", grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+
+	client := protocol.NewHelloServiceClient(conn)
+	// context.Background()放在后台一直跑，相当于root的上下文
+	resp, err := client.Hello(context.Background(), &protocol.Request{Value: "jack"})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(resp)
+}
+```
+
+
+
+#### gRPC流
+
+```protobuf
+syntax = "proto3";
+
+package grpc.demo.protocol;
+option go_package="github.com/jacknotes/grpc-demo/grpc/protocol";    // go mod名称加protobuf路径，生成到这里面来
+
+// grpc 需要定义rpc， 需要安装插件，才能让protobuf生成grpc代码
+// 安装protoc-gen-go-grpc插件 go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+service HelloService {
+    // Hello rpc函数的名称
+    // Request rpc函数的参数
+    // Response rpc函数的返回参数
+    rpc Hello(Request) returns (Response);
+
+    // stream rpc， 双向流
+    rpc Chat(stream Request) returns (stream Response);
+}
+
+message Request {
+    string value = 1;
+}
+
+message Response {
+    string value = 1;
+}
+```
+
+```
+# 进入protocol目录
+cd protocol
+
+# 生成grpc 和 protobuf编译文件, 指定protobuf文件的搜索位置为当前目录 -I=.
+protoc -I=. -I='/c/Program Files/Git/usr/local/include' --go_out=. --go-grpc_out=.  --go_opt=module="github.com/jacknotes/grpc-demo/grpc/protocol" --go-grpc_opt=module="github.com/jacknotes/grpc-demo/grpc/protocol" hello.proto
+```
+
+```go
+// server.go
+package main
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"net"
+
+	"github.com/jacknotes/grpc-demo/grpc/protocol"
+	"google.golang.org/grpc"
+)
+
+type Service struct {
+	// 结构体嵌套(必须是匿名)，等价于继承UnimplementedHelloServiceServer，而UnimplementedHelloServiceServer实现了
+	// HelloServiceServer接口，所以Service间接实现了HelloServiceServer接口
+	protocol.UnimplementedHelloServiceServer
+}
+
+// 重写protocol.UnimplementedHelloServiceServer的方法Hello,简单加个hello前缀
+func (s *Service) Hello(ctx context.Context, req *protocol.Request) (*protocol.Response, error) {
+	return &protocol.Response{
+		Value: "hello: " + req.Value,
+	}, nil
+}
+
+// server --> stream --> client
+// 重写，HelloService_ChatServer 对应 HelloService_ChatClient
+func (s *Service) Chat(stream protocol.HelloService_ChatServer) error {
+	// 可以把stream当成一个channel io pipe对象
+	for {
+		// 接收客户端请求
+		req, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				fmt.Println("chat exit")
+				return nil
+			}
+			fmt.Println(err)
+			return err
+		}
+		// 处理请求
+		err = stream.Send(&protocol.Response{Value: "hello: " + req.Value})
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+	}
+}
+
+func main() {
+	// 如何把Service 作为一个rpc暴露出去，提供服务
+	server := grpc.NewServer()
+
+	// Service生成的代码里面，提供了注册函数，把自己注册到grpc的servr内
+	protocol.RegisterHelloServiceServer(server, new(Service))
+
+	// 开启grpc服务
+	ls, err := net.Listen("tcp", ":1234")
+	if err != nil {
+		panic(err)
+	}
+	// 监听grpc服务
+	if err := server.Serve(ls); err != nil {
+		fmt.Println(err)
+	}
+}
+---
+// client.go
+package main
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/jacknotes/grpc-demo/grpc/protocol"
+	"google.golang.org/grpc"
+)
+
+func main() {
+	// grpc.WithInsecure()表示不使用tls
+	conn, err := grpc.Dial("127.0.0.1:1234", grpc.WithInsecure())
+	if err != nil {
+		panic(err)
+	}
+
+	client := protocol.NewHelloServiceClient(conn)
+	// context.Background()放在后台一直跑，相当于root的上下文
+	resp, err := client.Hello(context.Background(), &protocol.Request{Value: "jack"})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(resp)
+
+	// 返回一个channel io pipe 对象
+	// HelloService_ChatClient 对应 HelloService_ChatServer
+	stream, err := client.Chat(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
+	// 在客户端我们将发送操作和接收操作放到两个独立的 Goroutine
+	// 首先是向服务端发送数据
+	go func() {
+		for {
+			err := stream.Send(&protocol.Request{Value: "jack li"})
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			time.Sleep(1 * time.Second)
+		}
+	}()
+
+	// 然后在循环中接收服务端返回的数据
+	for {
+		resp, err := stream.Recv()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Println(resp)
+	}
+}
+```
+
+
+
+#### gRPC认证
+
+前面我们的grpc服务 在无任何保护机制下 都可以被任何人调用, 这是很危险的, 因此我们需要为grpc 添加认证的功能
+
+我们在上面的流程中可以得知Grpc有2种模式:
+
+- Request Response模式
+- Stream 模式
+
+
+
+##### Request Response模式
+
+```
+// auth.client
+package auth
+
+import "context"
+
+// Authentication todo
+type Authentication struct {
+	clientID     string
+	clientSecret string
+}
+
+func NewAuthentication(clientId, clientSecret string) *Authentication {
+	return &Authentication{
+		clientID:     clientId,
+		clientSecret: clientSecret,
+	}
+}
+
+// 实现PerRPCCredentials接口，返回map认证数据
+func (a *Authentication) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+	return map[string]string{ClientIdKey: a.clientID, ClientSecretKey: a.clientSecret}, nil
+}
+
+func (a *Authentication) RequireTransportSecurity() bool {
+	return false
+}
+---
+// auth.server
+package auth
+
+import (
+	"context"
+	"fmt"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status" // 不能引用 internal的status包，会报错
+)
+
+const (
+	ClientIdKey     = "client-id"
+	ClientSecretKey = "client-secret"
+)
+
+// 通过暴露Auth函数，来提供grpc中间件函数
+func GrpcAuthUnaryServerInterceptor() grpc.UnaryServerInterceptor {
+	return newGrpcAuther().Auth
+}
+
+type grpcAuther struct {
+}
+
+func newGrpcAuther() *grpcAuther {
+	return &grpcAuther{}
+}
+
+// 认证逻辑
+// http/1.1中有header，grpc使用http/2.0，在grpc中叫做metadata，metadata等价于header
+func (a *grpcAuther) Auth(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler) (resp interface{}, err error) {
+	// 从ctx中获取到了metadata信息，所以中间信息都会通过metadata传递，服务端 <-- 客户端
+	md, ok := metadata.FromIncomingContext(ctx)
+	if ok {
+		fmt.Println(md)
+	}
+
+	// 认证请求合法性
+	clientId, clientSecret := a.GetClientCredentialsFromMeta(md)
+	err = a.validateServiceCredential(clientId, clientSecret)
+	if err != nil {
+		return nil, err
+	}
+
+	// 认证通过，请求交给后面的handler处理
+	return handler(ctx, req)
+}
+
+func (a *grpcAuther) validateServiceCredential(clientId, clientSecret string) error {
+	if clientId == "" && clientSecret == "" {
+		return status.Errorf(codes.Unauthenticated, "client credential %s, %s not provided", ClientIdKey, ClientSecretKey)
+	}
+
+	if !(clientId == "admin" && clientSecret == "123456") {
+		return status.Errorf(codes.Unauthenticated, "client-id or client-secret is not correct")
+	}
+
+	return nil
+}
+
+// 从metadata中获取客户端凭证
+func (a *grpcAuther) GetClientCredentialsFromMeta(md metadata.MD) (clientId, clientSecret string) {
+	cids := md.Get(ClientIdKey)
+	sids := md.Get(ClientSecretKey)
+
+	if len(cids) > 0 {
+		clientId = cids[0]
+	}
+
+	if len(sids) > 0 {
+		clientSecret = sids[0]
+	}
+	return
+}
+---
+// server.main
+package main
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"net"
+
+	"github.com/jacknotes/grpc-demo/grpc/auth"
+	"github.com/jacknotes/grpc-demo/grpc/protocol"
+	"google.golang.org/grpc"
+)
+
+type Service struct {
+	// 结构体嵌套(必须是匿名)，等价于继承UnimplementedHelloServiceServer，而UnimplementedHelloServiceServer实现了
+	// HelloServiceServer接口，所以Service间接实现了HelloServiceServer接口
+	protocol.UnimplementedHelloServiceServer
+}
+
+// 重写protocol.UnimplementedHelloServiceServer的方法Hello,简单加个hello前缀
+func (s *Service) Hello(ctx context.Context, req *protocol.Request) (*protocol.Response, error) {
+	return &protocol.Response{
+		Value: "hello: " + req.Value,
+	}, nil
+}
+
+// server --> stream --> client
+// 重写，HelloService_ChatServer 对应 HelloService_ChatClient
+func (s *Service) Chat(stream protocol.HelloService_ChatServer) error {
+	// 可以把stream当成一个channel io pipe对象
+	for {
+		// 接收客户端请求
+		req, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				fmt.Println("chat exit")
+				return nil
+			}
+			fmt.Println(err)
+			return err
+		}
+		// 处理请求
+		err = stream.Send(&protocol.Response{Value: "hello: " + req.Value})
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+	}
+}
+
+func main() {
+	// 如何把Service 作为一个rpc暴露出去，提供服务
+	// 需要将auth.GrpcAuthUnaryServerInterceptor()传给grpc.UnaryInterceptor()，才能成为一个拦截器
+	// 请求响应模式的 认证中间件
+	server := grpc.NewServer(grpc.UnaryInterceptor(auth.GrpcAuthUnaryServerInterceptor()))
+
+	// Service生成的代码里面，提供了注册函数，把自己注册到grpc的servr内
+	protocol.RegisterHelloServiceServer(server, new(Service))
+
+	// 开启grpc服务
+	ls, err := net.Listen("tcp", ":1234")
+	if err != nil {
+		panic(err)
+	}
+	// 监听grpc服务
+	if err := server.Serve(ls); err != nil {
+		fmt.Println(err)
+	}
+}
+---
+// client.main
+package main
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/jacknotes/grpc-demo/grpc/auth"
+	"github.com/jacknotes/grpc-demo/grpc/protocol"
+	"google.golang.org/grpc"
+)
+
+func main() {
+	// grpc.WithInsecure()表示不使用tls
+	// grpc.WithPerRPCCredentials参数为实现PerRPCCredentials接口的对象，此对象有GetRequestMetadata方法，
+	// 此方法会返回ClientIdKey和ClientSecretKey
+	conn, err := grpc.Dial("127.0.0.1:1234", grpc.WithInsecure(),
+		grpc.WithPerRPCCredentials(auth.NewAuthentication("admin", "1234567")))
+	if err != nil {
+		panic(err)
+	}
+
+	// // 请求时携带指定的metadata信息,通过上下文携带
+	// md := metadata.New(map[string]string{auth.ClientIdKey: "admin", auth.ClientSecretKey: "123456"})
+	// // 客户端发送时需要携带的上下文信息， 客户端 --> 服务端
+	// ctx := metadata.NewOutgoingContext(context.Background(), md)
+
+	client := protocol.NewHelloServiceClient(conn)
+	// context.Background()放在后台一直跑，相当于root的上下文
+	// resp, err := client.Hello(ctx, &protocol.Request{Value: "jack"})
+	resp, err := client.Hello(context.Background(), &protocol.Request{Value: "jack"})
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(resp)
+}
+
+```
+
+
+
+##### Stream 模式
+
+```go
+// auth.client
+package auth
+
+import "context"
+
+// Authentication todo
+type Authentication struct {
+	clientID     string
+	clientSecret string
+}
+
+func NewAuthentication(clientId, clientSecret string) *Authentication {
+	return &Authentication{
+		clientID:     clientId,
+		clientSecret: clientSecret,
+	}
+}
+
+// 实现PerRPCCredentials接口，返回map认证数据
+func (a *Authentication) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+	return map[string]string{ClientIdKey: a.clientID, ClientSecretKey: a.clientSecret}, nil
+}
+
+func (a *Authentication) RequireTransportSecurity() bool {
+	return false
+}
+---
+// auth.server
+package auth
+
+import (
+	"context"
+	"fmt"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status" // 不能引用 internal的status包，会报错
+)
+
+const (
+	ClientIdKey     = "client-id"
+	ClientSecretKey = "client-secret"
+)
+
+// 通过暴露Auth函数，来提供grpc中间件函数
+func GrpcAuthUnaryServerInterceptor() grpc.UnaryServerInterceptor {
+	return newGrpcAuther().Auth
+}
+
+// 通过暴露StreamAuth函数，来提供grpc stream中间件函数
+func GrpcAuthStreamServerInterceptor() grpc.StreamServerInterceptor {
+	return newGrpcAuther().StreamAuth
+}
+
+type grpcAuther struct {
+}
+
+func newGrpcAuther() *grpcAuther {
+	return &grpcAuther{}
+}
+
+// 认证逻辑
+// http/1.1中有header，grpc使用http/2.0，在grpc中叫做metadata，metadata等价于header
+func (a *grpcAuther) Auth(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo,
+	handler grpc.UnaryHandler) (resp interface{}, err error) {
+	// 从ctx中获取到了metadata信息，所以中间信息都会通过metadata传递，服务端 <-- 客户端
+	md, ok := metadata.FromIncomingContext(ctx)
+	if ok {
+		fmt.Println(md)
+	}
+
+	// 认证请求合法性
+	clientId, clientSecret := a.GetClientCredentialsFromMeta(md)
+	err = a.validateServiceCredential(clientId, clientSecret)
+	if err != nil {
+		return nil, err
+	}
+
+	// 认证通过，请求交给后面的handler处理
+	return handler(ctx, req)
+}
+
+func (a *grpcAuther) validateServiceCredential(clientId, clientSecret string) error {
+	if clientId == "" && clientSecret == "" {
+		return status.Errorf(codes.Unauthenticated, "client credential %s, %s not provided", ClientIdKey, ClientSecretKey)
+	}
+
+	if !(clientId == "admin" && clientSecret == "123456") {
+		return status.Errorf(codes.Unauthenticated, "client-id or client-secret is not correct")
+	}
+
+	return nil
+}
+
+// 从metadata中获取客户端凭证
+func (a *grpcAuther) GetClientCredentialsFromMeta(md metadata.MD) (clientId, clientSecret string) {
+	cids := md.Get(ClientIdKey)
+	sids := md.Get(ClientSecretKey)
+
+	if len(cids) > 0 {
+		clientId = cids[0]
+	}
+
+	if len(sids) > 0 {
+		clientSecret = sids[0]
+	}
+	return
+}
+
+func (a *grpcAuther) StreamAuth(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo,
+	handler grpc.StreamHandler) error {
+	md, _ := metadata.FromIncomingContext(ss.Context())
+
+	// 认证请求合法性
+	clientId, clientSecret := a.GetClientCredentialsFromMeta(md)
+	err := a.validateServiceCredential(clientId, clientSecret)
+	if err != nil {
+		return err
+	}
+
+	// 认证通过，请求交给后面的handler处理
+	return handler(srv, ss)
+}
+---
+// server.main
+package main
+
+import (
+	"context"
+	"fmt"
+	"io"
+	"net"
+
+	"github.com/jacknotes/grpc-demo/grpc/auth"
+	"github.com/jacknotes/grpc-demo/grpc/protocol"
+	"google.golang.org/grpc"
+)
+
+type Service struct {
+	// 结构体嵌套(必须是匿名)，等价于继承UnimplementedHelloServiceServer，而UnimplementedHelloServiceServer实现了
+	// HelloServiceServer接口，所以Service间接实现了HelloServiceServer接口
+	protocol.UnimplementedHelloServiceServer
+}
+
+// 重写protocol.UnimplementedHelloServiceServer的方法Hello,简单加个hello前缀
+func (s *Service) Hello(ctx context.Context, req *protocol.Request) (*protocol.Response, error) {
+	return &protocol.Response{
+		Value: "hello: " + req.Value,
+	}, nil
+}
+
+// server --> stream --> client
+// 重写，HelloService_ChatServer 对应 HelloService_ChatClient
+func (s *Service) Chat(stream protocol.HelloService_ChatServer) error {
+	// 可以把stream当成一个channel io pipe对象
+	for {
+		// 接收客户端请求
+		req, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				fmt.Println("chat exit")
+				return nil
+			}
+			fmt.Println(err)
+			return err
+		}
+		// 处理请求
+		err = stream.Send(&protocol.Response{Value: "hello: " + req.Value})
+		if err != nil {
+			fmt.Println(err)
+			return err
+		}
+	}
+}
+
+func main() {
+	// 如何把Service 作为一个rpc暴露出去，提供服务
+	// 需要将auth.GrpcAuthUnaryServerInterceptor()传给grpc.UnaryInterceptor()，才能成为一个拦截器
+	server := grpc.NewServer(
+		// 请求响应模式的认证中间件，会走此方法去认证
+		grpc.UnaryInterceptor(auth.GrpcAuthUnaryServerInterceptor()),
+		// stream模式的认证中间件，会走此方法去认证
+		grpc.StreamInterceptor(auth.GrpcAuthStreamServerInterceptor()),
+	)
+
+	// Service生成的代码里面，提供了注册函数，把自己注册到grpc的servr内
+	protocol.RegisterHelloServiceServer(server, new(Service))
+
+	// 开启grpc服务
+	ls, err := net.Listen("tcp", ":1234")
+	if err != nil {
+		panic(err)
+	}
+	// 监听grpc服务
+	if err := server.Serve(ls); err != nil {
+		fmt.Println(err)
+	}
+}
+---
+// client.main
+package main
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/jacknotes/grpc-demo/grpc/auth"
+	"github.com/jacknotes/grpc-demo/grpc/protocol"
+	"google.golang.org/grpc"
+)
+
+func main() {
+	// grpc.WithInsecure()表示不使用tls
+	// grpc.WithPerRPCCredentials参数为实现PerRPCCredentials接口的对象，此对象有GetRequestMetadata方法，
+	// 此方法会返回ClientIdKey和ClientSecretKey
+	conn, err := grpc.Dial("127.0.0.1:1234", grpc.WithInsecure(),
+		grpc.WithPerRPCCredentials(auth.NewAuthentication("admin", "123456")))
+	if err != nil {
+		panic(err)
+	}
+
+	// // 请求时携带指定的metadata信息,通过上下文携带
+	// md := metadata.New(map[string]string{auth.ClientIdKey: "admin", auth.ClientSecretKey: "123456"})
+	// // 客户端发送时需要携带的上下文信息， 客户端 --> 服务端
+	// ctx := metadata.NewOutgoingContext(context.Background(), md)
+
+	client := protocol.NewHelloServiceClient(conn)
+	// context.Background()放在后台一直跑，相当于root的上下文
+	// resp, err := client.Hello(ctx, &protocol.Request{Value: "jack"})
+	resp, err := client.Hello(context.Background(), &protocol.Request{Value: "jack"})
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(resp)
+
+	// 返回一个channel io pipe 对象
+	// HelloService_ChatClient 对应 HelloService_ChatServer
+	stream, err := client.Chat(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
+	// 在客户端我们将发送操作和接收操作放到两个独立的 Goroutine
+	// 首先是向服务端发送数据
+	go func() {
+		for {
+			err := stream.Send(&protocol.Request{Value: "jack li"})
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			time.Sleep(1 * time.Second)
+		}
+	}()
+
+	// 然后在循环中接收服务端返回的数据
+	for {
+		resp, err := stream.Recv()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Println(resp)
+	}
+}
+```
+
+注：client.main，使用了请求响应模式和stream模式，各自走不同的认证中间件
+
+
+
+
+
+### gRPC demo
+
+[jacknotes/restful-api-demo at app-grpc (github.com)](https://github.com/jacknotes/restful-api-demo/tree/app-grpc)
+
+
+
+### mcube脚手架生成框架
+
+```
+# 安装protobuf自动注入tag工具，因为protobuf本身不支持注入tag 
+go install github.com/favadi/protoc-go-inject-tag@latest
+
+
+# 安装脚手架工具
+$ go install github.com/infraboard/mcube/cmd/mcube@v1.5.9
+```
+
+```
+$ mcube.exe init 
+? 请输入项目包名称: github.com/jacknotes/cmdb
+? 是否接入权限中心[keyauth] Yes
+? Keyauth GRPC服务地址: 127.0.0.1:18050
+? Keyauth Client ID: abc
+? 选择数据库类型: MySQL
+? MySQL服务地址: (127.0.0.1:3306) 192.168.15.203:3306
+
+? MySQL服务地址: 192.168.15.203:3306
+? 数据库名称: cmdb
+? 生成样例代码 Yes
+项目初始化完成, 项目结构如下: 
+├───.gitignore (269b)
+├───README.md (3711b)
+├───apps
+│       ├───all
+│       │       ├───grpc.go (168b)
+│       │       ├───http.go (138b)
+│       │       └───internal.go (107b)
+│       └───book
+│               ├───app.go (2213b)
+│               ├───http
+│               │       ├───book.go (2186b)
+│               │       └───http.go (1093b)
+│               ├───impl
+│               │       ├───book.go (3972b)
+│               │       ├───dao.go (715b)
+│               │       ├───impl.go (843b)
+│               │       └───sql.go (325b)
+│               └───pb
+│                       └───book.proto (2232b)
+├───client
+│       ├───client.go (861b)
+│       ├───client_test.go (454b)
+│       └───config.go (164b)
+├───cmd
+│       ├───init.go (1199b)
+│       ├───root.go (1277b)
+│       └───start.go (3819b)
+├───conf
+│       ├───config.go (4702b)
+│       ├───load.go (720b)
+│       └───log.go (365b)
+├───docs
+│       ├───README.md (15b)
+│       └───schema
+│               └───tables.sql (849b)
+├───etc
+│       ├───config.env (470b)
+│       └───config.toml (391b)
+├───go.mod (32b)
+├───main.go (89b)
+├───makefile (2518b)
+├───protocol
+│       ├───grpc.go (1520b)
+│       └───http.go (2948b)
+└───version
+        └───version.go (628b)
+        
+# 初始化配置        
+$ cd cmdb/       
+$ make install   
+$ make gen
+$ make dep
+```
 
 
 
