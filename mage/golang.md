@@ -7792,6 +7792,8 @@ func main() {
 
 ### mcube脚手架生成框架
 
+#### v1
+
 ```
 # 安装protobuf自动注入tag工具，因为protobuf本身不支持注入tag 
 go install github.com/favadi/protoc-go-inject-tag@latest
@@ -7802,9 +7804,10 @@ $ go install github.com/infraboard/mcube/cmd/mcube@v1.5.9
 ```
 
 ```
-$ mcube.exe init 
+$ mcube.exe init
 ? 请输入项目包名称: github.com/jacknotes/cmdb
-? 是否接入权限中心[keyauth] Yes
+? 请输入项目描述: cmdb
+? 是否接入权限中心[keyauth] (y/N) y
 ? Keyauth GRPC服务地址: 127.0.0.1:18050
 ? Keyauth Client ID: abc
 ? 选择数据库类型: MySQL
@@ -7812,10 +7815,14 @@ $ mcube.exe init
 
 ? MySQL服务地址: 192.168.15.203:3306
 ? 数据库名称: cmdb
-? 生成样例代码 Yes
+? 用户: jack
+? 密码: ******
+? 生成样例代码 Y
 项目初始化完成, 项目结构如下: 
 ├───.gitignore (269b)
-├───README.md (3711b)
+├───.vscode
+│       └───settings.json (64b)
+├───README.md (3703b)
 ├───apps
 │       ├───all
 │       │       ├───grpc.go (168b)
@@ -7839,7 +7846,127 @@ $ mcube.exe init
 │       └───config.go (164b)
 ├───cmd
 │       ├───init.go (1199b)
-│       ├───root.go (1277b)
+│       ├───root.go (1261b)
+│       └───start.go (3819b)
+├───conf
+│       ├───config.go (4702b)
+│       ├───load.go (720b)
+│       └───log.go (365b)
+├───docs
+│       ├───README.md (15b)
+│       └───schema
+│               └───tables.sql (849b)
+├───etc
+│       ├───config.env (470b)
+│       ├───config.toml (391b)
+│       └───unit-test.env (17b)
+├───go.mod (32b)
+├───main.go (89b)
+├───makefile (2518b)
+├───protocol
+│       ├───grpc.go (1520b)
+│       └───http.go (2948b)
+└───version
+        └───version.go (628b)
+        
+# 初始化配置        
+$ cd cmdb/       
+$ make install   
+# protobuf 文件需要import,而会从/usr/local/include中查找 
+$ \cp -a C:\Users\jack\go\pkg\mod\github.com "C:\Program Files\Git\usr\local\include"
+$ cd "C:\Program Files\Git\usr\local\include\github.com\infraboard"
+$ mv mcube@v1.5.9 mcube 
+$ make gen
+$ make dep
+
+# 初始化，生成mysql的表
+$ make init 
+fatal: not a git repository (or any of the parent directories): .git
+fatal: not a git repository (or any of the parent directories): .git
+执行的SQL: 
+CREATE TABLE IF NOT EXISTS `books` (
+  `id` char(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '对象Id',
+  `create_at` bigint NOT NULL COMMENT '创建时间(13位时间戳)',
+  `create_by` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT '创建人',
+  `update_at` bigint NOT NULL COMMENT '更新时间',
+  `update_by` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT '更新人',
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '书名',
+  `author` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '作者',
+  PRIMARY KEY (`id`),
+  KEY `idx_name` (`name`) USING BTREE COMMENT '用于书名搜索',
+  KEY `idx_author` (`author`) USING BTREE COMMENT '用于作者搜索'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+# 运行项目
+$ make run 
+fatal: not a git repository (or any of the parent directories): .git
+fatal: not a git repository (or any of the parent directories): .git
+2023-01-08T13:34:07.397+0800    INFO    [INIT]  cmd/start.go:155        log level: debug
+2023-01-08T13:34:07.424+0800    INFO    [CLI]   cmd/start.go:94 loaded grpc app: [book]
+2023-01-08T13:34:07.424+0800    INFO    [CLI]   cmd/start.go:95 loaded http app: [book]
+2023-01-08T13:34:07.425+0800    INFO    [CLI]   cmd/start.go:96 loaded internal app: []
+2023-01-08T13:34:07.425+0800    INFO    [HTTP Service]  protocol/http.go:106    start registry endpoints ...
+2023-01-08T13:34:07.426+0800    INFO    [GRPC Service]  protocol/grpc.go:59     GRPC 服务监听地址: 127.0.0.1:18050
+2023-01-08T13:34:07.932+0800    WARN    [HTTP Service]  protocol/http.go:111    registry endpoints error, rpc error: code = Unimplemented desc = unknown service infraboard.keyauth.endpoint.Service
+2023-01-08T13:34:07.934+0800    INFO    [HTTP Service]  protocol/http.go:82     HTTP服务启动成功, 监听地址: 127.0.0.1:8050
+```
+
+
+
+#### v2
+
+```
+# 安装脚手架工具 v1.6.1
+$ go install github.com/infraboard/mcube/cmd/mcube@v1.6.1
+go: downloading github.com/infraboard/mcube v1.6.1
+
+$ pwd
+/d/share/golang-study/day16
+$ mcube.exe init 
+? 请输入项目包名称: github.com/jacknotes/cmdb
+? 请输入项目描述: 资产管理系统
+? 是否接入权限中心[keyauth] (y/N) y
+? Keyauth GRPC服务地址: 127.0.0.1:18050
+? Keyauth Client ID: abc
+? Keyauth Client Secret: ***
+? 选择数据库类型:  [Use arrows to move, type to filter]
+> MySQL
+  MongoDB
+? 选择数据库类型: MySQL
+? MySQL服务地址: (127.0.0.1:3306) 192.168.15.203:3306
+
+? MySQL服务地址: 192.168.15.203:3306
+? 数据库名称: cmdb
+? 用户: jack
+? 密码: ******
+? 生成样例代码 (y/N) y
+项目初始化完成, 项目结构如下: 
+├───.gitignore (269b)
+├───README.md (4214b)
+├───apps
+│       ├───all
+│       │       ├───grpc.go (168b)
+│       │       ├───http.go (138b)
+│       │       └───internal.go (107b)
+│       └───book
+│               ├───app.go (2213b)
+│               ├───http
+│               │       ├───book.go (2186b)
+│               │       └───http.go (1093b)
+│               ├───impl
+│               │       ├───book.go (3972b)
+│               │       ├───dao.go (715b)
+│               │       ├───impl.go (843b)
+│               │       └───sql.go (325b)
+│               └───pb
+│                       └───book.proto (2232b)
+├───client
+│       ├───client.go (861b)
+│       ├───client_test.go (454b)
+│       └───config.go (164b)
+├───cmd
+│       ├───init.go (1199b)
+│       ├───root.go (1289b)
 │       └───start.go (3819b)
 ├───conf
 │       ├───config.go (4702b)
@@ -7861,11 +7988,58 @@ $ mcube.exe init
 └───version
         └───version.go (628b)
         
-# 初始化配置        
-$ cd cmdb/       
-$ make install   
+$ cd cmdb && code .
+$ make install 
+fatal: not a git repository (or any of the parent directories): .git
+fatal: not a git repository (or any of the parent directories): .git
+
+# protobuf 文件需要import github.com/infraboard/mcube中的protobuf文件,而会从/usr/local/include中查找
+$ go get github.com/infraboard/mcube@v1.6.1
+go get: added github.com/infraboard/mcube v1.6.1 
+$ rm -rf /c/Program\ Files/Git/usr/local/include/github.com/infraboard/mcube
+$ \cp -a /c/Users/jack/go/pkg/mod/github.com/infraboard/mcube\@v1.6.1/ /c/Program\ Files/Git/usr/local/include/github.com/infraboard/mcube
+
+# 注释 Makefile文件 gen的一行enum配置
+gen: ## Init Service
+	@protoc -I=.  -I=/usr/local/include --go_out=. --go_opt=module=${PKG} --go-grpc_out=. --go-grpc_opt=module=${PKG} apps/*/pb/*.proto
+
+	@protoc-go-inject-tag -input=apps/*/*.pb.go
+#	@mcube enum -p -m apps/*/*.pb.go
+---
+
 $ make gen
 $ make dep
+
+# 初始化，生成mysql的表
+$ make init 
+fatal: not a git repository (or any of the parent directories): .git
+fatal: not a git repository (or any of the parent directories): .git
+执行的SQL: 
+CREATE TABLE IF NOT EXISTS `books` (
+  `id` char(64) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '对象Id',
+  `create_at` bigint NOT NULL COMMENT '创建时间(13位时间戳)',
+  `create_by` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT '创建人',
+  `update_at` bigint NOT NULL COMMENT '更新时间',
+  `update_by` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT '更新人',
+  `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '书名',
+  `author` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '作者',
+  PRIMARY KEY (`id`),
+  KEY `idx_name` (`name`) USING BTREE COMMENT '用于书名搜索',
+  KEY `idx_author` (`author`) USING BTREE COMMENT '用于作者搜索'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+# 运行项目
+$ make run
+fatal: not a git repository (or any of the parent directories): .git
+fatal: not a git repository (or any of the parent directories): .git
+2023-01-08T14:10:36.936+0800    INFO    [INIT]  cmd/start.go:155        log level: debug
+2023-01-08T14:10:36.965+0800    INFO    [CLI]   cmd/start.go:94 loaded grpc app: [book]
+2023-01-08T14:10:36.965+0800    INFO    [CLI]   cmd/start.go:95 loaded http app: [book]
+2023-01-08T14:10:36.965+0800    INFO    [CLI]   cmd/start.go:96 loaded internal app: []
+2023-01-08T14:10:36.965+0800    INFO    [HTTP Service]  protocol/http.go:106    start registry endpoints ...
+2023-01-08T14:10:36.967+0800    INFO    [GRPC Service]  protocol/grpc.go:59     GRPC 服务监听地址: 127.0.0.1:18050
+2023-01-08T14:10:37.474+0800    WARN    [HTTP Service]  protocol/http.go:111    registry endpoints error, rpc error: code = Unimplemented desc = unknown service infraboard.keyauth.endpoint.Service
+2023-01-08T14:10:37.475+0800    INFO    [HTTP Service]  protocol/http.go:82     HTTP服务启动成功, 监听地址: 127.0.0.1:8050
 ```
 
 
