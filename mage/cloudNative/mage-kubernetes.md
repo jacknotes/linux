@@ -6806,7 +6806,6 @@ Context "cluster1" created.
 root@k8s-master01:~/k8s/yaml/limit-rbac/role# kubectl config use-context cluster1 --kubeconfig=Jack.kubeconfig
 Switched to context "cluster1".
 root@k8s-master01:~/k8s/yaml/limit-rbac/role# cat Jack.kubeconfig
-root@k8s-master01:~/k8s/yaml/limit-rbac/role# cat Jack.kubeconfig
 apiVersion: v1
 clusters:
 - cluster:
