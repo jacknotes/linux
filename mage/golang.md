@@ -6357,8 +6357,9 @@ go build -ldflags "-s -w" -o demo-api main.go	//
 macOS/Linux的同学 直接用包管理工具安装就可以了, windows的同学请参考:
 
 1. 下载 mingw-get-setup.exe 包（[链接）](https://osdn.net/projects/mingw/)
-2. 执行.\mingw-get-setup.exe install mingw32-make(需要用上 墙 才能下载)
-3. 最后重命名 mingw32-make.exe为make.exe即可
+2. 执行.\mingw-get-setup.exe install mingw32-make(需要用上 墙 才能下载)，或者打开MinGW Installation Manager安装mingw32-base-bin
+3. 最后重命名 C:\MinGW\bin\mingw32-make.exe为make.exe即可
+4. 将C:\MinGW\bin 加入到path环境变量
 
 #### 编写Makefile
 
@@ -7997,6 +7998,7 @@ fatal: not a git repository (or any of the parent directories): .git
 $ go get github.com/infraboard/mcube@v1.6.1
 go get: added github.com/infraboard/mcube v1.6.1 
 $ rm -rf /c/Program\ Files/Git/usr/local/include/github.com/infraboard/mcube
+# $ mkdir -p /c/Program\ Files/Git/usr/local/include/github.com/infraboard/
 $ \cp -a /c/Users/jack/go/pkg/mod/github.com/infraboard/mcube\@v1.6.1/ /c/Program\ Files/Git/usr/local/include/github.com/infraboard/mcube
 
 # 注释 Makefile文件 gen的一行enum配置
