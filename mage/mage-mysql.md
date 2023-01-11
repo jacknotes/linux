@@ -3917,7 +3917,7 @@ update set age = age + 1 where id = 1 and nickname = 'hello'; #id或者nickname�
 #kill掉等待死锁进程
 –查看进程id，然后用kill id杀掉进程
 show processlist;
-SELECT * FROM information_schema.PROCESSLIST；
+SELECT * FROM information_schema.PROCESSLIST;
 –查询正在执行的进程
 SELECT * FROM information_schema.PROCESSLIST where length(info) >0 ;
 //查询是打开了哪些表
