@@ -2054,5 +2054,27 @@ stream {
 }
 -----------------
 
+
+# nginx centos7 启动脚本
+[root@reverse02 ~]# systemctl cat nginx 
+# /usr/lib/systemd/system/nginx.service
+[Unit]
+Description=nginx
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/usr/local/nginx/sbin/nginx    
+ExecReload=/usr/local/nginx/sbin/nginx -s reload
+ExecStop=/usr/local/nginx/sbin/nginx -s stop
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+---
+
+
+
+
 </pre>
 
