@@ -2074,6 +2074,9 @@ WantedBy=multi-user.target
 ---
 
 
+## nginx开启https TLS 1.2，TLS 1.3, 安全的加密算法
+ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4:!DH:!DHE;
+ssl_protocols TLSv1.2 TLSv1.3;
 
 
 </pre>

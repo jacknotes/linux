@@ -1146,6 +1146,11 @@ u.save()
 3.Windows Server 2008 只能安装 PowerShell 3.0；指定较新的版本将导致脚本失败
 powershell2.0升级到powershell3.0需要安装升级补丁Windows6.1-KB2506143-x64
 
+
+
+## 20230209--关于添加windows管理用户
+用户名需要写test@hs.com，用@分隔
+
 </pre>
 
 

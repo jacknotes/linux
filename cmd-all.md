@@ -2291,6 +2291,35 @@ Port:
 9200/tcp -> 0.0.0.0:9200
 9300/tcp -> 0.0.0.0:9300
 
+
+# 获取nginx访问远程地址连接数
+[root@reverse01 ~]# while true;do sleep 5;date;sudo netstat -ano  | grep ESTABLISHED  | awk '{print $5}' | awk -F ':' '{count[$1,":",$2]++} END{for(i in count){if(count[i] > 2){printf "%-40s%d\r\n",i,count[i]}}}';echo;done
+Mon Feb 13 15:50:12 CST 2023
+192.168.13.238:9000                   357
+192.168.13.233:80                     4
+192.168.13.182:80                     3
+192.168.13.239:9000                   457
+192.168.13.239:12270                  401
+192.168.13.31:6443                    3
+192.168.13.229:80                     3
+192.168.13.238:12270                  400
+# 查看docker服务连接数
+-- docker server, example 12270
+[root@docker01 ~]# nsenter -t $(docker inspect `docker ps -a | grep :12270 | awk '{print $NF}'` | jq '.[0].State.Pid ') -n netstat -tan | awk '/^tcp/{count[$NF]++} END {for (i in count) {print i,count[i]}}' 
+LISTEN 1
+CLOSE_WAIT 2
+ESTABLISHED 743
+TIME_WAIT 5400
+
+
+
+
+
+
+
+
+
+
 #容器运行状态
 [root@uat-redis ~]# docker inspect --format '{{if ne 0 .State.ExitCode}}容器{{.Name}}是停止的{{else}}容器{{.Name}}是运行的{{end}}' `docker ps -qa`
 容器/fat_hotelresourcehuazhu是运行的
