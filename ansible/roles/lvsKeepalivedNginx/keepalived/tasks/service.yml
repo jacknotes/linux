@@ -1,0 +1,7 @@
+---
+- name: copy keepalived config to remote host
+  template: src=keepalived.conf.j2 dest=/etc/keepalived/keepalived.conf backup=yes mode=644 
+  notify: reload keepalived service
+
+- name: set keepalived onboot 
+  service: name=keepalived.service enabled=true

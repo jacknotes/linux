@@ -1,0 +1,23 @@
+---
+- include: installPackage-centos.yml
+  when: ansible_os_family == 'RedHat'
+
+- include: installPackage-ubuntu.yml
+  when: ansible_os_family == 'Debian'
+  
+- name: copy pcre source code package to remote host
+  copy: src=pcre/pcre-8.37.tar.gz dest=/usr/local/src/pcre-8.37.tar.gz
+  tags: install_pcre_package
+
+- name: unzip source code package and compile install pcre
+  shell: creates=/usr/local/pcre cd /usr/local/src && tar zxf pcre-8.37.tar.gz && cd pcre-8.37 && ./configure --prefix=/usr/local/pcre && make && make install
+  tags: install_pcre_package
+
+- name: copy nginx source code package to remote host
+  copy: src=nginx/{{ nginx_version }}.tar.gz dest=/usr/local/src/{{ nginx_version }}.tar.gz
+  tags: install_nginx_package
+
+- name: unzip source code package and compile install nginx
+  shell: creates=/usr/local/nginx cd /usr/local/src && tar zxf {{ nginx_version }}.tar.gz && cd {{ nginx_version }} && ./configure --prefix=/usr/local/nginx --user={{ web_user.username }} --group={{ web_user.groupname }} --with-http_ssl_module --with-http_stub_status_module --with-http_gzip_static_module --with-file-aio --with-http_dav_module --with-http_sub_module --with-http_realip_module --with-stream --with-pcre=/usr/local/src/pcre-8.37 && make && make install && chown -R {{ web_user.username }}:{{ web_user.groupname }} /usr/local/nginx
+  tags: install_nginx_package
+

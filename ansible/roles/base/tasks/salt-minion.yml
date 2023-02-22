@@ -1,0 +1,29 @@
+---
+- name: copy yum repo salt for centos
+  copy: src=yum/salt.repo dest=/etc/yum.repos.d/ backup=yes mode=644
+  when: ansible_os_family == 'RedHat'
+
+- name: copy apt repo salt requied key file for ubuntu
+  copy: src=apt/salt-archive-keyring.gpg dest=/usr/share/keyrings/ backup=yes mode=644
+  when: ansible_os_family == 'Debian'
+
+- name: copy apt repo salt for ubuntu
+  copy: src=apt/salt.list dest=/etc/apt/sources.list.d/ backup=yes mode=644
+  when: ansible_os_family == 'Debian'
+
+- name: install salt-minion for centos
+  yum: name={{ item }} state=present update_cache=true
+  with_items:
+  - salt-minion
+  when: ansible_os_family == 'RedHat'
+
+- name: install salt-minion for ubuntu
+  apt: name={{ item }} state=present update_cache=true
+  with_items:
+  - salt-minion
+  when: ansible_os_family == 'Debian'
+
+- name: copy saltstack minion config file
+  template: src=salt-minion.j2 dest=/etc/salt/minion owner=root group=root mode=0644 backup=yes
+  notify: restart saltstack minion
+

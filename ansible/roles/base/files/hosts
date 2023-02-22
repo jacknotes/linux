@@ -1,0 +1,4 @@
+192.168.13.31: ceph01.hs.com   ceph-mon01        ceph-mgr01   		ceph-osd01
+192.168.13.32: ceph02.hs.com   ceph-mon02	 ceph-mgr02		ceph-osd02
+192.168.13.33: ceph03.hs.com   ceph-mon03   				ceph-osd03
+192.168.13.34: ceph04.hs.com   ceph-deploy

@@ -1,0 +1,10 @@
+---
+- name: copy nginx init shell
+  copy: src=nginx/nginx-init dest=/etc/init.d/nginx backup=yes mode=755
+
+- name: set nginx auto boot
+  shell: chkconfig --add nginx && chkconfig nginx --level 35 on 
+
+- name: copy nginx config to remote host
+  template: src=nginx.conf dest=/usr/local/nginx/conf/nginx.conf backup=yes mode=644 
+  notify: restart nginx service

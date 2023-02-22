@@ -1,0 +1,11 @@
+---
+- name: /etc/profile append HISTTIMEFORMAT variable
+  lineinfile: 
+    path: /etc/profile
+    regexp: '^export HISTTIMEFORMAT'
+    insertafter: 'EOF'
+    line: export HISTTIMEFORMAT="%F %T root "
+    state: present
+    owner: root
+    group: root
+    mode: 0644

@@ -1,0 +1,195 @@
+[linux_old]
+192.168.13.21	server-role=zendao
+192.168.13.50	server-role=test-tengine	server-role2=jenkins-slave	server-role3=dev-apollo
+192.168.13.67	server-role=nfs
+192.168.13.116	server-role=fat-mysql
+192.168.13.160  server-role=pro-mysql01		server-role2=pro-redis01	server-role3=pro-dlog01     server-role4=pro-rabbitmq03
+192.168.13.161	server-role=pro-redis02		server-role2=pro-dlog02
+192.168.13.162	server-role=pro-redis03		server-role2=pro-rabbitmq02
+192.168.13.164	server-role=pro-mysql02
+192.168.13.196	server-role=fat-hoteles		server-role2=fat-apollo		server-role3=hlog
+192.168.13.197	server-role=pro-dlog03
+192.168.13.198	server-role=opsaudit
+192.168.13.212	server-role=redmine
+192.168.13.213	server-role=gitlab
+192.168.13.214	server-role=jenkins-master	server-role2=uat-apollo		server-role3=uat-mysql		server-role4=uat-hoteles
+192.168.13.215	server-role=pro-nginx01
+192.168.13.218	server-role=pro-nginx02
+192.168.13.223	server-role=fat-redis		server-role=uat-redis		server-role=clog	server-role=fat-rabbitmq	server-role=uat-rabbitmq
+192.168.13.230	server-role=test-nginx
+192.168.13.234	server-role=skywalking		server-role2=skywalking-elasticsearch
+192.168.13.235	server-role=harbor		server-role2=pro-apollo		server-role3=pdredis02		server-role4=pro-rabbitmq01
+192.168.13.236	server-role=prometheus
+192.168.13.238	server-role=pro-docker01	server-role2=pro-blog01
+192.168.13.239	server-role=pro-docker02	server-role2=pro-blog02
+
+[linux:children]
+centos
+ubuntu
+
+[centos:children]
+centos6
+centos7
+
+[centos6]
+192.168.13.212
+192.168.13.213
+
+[centos7]
+172.16.30.100 server-role=chNDC
+192.168.13.21
+192.168.13.50
+192.168.13.67
+192.168.13.116
+192.168.13.160
+192.168.13.161
+192.168.13.162
+192.168.13.164
+192.168.13.196
+192.168.13.197
+192.168.13.198
+192.168.13.214
+192.168.13.215
+192.168.13.218
+192.168.13.223
+192.168.13.230
+192.168.13.234
+192.168.13.235
+192.168.13.236
+192.168.13.238
+192.168.13.239
+
+[ansible]
+192.168.13.236
+
+#business
+[pro_nginx]
+192.168.13.215
+192.168.13.218
+
+[test_nginx]
+192.168.13.230
+192.168.13.50
+
+[pro_mysql]
+192.168.13.160
+192.168.13.164
+
+[pro_redis]
+192.168.13.160
+192.168.13.161
+192.168.13.162
+
+[pro_rabbitmq]
+192.168.13.235
+192.168.13.162
+192.168.13.160
+
+[pro_dlog]
+192.168.13.160
+192.168.13.161
+192.168.13.197
+
+[pro_blog]
+192.168.13.238
+192.168.13.239
+
+[docker]
+192.168.13.160
+192.168.13.161
+192.168.13.162
+192.168.13.196
+192.168.13.197
+192.168.13.21
+192.168.13.213
+192.168.13.214
+192.168.13.223
+192.168.13.230
+192.168.13.234
+192.168.13.235
+192.168.13.236
+192.168.13.238
+192.168.13.239
+192.168.13.50
+
+[pro_docker]
+192.168.13.238
+192.168.13.239
+
+
+#virtual machine
+[xenserver]
+192.168.13.60    server-role=xen01
+192.168.13.240    server-role=xen02
+192.168.13.241    server-role=xen03
+192.168.13.61    server-role=xen04
+192.168.13.243    server-role=xen05
+192.168.13.245    server-role=xen06
+192.168.13.246    server-role=xen07
+192.168.13.247    server-role=xen08
+192.168.13.248    server-role=xen09
+192.168.13.249    server-role=xen10
+192.168.13.244    server-role=xen11
+
+[ubuntu:children]
+k8s
+
+[k8s]
+192.168.13.31 role=master01
+192.168.13.32 role=master02
+192.168.13.33 role=master03
+192.168.13.36 role=node01
+192.168.13.37 role=node02
+192.168.13.38 role=node03
+
+[etcd]
+192.168.13.31 role=etcd01
+192.168.13.32 role=etcd02
+192.168.13.33 role=etcd03
+
+[rabbitmq]
+rabbitmq01.hs.com
+rabbitmq02.hs.com
+rabbitmq03.hs.com
+
+[redis_s]
+redis1_m.hs.com
+redis1_s.hs.com
+redis2_s.hs.com
+
+[elasticsearch]
+elasticsearch01.middleware.hs.com
+elasticsearch02.middleware.hs.com
+elasticsearch03.middleware.hs.com
+
+
+[general_node]
+192.168.13.196
+192.168.13.198
+192.168.13.212
+192.168.13.50
+192.168.13.214
+192.168.13.213
+192.168.13.235
+192.168.13.161
+192.168.13.21
+192.168.13.67
+192.168.13.162
+192.168.13.116
+192.168.13.164
+192.168.13.234
+192.168.13.197
+192.168.13.160
+
+[publish_node]
+192.168.13.215
+192.168.13.218
+192.168.13.238
+192.168.13.239
+192.168.13.230
+192.168.13.223
+172.16.30.100
+
+[local-test]
+172.168.2.219 ansible_ssh_user=root ansible_ssh_port=30022
+172.168.2.12

@@ -1,0 +1,17 @@
+127.0.0.1	localhost
+127.0.1.1	ubuntu18-x8664.local.lan	ubuntu18-x8664
+
+# The following lines are desirable for IPv6 capable hosts
+::1     localhost ip6-localhost ip6-loopback
+ff02::1 ip6-allnodes
+ff02::2 ip6-allrouters
+
+172.168.2.11 ansible
+172.168.2.21 k8s-master01 etcd01
+172.168.2.22 k8s-master02 etcd02
+172.168.2.23 k8s-master03 etcd03
+172.168.2.24 k8s-node01
+172.168.2.25 k8s-node02
+172.168.2.26 k8s-node03
+192.168.13.197 harbor
+192.168.13.50 nginx

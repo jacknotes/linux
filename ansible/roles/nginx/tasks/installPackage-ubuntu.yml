@@ -1,0 +1,11 @@
+---
+- name: install required packge by ubuntu for nginx
+  apt: name={{item}} state=latest update_cache=true
+  with_items:
+  - build-essential
+  - libtool
+  - libpcre3
+  - libpcre3-dev
+  - zlib1g-dev
+  - openssl
+  - libssl-dev

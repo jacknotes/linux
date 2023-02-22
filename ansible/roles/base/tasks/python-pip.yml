@@ -1,0 +1,6 @@
+---
+- name: create python pip directory
+  file: path=/root/.pip state=directory owner=root group=root mode=0755
+
+- name: copy python pip config file to pip directory
+  copy: src=pip.conf dest=/root/.pip/pip.conf owner=root group=root mode=0644

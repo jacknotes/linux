@@ -1,0 +1,4 @@
+---
+- name: node dns server address config
+  copy: src=resolv.conf dest=/etc/resolv.conf backup=yes mode=644 owner=root group=root
+  when: ansible_os_family == 'RedHat'

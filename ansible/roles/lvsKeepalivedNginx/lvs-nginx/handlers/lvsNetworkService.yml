@@ -1,0 +1,3 @@
+---
+- name: restart sub loopback interface service
+  service: name=network state=restarted enabled=true

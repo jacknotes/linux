@@ -2079,5 +2079,27 @@ ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!A
 ssl_protocols TLSv1.2 TLSv1.3;
 
 
+## goaccess分析nginx日志
+# 安装 goaccess
+yum install -y GeoIP-devel ncurses-devel libmaxminddb-devel
+curl -k -OL https://tar.goaccess.io/goaccess-1.7.tar.gz
+tar -xzvf goaccess-1.7.tar.gz
+cd goaccess-1.7/
+./configure --prefix=/usr/local/goaccess --enable-utf8 --enable-geoip=mmdb && make && make install
+# 配置goaccess.conf文件，以支持对应nginx access.log格式
+[root@docker ~]# cat /usr/local/goaccess/etc/goaccess/goaccess.conf | grep -Ev '#|^$'
+time-format %H:%M:%S
+date-format %d/%b/%Y
+log-format { "@timestamp": "%d:%t %^", "remote_addr": "%h", "referer": "%R", "host": "%v", "request": "%r" , "status": "%s", "bytes": "%b", "agent": "%u", "x_forwarded": "%^", "up_addr": "%^", "up_resp_time": "%D", "request_time": "%D" }
+---
+{ "@timestamp": "13/Feb/2023:02:00:01 +0800", "remote_addr": "192.168.13.233", "referer": "-", "host": "ibeplusservice.hs.com", "request": "POST /json/syncreply/QmsgQRRequest HTTP/1.1", "status": 200, "bytes": 482, "agent": "-", "x_forwarded": "-", "up_addr": "192.168.13.229:80","up_host": "-","up_resp_time": "0.321","request_time": "0.329" }
+---
+# 运行分析报告，运行在nginx服务之上，nginx-access.html是静态网页
+/usr/local/goaccess/bin/goaccess /root/logdir/* -o /usr/share/nginx/html/nginx-access.html --real-time-html
+
+
+
+
+
 </pre>
 

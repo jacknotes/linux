@@ -1,0 +1,38 @@
+---
+- name: copy yum repo k8s for centos
+  copy: src=yum/k8s.repo dest=/etc/yum.repos.d/ backup=yes mode=644
+  when: ansible_os_family == 'RedHat'
+
+- name: copy apt repo k8s requied key file for ubuntu
+  copy: src=apt/k8s-apt-key.gpg dest=/usr/share/keyrings/ backup=yes mode=644
+  when: ansible_os_family == 'Debian'
+
+- name: copy apt repo k8s for ubuntu
+  copy: src=apt/k8s.list dest=/etc/apt/sources.list.d/ backup=yes mode=644
+  when: ansible_os_family == 'Debian'
+
+- name: create directory for /etc/sysconfig/modules
+  file: name=/etc/sysconfig/modules state=directory owner=root group=root mode=0755
+
+- name: copy ipvs module shell 
+  copy: src=ipvs.modules dest=/etc/sysconfig/modules owner=root group=root mode=0744
+
+- name: install ipset and ipvsadm package
+  yum: name={{ item }} state=present update_cache=true
+  with_items:
+    - ipset
+    - ipvsadm
+  when: ansible_os_family == 'RedHat'
+- apt: name={{ item }} state=present update_cache=true
+  with_items:
+    - ipset
+    - ipvsadm
+  when: ansible_os_family == 'Debian'
+
+- name: apply load ipvs modules
+  shell: lsmod | grep ip_vs
+  register: result
+  ignore_errors: True
+- shell: bash /etc/sysconfig/modules/ipvs.modules
+  when: result is failed
+

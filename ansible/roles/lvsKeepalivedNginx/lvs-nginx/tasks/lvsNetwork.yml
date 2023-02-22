@@ -1,0 +1,23 @@
+---
+- name: copy sub loopback interface config file to remote host
+  template: src=ifcfg.j2 dest=/etc/sysconfig/network-scripts/ifcfg-{{ LOOPBACK_SUB_INTERFACE }} backup=yes mode=644
+  notify: restart sub loopback interface service 
+  when: ansible_os_family == 'RedHat'
+
+- name: /etc/rc.d/rc.local append lvs route config
+  lineinfile:
+    path: /etc/rc.d/rc.local
+    regexp: '^route add -host'
+    insertafter: 'EOF'
+    line: route add -host {{ VIP }} dev {{ LOOPBACK_SUB_INTERFACE }}
+    state: present
+    owner: root
+    group: root
+    mode: 0644
+  when: ansible_os_family == 'RedHat'
+
+- name: run lvs route table
+  shell: route add -host {{ VIP }} dev {{ LOOPBACK_SUB_INTERFACE }}
+  ignore_errors: True
+  when: ansible_os_family == 'RedHat'
+

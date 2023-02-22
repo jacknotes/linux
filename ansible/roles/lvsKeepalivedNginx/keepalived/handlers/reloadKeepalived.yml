@@ -1,0 +1,5 @@
+---
+- name: reload keepalived service
+  shell: ps aux | grep keepalived && systemctl reload keepalived.service || systemctl restart keepalived.service
+  tags: reloadKeepalivedService
+

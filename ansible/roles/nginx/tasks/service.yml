@@ -1,0 +1,24 @@
+---
+- name: copy nginx boot shell for centos
+  copy: src=nginx/nginx-init dest=/etc/init.d/nginx backup=yes mode=755
+  when: ansible_os_family == 'RedHat'
+
+- name: set nginx auto boot for centos
+  shell: chkconfig --add nginx && chkconfig nginx --level 35 on 
+  when: ansible_os_family == 'RedHat'
+
+- name: copy nginx boot service for ubuntu
+  copy: src=nginx/nginx.service dest=/lib/systemd/system/nginx.service backup=yes mode=644
+  when: ansible_os_family == 'Debian'
+
+- name: set nginx auto boot for ubuntu
+  shell: systemctl daemon-reload && systemctl enable nginx
+  when: ansible_os_family == 'Debian'
+
+- name: copy nginx config to remote host for centos
+  template: src=nginx.conf.j2 dest=/usr/local/nginx/conf/nginx.conf backup=yes mode=644 
+  notify: restart nginx service for centos
+
+- name: copy nginx config to remote host for ubuntu
+  template: src=nginx.conf.j2 dest=/usr/local/nginx/conf/nginx.conf backup=yes mode=644 
+  notify: restart nginx service for ubuntu

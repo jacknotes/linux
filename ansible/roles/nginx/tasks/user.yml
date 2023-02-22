@@ -1,0 +1,3 @@
+---
+- name: create user
+  user: name={{ web_user.username }} uid={{ web_user.username_id }} group={{ web_user.groupname }} system=yes shell=/sbin/nologin

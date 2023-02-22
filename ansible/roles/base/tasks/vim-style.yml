@@ -1,0 +1,13 @@
+- name: set ubuntu system default text tools is vim.
+  lineinfile:
+    path: /etc/profile
+    line: export EDITOR=/usr/bin/vim
+    state: present
+    owner: root
+    group: root
+    mode: 0644
+  when: ansible_os_family == 'Debian' and ansible_lsb.major_release == '18'
+
+- name: update update-alternatives to vim
+  shell: update-alternatives --set editor /usr/bin/vim.basic
+  when: ansible_os_family == 'Debian' and ansible_lsb.major_release == '18'

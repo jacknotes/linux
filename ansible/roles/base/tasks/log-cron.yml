@@ -1,0 +1,11 @@
+---
+- name: log config
+  lineinfile: 
+    path: /etc/rsyslog.d/50-default.conf
+    regexp: '^#cron.*'
+    line: 'cron.*                         /var/log/cron.log'
+    state: present
+    owner: root
+    group: root
+    mode: 0644
+  when: ansible_os_family == 'Debian'

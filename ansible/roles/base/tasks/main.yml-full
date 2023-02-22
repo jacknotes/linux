@@ -1,0 +1,20 @@
+- include: shell.yml
+- include: audit.yml
+- include: history.yml
+- include: ntpdate.yml
+- include: limits.yml
+- include: postfix.yml
+- include: selinux.yml
+- include: tty-style.yml
+- include: firewall.yml
+- include: repo.yml
+- include: password-tty.yml
+- include: dns.yml
+- include: package-centos.yml
+- include: package-ubuntu.yml
+- include: python-pip.yml
+- include: sysctl.yml
+- include: vim-style.yml
+#  - include: node_exporter.yml
+#  #- include: salt-minion.yml
+#  #- include: k8s.yml

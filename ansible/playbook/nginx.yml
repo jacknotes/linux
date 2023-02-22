@@ -1,0 +1,8 @@
+---
+- hosts: 
+  - 192.168.13.214
+  remote_user: root
+  become: yes
+  gather_facts: true
+  roles:
+  - nginx

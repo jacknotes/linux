@@ -1,0 +1,6 @@
+- hosts: 192.168.13.38
+  gather_facts: true
+  tasks:
+    - name: 查看系统版本
+      debug:
+        msg: "版本：{{ansible_lsb.major_release}}"

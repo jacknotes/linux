@@ -1,0 +1,42 @@
+---
+- name: install required packge for centos
+  yum: name={{item}} state=latest update_cache=true
+  with_items:
+  - make
+  - autoconf
+  - gcc
+  - glibc
+  - gcc-c++
+  - pcre-devel
+  - openssl
+  - openssl-devel
+  - tree
+  - iproute
+  - nmap-ncat
+  - screen
+  - lrzsz
+  - tree
+  - telnet
+  - iotop
+  - iftop
+  - sysstat
+  - wget
+  - dos2unix
+  - lsof
+  - net-tools
+  - mtr
+  - unzip
+  - zip
+  - vim-enhanced
+  - bind-utils
+  - bc
+  - bash-completion
+  - python3-pip
+  - axel
+  - curl
+  - wget
+  when: ansible_os_family == 'RedHat' and ansible_distribution_major_version == '7'
+
+- name: install centos7 develop tools groups
+  shell: yum group install -y 'Development Tools'
+  when: ansible_os_family == 'RedHat' and ansible_distribution_major_version == '7'

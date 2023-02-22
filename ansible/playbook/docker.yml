@@ -1,0 +1,9 @@
+---
+- hosts: 
+  - 172.168.2.219
+  remote_user: root
+  become: yes
+  gather_facts: true
+  roles:
+  - base
+  - docker

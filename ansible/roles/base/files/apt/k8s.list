@@ -1,0 +1,2 @@
+deb [signed-by=/usr/share/keyrings/k8s-apt-key.gpg arch=amd64] https://mirrors.aliyun.com/kubernetes/apt kubernetes-xenial main
+

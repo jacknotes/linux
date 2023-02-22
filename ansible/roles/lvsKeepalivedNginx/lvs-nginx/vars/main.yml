@@ -1,0 +1,12 @@
+#nginx config
+web_user:
+  groupname: www
+  groupname_id: 8080
+  username: www
+  username_id: 8080
+
+nginx_port: 80
+
+#lvs config
+VIP: 172.168.2.20
+LOOPBACK_SUB_INTERFACE: "lo:0"

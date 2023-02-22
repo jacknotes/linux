@@ -1,0 +1,22 @@
+---
+- name: node time area config for centos
+  timezone: name=Asia/Shanghai
+
+- name: node ntp client software install for centos
+  yum: name={{ item }} state=present update_cache=true
+  with_items:
+    - ntpdate
+
+- name: node ntp client software install for ubuntu
+  shell: apt install -y ntpdate
+  when: ansible_os_family == 'Debian'
+
+- name: node config timing sync ntp time
+  cron:
+    name: timing sync ntp time
+    job: ntpdate time1.aliyun.com
+    minute: '*/5'
+
+- name: sync time1.aliyun.com
+  shell: ntpdate time1.aliyun.com
+  ignore_errors: true

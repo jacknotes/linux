@@ -1,0 +1,18 @@
+---
+- name: installPackgeByAPT
+  apt: name={{item}} state=latest
+  with_items:
+  - build-essential
+  - libtool
+  - libpcre3
+  - libpcre3-dev
+  - zlib1g-dev
+  - openssl
+  - libssl-dev
+  
+- name: installPackgeBySourceCode pcre
+  copy: src=pcre/pcre-8.37.tar.gz dest=/usr/local/src/pcre-8.37.tar.gz
+  tags: copyPcrePackage
+- name: unzip source code package and compile install pcre
+  shell: cd /usr/local/src && tar zxf pcre-8.37.tar.gz && cd pcre-8.37 && ./configure --prefix=/usr/local/pcre && make && make install
+

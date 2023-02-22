@@ -1,0 +1,51 @@
+- name: 安装 docker-ce 必要的一些系统工具
+  shell: yum install -y yum-utils device-mapper-persistent-data lvm2
+  when: ansible_os_family == 'RedHat' and ansible_distribution_major_version == '7'
+  register: result
+  until:    result.rc == 0
+  retries:  30
+  delay: 10
+  tags: install_package
+
+- name: 安装 docker-ce 必要的一些系统工具
+  shell: apt-get -y install apt-transport-https ca-certificates curl software-properties-common
+  when: ansible_os_family == 'Debian' and ansible_lsb.major_release == '18'
+  register: result
+  until:    result.rc == 0
+  retries:  30
+  delay: 10
+  tags: install_package
+
+- name: 安装GPG证书
+  shell: curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/ubuntu/gpg | apt-key add -
+  when: ansible_os_family == 'Debian' and ansible_lsb.major_release == '18'
+  tags: install_package
+
+- name: 添加 docker-ce 软件源信息
+  shell: yum-config-manager --add-repo https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo && sed -i 's+download.docker.com+mirrors.aliyun.com/docker-ce+' /etc/yum.repos.d/docker-ce.repo 
+  when: ansible_os_family == 'RedHat' and ansible_distribution_major_version == '7'
+  tags: install_package
+
+- name: 添加 docker-ce 软件源信息
+  shell: add-apt-repository "deb [arch=amd64] https://mirrors.aliyun.com/docker-ce/linux/ubuntu $(lsb_release -cs) stable"
+  when: ansible_os_family == 'Debian' and ansible_lsb.major_release == '18'
+  tags: install_package
+
+- name: 安装 docker-ce
+  shell: yum makecache fast && yum --show-duplicates -y install docker-ce-19.03.15
+  when: ansible_os_family == 'RedHat' and ansible_distribution_major_version == '7'
+  tags: install_package
+ 
+- name: 安装 docker-ce
+  shell: apt-get -y update && apt-get -y install docker-ce=19.03.15
+  when: ansible_os_family == 'Debian' and ansible_lsb.major_release == '18'
+  tags: install_package
+
+- name: 复制 配置文件daemon.json
+  copy: src={{ item }} dest=/etc/docker/{{ item }}
+  with_items:
+  - daemon.json
+ 
+- name: 运行 docker服务 
+  shell: systemctl daemon-reload && systemctl enable docker && systemctl restart docker
+  tags: running
