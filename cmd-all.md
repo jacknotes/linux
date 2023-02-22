@@ -20,7 +20,6 @@ curl命令详解：
 -H:指定标头数据
 -d:指定http数据
 -i:输出时包括protocol头信息
-
 curl示例：
 1.抓取页面内容到一个文件中：
 curl -o home.html http://192.168.1.31:9200
@@ -949,7 +948,10 @@ glale  #使用()和|来判断中间是la或oo的信息
 gxyzc 
  gxyzxyzc 
 
-#iptables防火墙
+## iptables防火墙
+
+![iptables-chains](.\image\iptables\iptables-chains.png)
+
 iptables表：
 filter（过滤）,nat（地址软的）,mangle（对包拆开，封装，修改）,raw（只看不做任何修改）
 规则链：
@@ -1765,7 +1767,7 @@ mail_user='jack@126.com'
 mail_pass='TEZVGROG'
 sender = 'jacknotes@126.com'
 receivers = ['jack@163.com', 'jack@126.com'] 
- 
+
 # 三个参数：第一个为文本内容，第二个 plain 设置文本格式，第三个 utf-8 设置编码
 #message = MIMEMultipart()
 #message.attach(MIMEText('Python邮件', 'plain', 'utf-8'))
@@ -2988,11 +2990,11 @@ vim test1.txt test2.txt
 
 --非空行必添加分号
 :.,+10s/.$/&;
-  
+
 ### 文件logo生成
 [root@prometheus ~]# yum install -y figlet 
 [root@prometheus ~]# figlet hello
- _          _ _       
+_          _ _
 | |__   ___| | | ___  
 | '_ \ / _ \ | |/ _ \ 
 | | | |  __/ | | (_) |

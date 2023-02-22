@@ -1,61 +1,84 @@
-#lvs
-<pre>
-#ipvs
+# lvs
+
+## ipvs
 从Linux内核版本2.6起，ip_vs code已经被整合进了内核中，因此，只要在编译内核的时候选择了ipvs的功能，您的Linux即能支持LVS。Linux 2.4.23以后的内核版本也整合了ip_vs code，但如果是更旧的内核版本，您得自己手动将ip_vs code整合进内核原码中，并重新编译内核方可使用lvs。
 
-#ipvs类型：
-	1. NAT:地址转换
-	2. DR：直接路由
-	3. TUN：隧道
-NAT:
-	1. 集群节点跟director必须在同一个IP网络中
-	2. RIP（RealServer IP）通常是私用地址，仅用于各集群节点间的通信
-	3. director位于client和realServer之间，并负责处理进出的所有通信
-	4. realServer必须将网关指向DIP(DirectorIP)
-	5. 支持端口映射
-	6. realServer可以使用任意os
-	7. 较大规模应用场景中，director易成为系统瓶颈（一般最多带10个RealServer）
-DR:
-	1. 集群节点跟director必须在同一个物理网络中
-	2. RIP可以使用公网地址，实现便捷的远程管理和监控
-	3. director仅负责处理入站请求，响应报文则由RealServer直接发往客户端
-	4. 不支持端口映射
-TUN:
-	1. 集群节点可以跨越Internet
-	2. RIP必须是公网地址
-	3. director仅负责处理入站请求，响应报文则由RealServer直接发往客户端
-	4. RealServer网关不能指向director
-	5. 只有支持隧道功能的os才能用于realserver
-	6. 不支持端口映射
+### ipvs类型：
 
-知识回顾：
-	LB：Load Balance
-	HA：High Availability
-	HP：High Performance
-LB：
-	Hardware:
-		F5 BIG-IP 
-		Citrix NetScaler
-		A10
-	Software
-		四层：
-			LVS
-		七层：
-			nginx
-			haproxy
+NAT:地址转换
 
-LVS: Linux Virtual Server
+```
+1. 集群节点跟director必须在同一个IP网络中
+2. RIP（RealServer IP）通常是私用地址，仅用于各集群节点间的通信
+3. director位于client和realServer之间，并负责处理进出的所有通信
+4. realServer必须将网关指向DIP(DirectorIP)
+5. 支持端口映射
+6. realServer可以使用任意os
+7. 较大规模应用场景中，director易成为系统瓶颈（一般最多带10个RealServer）
+```
 
+DR：直接路由
+
+```
+1. 不支持端口映射
+2. 集群节点跟director必须在同一个物理网络中
+3. RIP可以使用公网地址，实现便捷的远程管理和监控
+4. director仅负责处理入站请求，响应报文则由RealServer直接发往客户端
+```
+
+TUN：隧道
+
+```
+1. 不支持端口映射
+2. 集群节点可以跨越Internet
+3. RIP必须是公网地址
+4. director仅负责处理入站请求，响应报文则由RealServer直接发往客户端
+5. RealServer网关不能指向director
+6. 只有支持隧道功能的os才能用于realserver
+```
+
+
+
+```
 Type:
 	NAT:
 		类似DNAT
 	DR:
-		只接收入丫请求，出站响应则由后端RealServer响应给Client,Director和RealServer通信是通过MAC地址，Director不解开ip层包
+		只接收入站请求，出站响应则由后端RealServer响应给Client,Director和RealServer通信是通过MAC地址，Director不解开ip层包
 	TUN:
-		只接收入丫请求，出站响应则由后端RealServer响应给Client,Director和RealServer通信是通过TUNNING隧道模式进行通信，Director接收到Client包时，为了与后端的RealServer通信，Director对Client发过来的包加一个ip包，这样一来Director访问RealServer就成了外部是DIP和RIP，内部还是CIP和VIP,由于后端RealServer解开外部ip包，得到内部ip包，所以RealServer最后成功发向了Client
+		只接收入站请求，出站响应则由后端RealServer响应给Client,Director和RealServer通信是通过TUNNING隧道模式进行通信，Director接收到Client包时，为了与后端的RealServer通信，Director对Client发过来的包加一个ip包，这样一来Director访问RealServer就成了外部是DIP和RIP，内部还是CIP和VIP,由于后端RealServer解开外部ip包，得到内部ip包，所以RealServer最后成功发向了Client
+```
 
-#关于ipvsadm:
-ipvs的命令行管理工具
+
+
+### 知识回顾：
+
+```
+	LB：Load Balance
+​	HA：High Availability
+​	HP：High Performance
+LB：
+​	Hardware:
+​		F5 BIG-IP 
+​		Citrix NetScaler
+​		A10
+​	Software
+​		四层：
+​			LVS
+​		七层：
+​			nginx
+​			haproxy
+
+LVS: Linux Virtual Server
+```
+
+
+
+
+
+### 关于ipvsadm:
+```
+## ipvs的命令行管理工具
 ipvsadm是运行于用户空间、用来与ipvs交互的命令行工具，它的作用表现在：
 1、定义在Director上进行dispatching的服务(service)，以及哪些服务器(server)用来提供此服务；
 2、为每台同时提供某一种服务的服务器定义其权重（即概据服务器性能确定的其承担负载的能力）；
@@ -64,41 +87,42 @@ ipvsadm是运行于用户空间、用来与ipvs交互的命令行工具，它的
 1、添加服务（通过设定其权重>0）；
 2、关闭服务（通过设定其权重>0）；此应用场景中，已经连接的用户将可以继续使用此服务，直到其退出或超时；新的连接请求将被拒绝；
 3、保存ipvs设置，通过使用“ipvsadm-sav > ipvsadm.sav”命令实现；
-4、恢复ipvs设置，通过使用“ipvsadm-sav < ipvsadm.sav”命令实现；
+4、恢复ipvs设置，通过使用“ipvsadm-sav < ipvsadm.sav”命令实现;
 5、显示ip_vs的版本号，下面的命令显示ipvs的hash表的大小为4k；
-  # ipvsadm
-    IP Virtual Server version 1.2.1 (size=4096)
 6、显示ipvsadm的版本号
-  # ipvsadm --version
+ipvsadm --version
    ipvsadm v1.24 2003/06/07 (compiled with popt and IPVS v1.2.0)
 ipvsadm下载地址： http://www.linuxvirtualserver.org/software/ipvs.html#kernel-2.6
-
-二、ipvsadm使用中应注意的问题
+7、ipvsadm使用中应注意的问题
 默认情况下，ipvsadm在输出主机信息时使用其主机名而非IP地址，因此，Director需要使用名称解析服务。如果没有设置名称解析服务、服务不可用或设置错误，ipvsadm将会一直等到名称解析超时后才返回。当然，ipvsadm需要解析的名称仅限于RealServer，考虑到DNS提供名称解析服务效率不高的情况，建议将所有RealServer的名称解析通过/etc/hosts文件来实现；
-#iptables应该避免进行服务，主要是INPUT,FORWARD,OUTPUT Chain上不能启动。
+8、iptables应该避免进行服务，主要是INPUT,FORWARD,OUTPUT Chain上不能启动。
+```
 
-三、调度算法
+
+
+### ipvs调度算法
+```
 固定调度
 	rr: 轮叫，轮询
 	wrr: Weight, 加权
 	sh: source hash, 源地址hash
 四种静态算法：
-	1. rr:Round Robin
-	2. wrr:Weight Round Robin
-	3. dh:destination hash (常用来选择目标是Cache Server)
-	4. sh:source hash (session affinity)
-六种动态算法：
-	lc: 最少连接
-		active*256+inactive
-		谁的小，挑谁
-	wlc: 加权最少连接
-		(active*256+inactive)/weight
-	sed: 最短期望延迟
-		（active+1)*256/weight
-	nq: never queue(永远不排除)
-	LBLC: 基于本地的最少连接
-		DH: 
-	LBLCR: 基于本地的带复制功能的最少连接
+ 	 1. rr:Round Robin
+     2. wrr:Weight Round Robin
+     3. dh:destination hash (常用来选择目标是Cache Server)
+     4. sh:source hash (session affinity)
+        六种动态算法：
+        lc: 最少连接
+        active*256+inactive
+        谁的小，挑谁
+        wlc: 加权最少连接
+        (active*256+inactive)/weight
+        sed: 最短期望延迟
+        （active+1)*256/weight
+        nq: never queue(永远不排除)
+        LBLC: 基于本地的最少连接
+        DH: 
+        LBLCR: 基于本地的带复制功能的最少连接
 
 默认方法：wlc
 
@@ -110,31 +134,46 @@ Director在接收到来自于Client的请求时，会基于"schedule"从RealServ
 4、带复制的基于局部性最少链接调度（Locality-Based Least Connections with Replication Scheduling，lblcr）——也是针对目标IP地址的负载均衡，目前主要用于Cache集群系统。它与LBLC算法的不同之处是它要维护从一个目标IP地址到一组服务器的映射，而 LBLC算法维护从一个目标IP地址到一台服务器的映射。对于一个“热门”站点的服务请求，一台Cache 服务器可能会忙不过来处理这些请求。这时，LBLC调度算法会从所有的Cache服务器中按“最小连接”原则选出一台Cache服务器，映射该“热门”站点到这台Cache服务器，很快这台Cache服务器也会超载，就会重复上述过程选出新的Cache服务器。这样，可能会导致该“热门”站点的映像会出现在所有的Cache服务器上，降低了Cache服务器的使用效率。LBLCR调度算法将“热门”站点映射到一组Cache服务器（服务器集合），当该“热门”站点的请求负载增加时，会增加集合里的Cache服务器，来处理不断增长的负载；当该“热门”站点的请求负载降低时，会减少集合里的Cache服务器数目。这样，该“热门”站点的映像不太可能出现在所有的Cache服务器上，从而提供Cache集群系统的使用效率。LBLCR算法先根据请求的目标IP地址找出该目标IP地址对应的服务器组；按“最小连接”原则从该服务器组中选出一台服务器，若服务器没有超载，将请求发送到该服务器；若服务器超载；则按“最小连接”原则从整个集群中选出一台服务器，将该服务器加入到服务器组中，将请求发送到该服务器。同时，当该服务器组有一段时间没有被修改，将最忙的服务器从服务器组中删除，以降低复制的程度。
 5、目标地址散列调度（Destination Hashing，dh）算法也是针对目标IP地址的负载均衡，但它是一种静态映射算法，通过一个散列（Hash）函数将一个目标IP地址映射到一台服务器。目标地址散列调度算法先根据请求的目标IP地址，作为散列键（Hash Key）从静态分配的散列表找出对应的服务器，若该服务器是可用的且未超载，将请求发送到该服务器，否则返回空。
 6、源地址散列调度（Source Hashing，sh）算法正好与目标地址散列调度算法相反，它根据请求的源IP地址，作为散列键（Hash Key）从静态分配的散列表找出对应的服务器，若该服务器是可用的且未超载，将请求发送到该服务器，否则返回空。它采用的散列函数与目标地址散列调度算法的相同。除了将请求的目标IP地址换成请求的源IP地址外，它的算法流程与目标地址散列调度算法的基本相似。在实际应用中，源地址散列调度和目标地址散列调度可以结合使用在防火墙集群中，它们可以保证整个系统的唯一出入口。
+7、关于LVS追踪标记fwmark：如果LVS放置于多防火墙的网络中，并且每个防火墙都用到了状态追踪的机制，那么在回应一个针对于LVS的连接请求时必须经过此请求连接进来时的防火墙，否则，这个响应的数据包将会被丢弃。
+```
 
-四、关于LVS追踪标记fwmark：
-如果LVS放置于多防火墙的网络中，并且每个防火墙都用到了状态追踪的机制，那么在回应一个针对于LVS的连接请求时必须经过此请求连接进来时的防火墙，否则，这个响应的数据包将会被丢弃。
 
-#查看内核是否支持IPVS
+
+### 查看内核是否支持IPVS
+
+```
 [root@lvs ~]# grep -i 'ipvs' /boot/config-2.6.32-696.el6.x86_64   #查看内核是否支持ipvs
+
 # IPVS transport protocol load balancing support
+
 # IPVS scheduler
+
 # IPVS application helper
+
 [root@lvs ~]# grep -i 'vs' /boot/config-2.6.32-696.el6.x86_64   
 CONFIG_GENERIC_TIME_VSYSCALL=y
+
 # CONFIG_X86_VSMP is not set
+
 CONFIG_HIBERNATION_NVS=y
 CONFIG_IP_VS=m
 CONFIG_IP_VS_IPV6=y
+
 # CONFIG_IP_VS_DEBUG is not set
+
 CONFIG_IP_VS_TAB_BITS=12
+
 # IPVS transport protocol load balancing support
+
 CONFIG_IP_VS_PROTO_TCP=y
 CONFIG_IP_VS_PROTO_UDP=y
 CONFIG_IP_VS_PROTO_AH_ESP=y
 CONFIG_IP_VS_PROTO_ESP=y
 CONFIG_IP_VS_PROTO_AH=y
 CONFIG_IP_VS_PROTO_SCTP=y
+
 # IPVS scheduler
+
 CONFIG_IP_VS_RR=m
 CONFIG_IP_VS_WRR=m
 CONFIG_IP_VS_LC=m
@@ -145,7 +184,9 @@ CONFIG_IP_VS_DH=m
 CONFIG_IP_VS_SH=m
 CONFIG_IP_VS_SED=m
 CONFIG_IP_VS_NQ=m
+
 # IPVS application helper
+
 CONFIG_IP_VS_FTP=m
 CONFIG_IP_VS_PE_SIP=m
 CONFIG_OPENVSWITCH=m
@@ -153,14 +194,23 @@ CONFIG_OPENVSWITCH_GRE=y
 CONFIG_OPENVSWITCH_VXLAN=y
 CONFIG_MTD_BLKDEVS=m
 CONFIG_SCSI_MVSAS=m
+
 # CONFIG_SCSI_MVSAS_DEBUG is not set
+
 # CONFIG_SCSI_MVSAS_TASKLET is not set
+
 CONFIG_VMWARE_PVSCSI=m
 CONFIG_MOUSE_VSXXXAA=m
 CONFIG_MAX_RAW_DEVS=8192
 CONFIG_USB_SEVSEG=m
 CONFIG_USB_VST=m
-#IPVS安装
+```
+
+
+
+### IPVS安装
+
+```
 [root@lvs ~]# yum install ipvsadm -y
 #命令详解
 ipvsadm:
@@ -176,84 +226,125 @@ ipvsadm:
 			-t|u|f service-address：事先定义好的某集群服务
 			-r server-address：某RS的地址，在NAT模型中，可使用IP:PORT实现端口映射
 			[-g|i|m]：lvs类型，-g:DR,-i:TUN,-m:NAT
-			[-w weight]:定义服务器权重
-		修改：-e
-		删除：-d
+
+[-w weight]:定义服务器权重
+
+​		修改：-e
+​		删除：-d
+
 		# ipvsadm -a -t 172.16.100.1:80 -r 192.168.10.8 -m 
+
 		# ipvsadm -a -t 172.16.100.1:80 -r 192.168.10.9 -m
-	查看：
-		-L|-l
-			-n: 数字格式显示主机地址和端口
-			--stats：统计数据
-			--rate: 速率
-			--timeout: 显示tcp、tcpfin和udp的会话超时时长
-			-c: 显示当前的ipvs连接状况
-	删除所有集群服务
-		-C：清空ipvs规则
-	保存规则
-		-S 
+
+​	查看：
+​		-L|-l
+​			-n: 数字格式显示主机地址和端口
+​			--stats：统计数据
+​			--rate: 速率
+​			--timeout: 显示tcp、tcpfin和udp的会话超时时长
+​			-c: 显示当前的ipvs连接状况
+​	删除所有集群服务
+​		-C：清空ipvs规则
+​	保存规则
+​		-S 
+
 		# ipvsadm -S > /path/to/somefile
-	载入此前的规则：
-		-R
+
+​	载入此前的规则：
+​		-R
+
 		# ipvsadm -R < /path/form/somefile
+
 注：各节点之间的时间偏差不应该超出1秒钟；
 
 查看LVS上当前的所有连接
+
 # ipvsadm -Lcn   
+
 或者
 #cat /proc/net/ip_vs_conn
 查看虚拟服务和RealServer上当前的连接数、数据包数和字节数的统计值，则可以使用下面的命令实现：
-# ipvsadm -l --stats
-查看包传递速率的近似精确值，可以使用下面的命令：
-# ipvsadm -l --rate 
-# ipvsadm -l --timeout #查看tcp,tcpfin,udp包超时时间
-# ipvsadm -S > /tmp/ipvs.save #保存ipvs规则
-# ipvsadm -R < /tmp/ipvs.save #载入ipvs规则
 
-#NAT:
+# ipvsadm -l --stats
+
+查看包传递速率的近似精确值，可以使用下面的命令：
+
+# ipvsadm -l --rate 
+
+# ipvsadm -l --timeout #查看tcp,tcpfin,udp包超时时间
+
+# ipvsadm -S > /tmp/ipvs.save #保存ipvs规则
+
+# ipvsadm -R < /tmp/ipvs.save #载入ipvs规则
+```
+
+
+
+#### NAT模型
+
+```
 LVS-NAT基于cisco的LocalDirector。VS/NAT不需要在RealServer上做任何设置，其只要能提供一个tcp/ip的协议栈即可，甚至其无论基于什么OS。基于LVS/NAT，所有的入站数据包均由Director进行目标地址转换后转发至内部的RealServer，RealServer响应的数据包再由Director转换源地址后发回客户端。 
 VS/NAT模式不能与netfilter兼容，因此，不能将VS/NAT模式的Director运行在netfilter的保护范围之中。现在已经有补丁可以解决此问题，但尚未被整合进ip_vs code。
-        ____________
-       |            |
-       |  client    |
-       |____________|                     
-     CIP=192.168.0.253 (eth0)             
-              |                           
-              |                           
-     VIP=192.168.0.220 (eth0)             
-        ____________                      
-       |            |                     
-       |  director  |                     
-       |____________|                     
-     DIP=192.168.10.10 (eth1)         
-              |                           
-           (switch)------------------------
-              |                           |
-     RIP=192.168.10.2 (eth0)       RIP=192.168.10.3 (eth0)
-        _____________               _____________
-       |             |             |             |
-       | realserver1 |             | realserver2 |
-       |_____________|             |_____________|  
+
+____________
+
+​       |            |
+​       |  client    |
+​       |____________|                     
+​     CIP=192.168.0.253 (eth0)             
+​              |                           
+​              |                           
+​     VIP=192.168.0.220 (eth0)             
+
+____________
+
+​       |            |                     
+​       |  director  |                     
+​       |____________|                     
+​     DIP=192.168.10.10 (eth1)         
+​              |                           
+​           (switch)------------------------
+​              |                           |
+​     RIP=192.168.10.2 (eth0)       RIP=192.168.10.3 (eth0)
+
+_____________               _____________
+
+​       |             |             |             |
+​       | realserver1 |             | realserver2 |
+​       |_____________|             |_____________|  
 设置VS/NAT模式的LVS(这里以web服务为例)
 Director:
 建立服务
+
 # ipvsadm -A -t VIP:PORT -s rr
+
 如:
+
 # ipvsadm -A -t 192.168.0.220:80 -s rr #-A添加director,-t表示tcp协议，VIP:PORT为director的服务地址，-s后面接调度算法，rr为round robin
+
 设置转发：
+
 # ipvsadm -a -t VIP:PORT -r RIP_N:PORT -m -w N #-a为添加RealServer,-t为Director服务器的tcp地址，VIP:PORT表示Director的地址，-r为RealServer，后面接RealServer地址，-m表示地址伪装（masquerade），用于地址转换，-w表示设置权重值，这里如要设置，首先Director必须为与加权相关的调度算法，否则无效
+
 如：
+
 # ipvsadm -a -t 192.168.0.220:80 -r 192.168.10.2 -m -w 1
+
 # ipvsadm -a -t 192.168.0.220:80 -r 192.168.10.3 -m -w 1
+
 打开路由转发功能
+
 # echo "1" > /proc/sys/net/ipv4/ip_forward
 
 #NAT模型脚本
 服务控制脚本：
 #!/bin/bash
 #
+
 # chkconfig: - 88 12
+
 # description: LVS script for VS/NAT
+
 #
 . /etc/rc.d/init.d/functions
 #
@@ -269,40 +360,53 @@ start)
   /sbin/ifconfig eth1:1 $VIP netmask 255.255.255.0 up
 
 # Since this is the Director we must be able to forward packets
+
   echo 1 > /proc/sys/net/ipv4/ip_forward
 
 # Clear all iptables rules.
+
   /sbin/iptables -F
 
 # Reset iptables counters.
+
   /sbin/iptables -Z
 
 # Clear all ipvsadm rules/services.
+
   /sbin/ipvsadm -C
 
 # Add an IP virtual service for VIP 192.168.0.219 port 80
+
 # In this recipe, we will use the round-robin scheduling method. 
+
 # In production, however, you should use a weighted, dynamic scheduling method. 
+
   /sbin/ipvsadm -A -t $VIP:80 -s rr
 
 # Now direct packets for this VIP to
+
 # the real server IP (RIP) inside the cluster
+
   /sbin/ipvsadm -a -t $VIP:80 -r $RIP1 -m
   /sbin/ipvsadm -a -t $VIP:80 -r $RIP2 -m
-  
+
   /bin/touch /var/lock/subsys/ipvsadm.lock
 ;;
 
 stop)
+
 # Stop forwarding packets
+
   echo 0 > /proc/sys/net/ipv4/ip_forward
 
 # Reset ipvsadm
+
   /sbin/ipvsadm -C
 
 # Bring down the VIP interface
+
   ifconfig eth1:1 down
-  
+
   rm -rf /var/lock/subsys/ipvsadm.lock
 ;;
 
@@ -313,91 +417,153 @@ status)
   echo "Usage: $0 {start|stop}"
 ;;
 esac
+```
 
 
-#DR模型实例:
-ARP问题：
-                     __________
-                     |        |
-                     | client |
-                     |________|
- 	                       |
-                         |
-                      (router)
-                         |
-                         |
-                         |       __________
-                         |  DIP |          |
-                         |------| director |
-                         |  VIP |__________|
-                         |
-                         |
-                         |
-       ------------------------------------
-       |                 |                |
-       |                 |                |
-   RIP1, VIP         RIP2, VIP        RIP3, VIP
- ______________    ______________    ______________
-|              |  |              |  |              |
-| realserver1  |  | realserver2  |  | realserver3  |
-|______________|  |______________|  |______________|
-在如上图的LVS/DR或LVS/TUN应用的一种模型中（所有机器都在同一个物理网络），所有机器（包括Director和RealServer）都使用了一个额外的IP地址，即VIP。当一个客户端向VIP发出一个连接请求时，此请求必须要连接至Director的VIP，而不能是RealServer的。因为，LVS的主要目标就是要Director负责调度这些连接请求至RealServer的。
-因此，在Client发出至VIP的连接请求后，只能由Director将其MAC地址响应给客户端（也可能是直接与Director连接的路由设备），而Director则会相应的更新其ipvsadm table以追踪此连接，而后将其转发至后端的RealServer之一。
-如果Client在请求建立至VIP的连接时由某RealServer响应了其请求，则Client会在其MAC table中建立起一个VIP至RealServer的对就关系，并以至进行后面的通信。此时，在Client看来只有一个RealServer而无法意识到其它服务器的存在。
-为了解决此问题，可以通过在路由器上设置其转发规则来实现。当然，如果没有权限访问路由器并做出相应的设置，则只能通过传统的本地方式来解决此问题了。这些方法包括：
-1、禁止RealServer响应对VIP的ARP请求；
-2、在RealServer上隐藏VIP，以使得它们无法获知网络上的ARP请求；
-3、基于“透明代理（Transparent Proxy）”或者“fwmark （firewall mark）”；
-4、禁止ARP请求发往RealServers；
-传统认为，解决ARP问题可以基于网络接口，也可以基于主机来实现。Linux采用了基于主机的方式，因为其可以在大多场景中工作良好，但LVS却并不属于这些场景之一，因此，过去实现此功能相当麻烦。现在可以通过设置arp_ignore和arp_announce，这变得相对简单的多了。
-Linux 2.2和2.4（2.4.26之前的版本）的内核解决“ARP问题”的方法各不相同，且比较麻烦。幸运的是，2.4.26和2.6的内核中引入了两个新的调整ARP栈的标志（device flags）：arp_announce和arp_ignore。基于此，在DR/TUN的环境中，所有IPVS相关的设定均可使用arp_announce=2和arp_ignore=1/2/3来解决“ARP问题”了。
-arp_annouce：Define different restriction levels for announcing the local source IP address from IP packets in ARP requests sent on interface；
-	0 - (default) Use any local address, configured on any interface.
-	1 - Try to avoid local addresses that are not in the target's subnet for this interface. 
-	2 - Always use the best local address for this target.
+
+
+
+#### DR模型 
+	ARP问题：
+						  __________
+	​                     |        |
+	​                     | client |
+	​                     |________|
+	 	                       |
+	​                         |
+	​                      (router)
+	​                         |
+	​                         |
+	​                         |       __________
+	​                         |  DIP |          |
+	​                         |------| director |
+	​                         |  VIP |__________|
+	​                         |
+	​                         |
 	
-arp_ignore: Define different modes for sending replies in response to received ARP requests that resolve local target IP address.
-	0 - (default): reply for any local target IP address, configured on any interface.
-	1 - reply only if the target IP address is local address configured on the incoming interface.
-	2 - reply only if the target IP address is local address configured on the incoming interface and both with the sender's IP address are part from same subnet on this interface.
-	3 - do not reply for local address configured with scope host, only resolutions for golbal and link addresses are replied.
-	4-7 - reserved
-	8 - do not reply for all local addresses
+	                         |
+	       ------------------------------------
+	
+	​       |                 |                |
+	​       |                 |                |
+	   RIP1, VIP         RIP2, VIP        RIP3, VIP
+	
+	______________    ______________    ______________
+	|              |  |              |  |              |
+	| realserver1  |  | realserver2  |  | realserver3  |
+	|______________|  |______________|  |______________|
+	在如上图的LVS/DR或LVS/TUN应用的一种模型中（所有机器都在同一个物理网络），所有机器（包括Director和RealServer）都使用了一个额外的IP地址，即VIP。当一个客户端向VIP发出一个连接请求时，此请求必须要连接至Director的VIP，而不能是RealServer的。因为，LVS的主要目标就是要Director负责调度这些连接请求至RealServer的。
+	因此，在Client发出至VIP的连接请求后，只能由Director将其MAC地址响应给客户端（也可能是直接与Director连接的路由设备），而Director则会相应的更新其ipvsadm table以追踪此连接，而后将其转发至后端的RealServer之一。
+	如果Client在请求建立至VIP的连接时由某RealServer响应了其请求，则Client会在其MAC table中建立起一个VIP至RealServer的对应关系，并进行后面的通信。此时，在Client看来只有一个RealServer而无法意识到其它服务器的存在。
+	为了解决此问题，可以通过在路由器上设置其转发规则来实现。当然，如果没有权限访问路由器并做出相应的设置，则只能通过传统的本地方式来解决此问题了。这些方法包括：
+	1、禁止RealServer响应对VIP的ARP请求；
+	2、在RealServer上隐藏VIP，以使得它们无法获知网络上的ARP请求；
+	3、基于“透明代理（Transparent Proxy）”或者“fwmark （firewall mark）”；
+	4、禁止ARP请求发往RealServers；
+	传统认为，解决ARP问题可以基于网络接口，也可以基于主机来实现。Linux采用了基于主机的方式，因为其可以在大多场景中工作良好，但LVS却并不属于这些场景之一，因此，过去实现此功能相当麻烦。现在可以通过设置arp_ignore和arp_announce，这变得相对简单的多了。
+	Linux 2.2和2.4（2.4.26之前的版本）的内核解决“ARP问题”的方法各不相同，且比较麻烦。幸运的是，2.4.26和2.6的内核中引入了两个新的调整ARP栈的标志（device flags）：arp_announce和arp_ignore。基于此，在DR/TUN的环境中，所有IPVS相关的设定均可使用arp_announce=2和arp_ignore=1/2/3来解决“ARP问题”了。
+	arp_annouce：Define different restriction levels for announcing the local source IP address from IP packets in ARP requests sent on interface；
+		0 - (default) Use any local address, configured on any interface.
+		1 - Try to avoid local addresses that are not in the target's subnet for this interface. 
+		2 - Always use the best local address for this target.
+		
+	arp_ignore: Define different modes for sending replies in response to received ARP requests that resolve local target IP address.
+		0 - (default): reply for any local target IP address, configured on any interface.
+		1 - reply only if the target IP address is local address configured on the incoming interface.
+		2 - reply only if the target IP address is local address configured on the incoming interface and both with the sender's IP address are part from same subnet on this interface.
+		3 - do not reply for local address configured with scope host, only resolutions for golbal and link addresses are replied.
+		4-7 - reserved
+		8 - do not reply for all local addresses
 	
 	VIP: MAC(DVIP)
-	arptables：
+	arp tables：
 	kernel parameter:
 		arp_ignore: 定义接收到ARP请求时的响应级别；
 			0：只要本地配置的有相应地址，就给予响应；
 			1：仅当目标 IP 地址是传入接口上配置的本地地址时才回复。
-
+	
 		arp_announce：定义将自己地址向外通告时的通告级别；
 			0：将本地任何接口上的任何地址向外通告；
 			1：试图仅向目标网络通告与其网络匹配的地址；
 			2：仅向与本地接口上地址匹配的网络进行通告；
 
-####LVS/DR模型数据包流向：
+
+
+#### LVS/DR模型数据包流向
+
+![lvs-dr](..\image\lvs\lvs-dr.png)
+
+```
 ClientIP: 172.168.2.11(38:22:d6:6c:07:5d)
 DirectorIP: 172.168.2.18(00:1A:4D:8C:FA:D5)		VIP：172.168.2.20(00:1A:4D:8C:FA:D5)		172.168.2.19(00:1A:4D:8C:FA:D6)	
 RealServerIP: 172.168.2.15(00:26:18:45:D7:88)	172.168.2.17(00:26:18:45:D7:89)
 流程：
+
 1. client请求VIP，找到Director
 2. Director根据调度策略算法选取一台realserver,并把请求转发给后端realserver
 3. realserver收到请求后，响应处理并把结果直接返回给client,而不走director
-数据包解封装流程：
-1.    director接收到client消息，即源mac地址为38:22:d6:6c:07:5d，目的地址为00:1A:4D:8C:FA:D5，源ip为172.168.2.11，目的ip为172.168.2.20
-2.    director根据调度策略算法选取一台realserver，假如调度给172.168.2.15，并把源mac地址改为00:1A:4D:8C:FA:D5(Director VIP mac地址)，目的mac地址改为00:26:18:45:D7:88(172.168.2.15的mac地址)，源ip和目的ip都不变（源ip为172.168.2.11，目的ip为172.168.2.20）
-3.    realserver接收到请求，先看到mac地址(00:26:18:45:D7:88)，再看IP地址(172.168.2.20)都是自己并做出响应处理给客户端。即源mac为00:26:18:45:D7:88，源ip为172.168.2.20，目的mac地址为38:22:d6:6c:07:5d，目的ip为172.168.2.11。
+   数据包解封装流程：
+4. director接收到client消息，即源mac地址为38:22:d6:6c:07:5d，目的地址为00:1A:4D:8C:FA:D5，源ip为172.168.2.11，目的ip为172.168.2.20
+5. director根据调度策略算法选取一台realserver，假如调度给172.168.2.15，并把源mac地址改为00:1A:4D:8C:FA:D5(DR VIP mac地址)，目的mac地址改为00:26:18:45:D7:88(172.168.2.15的mac地址)，源ip和目的ip都不变（源ip为172.168.2.11，目的ip为172.168.2.20）
+6. realserver接收到请求，先看到mac地址(00:26:18:45:D7:88)，再看IP地址(172.168.2.20)都是自己并做出响应处理给客户端。即源mac为00:26:18:45:D7:88，源ip为172.168.2.20，目的mac地址为38:22:d6:6c:07:5d(第一次不知道会发ARP广播包，后续则会留在在mac table中)，目的ip为172.168.2.11。
+
 疑点总结：
 1. client请求VIP时，不光只有director有VIP，realserver也有VIP，如何解决正常解析到Director而不解析到realserver?
-答：通过配置net.ipv4.conf.eth0.arp_ignore = 1，net.ipv4.conf.all.arp_ignore = 1内核参数实现，此参数意思为"仅当目标 IP 地址是传入接口上配置的本地地址时才回复"，当realserver收到arp广播包时，必先是经过eth0物理接口的，而不会经过逻辑接口(lo接口)。因为VIP地址是配置在lo接口的，eth0接口并没有配置，所以当收到VIP地址的ARP广播包时，内核参数net.ipv4.conf.eth0.arp_ignore = 1就生效了，从而不会对client请求的VIP做出ARP响应，从而只有director会做出响应。
+   答：通过配置net.ipv4.conf.eth0.arp_ignore = 1，net.ipv4.conf.all.arp_ignore = 1内核参数实现，此参数意思为"仅当目标 IP 地址是传入接口上配置的本地地址时才回复"，当realserver收到arp广播包时，必先是经过eth0物理接口的，而不会经过逻辑接口(lo接口)。因为VIP地址是配置在lo接口的，eth0接口并没有配置，所以当收到VIP地址的ARP广播包时，内核参数net.ipv4.conf.eth0.arp_ignore = 1就生效了，从而不会对client请求的VIP做出ARP响应，从而只有director会做出响应。
 2. lvs/dr模型下director是如何进行转发的？
-答：diretor接收到client的请求后，只对二层以太网帧进行更改，不对对三层ip包进行更改，然后在进行转发
+   答：diretor接收到client的请求后，只对二层以太网帧进行更改，不对对三层ip包进行更改，然后在进行转发
 3. realserver收到director的数据包后如何进行响应的?
-答：直接响应客户端，响应的数据报文中把本地物理接口eth0的mac地址作为源mac地址(因为配置内核参数的原因{net.ipv4.conf.eth0.arp_announce = 2}，意思为只向该网卡回应与该网段匹配的ARP报文，又因为client IP 172.168.2.11跟eth0 ip 172.168.2.15是同网段，所以用eth0的mac地址回应172.168.2.11)，本地VIP做为源IP，目标IP为clientIP，目标mac地址先从ARP缓存查找，如无进行ARP广播，即源mac00:26:18:45:D7:88，源ip为172.168.2.20。目标mac地址为38:22:d6:6c:07:5d，目标ip为172.168.2.11。最后客户端收到消息得知mac地址和ip地址都是自己，并且源ip也是自己请求的VIP地址，就进行正常接收了，并不会再去看源mac地址了。当客户端再次请求172.168.2.20时会去找ARP缓存，或者进行ARP广播。
+   答：直接响应客户端，响应的数据报文中把本地物理接口eth0的mac地址作为源mac地址(因为配置内核参数的原因{net.ipv4.conf.eth0.arp_announce = 2}，意思为只向该网卡回应与该网段匹配的ARP报文，又因为client IP 172.168.2.11跟eth0 ip 172.168.2.15是同网段，所以用eth0的mac地址回应172.168.2.11)，本地VIP做为源IP，目标IP为clientIP，目标mac地址先从ARP缓存查找，如无进行ARP广播，即源mac00:26:18:45:D7:88，源ip为172.168.2.20。目标mac地址为38:22:d6:6c:07:5d，目标ip为172.168.2.11。最后客户端收到消息得知mac地址和ip地址都是自己，并且源ip也是自己请求的VIP地址，就进行正常接收了，并不会再去看源mac地址了。当客户端再次请求172.168.2.20时会去找ARP缓存，或者进行ARP广播。
 
+## 其它第三方说明
+### 重点将请求报文的目标 MAC 地址设定为挑选出的 RS 的 MAC 地址,当RS接收到这个数据包之后,将源MAC替换成自己的MAC,目标MAC地址为客户端地址。
+(1) 当用户请求到达 Director Server，此时请求的数据报文会先到内核空间的 PREROUTING 链。 此时报文的源 IP 为 CIP，目标 IP 为 VIP,MAC地址一次为各自的MAC地址。
+(2) PREROUTING 检查发现数据包的目标 IP 是本机，将数据包送至 INPUT 链。
+(3) IPVS 比对数据包请求的服务是否为集群服务，若是，将请求报文中的源 MAC 地址修改为 DIP 的 MAC 地址，将目标 MAC 地址修改 RIP 的 MAC 地址，然后将数据包发至 POSTROUTING 链。 此时的源 IP 和目的 IP 均未修改，仅修改了源 MAC 地址为 DIP 的 MAC 地址，目标 MAC 地址为 RIP 的 MAC 地址。
+(4) 由于 DS 和 RS 在同一个网络中，所以是通过二层来传输。POSTROUTING 链检查目标 MAC 地址为 RIP 的 MAC 地址，那么此时数据包将会发至 Real Server。
+(5) RS 发现请求报文的 MAC 地址是自己的 MAC 地址，就接收此报文。处理完成之后，将响应报文通过 lo 接口传送给 eth0 网卡然后向外发出。 此时的源 IP 地址为 VIP，目标 IP 为 CIP,并且将源MAC地址改为自己的MAC,目标MAC改为客户端MAC。
+(6) 响应报文最终送达至客户端
 
-部署DR环境：
+LVS/DR 模型的特性
+特点 1：保证前端路由将目标地址为 VIP 报文统统发给 Director Server，而不是 RS
+RS 可以使用私有地址；也可以是公网地址，如果使用公网地址，此时可以通过互联网对 RIP 进行直接访问
+RS 跟 Director Server 必须在同一个物理网络中
+所有的请求报文经由 Director Server，但响应报文必须不能进过 Director Server
+不支持地址转换，也不支持端口映射
+RS 可以是大多数常见的操作系统
+RS 的网关绝不允许指向 DIP(因为我们不允许他经过 director)
+RS 上的 lo 接口配置 VIP 的 IP 地址
+缺陷：RS 和 DS 必须在同一机房中
+特点 1 的解决方案：
+
+在前端路由器做静态地址路由绑定，将对于 VIP 的地址仅路由到 Director Server
+存在问题：用户未必有路由操作权限，因为有可能是运营商提供的，所以这个方法未必实用
+arptables：在 arp 的层次上实现在 ARP 解析时做防火墙规则，过滤 RS 响应 ARP 请求。这是由 iptables 提供的
+修改 RS 上内核参数（arp_ignore 和 arp_announce）将 RS 上的 VIP 配置在 lo 接口的别名上，并限制其不能响应对 VIP 地址解析请求。
+DR（Direct Routing 直接路由模式）此模式时 LVS 调度器只接收客户发来的请求并将请求转发给后端服务器，后端服务器处理请求后直接把内容直接响应给客户，而不用再次经过 LVS 调度器。LVS 只需要将网络帧的 MAC 地址修改为某一台后端服务器 RS 的 MAC，该包就会被转发到相应的 RS 处理，注意此时的源 IP 和目标 IP 都没变。RS 收到 LVS 转发来的包时，链路层发现 MAC 是自己的，到上面的网络层，发现 IP 也是自己的，于是这个包被合法地接受，RS 感知不到前面有 LVS 的存在。而当 RS 返回响应时，只要直接向源 IP（即用户的 IP）返回即可，不再经过 LVS。
+
+注意
+(1) 确保前端路由器将目标 IP 为 VIP 的请求报文发往 Director：
+(a) 在前端网关做静态绑定；
+(b) 在 RS 上使用 arptables；
+(c) 在 RS 上修改内核参数以限制 arp 通告及应答级别；
+arp_announce
+arp_ignore
+(2) RS 的 RIP 可以使用私网地址，也可以是公网地址；RIP 与 DIP 在同一 IP 网络；RIP 的网关不能指向 DIP，以确保响应报文不会经由 Director；
+(3) RS 跟 Director 要在同一个物理网络；
+(4) 请求报文要经由 Director，但响应不能经由 Director，而是由 RS 直接发往 Client；
+(5) 此模式不支持端口映射；
+
+DR模式缺点
+唯一的缺陷在于它要求 LVS 调度器及所有应用服务器在同一个网段中，因此不能实现集群的跨网段应用。
+
+DR模式优点
+可见在处理过程中 LVS Route 只处理请求的直接路由转发，所有响应结果由各个应用服务器自行处理，并对用户进行回复，网络流量将集中在 LVS 调度器之上。
+```
+
+### 部署DR环境
+
+```
 Director:
 	eth0,DIP:192.168.1.199 
 	eth0:0,VIP:192.168.1.200
@@ -443,7 +609,7 @@ net.ipv4.conf.eth0.arp_announce = 2
 net.ipv4.conf.all.arp_ignore = 1
 net.ipv4.conf.all.arp_announce = 2
 以上选项需要在启用VIP之前进行，否则，则需要在Drector上清空arp表才能正常使用LVS。
-#到达Director的数据包首先会经过PREROUTING，而后经过路由发现其目标地址为本地某接口的地址，因此，接着就会将数据包发往INPUT(LOCAL_IN HOOK)。此时，正在运行内核中的ipvs（始终监控着LOCAL_IN HOOK）进程会发现此数据包请求的是一个集群服务，因为其目标地址是VIP。于是，此数据包的本来到达本机(Director)目标行程被Director改变为经由POSTROUTING HOOK发往RealServer。这种改变数据包正常行程的过程是根据IPVS表(由管理员通过ipvsadm定义)来实现的。
+#到达Director的数据包首先会经过PREROUTING，而后经过路由发现其目标地址为本地某接口的地址，因此，接着就会将数据包发往INPUT(LOCAL_IN HOOK)。此时，正在运行内核中的ipvs（始终监控着LOCAL_IN HOOK）进程会发现此数据包请求的是一个集群服务，因为其目标地址是VIP。于是，此数据包本来到达本机(Director)目标行程被Director改变为经由POSTROUTING HOOK发往RealServer。这种改变数据包正常行程的过程是根据IPVS表(由管理员通过ipvsadm定义)来实现的。
 [root@www ~]# sysctl -p
 [root@www ~]# cat /proc/sys/net/ipv4/conf/eth0/arp_ignore 
 1
@@ -547,21 +713,28 @@ TCP  192.168.1.200:80 wlc
   -> 192.168.1.197:80             Route   1      0          0         
   -> 192.168.1.198:80             Route   3      0          0   
 如果有多台Realserver，在某些应用场景中，Director还需要基于“连接追踪”实现将由同一个客户机的请求始终发往其第一次被分配至的Realserver，以保证其请求的完整性等。其连接追踪的功能由Hash table实现。Hash table的大小等属性可通过下面的命令查看：
-# ipvsadm -lcn
 
+# ipvsadm -lcn
 为了保证其时效性，Hash table中“连接追踪”信息被定义了“生存时间”。LVS为记录“连接超时”定义了三个计时器：
 	1、空闲TCP会话；
 	2、客户端正常断开连接后的TCP会话；
 	3、无连接的UDP数据包（记录其两次发送数据包的时间间隔）；
 上面三个计时器的默认值可以由类似下面的命令修改，其后面的值依次对应于上述的三个计时器：
+
 # ipvsadm --set 28800 30 600
-
 数据包在由Direcotr发往Realserver时，只有目标MAC地址发生了改变(变成了Realserver的MAC地址)。Realserver在接收到数据包后会根据本地路由表将数据包路由至本地回环设备，接着，监听于本地回环设备VIP上的服务则对进来的数据库进行相应的处理，而后将处理结果回应至RIP，但数据包的原地址依然是VIP。
+```
 
-#Director脚本:
+
+
+#### DR环境下Director脚本
+
+```
 #!/bin/bash
 #
+
 # LVS script for VS/DR
+
 #
 . /etc/rc.d/init.d/functions
 #
@@ -578,24 +751,33 @@ start)
   /sbin/route add -host $VIP dev eth0:0
 
 # Since this is the Director we must be able to forward packets
+
   echo 1 > /proc/sys/net/ipv4/ip_forward
 
 # Clear all iptables rules.
+
   /sbin/iptables -F
 
 # Reset iptables counters.
+
   /sbin/iptables -Z
 
 # Clear all ipvsadm rules/services.
+
   /sbin/ipvsadm -C
 
 # Add an IP virtual service for VIP 192.168.0.219 port 80
+
 # In this recipe, we will use the round-robin scheduling method. 
+
 # In production, however, you should use a weighted, dynamic scheduling method. 
+
   /sbin/ipvsadm -A -t $VIP:80 -s wlc
 
 # Now direct packets for this VIP to
+
 # the real server IP (RIP) inside the cluster
+
   /sbin/ipvsadm -a -t $VIP:80 -r $RIP1 -g -w 1
   /sbin/ipvsadm -a -t $VIP:80 -r $RIP2 -g -w 2
 
@@ -603,11 +785,17 @@ start)
 ;; 
 
 stop)
+
 # Stop forwarding packets
+
   echo 0 > /proc/sys/net/ipv4/ip_forward
+
 # Reset ipvsadm
+
   /sbin/ipvsadm -C
+
 # Bring down the VIP interface
+
   /sbin/ifconfig eth0:0 down
   /sbin/route del $VIP >& /dev/null
   /bin/rm -rf /var/lock/subsys/ipvsadm.lock >& /dev/null
@@ -625,13 +813,20 @@ status)
   echo "Usage: $0 {start|stop|status}"
 ;;
 esac
+```
 
 
-#RealServer脚本:
+
+#### DR环境下RealServer脚本
+
+```
 #!/bin/bash
 #
+
 # Script to start LVS DR real server.
+
 # description: LVS DR real server
+
 #
 .  /etc/rc.d/init.d/functions
 
@@ -674,6 +869,7 @@ status)
         else
             echo "LVS-DR real server Running."
         fi
+
 ;;
 *)
             # Invalid entry.
@@ -681,8 +877,13 @@ status)
             exit 1
 ;;
 esac
+```
 
-##RS健康状态检查脚本最终版：
+
+
+#### RS健康状态检查脚本
+
+```
 #!/bin/bash
 #
 VIP=192.168.1.200
@@ -768,8 +969,14 @@ while :; do
   failback
   sleep 5
 done
+```
 
-##LVS持久连接
+
+
+
+
+### LVS持久连接
+```
 无论基于什么样的算法，只要期望源于同一个客户端的请求都由同一台Realserver响应时，就需要用到持久连接。比如，某一用户连续打开了三个telnet连接请求时，根据RR算法，其请求很可能会被分配至不同的Realserver，这通常不符合使用要求。
 ##DR模式脚本
 无论使用算法，LVS持久都能实现在一定时间内，将来自同一个客户端请求派发至此前选定的RS。
@@ -841,11 +1048,13 @@ FWM  8 rr
   -> 192.168.1.197:0              Route   2      0          0         
   -> 192.168.1.198:0              Route   2      0          0         
 #经过实践证明，同一个客户端访问80和23端口都会被定向到同一台服务器，这个就是防火墙标记将两个不相关的服务绑定在一起。
+```
 
 
 
+## lvs旧操作步骤
 
-####旧lvs操作步骤：
+```
 --环境
 OS： Centos7
 172.168.2.18 lvs01	keepalived01	role:DirectorServer01	sorryServer:127.0.0.1:80	VIP: 172.168.2.20(Master)
@@ -960,15 +1169,15 @@ TCP 14:47  ESTABLISHED 172.168.2.219:50659 172.168.2.20:80    172.168.2.15:80
 	3、无连接的UDP数据包（记录其两次发送数据包的时间间隔）；
 上面三个计时器的默认值可以由类似下面的命令修改，其后面的值依次对应于上述的三个计时器：
 # ipvsadm --set 28800 30 600
-
-</pre>
-
+```
 
 
 
 
-#LVS+keepalived+nginx高可用
-<pre>
+
+## LVS+keepalived+nginx高可用-主备
+
+```
 环境：
 OS： Centos7
 172.168.2.18 lvs01	keepalived01	role:DirectorServer01	sorryServer:127.0.0.1:80	VIP: 172.168.2.20(Master)
@@ -984,8 +1193,10 @@ OS： Centos7
 aclocal.m4  AUTHOR       build_setup  compile    configure.ac  COPYING  doc      INSTALL     keepalived          lib          Makefile.in  README.md  TODO
 ar-lib      bin_install  ChangeLog    configure  CONTRIBUTORS  depcomp  genhash  install-sh  keepalived.spec.in  Makefile.am  missing      snap
 [root@lvs01 ~/keepalived-2.0.20]# ./configure --prefix=/usr/local/keepalived --sysconf=/etc
+
 Keepalived configuration
 ------------------------
+
 Keepalived version       : 2.0.20
 Compiler                 : gcc
 Preprocessor flags       : -D_GNU_SOURCE
@@ -1031,8 +1242,10 @@ Build documentation      : No
 #安装lvs01
 [root@lvs01 ~]# yum install -y ipvsadm
 #配置keepalived01，使其调用ipvs模块，实现keepalived+lvs功能
+
 [root@lvs01 ~]# cat /etc/keepalived/keepalived.conf
 -------------------------
+
 global_defs {
    router_id LVS01
 }
@@ -1060,7 +1273,7 @@ virtual_server 172.168.2.20 80 {
     protocol TCP
 
     sorry_server 127.0.0.1 80
-
+    
     real_server 172.168.2.15 80 {
         weight 1
         TCP_CHECK {
@@ -1070,7 +1283,7 @@ virtual_server 172.168.2.20 80 {
             delay_before_retry 1
         }
     }
-
+    
     real_server 172.168.2.17 80 {
         weight 1
         TCP_CHECK {
@@ -1080,6 +1293,7 @@ virtual_server 172.168.2.20 80 {
             delay_before_retry 1
         }
     }
+
 }
 -------------------------
 
@@ -1099,8 +1313,10 @@ ar-lib      bin_install  ChangeLog    configure  CONTRIBUTORS  depcomp  genhash 
 [root@lvs02 ~/keepalived-2.0.20]# systemctl enable keepalived.service
 #安装lvs02
 [root@lvs02 ~]# yum install -y ipvsadm
+
 #配置keepalived02，使其调用ipvs模块，实现keepalived+lvs功能
 ------------------------
+
 [root@lvs02 ~]# cat /etc/keepalived/keepalived.conf
 global_defs {
    router_id LVS02
@@ -1129,7 +1345,7 @@ virtual_server 172.168.2.20 80 {
     protocol TCP
 
     sorry_server 127.0.0.1 80
-
+    
     real_server 172.168.2.15 80 {
         weight 1
         TCP_CHECK {
@@ -1139,7 +1355,7 @@ virtual_server 172.168.2.20 80 {
             delay_before_retry 1
         }
     }
-
+    
     real_server 172.168.2.17 80 {
         weight 1
         TCP_CHECK {
@@ -1149,8 +1365,10 @@ virtual_server 172.168.2.20 80 {
             delay_before_retry 1
         }
     }
+
 }
 ------------------------
+
 注：172.168.2.15、172.168.2.17上已编译安装nginx，这里省略安装
 #用ipvsadm上下线realserver
 [root@lvs01 ~]# ipvsadm -ln
@@ -1200,9 +1418,13 @@ TCP  172.168.2.20:80 rr persistent 5
 [root@lvs02 ~]# vim /etc/keepalived/keepalived.conf
 :.,+8s/^#//g	--取消特定注释realserver配置段
 [root@lvs02 ~]# systemctl reload keepalived.service
+```
 
 
-#####keepalived从主备变成主主模式
+
+## keepalived从主备变成主主模式
+
+```
 环境：
 OS： Centos7
 172.168.2.18 lvs01	keepalived01	role:DirectorServer01	sorryServer:127.0.0.1:80	VIP1: 172.168.2.20(Master)	VIP2: 172.168.2.21(Backup)
@@ -1210,8 +1432,10 @@ OS： Centos7
 172.168.2.15 nginx01 role:RealServer01
 172.168.2.17 nginx02 role:RealServer02
 #keepalived01配置变更如下：
+
 [root@lvs01 ~]# cat /etc/keepalived/keepalived.conf
 ---------------------
+
 global_defs {
    router_id LVS01
 }
@@ -1239,7 +1463,7 @@ virtual_server 172.168.2.20 80 {
     protocol TCP
 
     sorry_server 127.0.0.1 80
-
+    
     real_server 172.168.2.15 80 {
         weight 1
         TCP_CHECK {
@@ -1249,7 +1473,7 @@ virtual_server 172.168.2.20 80 {
             delay_before_retry 1
         }
     }
-
+    
     real_server 172.168.2.17 80 {
         weight 1
         TCP_CHECK {
@@ -1259,6 +1483,7 @@ virtual_server 172.168.2.20 80 {
             delay_before_retry 1
         }
     }
+
 }
 
 vrrp_instance LVS_HA2 {
@@ -1284,7 +1509,7 @@ virtual_server 172.168.2.21 80 {
     protocol TCP
 
     sorry_server 127.0.0.1 80
-
+    
     real_server 172.168.2.15 80 {
         weight 1
         TCP_CHECK {
@@ -1294,7 +1519,7 @@ virtual_server 172.168.2.21 80 {
             delay_before_retry 1
         }
     }
-
+    
     real_server 172.168.2.17 80 {
         weight 1
         TCP_CHECK {
@@ -1304,11 +1529,13 @@ virtual_server 172.168.2.21 80 {
             delay_before_retry 1
         }
     }
+
 }
 ---------------------
 
 #keepalived02配置变更如下：
 ---------------------
+
 [root@lvs02 ~]# cat /etc/keepalived/keepalived.conf
 global_defs {
    router_id LVS02
@@ -1337,7 +1564,7 @@ virtual_server 172.168.2.20 80 {
     protocol TCP
 
     sorry_server 127.0.0.1 80
-
+    
     real_server 172.168.2.15 80 {
         weight 1
         TCP_CHECK {
@@ -1347,7 +1574,7 @@ virtual_server 172.168.2.20 80 {
             delay_before_retry 1
         }
     }
-
+    
     real_server 172.168.2.17 80 {
         weight 1
         TCP_CHECK {
@@ -1357,6 +1584,7 @@ virtual_server 172.168.2.20 80 {
             delay_before_retry 1
         }
     }
+
 }
 
 vrrp_instance LVS_HA2 {
@@ -1382,7 +1610,7 @@ virtual_server 172.168.2.21 80 {
     protocol TCP
 
     sorry_server 127.0.0.1 80
-
+    
     real_server 172.168.2.15 80 {
         weight 1
         TCP_CHECK {
@@ -1392,7 +1620,7 @@ virtual_server 172.168.2.21 80 {
             delay_before_retry 1
         }
     }
-
+    
     real_server 172.168.2.17 80 {
         weight 1
         TCP_CHECK {
@@ -1402,6 +1630,7 @@ virtual_server 172.168.2.21 80 {
             delay_before_retry 1
         }
     }
+
 }
 ---------------------
 
@@ -1461,6 +1690,5 @@ TCP  172.168.2.20:80 rr persistent 5
 1.3尽量避免sh算法
 一些业务为了支持会话保持，选择SH调度算法，以实现 同一源ip的请求调度到同一台RS上；但 SH算法本省没有实现一致性hash，一旦一台RS down，当前所有连接都会断掉；如果配置了inhibit_on_failure，那就更悲剧了，调度到该RS上的流量会一直损失；
 实际线上使用时，如需 会话保持，建议配置 persistence_timeout参数，保证一段时间同一源ip的请求到同一RS上
+```
 
-
-</pre>
