@@ -6872,7 +6872,7 @@ message String {
     optional bool enabled = 3;  // 默认enabled=false,  添加了optional则默认是nil了，enabled != nil 时才添加过滤条件
     double metric_value = 4;    // float64，会默认把蛇形转换为大驼峰形
 
-    map<string,int32> values = 5;  //map<string,string> 为key和value的类型
+    map<string,int32> values = 5;  //map<string,int32> 为key和value的类型
 
     String1 string1 = 6; // 结构体嵌套
 }
@@ -6994,6 +6994,10 @@ $ protoc -I=. -I='/c/Program Files/Git/usr/local/include' --go_out=./protobuf/ -
 
 
 ### GRPC入门
+
+#### gRPC
+
+gRPC是Google公司基于Protobuf开发的跨语言的开源RPC框架。gRPC基于HTTP/2协议设计，可以基于一个HTTP/2链接提供多个服务，对于移动设备更加友好。
 
 ```protobuf
 // hello.proto
