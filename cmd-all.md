@@ -2360,7 +2360,7 @@ DataMount:
 #例子：测试sslvpn之间的网速是多少
 #工作在server模式
 [root@nginx ~]# iperf3 -s  
-#工作在client模式，连接服务器ip，间隔为1秒，持续时间哦10秒
+#工作在client模式，连接服务器ip，间隔为1秒，持续时间为10秒
 [root@prometheus ~]# iperf3 -c 10.10.10.240 -i 1 -t 10
 Connecting to host 10.10.10.240, port 5201
 [  4] local 192.168.177.178 port 31819 connected to 10.10.10.240 port 5201
