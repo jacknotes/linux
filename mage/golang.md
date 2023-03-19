@@ -100,7 +100,7 @@ func main() {
 	m = map[string]int{"A": 3, "B": 2}
 	// fmt.Println(len(m)) //长度为2
 	// m["D"] = 18         //长度为3
-	// fmt.Println(len(m)) //长度为2
+	// fmt.Println(len(m)) //长度为3
 
 	// delete(m, "B")
 	// for key, value := range m {
@@ -8005,6 +8005,7 @@ $ rm -rf /c/Program\ Files/Git/usr/local/include/github.com/infraboard/mcube
 # $ mkdir -p /c/Program\ Files/Git/usr/local/include/github.com/infraboard/
 $ \cp -a /c/Users/jack/go/pkg/mod/github.com/infraboard/mcube\@v1.6.1/ /c/Program\ Files/Git/usr/local/include/github.com/infraboard/mcube
 
+
 # 注释 Makefile文件 gen的一行enum配置
 gen: ## Init Service
 	@protoc -I=.  -I=/usr/local/include --go_out=. --go_opt=module=${PKG} --go-grpc_out=. --go-grpc_opt=module=${PKG} apps/*/pb/*.proto
@@ -8047,6 +8048,51 @@ fatal: not a git repository (or any of the parent directories): .git
 2023-01-08T14:10:37.474+0800    WARN    [HTTP Service]  protocol/http.go:111    registry endpoints error, rpc error: code = Unimplemented desc = unknown service infraboard.keyauth.endpoint.Service
 2023-01-08T14:10:37.475+0800    INFO    [HTTP Service]  protocol/http.go:82     HTTP服务启动成功, 监听地址: 127.0.0.1:8050
 ```
+
+
+
+#### 最佳版本
+
+```
+go install github.com/infraboard/mcube/cmd/mcube@v1.6.0
+## make install前注释掉Makefile文件中的相关包下载，否则会有问题
+#	@go install github.com/infraboard/mcube/cmd/mcube@latest
+```
+
+
+
+
+
+
+
+## day17
+
+* cmdb项目脚本架生成，如上所述，使用mcube@v1.6.0，带有enum命令参数
+
+启动服务
+
+```
+# 安装编译所需的依赖文件
+make install 
+# 编译protobuf文件，生成代码、注入tag、导入枚举等
+make gen
+# 如果是MySQL，执行SQL语句(docs/schema/*.sql)
+make init
+# 下载项目的依赖
+make dep
+# 运行服务
+make run 
+```
+
+
+
+#### cmdb系统开篇
+
+##### 云资源provider
+
+参考链接：[day16/cmdb-provider.md · infraboard/go-course - 码云 - 开源中国 (gitee.com)](https://gitee.com/infraboard/go-course/blob/go7/day16/cmdb-provider.md)
+
+
 
 
 
