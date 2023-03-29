@@ -5290,3 +5290,36 @@ change master to master_host='192.168.13.164',master_port=3306,master_user='repl
 
 </pre>
 
+
+### 记一次生产数据库恢复过程  ----datetime: 2023-03-21 17:00
+
+
+需求：恢复mysql生产库feishu_selfbuilt到2023-03-17 11点
+
+
+#### 安装mysql5.7 for docker
+docker run -d -p 3306:3306 --restart -v /usr/share/zoneinfo/Asia/Shanghai:/etc/localtime --name restore-mysql -v /data/mysql:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=password mysql:5.7.31 --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+
+#### 恢复步骤
+```
+## 截取全量备份 标志位
+grep "CHANGE MASTER TO MASTER_LOG_FILE='" Pro_Full_20230316_010451_feishu_selfbuilt.sql
+-- CHANGE MASTER TO MASTER_LOG_FILE='master-bin.000400', MASTER_LOG_POS=418765598;
+
+## binlog格式转换为sql，从标志位处开始
+mysqlbinlog --no-defaults --start-position=418765598 master-bin.000400_Pro_Increment_20230316_030001 > feishu_selfbuilt-000400.sql
+
+## binlog格式转换为sql
+mysqlbinlog --no-defaults master-bin.000401_Pro_Increment_20230317_030001 > feishu_selfbuilt-000401.sql
+
+## binlog格式转换为sql，到达指定时间停止
+mysqlbinlog --no-defaults --stop-datetime='2023-03-17 11:00:00'  master-bin.000402_Pro_Increment_20230318_030001 > feishu_selfbuilt-000402.sql
+
+## 全量恢复
+mysql -uroot -p < Pro_Full_20230316_010451_feishu_selfbuilt.sql
+
+## 增量恢复
+source /restore-mysql/feishu_selfbuilt-000400.sql
+source /restore-mysql/feishu_selfbuilt-000401.sql
+source /restore-mysql/feishu_selfbuilt-000402.sql
+```
