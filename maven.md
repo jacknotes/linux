@@ -3,7 +3,7 @@
 安装：
 wget http://mirrors.tuna.tsinghua.edu.cn/apache/maven/maven-3/3.3.9/binaries/apache-maven-3.3.9-bin.tar.gz
 tar xf apache-maven-3.3.9-bin.tar.gz -C /usr/local
-ln -sv /usr/localapache-maven-3.3.9 /usr/localmaven
+ln -sv /usr/localapache-maven-3.3.9 /usr/local/maven
 [root@BuildImage ~]# cat /etc/profile.d/maven.sh
 export PATH=$PATH:/usr/local/maven/bin/
 source /etc/profile
