@@ -11,9 +11,14 @@
 | 172.168.2.32 | slave01 | mysql-slave01 |                  | master01 |
 | 172.168.2.31 | slave02 | mysql-slave02 |                  | master02 |
 
+
+
 ## 部署mysql集群
 
-#### 配置hosts及时间同步
+
+
+### 配置hosts及时间同步
+
 ```
 root@ansible:~# ansible mysql -m shell -a 'cat > /etc/hosts << EOF
 > 127.0.0.1       localhost
@@ -66,7 +71,10 @@ Wed Sep 14 16:44:10 CST 2022
 Wed Sep 14 16:44:10 CST 2022
 ```
 
-#### 安装mysql
+
+
+### 安装mysql
+
 ```
 root@ansible:/etc/ansible/roles/mysql# ansible mysql -m shell -a 'ss -tnl | grep :3306'
 172.168.2.31 | SUCCESS | rc=0 >>
@@ -86,12 +94,16 @@ X#s?=w1XatZ6
 root@mysql-master01:~# mysql -uroot -p
 Enter password:
 mysql> alter user root@'localhost' identified by 'test1234';	
-
 ```
 
-#### 配置mysql双主双从集群
 
-##### 配置双主集群
+
+### 配置mysql双主双从集群
+
+
+
+#### 配置双主集群
+
 ```
 # 172.168.2.35 和 172.168.2.34为双主，可以读写
 
@@ -627,7 +639,10 @@ mysql> select * from province;
 
 ```
 
+
+
 #### 配置mysql-slave01和mysql-slave02双从节点
+
 ```
 # mysql-slave01
 root@mysql-slave01:/data/mysql# cat /etc/my.cnf
@@ -1067,7 +1082,10 @@ mysql> show global variables like '%read_only%';	# slave02
 
 ```
 
+
+
 #### 测试双主双从集群读写是否同步
+
 ```
 # 创建远程访问权限的root用户进行测试，在master01或者master02上创建，集群会自动同步
 mysql> GRANT SELECT, INSERT, UPDATE, DELETE ON `ms`.* TO 'jack'@'%';		# *.*为服务器级别，ms.*为用户级别
@@ -1117,7 +1135,9 @@ Id      Name    NameEn  Status  CreateUser      CreateTime      UpdateUser      
 ```
 
 
+
 #### mysql双主双从集群错误汇总
+
 ```
 # 从同步报错，原因是主的binlog执行时出错，有冲突，常常是管理员在slave进行操作了，又在master上操作，而后master同步到slave出错，下面是出错信息
 mysql> show slave status\G
@@ -1191,7 +1211,7 @@ root@mysql-slave02:/data/mysql# tail mysql.err
 
 # 解决办法：跳过事务
 mysql> stop slave;	#停止IO和SQL线程
-mysql> set @@session.gtid_next='6f8269d5-3026-11ed-b17a-000c29e6b41f:131';	#配置当前环境变量gtid_next值，下一个执行的gtid事务，为上方Last_SQL_Error中报错的transaction
+mysql> set @@session.gtid_next='6f8269d5-3026-11ed-b17a-000c29e6b41f:130';	#配置当前环境变量gtid_next值，下一个执行的gtid事务，为上方Last_SQL_Error中报错的transaction
 mysql> begin;commit;	#提交事务
 mysql> set @@session.gtid_next=automatic;	#配置下一个gtid事务为自动，恢复默认值
 mysql> start slave;	#启动IO和SQL线程
@@ -1342,12 +1362,11 @@ show slave status\G
 
 
 
+# mycat部署
 
 
 
-## mycat部署
-
-### 依赖及环境
+## 依赖及环境
 
 * 依赖jdk，必须是JDK7或更高版本
 * mycat 1.6.7.5下载：axel -n 30 https://github.com/MyCATApache/Mycat-Server/releases/download/Mycat-server-1675-release/Mycat-server-1.6.7.5-release-20200422133810-linux.tar.gz
@@ -1360,7 +1379,10 @@ show slave status\G
 * 参数URL: https://www.cnblogs.com/kevingrace/p/9365840.html
 
 
-### 安装openJDK
+
+## 安装openJDK
+
+```
 root@ansible:/etc/ansible/roles/mysql/tasks# ansible '~172.168.2.3[54]' -m shell -a 'apt install -y openjdk-8-jdk'
 root@ansible:/etc/ansible/roles/mysql/tasks# ansible '~172.168.2.3[54]' -m shell -a 'dpkg -l | grep openjdk-8-jdk'
 172.168.2.35 | SUCCESS | rc=0 >>
@@ -1370,11 +1392,16 @@ ii  openjdk-8-jdk-headless:amd64           8u342-b07-0ubuntu1~18.04             
 172.168.2.34 | SUCCESS | rc=0 >>
 ii  openjdk-8-jdk:amd64                    8u342-b07-0ubuntu1~18.04                        amd64        OpenJDK Development Kit (JDK)
 ii  openjdk-8-jdk-headless:amd64           8u342-b07-0ubuntu1~18.04                        amd64        OpenJDK Development Kit (JDK) (headless)
+```
 
 
-### 实现mysql多主多从读写分离
+
+## 实现mysql多主多从读写分离
+
+
 
 ### 安装配置mycat
+
 ```
 root@mysql-master01:/download# tar xf Mycat-server-1.6.7.5-release-20200422133810-linux.tar.gz -C /usr/local/
 root@mysql-master01:/download# ls /usr/local/mycat/
@@ -1628,7 +1655,9 @@ LISTEN                0                      100                                
 ```
 
 
+
 ### MyCat主从切换概述
+
 ```
 # 1. 自动切换
 自动切换是MyCat主从复制的默认配置 , 当主机或从机宕机后, MyCat自动切换到可用的服务器上。假设写服务器为M， 读服务器为S， 则：
@@ -1646,7 +1675,10 @@ switchType为2：基于MySQL主从同步的状态决定是否切换。
 heartbeat：主从切换的心跳语句必须为show slave status。
 ```
 
+
+
 ### 通过连接mycat实现读写分离来使用mysql集群
+
 ```
 root@mysql-master01:/usr/local/mycat# mysql -uroot -h127.0.0.1 -P8066 -p
 Enter password:		#123456
@@ -1703,7 +1735,10 @@ root@mysql-master01:/usr/local/mycat# tail -n 500  -f logs/mycat.log | grep 'MyS
 
 ### 模拟故障
 
+
+
 #### 模拟172.168.2.32:3306(salve01)故障
+
 ```
 root@mysql-slave01:~# hostname
 mysql-slave01
@@ -1728,7 +1763,10 @@ inactive
 2022-09-19 14:50:01.031 DEBUG [$_NIOREACTOR-1-RW] (io.mycat.backend.datasource.PhysicalDatasource.releaseChannel(PhysicalDatasource.java:633)) - release channel MySQLConnection@1050121832 [id=140, lastTime=1663570201026, user=root, schema=ms, old shema=ms, borrowed=true, fromSlaveDB=true, threadId=87, charset=utf8, txIsolation=3, autocommit=true, txReadonly=false, attachment=null, respHandler=null, host=172.168.2.31, port=3306, statusSync=null, writeQueue=0, modifiedSQLExecuted=false]
 ```
 
+
+
 #### 模拟172.168.2.32:3306(salve01)服务恢复
+
 ```
 root@mysql-slave01:~# service mysqld start
 
@@ -1744,7 +1782,9 @@ root@mysql-slave01:~# service mysqld start
 ```
 
 
+
 #### 模拟172.168.2.35:3306(master01)故障
+
 ```
 root@mysql-master01:/usr/local/mycat# service mysqld stop
 root@mysql-master01:/usr/local/mycat# systemctl is-active mysqld
@@ -1778,7 +1818,10 @@ INSERT INTO `ms`.`province`(`Id`, `Name`, `NameEn`, `Status`, `CreateUser`, `Cre
 2022-09-19 14:59:17.011 DEBUG [$_NIOREACTOR-2-RW] (io.mycat.backend.datasource.PhysicalDatasource.releaseChannel(PhysicalDatasource.java:633)) - release channel MySQLConnection@111133128 [id=125, lastTime=1663570757005, user=root, schema=ms, old shema=ms, borrowed=true, fromSlaveDB=true, threadId=80, charset=utf8, txIsolation=3, autocommit=true, txReadonly=false, attachment=null, respHandler=null, host=172.168.2.31, port=3306, statusSync=null, writeQueue=0, modifiedSQLExecuted=false]		#172.168.2.31进行处理读请求
 ```
 
+
+
 #### 模拟172.168.2.35:3306(master01)服务恢复
+
 ```
 root@mysql-master01:~# service mysqld start
 root@mysql-master01:~# systemctl is-active mysqld
@@ -1853,7 +1896,10 @@ mysql> mysql> show @@heartbeat;		#恢复后状态
 总结：master01主机服务恢复后，不提供写，只提供读。
 ```
 
-##### master01恢复后为读节点，master02为写节点，这时宕掉master02，看读写请求如何 
+
+
+#### master01恢复后为读节点，master02为写节点，这时宕掉master02，看读写请求如何 
+
 ```
 root@mysql-master02:/usr/local/mycat# service mysqld stop
 
@@ -1873,7 +1919,7 @@ root@mysql-master02:/usr/local/mycat# service mysqld stop
 2022-09-20 09:48:43.998 DEBUG [$_NIOREACTOR-0-RW] (io.mycat.backend.mysql.nio.MySQLConnectionHandler.handleLogNodeInfo(MySQLConnectionHandler.java:166)) - handleErrorPacket MySQLConnection@1094913372 [id=165] for node=ms, sql=INSERT INTO `ms`.`province`(`Id`, `Name`, `NameEn`, `Status`, `CreateUser`, `CreateTime`, `UpdateUser`, `UpdateTime`, `IsDelete`) VALUES (22, '??', 'Sichuan', 1, '????', '2021-01-15 11:30:59.000000', NULL, NULL, 0)
 2022-09-20 09:48:43.999  WARN [$_NIOREACTOR-0-RW] (io.mycat.backend.mysql.nio.handler.SingleNodeHandler.backConnectionErr(SingleNodeHandler.java:284)) - execute  sql err : errno:1062 Duplicate entry '22' for key 'PRIMARY' con:MySQLConnection@1094913372 [id=165, lastTime=1663638523986, user=root, schema=ms, old shema=ms, borrowed=true, fromSlaveDB=false, threadId=8, charset=utf8, txIsolation=3, autocommit=true, txReadonly=false, attachment=ms{INSERT INTO `ms`.`province`(`Id`, `Name`, `NameEn`, `Status`, `CreateUser`, `CreateTime`, `UpdateUser`, `UpdateTime`, `IsDelete`) VALUES (22, '??', 'Sichuan', 1, '????', '2021-01-15 11:30:59.000000', NULL, NULL, 0)}, respHandler=SingleNodeHandler [node=ms{INSERT INTO `ms`.`province`(`Id`, `Name`, `NameEn`, `Status`, `CreateUser`, `CreateTime`, `UpdateUser`, `UpdateTime`, `IsDelete`) VALUES (22, '??', 'Sichuan', 1, '????', '2021-01-15 11:30:59.000000', NULL, NULL, 0)}, packetId=1], host=172.168.2.35, port=3306, statusSync=null, writeQueue=0, modifiedSQLExecuted=true] frontend host:172.168.2.219/62846/root
 2022-09-20 09:48:43.999 DEBUG [$_NIOREACTOR-0-RW] (io.mycat.server.NonBlockingSession.releaseConnection(NonBlockingSession.java:391)) - releaseConnection Connection@1094913372 [id=165] for node=ms, sql=INSERT INTO `ms`.`province`(`Id`, `Name`, `NameEn`, `Status`, `CreateUser`, `CreateTime`, `UpdateUser`, `UpdateTime`, `IsDelete`) VALUES (22, '??', 'Sichuan', 1, '????', '2021-01-15 11:30:59.000000', NULL, NULL, 0)
-2022-09-20 09:48:43.999 DEBUG [$_NIOREACTOR-0-RW] (io.mycat.backend.datasource.PhysicalDatasource.releaseChannel(PhysicalDatasource.java:633)) - release channel MySQLConnection@1094913372 [id=165, lastTime=1663638523986, user=root, schema=ms, old shema=ms, borrowed=true, fromSlaveDB=false, threadId=8, charset=utf8, txIsolation=3, autocommit=true, txReadonly=false, attachment=null, respHandler=null, host=172.168.2.35, port=3306, statusSync=null, writeQueue=0, modifiedSQLExecuted=false]	#写请求到master01(172.168.2.35)，但这次写入人错误，因为主键ID重复了
+2022-09-20 09:48:43.999 DEBUG [$_NIOREACTOR-0-RW] (io.mycat.backend.datasource.PhysicalDatasource.releaseChannel(PhysicalDatasource.java:633)) - release channel MySQLConnection@1094913372 [id=165, lastTime=1663638523986, user=root, schema=ms, old shema=ms, borrowed=true, fromSlaveDB=false, threadId=8, charset=utf8, txIsolation=3, autocommit=true, txReadonly=false, attachment=null, respHandler=null, host=172.168.2.35, port=3306, statusSync=null, writeQueue=0, modifiedSQLExecuted=false]	#写请求到master01(172.168.2.35)，但这次写入错误，因为主键ID重复了
 
 -- 读请求测试
 -- 第一次读请求
@@ -1900,10 +1946,9 @@ root@mysql-master02:/usr/local/mycat# service mysqld stop
 
 
 
+### 动态更改mycat配置
 
-
-
-# 动态更改mycat配置
+```
 root@mysql-master01:/usr/local/mycat# mysql -uroot -h 172.168.2.35 -P 9066 -p
 Enter password:		#123456
 mysql> show @@server;
@@ -1913,11 +1958,10 @@ mysql> show @@server;
 | 2m 58s 140ms |    40024552 |    257425408 |  954728448 | 1663555046467 |            -1 | utf8    | ON     |
 +--------------+-------------+--------------+------------+---------------+---------------+---------+--------+
 mysql> reload @@config_all;		#重载所有配置
-
-
-# mycat管理端口
 ```
-# 登录9066进行管理监控mycat
+
+```
+# mycat管理端口，登录9066进行管理监控mycat
 root@mysql-master01:/usr/local/mycat# mysql -uroot -h172.168.2.35 -P9066 -p
 Enter password:
 
@@ -2115,6 +2159,8 @@ ERROR 2013 (HY000): Lost connection to MySQL server during query
 
 ```
 
+
+
 ### 实现mysql多主多从读写分离之配置多个数据库
 
 ```
@@ -2180,7 +2226,7 @@ root@mysql-master01:/usr/local/mycat/conf# cat schema.xml
 
 		<!--数据主机名称、maxCon表示每个读写实例连接池的最大连接、minCon表示每个读写实例连接池的初始化连接-->
 		<!--balance="1" 全部的readHost与stand by writeHost参与select语句的负载均衡，简单的说，当双主双从模式(M1->S1，M2->S2，并且M1与 M2互为主备)，正常情况下，M2,S1,S2都参与select语句的负载均衡。 -->
-		<!--writeType="0" 所有写操作发送到配置的第一个writeHost，第一个挂了切到还生存的第二个writeHost，重新启动后已切换后的为准，切换记录在配置文件中:dnindex.properties -->
+		<!--writeType="0" 所有写操作发送到配置的第一个writeHost，第一个挂了切到还生存的第二个writeHost，重新启动后以切换后的为准，切换记录在配置文件中:dnindex.properties -->
 		<!--switchType="2" 基于MySQL主从同步的状态决定是否切换。-->
         <dataHost name="ops-mysql" maxCon="1000" minCon="10" balance="1"
                           writeType="0" dbType="mysql" dbDriver="native" switchType="2"  slaveThreshold="100">
@@ -2274,6 +2320,7 @@ root@mysql-master01:/usr/local/mycat/conf# cat schema.xml
 ```
 
 
+
 ### 实现mysql多主多从读写分离之配置IP白名单和SQL黑名单
 
 | item           	| default | description      			  | 
@@ -2350,9 +2397,8 @@ root@mysql-master01:/usr/local/mycat/conf# cat schema.xml
 1. 普通用户可以对mycat执行set语句
 2. 普通用户可以使用除增删改查之外的语句，如果可以把用户的权限限定在增删改查之内就好了
 
-
+注：把mycat连接mysql用户的用户密码更改为只能对库进行增删改查的用户，不应配置为root，这样应该可以实现普通用户无法使用set语句，所以说mycat用户的权限主要是受mycat连接mysql用用户权限决定的
 ```
-
 
 
 
