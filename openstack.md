@@ -2181,6 +2181,64 @@ metadata_proxy_shared_secret=METADATA_SECRET
     link/ether e6:a1:ea:ad:1e:45 brd ff:ff:ff:ff:ff:ff
 ```
 
+```bash
+## 配置网卡和网桥网卡，否则外部网络无法ping通100.100.100.10
+[root@neutron /etc/sysconfig/network-scripts]# cat ifcfg-br-ex 
+TYPE=OVSBridge
+DEVICETYPE=ovs
+BOOTPROTO=none
+IPADDR=100.100.100.10
+PREFIX=24
+DEFROUTE=yes
+NAME=br-ex
+DEVICE=br-ex
+ONBOOT=yes
+
+[root@neutron /etc/sysconfig/network-scripts]# cat ifcfg-ens35
+TYPE=OVSPort
+DEFROUTE=yes
+NAME=ens35
+DEVICE=ens35
+ONBOOT=yes
+DEVICETYPE=ovs
+OVS_BRIDGE=br-ex
+
+[root@neutron /etc/sysconfig/network-scripts]# systemctl restart network 
+[root@neutron /etc/sysconfig/network-scripts]# ip a s 
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+2: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 00:0c:29:a2:c7:5d brd ff:ff:ff:ff:ff:ff
+    inet 192.168.222.6/24 brd 192.168.222.255 scope global ens33
+       valid_lft forever preferred_lft forever
+3: ens34: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 00:0c:29:a2:c7:67 brd ff:ff:ff:ff:ff:ff
+    inet 172.16.0.6/24 brd 172.16.0.255 scope global ens34
+       valid_lft forever preferred_lft forever
+4: ens35: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast master ovs-system state UP group default qlen 1000
+    link/ether 00:0c:29:a2:c7:71 brd ff:ff:ff:ff:ff:ff
+5: ovs-system: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 52:06:9a:3b:6e:ad brd ff:ff:ff:ff:ff:ff
+6: br-ex: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/ether 00:0c:29:a2:c7:71 brd ff:ff:ff:ff:ff:ff
+    inet 100.100.100.10/24 brd 100.100.100.255 scope global br-ex
+       valid_lft forever preferred_lft forever
+7: br-int: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 46:25:be:d5:0a:46 brd ff:ff:ff:ff:ff:ff
+8: gre0@NONE: <NOARP> mtu 1476 qdisc noop state DOWN group default qlen 1000
+    link/gre 0.0.0.0 brd 0.0.0.0
+9: gretap0@NONE: <BROADCAST,MULTICAST> mtu 1462 qdisc noop state DOWN group default qlen 1000
+    link/ether 00:00:00:00:00:00 brd ff:ff:ff:ff:ff:ff
+19: br-tun: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether 16:bb:c3:71:11:41 brd ff:ff:ff:ff:ff:ff
+20: gre_system@NONE: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 65497 qdisc pfifo_fast master ovs-system state UNKNOWN group default qlen 1000
+    link/ether 66:47:c2:90:1c:f7 brd ff:ff:ff:ff:ff:ff
+21: qr-aa30449e-5e: <BROADCAST,MULTICAST> mtu 1500 qdisc noop state DOWN group default qlen 1000
+    link/ether fa:16:3e:7d:64:e9 brd ff:ff:ff:ff:ff:ff
+```
+
 
 
 #### 5.4.8 完成安装
@@ -2432,7 +2490,7 @@ Created a new network:
 | Field                     | Value                                |
 +---------------------------+--------------------------------------+
 | admin_state_up            | True                                 |
-| id                        | 220a0286-174f-49c4-b0c5-9eb98cff99a6 |
+| id                        | cd3874ec-6b72-49e4-88cb-bf0710fb213b |
 | name                      | ext-net                              |
 | provider:network_type     | flat                                 |
 | provider:physical_network | external                             |
@@ -2460,24 +2518,25 @@ EXTERNAL_NETWORK_GATEWAY=外部网络网关
 EXTERNAL_NETWORK_CIDR=外部网络网段
 
 
-## 例如，外网网段为：100.100.100.0/24，浮动地址范围为：100.100.100.100~100.100.100.200，网关为：100.100.100.10
-[root@controller ~]# neutron subnet-create ext-net --name ext-subnet --allocation-pool start=100.100.100.100,end=100.100.100.200 --disable-dhcp --gateway 100.100.100.10 100.100.100.0/24
+## 例如，外网网段为：100.100.100.0/24，浮动地址范围为：100.100.100.101~100.100.100.150，网关为：100.100.100.10
+[root@controller ~]# neutron subnet-create ext-net --name ext-subnet --allocation-pool start=100.100.100.101,end=100.100.100.150 --disable-dhcp --g
+ateway 100.100.100.10 100.100.100.0/24
 Created a new subnet:
 +-------------------+--------------------------------------------------------+
 | Field             | Value                                                  |
 +-------------------+--------------------------------------------------------+
-| allocation_pools  | {"start": "100.100.100.100", "end": "100.100.100.200"} |
+| allocation_pools  | {"start": "100.100.100.101", "end": "100.100.100.150"} |
 | cidr              | 100.100.100.0/24                                       |
 | dns_nameservers   |                                                        |
 | enable_dhcp       | False                                                  |
 | gateway_ip        | 100.100.100.10                                         |
 | host_routes       |                                                        |
-| id                | bd8a5f03-828a-4e92-a9e5-b2b7e98b959c                   |
+| id                | 8faa24c8-f888-4848-823a-5d62bb5c4bc0                   |
 | ip_version        | 4                                                      |
 | ipv6_address_mode |                                                        |
 | ipv6_ra_mode      |                                                        |
 | name              | ext-subnet                                             |
-| network_id        | 220a0286-174f-49c4-b0c5-9eb98cff99a6                   |
+| network_id        | cd3874ec-6b72-49e4-88cb-bf0710fb213b                   |
 | tenant_id         | e530df3ff8e14bcfada8f49fe4413e68                       |
 +-------------------+--------------------------------------------------------+
 ```
@@ -2504,18 +2563,21 @@ Created a new subnet:
 ## 2、创建租户网络
 [root@controller ~]# neutron net-create demo-net
 Created a new network:
-+-----------------+--------------------------------------+
-| Field           | Value                                |
-+-----------------+--------------------------------------+
-| admin_state_up  | True                                 |
-| id              | e3f030ee-50f9-491b-a5a0-e4d4f5f5bbf3 |
-| name            | demo-net                             |
-| router:external | False                                |
-| shared          | False                                |
-| status          | ACTIVE                               |
-| subnets         |                                      |
-| tenant_id       | 29dd9bfe34324be8b979ad93be76fce5     |
-+-----------------+--------------------------------------+
++---------------------------+--------------------------------------+
+| Field                     | Value                                |
++---------------------------+--------------------------------------+
+| admin_state_up            | True                                 |
+| id                        | 38606d8f-c4a3-413e-adf3-6c529cffae36 |
+| name                      | demo-net                             |
+| provider:network_type     | gre                                  |
+| provider:physical_network |                                      |
+| provider:segmentation_id  | 1                                    |
+| router:external           | False                                |
+| shared                    | False                                |
+| status                    | ACTIVE                               |
+| subnets                   |                                      |
+| tenant_id                 | e530df3ff8e14bcfada8f49fe4413e68     |
++---------------------------+--------------------------------------+
 ```
 
 
@@ -2542,13 +2604,13 @@ Created a new subnet:
 | enable_dhcp       | True                                             |
 | gateway_ip        | 192.168.2.1                                      |
 | host_routes       |                                                  |
-| id                | ead23a92-96ef-4ed4-b665-2d4d8d789d29             |
+| id                | 96da9b3b-cf08-42e5-81c7-d428c748fad8             |
 | ip_version        | 4                                                |
 | ipv6_address_mode |                                                  |
 | ipv6_ra_mode      |                                                  |
 | name              | demo-subnet                                      |
-| network_id        | e3f030ee-50f9-491b-a5a0-e4d4f5f5bbf3             |
-| tenant_id         | 29dd9bfe34324be8b979ad93be76fce5                 |
+| network_id        | 38606d8f-c4a3-413e-adf3-6c529cffae36             |
+| tenant_id         | e530df3ff8e14bcfada8f49fe4413e68                 |
 +-------------------+--------------------------------------------------+
 ```
 
@@ -2564,18 +2626,20 @@ Created a new router:
 | Field                 | Value                                |
 +-----------------------+--------------------------------------+
 | admin_state_up        | True                                 |
+| distributed           | False                                |
 | external_gateway_info |                                      |
-| id                    | d55547f5-e034-49a8-a5c9-0560ba7e00af |
+| ha                    | False                                |
+| id                    | ed9337b1-8e7f-4a14-a804-069b550552b4 |
 | name                  | demo-router                          |
 | routes                |                                      |
 | status                | ACTIVE                               |
-| tenant_id             | 29dd9bfe34324be8b979ad93be76fce5     |
+| tenant_id             | e530df3ff8e14bcfada8f49fe4413e68     |
 +-----------------------+--------------------------------------+
 
 
 ## 2、附加路由器到demo租户的子网
 [root@controller ~]# neutron router-interface-add demo-router demo-subnet
-Added interface acb779fc-60c0-4bb2-b3d6-dacc94f3989a to router demo-router.
+Added interface 6f989de1-50f3-4bc9-b9a3-72e337d45f8d to router demo-router.
 
 
 ## 3、通过设置网关，使路由器附加到外部网络
@@ -2591,19 +2655,100 @@ Set gateway for router demo-router
 ## 1、查看路由器获取到的IP
 [root@controller ~]# neutron router-list
 +--------------------------------------+-------------+---------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------+
+------------------------------------------------------------------------------------------------+-------------+-------+
 | id                                   | name        | external_gateway_info
-                                                                                                |
+                                                                                                | distributed | ha    |
 +--------------------------------------+-------------+---------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------+
-| d55547f5-e034-49a8-a5c9-0560ba7e00af | demo-router | {"network_id": "220a0286-174f-49c4-b0c5-9eb98cff99a6", "enable_snat": true, "external_fixed_
-ips": [{"subnet_id": "bd8a5f03-828a-4e92-a9e5-b2b7e98b959c", "ip_address": "100.100.100.100"}]} |
+------------------------------------------------------------------------------------------------+-------------+-------+
+| ed9337b1-8e7f-4a14-a804-069b550552b4 | demo-router | {"network_id": "cd3874ec-6b72-49e4-88cb-bf0710fb213b", "enable_snat": true, "external_fixed_
+ips": [{"subnet_id": "8faa24c8-f888-4848-823a-5d62bb5c4bc0", "ip_address": "100.100.100.101"}]} | False       | False |
 +--------------------------------------+-------------+---------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------+
+------------------------------------------------------------------------------------------------+-------------+-------+
 
 ## 2、在任何一台外部主机上ping路由器获取到的外部地址
-***** 经过测试有问题，100.100.100.10和100.100.100.100无法ping通，需要调试
+***** 经过测试有问题，100.100.100.10和100.100.100.210无法ping通，最后原因在于Neutron配置时执行ovs-vsctl add-port br-ex ens35 命令导致，最终桥未生效，需要配置ifcfg-ens35和ifcfg-br-ex配置文件，配置见"5.4.8 配置Open vSwitch (OVS)服务"
+***** 此命令"neutron router-interface-add demo-router demo-subnet"必须在"neutron router-gateway-set demo-router ext-net"之后执行才可成功，否则会造成无法ping通
 ```
 
 
+
+```bash
+## 新建第二个路由表可以成功,因为需要按照此顺序才可成功，先建路由表、配置路由表网关、再增加子网到路由表
+[root@controller ~]# neutron router-create test-router
+Created a new router:
++-----------------------+--------------------------------------+
+| Field                 | Value                                |
++-----------------------+--------------------------------------+
+| admin_state_up        | True                                 |
+| distributed           | False                                |
+| external_gateway_info |                                      |
+| ha                    | False                                |
+| id                    | 086d4db6-3201-44ad-b6c5-07218f99ff9f |
+| name                  | test-router                          |
+| routes                |                                      |
+| status                | ACTIVE                               |
+| tenant_id             | e530df3ff8e14bcfada8f49fe4413e68     |
++-----------------------+--------------------------------------+
+
+[root@controller ~]# neutron router-gateway-set test-router ext-net
+Set gateway for router test-router
+
+[root@controller ~]# neutron router-list
++--------------------------------------+-------------+---------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------+-------------+-------+
+| id                                   | name        | external_gateway_info
+                                                                                                | distributed | ha    |
++--------------------------------------+-------------+---------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------+-------------+-------+
+| 086d4db6-3201-44ad-b6c5-07218f99ff9f | test-router | {"network_id": "cd3874ec-6b72-49e4-88cb-bf0710fb213b", "enable_snat": true, "external_fixed_
+ips": [{"subnet_id": "8faa24c8-f888-4848-823a-5d62bb5c4bc0", "ip_address": "100.100.100.102"}]} | False       | False |
+| ed9337b1-8e7f-4a14-a804-069b550552b4 | demo-router | {"network_id": "cd3874ec-6b72-49e4-88cb-bf0710fb213b", "enable_snat": true, "external_fixed_
+ips": [{"subnet_id": "8faa24c8-f888-4848-823a-5d62bb5c4bc0", "ip_address": "100.100.100.101"}]} | False       | False |
++--------------------------------------+-------------+---------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------+-------------+-------+
+
+
+[root@controller ~]# neutron net-create test-net
+Created a new network:
++---------------------------+--------------------------------------+
+| Field                     | Value                                |
++---------------------------+--------------------------------------+
+| admin_state_up            | True                                 |
+| id                        | 0148d0ab-5d08-484f-ae1b-a6a8677a4a72 |
+| name                      | test-net                             |
+| provider:network_type     | gre                                  |
+| provider:physical_network |                                      |
+| provider:segmentation_id  | 2                                    |
+| router:external           | False                                |
+| shared                    | False                                |
+| status                    | ACTIVE                               |
+| subnets                   |                                      |
+| tenant_id                 | e530df3ff8e14bcfada8f49fe4413e68     |
++---------------------------+--------------------------------------+
+[root@controller ~]# neutron subnet-create test-net --name test-subnet --gateway 192.168.5.1 192.168.5.0/24
+Created a new subnet:
++-------------------+--------------------------------------------------+
+| Field             | Value                                            |
++-------------------+--------------------------------------------------+
+| allocation_pools  | {"start": "192.168.5.2", "end": "192.168.5.254"} |
+| cidr              | 192.168.5.0/24                                   |
+| dns_nameservers   |                                                  |
+| enable_dhcp       | True                                             |
+| gateway_ip        | 192.168.5.1                                      |
+| host_routes       |                                                  |
+| id                | c2bc4e93-b7ad-4ad8-a311-bf2ab2a1a97e             |
+| ip_version        | 4                                                |
+| ipv6_address_mode |                                                  |
+| ipv6_ra_mode      |                                                  |
+| name              | test-subnet                                      |
+| network_id        | 0148d0ab-5d08-484f-ae1b-a6a8677a4a72             |
+| tenant_id         | e530df3ff8e14bcfada8f49fe4413e68                 |
++-------------------+--------------------------------------------------+
+[root@controller ~]# neutron router-interface-add test-router test-subnet
+Added interface 589bb4c3-6a22-4e55-a06d-1a9f2633a310 to router test-router.
+
+
+```
+
+![](.\image\openstack\openstack39.png)
 
