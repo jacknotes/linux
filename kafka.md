@@ -989,3 +989,262 @@ $ docker run \
 **效果图**
 
 ![效果图](.\image\zookeeper\zookeeper03.png)
+
+
+
+
+
+
+
+# kafka调优
+
+
+
+## 调优目标
+
+在做调优之前，我们必须明确优化 Kafka 的目标是什么。通常来说，调优是为了满足系统常见的非功能性需求。在众多的非功能性需求中，性能绝对是我们最关心的那一个。不同的系统对性能有不同的诉求，比如对于数据库用户而言，性能意味着请求的响应时间，用户总是希望查询或更新请求能够被更快地处理完并返回。
+
+对 Kafka 而言，性能一般是指吞吐量和延时。
+
+吞吐量，也就是 TPS，是指 Broker 端进程或 Client 端应用程序每秒能处理的字节数或消息数，这个值自然是越大越好。
+
+延时和我们刚才说的响应时间类似，它表示从 Producer 端发送消息到 Broker 端持久化完成之间的时间间隔。这个指标也可以代表端到端的延时（End-to-End，E2E），也就是从 Producer 发送消息到 Consumer 成功消费该消息的总时长。和 TPS 相反，我们通常希望延时越短越好。
+
+总之，高吞吐量、低延时是我们调优 Kafka 集群的主要目标，一会儿我们会详细讨论如何达成这些目标。在此之前，我想先谈一谈优化漏斗的问题。
+
+## 优化漏斗
+
+优化漏斗是一个调优过程中的分层漏斗，我们可以在每一层上执行相应的优化调整。总体来说，层级越靠上，其调优的效果越明显，整体优化效果是自上而下衰减的，如下图所示：
+
+![](.\image\kafka\kafka02.png)
+
+
+
+**第 1 层：应用程序层**。它是指优化 Kafka 客户端应用程序代码。比如，使用合理的数据结构、缓存计算开销大的运算结果，抑或是复用构造成本高的对象实例等。这一层的优化效果最为明显，通常也是比较简单的。
+
+**第 2 层：框架层**。它指的是合理设置 Kafka 集群的各种参数。毕竟，直接修改 Kafka 源码进行调优并不容易，但根据实际场景恰当地配置关键参数的值，还是很容易实现的。
+
+**第 3 层：JVM 层**。Kafka Broker 进程是普通的 JVM 进程，各种对 JVM 的优化在这里也是适用的。优化这一层的效果虽然比不上前两层，但有时也能带来巨大的改善效果。
+
+**第 4 层：操作系统层**。对操作系统层的优化很重要，但效果往往不如想象得那么好。与应用程序层的优化效果相比，它是有很大差距的。
+
+
+
+
+
+
+
+## 基础性调优
+
+
+
+### 操作系统调优
+
+我先来说说操作系统层的调优。在操作系统层面，你最好在挂载（Mount）文件系统时禁掉 atime 更新。atime 的全称是 access time，记录的是文件最后被访问的时间。记录 atime 需要操作系统访问 inode 资源，而禁掉 atime 可以避免 inode 访问时间的写入操作，减少文件系统的写操作数。你可以执行**mount -o noatime 命令**进行设置。
+
+至于文件系统，我建议你至少选择 ext4 或 XFS。尤其是 XFS 文件系统，它具有高性能、高伸缩性等特点，特别适用于生产服务器。值得一提的是，在去年 10 月份的 Kafka 旧金山峰会上，有人分享了 ZFS 搭配 Kafka 的案例，我们在专栏[第 8 讲]提到过与之相关的[数据报告](https://www.confluent.io/kafka-summit-sf18/kafka-on-zfs)。该报告宣称 ZFS 多级缓存的机制能够帮助 Kafka 改善 I/O 性能，据说取得了不错的效果。如果你的环境中安装了 ZFS 文件系统，你可以尝试将 Kafka 搭建在 ZFS 文件系统上。
+
+另外就是 swap 空间的设置。我个人建议将 swappiness 设置成一个很小的值，比如 1～10 之间，以防止 Linux 的 OOM Killer 开启随意杀掉进程。你可以执行 sudo sysctl vm.swappiness=N 来临时设置该值，如果要永久生效，可以修改 /etc/sysctl.conf 文件，增加 vm.swappiness=N，然后重启机器即可。
+
+操作系统层面还有两个参数也很重要，它们分别是**ulimit -n 和 vm.max_map_count**。前者如果设置得太小，你会碰到 Too Many File Open 这类的错误，而后者的值如果太小，在一个主题数超多的 Broker 机器上，你会碰到**OutOfMemoryError：Map failed**的严重错误，因此，我建议在生产环境中适当调大此值，比如将其设置为 655360。具体设置方法是修改 /etc/sysctl.conf 文件，增加 vm.max_map_count=655360，保存之后，执行 sysctl -p 命令使它生效。
+
+最后，不得不提的就是操作系统页缓存大小了，这对 Kafka 而言至关重要。在某种程度上，我们可以这样说：给 Kafka 预留的页缓存越大越好，最小值至少要容纳一个日志段的大小，也就是 Broker 端参数 log.segment.bytes 的值。该参数的默认值是 1GB。预留出一个日志段大小，至少能保证 Kafka 可以将整个日志段全部放入页缓存，这样，消费者程序在消费时能直接命中页缓存，从而避免昂贵的物理磁盘 I/O 操作。
+
+```bash
+mount -o noatime -t xfs /data/kafka
+
+[root@prometheus ~]# cat /etc/ansible/roles/base/files/limits.conf
+*             soft    core            unlimited
+*             hard    core            unlimited
+*	      soft    nproc           1000000
+*             hard    nproc           1000000
+root	      soft    nproc           unlimited
+root          hard    nproc           unlimited
+# nofile最大值为 1048576(2**20)
+*             soft    nofile          1000000
+*             hard    nofile          1000000
+root          soft    nofile          1000000
+root          hard    nofile          1000000
+*             soft    memlock         unlimited
+*             hard    memlock         unlimited
+*             soft    msgqueue        8192000
+*             hard    msgqueue        8192000
+---
+
+cat >> /etc/sysctl.conf << EOF
+vm.swappiness=0
+vm.max_map_count=655360
+EOF
+
+```
+
+
+
+### JVM 层调优
+
+说完了操作系统层面的调优，我们来讨论下 JVM 层的调优，其实，JVM 层的调优，我们还是要重点关注堆设置以及 GC 方面的性能。
+
+1. **设置堆大小**
+
+如何为 Broker 设置堆大小，这是很多人都感到困惑的问题。我来给出一个朴素的答案：**将你的 JVM 堆大小设置成 6～8GB**。
+
+在很多公司的实际环境中，这个大小已经被证明是非常合适的，你可以安心使用。如果你想精确调整的话，我建议你可以查看 GC log，特别是关注 Full GC 之后堆上存活对象的总大小，然后把堆大小设置为该值的 1.5～2 倍。如果你发现 Full GC 没有被执行过，手动运行 jmap -histo:live < pid > 就能人为触发 Full GC。
+
+2. **GC 收集器的选择**
+
+**我强烈建议你使用 G1 收集器，主要原因是方便省事，至少比 CMS 收集器的优化难度小得多**。另外，你一定要尽力避免 Full GC 的出现。其实，不论使用哪种收集器，都要竭力避免 Full GC。在 G1 中，Full GC 是单线程运行的，它真的非常慢。如果你的 Kafka 环境中经常出现 Full GC，你可以配置 JVM 参数 -XX:+PrintAdaptiveSizePolicy，来探查一下到底是谁导致的 Full GC。
+
+使用 G1 还很容易碰到的一个问题，就是**大对象（Large Object）**，反映在 GC 上的错误，就是“too many humongous allocations”。所谓的大对象，一般是指至少占用半个区域（Region）大小的对象。举个例子，如果你的区域尺寸是 2MB，那么超过 1MB 大小的对象就被视为是大对象。要解决这个问题，除了增加堆大小之外，你还可以适当地增加区域大小，设置方法是增加 JVM 启动参数 -XX:+G1HeapRegionSize=N。默认情况下，如果一个对象超过了 N/2，就会被视为大对象，从而直接被分配在大对象区。如果你的 Kafka 环境中的消息体都特别大，就很容易出现这种大对象分配的问题。
+
+3. **注意事项与相关参数**
+
+对于单纯运行Kafka的集群而言，首先要注意的就是为Kafka设置合适（不那么大）的JVM堆大小。从上面的分析可知，Kafka的性能与堆内存关系并不大，而对page cache需求巨大。根据经验值，为Kafka分配6~8GB的堆内存就已经足足够用了，将剩下的系统内存都作为page cache空间，可以最大化I/O效率。
+
+
+
+
+
+### Broker 端调优
+
+我们继续沿着漏斗往上走，来看看 Broker 端的调优。
+
+Broker 端调优很重要的一个方面，就是合理地设置 Broker 端参数值，以匹配你的生产环境。不过，后面我们在讨论具体的调优目标时再详细说这部分内容。这里我想先讨论另一个优化手段，**即尽力保持客户端版本和 Broker 端版本一致**。不要小看版本间的不一致问题，它会令 Kafka 丧失很多性能收益，比如 Zero Copy。下面我用一张图来说明一下。
+
+![](.\image\kafka\kafka03.png)
+
+
+
+
+
+### 应用层调优
+
+现在，我们终于来到了漏斗的最顶层。其实，这一层的优化方法各异，毕竟每个应用程序都是不一样的。不过，有一些公共的法则依然是值得我们遵守的。
+
+- **不要频繁地创建 Producer 和 Consumer 对象实例**。构造这些对象的开销很大，尽量复用它们。
+- **用完及时关闭**。这些对象底层会创建很多物理资源，如 Socket 连接、ByteBuffer 缓冲区等。不及时关闭的话，势必造成资源泄露。
+- **合理利用多线程来改善性能**。Kafka 的 Java Producer 是线程安全的，你可以放心地在多个线程中共享同一个实例；
+
+
+
+
+
+
+
+## kafka生产环境配置
+
+```bash
+############################# Server Basics #############################
+#broker 的 id,必须唯一
+broker.id=0
+
+############################# Socket Server Settings #############################
+#监听地址
+listeners=PLAINTEXT://192.168.1.6:9092
+
+#Broker 用于处理网络请求的线程数
+num.network.threads=6
+
+#Broker 用于处理 I/O 的线程数，推荐值 8 * 磁盘数
+num.io.threads=120
+
+#在网络线程停止读取新请求之前，可以排队等待 I/O 线程处理的最大请求个数
+queued.max.requests=1000
+
+#socket 发送缓冲区大小
+socket.send.buffer.bytes=102400
+
+#socket 接收缓冲区大小
+socket.receive.buffer.bytes=102400
+
+#socket 接收请求的最大值（防止 OOM）
+socket.request.max.bytes=104857600
+
+
+############################# Log Basics #############################
+
+#数据目录
+log.dirs=/data1,/data2,/data3,/data4,/data5,/data6,/data7,/data8,/data9,/data10,/data11,/data12,/data13,/data14,/data15
+
+#清理过期数据线程数
+num.recovery.threads.per.data.dir=3
+
+#单条消息最大 10 M
+message.max.bytes=10485760
+
+############################# Topic Settings #############################
+
+#不允许自动创建 Topic
+auto.create.topics.enable=false
+
+#不允许 Unclean Leader 选举。
+unclean.leader.election.enable=false
+
+#不允许定期进行 Leader 选举。
+auto.leader.rebalance.enable=false
+
+#默认分区数
+num.partitions=3
+
+#默认分区副本数
+default.replication.factor=3
+
+#当生产者将 acks 设置为 "all"（或"-1"）时，此配置指定必须确认写入的副本的最小数量，才能认为写入成功
+min.insync.replicas=2
+
+#允许删除主题
+delete.topic.enable=true
+
+############################# Log Flush Policy #############################
+
+#建议由操作系统使用默认设置执行后台刷新
+#日志落盘消息条数阈值
+#log.flush.interval.messages=10000
+#日志落盘时间间隔
+#log.flush.interval.ms=1000
+#检查是否达到flush条件间隔
+#log.flush.scheduler.interval.ms=200
+
+############################# Log Retention Policy #############################
+
+#日志留存时间 7 天
+log.retention.hours=168
+
+#最多存储 58TB 数据
+log.retention.bytes=63771674411008
+                    
+#日志文件中每个 segment 的大小为 1G
+log.segment.bytes=1073741824
+
+#检查 segment 文件大小的周期 5 分钟
+log.retention.check.interval.ms=300000
+
+#开启日志压缩
+log.cleaner.enable=true
+
+#日志压缩线程数
+log.cleaner.threads=8
+
+############################# Zookeeper #############################
+
+#Zookeeper 连接参数
+zookeeper.connect=192.168.1.6:2181,192.168.1.7:2181,192.168.1.8:2181
+
+#连接 Zookeeper 的超时时间
+zookeeper.connection.timeout.ms=6000
+
+
+############################# Group Coordinator Settings #############################
+
+#为了缩短多消费者首次平衡的时间，这段延时期间 10s 内允许更多的消费者加入组
+group.initial.rebalance.delay.ms=10000
+
+#心跳超时时间默认 10s，设置成 6s 主要是为了让 Coordinator 能够更快地定位已经挂掉的 Consumer
+session.timeout.ms = 6s。
+
+#心跳间隔时间，session.timeout.ms >= 3 * heartbeat.interval.ms。
+heartbeat.interval.ms=2s
+
+#最长消费时间 5 分钟
+max.poll.interval.ms=300000
+```
+

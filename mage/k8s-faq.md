@@ -61,7 +61,7 @@ Events:              <none>
 
 
 
-**原因**：这个是正常现象，因为以你的Request Resource为基准，如果Request Resource配置内存为100Mi、CPU为100m，则内存达到100Mi*0.8=80Mi、CPU达到100m*0.8=80m则会创建pod，而java服务一跑起来就会占用600Mi左右内存，所以会一直增加，而删除是因为随着内存使用的减少而删除
+**原因**：这个是正常现象，因为以你的Request Resource为基准，如果Request Resource配置内存为100Mi、CPU为100m，则内存达到100Mi*0.8=80Mi或者CPU达到100m*0.8=80m则会创建pod，而java服务一跑起来就会占用600Mi左右内存，所以会一直增加，而删除是因为随着内存使用的减少而删除
 
 
 
@@ -97,5 +97,33 @@ Events:
   ----    ------             ----                ----                       -------
   Normal  SuccessfulRescale  55m (x19 over 59m)  horizontal-pod-autoscaler  New size: 4; reason:
 
+```
+
+* 如下为hpa配置清单，内存和CPU指标只能生效一个
+
+```bash
+[root@prometheus k8s-deploy]# cat java-h5apiv2-api-hs-com/hpa.yaml 
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pro-java-h5apiv2-api-hs-com-rollout
+spec:
+  maxReplicas: 4
+  minReplicas: 2
+  scaleTargetRef:
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    name: pro-java-h5apiv2-api-hs-com-rollout
+  metrics:
+  - type: Resource
+    resource:
+      #name: memory
+      #target: 
+      #  type: Utilization
+      #  averageUtilization: 1000
+      name: cpu
+      target: 
+        type: Utilization
+        averageUtilization: 1000
 ```
 
