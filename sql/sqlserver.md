@@ -1177,6 +1177,7 @@ drop user WN010
 --批量授予存储过程
 use homsomdb
 SELECT 'GRANT EXECUTE,VIEW DEFINITION ON[dbo].[' + name + ']TO [WN010]' AS t_sql FROM sys.procedures
+-- SELECT 'GRANT EXECUTE,VIEW DEFINITION,ALTER ON[dbo].[' + name + ']TO [hs\prod-dbuser]' AS t_sql FROM sys.procedures
 GRANT EXECUTE,VIEW DEFINITION  ON [dbo].[AutomaticTicketing_GetRecord]TO [WN010]
 -- revoke EXECUTE,VIEW DEFINITION on [dbo].[AutomaticTicketing_GetRecord] from [WN010]
 

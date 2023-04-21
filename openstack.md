@@ -55,13 +55,13 @@ cinder: 192.168.222.20
 
 
 
-#### VMware主机网络配置
+#### 1.3.1 VMware主机网络配置
 
 ![](.\image\openstack\openstack05.png)
 
 
 
-#### controller节点信息
+#### 1.3.2 controller节点信息
 
 ```shell
 [root@controller ~]# ip a s 	#ens33网卡模式为VMnet1
@@ -79,7 +79,9 @@ MemTotal:        1511808 kB
 Disk /dev/sda: 107.4 GB, 107374182400 bytes, 209715200 sectors
 ```
 
-#### nova节点信息
+
+
+#### 1.3.3 nova节点信息
 
 ```shell
 [root@nova ~]# ip a s 	#ens33网卡模式为VMnet1,ens34网卡模式为VMnet2
@@ -104,7 +106,9 @@ MemTotal:        5925684 kB
 Disk /dev/sda: 107.4 GB, 107374182400 bytes, 209715200 sectors
 ```
 
-#### neutron节点信息
+
+
+#### 1.3.4 neutron节点信息
 
 ```shell
 [root@neutron yum.repos.d]# ip a s 	#ens33网卡模式为VMnet1,ens34网卡模式为VMnet2,ens35网卡模式为VMnet3
@@ -133,7 +137,9 @@ MemTotal:        2379136 kB
 Disk /dev/sda: 21.5 GB, 21474836480 bytes, 41943040 sectors
 ```
 
-#### cinder节点信息
+
+
+#### 1.3.5 cinder节点信息
 
 ```shell
 [root@cinder ~]# ip a s 	#ens33网卡模式为VMnet1
@@ -152,7 +158,9 @@ MemTotal:        1511808 kB
 Disk /dev/sda: 21.5 GB, 21474836480 bytes, 41943040 sectors
 ```
 
-#### nexus-proxy yum代理仓库部署
+
+
+#### 1.3.6 nexus-proxy yum代理仓库部署
 
 ```shell
 [root@nexus-proxy ~]# ip a s   # ens33网关为NAT模式，ens34网卡模式为VMnet1
@@ -190,7 +198,9 @@ Disk /dev/sda: 107.4 GB, 107374182400 bytes, 209715200 sectors
 # 获取nexus yum openstack proxy地址：http://192.168.222.4/repository/yum-openstack/
 ```
 
-#### 配置内网不能上网机器的yum源
+
+
+#### 1.3.7 配置内网不能上网机器的yum源
 
 ```shell
 # 例如neutron服务器，替换baseurl地址为上面获取的nexus yum proxy地址：
@@ -248,7 +258,7 @@ repolist: 24,882
 
 
 
-#### 所有节点配置hosts、时间同步以及其它
+#### 1.3.8 所有节点配置hosts、时间同步以及其它
 
 ```shell
 # hosts配置
@@ -2519,8 +2529,7 @@ EXTERNAL_NETWORK_CIDR=外部网络网段
 
 
 ## 例如，外网网段为：100.100.100.0/24，浮动地址范围为：100.100.100.101~100.100.100.150，网关为：100.100.100.10
-[root@controller ~]# neutron subnet-create ext-net --name ext-subnet --allocation-pool start=100.100.100.101,end=100.100.100.150 --disable-dhcp --g
-ateway 100.100.100.10 100.100.100.0/24
+[root@controller ~]# neutron subnet-create ext-net --name ext-subnet --allocation-pool start=100.100.100.101,end=100.100.100.150 --disable-dhcp --gateway 100.100.100.10 100.100.100.0/24
 Created a new subnet:
 +-------------------+--------------------------------------------------------+
 | Field             | Value                                                  |
@@ -2666,8 +2675,8 @@ ips": [{"subnet_id": "8faa24c8-f888-4848-823a-5d62bb5c4bc0", "ip_address": "100.
 ------------------------------------------------------------------------------------------------+-------------+-------+
 
 ## 2、在任何一台外部主机上ping路由器获取到的外部地址
-***** 经过测试有问题，100.100.100.10和100.100.100.210无法ping通，最后原因在于Neutron配置时执行ovs-vsctl add-port br-ex ens35 命令导致，最终桥未生效，需要配置ifcfg-ens35和ifcfg-br-ex配置文件，配置见"5.4.8 配置Open vSwitch (OVS)服务"
-***** 此命令"neutron router-interface-add demo-router demo-subnet"必须在"neutron router-gateway-set demo-router ext-net"之后执行才可成功，否则会造成无法ping通
+*****2.1 经过测试有问题，100.100.100.10和100.100.100.210无法ping通，最后原因在于Neutron配置时执行ovs-vsctl add-port br-ex ens35 命令导致，最终桥未生效，需要配置ifcfg-ens35和ifcfg-br-ex配置文件，配置见"5.4.8 配置Open vSwitch (OVS)服务"
+*****2.2  此命令"neutron router-interface-add demo-router demo-subnet"必须在"neutron router-gateway-set demo-router ext-net"之后执行才可成功，否则会造成无法ping通
 ```
 
 
@@ -2751,4 +2760,809 @@ Added interface 589bb4c3-6a22-4e55-a06d-1a9f2633a310 to router test-router.
 ```
 
 ![](.\image\openstack\openstack39.png)
+
+
+
+
+
+
+
+## 6. Horizon服务
+
+**1. 先决条件**
+
+**2. 构建实验**
+
+
+
+### 6.1 先决条件
+
+* 安装OpenStack compute(nova)和identity(keystone) service 
+* 安装Python2.6或2.7，并必须支持Django
+* 你的浏览器必须支持HTML5并启用cookies和JavaScript功能
+
+
+
+**python2.7不支持django的报错**
+
+```
+# tail -f /etc/httpd/logs/error_log
+[Sat Apr 15 18:16:12.202194 2023] [:error] [pid 49516] [remote 192.168.222.1:23036] mod_wsgi (pid=49516): Target WSGI script '/usr/share/openstack-
+dashboard/openstack_dashboard/wsgi/django.wsgi' cannot be loaded as Python module.
+[Sat Apr 15 18:16:12.202598 2023] [:error] [pid 49516] [remote 192.168.222.1:23036] mod_wsgi (pid=49516): Exception occurred processing WSGI script
+ '/usr/share/openstack-dashboard/openstack_dashboard/wsgi/django.wsgi'.
+[Sat Apr 15 18:16:12.202640 2023] [:error] [pid 49516] [remote 192.168.222.1:23036] Traceback (most recent call last):
+[Sat Apr 15 18:16:12.202681 2023] [:error] [pid 49516] [remote 192.168.222.1:23036]   File "/usr/share/openstack-dashboard/openstack_dashboard/wsgi
+/django.wsgi", line 14, in <module>
+[Sat Apr 15 18:16:12.202731 2023] [:error] [pid 49516] [remote 192.168.222.1:23036]     application = get_wsgi_application()
+[Sat Apr 15 18:16:12.202741 2023] [:error] [pid 49516] [remote 192.168.222.1:23036]   File "/usr/lib/python2.7/site-packages/django/core/wsgi.py", 
+line 13, in get_wsgi_application
+[Sat Apr 15 18:16:12.203395 2023] [:error] [pid 49516] [remote 192.168.222.1:23036]     django.setup(set_prefix=False)
+[Sat Apr 15 18:16:12.203415 2023] [:error] [pid 49516] [remote 192.168.222.1:23036]   File "/usr/lib/python2.7/site-packages/django/__init__.py", l
+ine 22, in setup
+[Sat Apr 15 18:16:12.203436 2023] [:error] [pid 49516] [remote 192.168.222.1:23036]     configure_logging(settings.LOGGING_CONFIG, settings.LOGGING
+)
+[Sat Apr 15 18:16:12.203449 2023] [:error] [pid 49516] [remote 192.168.222.1:23036]   File "/usr/lib/python2.7/site-packages/django/conf/__init__.p
+y", line 56, in __getattr__
+[Sat Apr 15 18:16:12.203500 2023] [:error] [pid 49516] [remote 192.168.222.1:23036]     self._setup(name)
+[Sat Apr 15 18:16:12.203519 2023] [:error] [pid 49516] [remote 192.168.222.1:23036]   File "/usr/lib/python2.7/site-packages/django/conf/__init__.p
+y", line 41, in _setup
+[Sat Apr 15 18:16:12.203532 2023] [:error] [pid 49516] [remote 192.168.222.1:23036]     self._wrapped = Settings(settings_module)
+[Sat Apr 15 18:16:12.203538 2023] [:error] [pid 49516] [remote 192.168.222.1:23036]   File "/usr/lib/python2.7/site-packages/django/conf/__init__.p
+y", line 110, in __init__
+[Sat Apr 15 18:16:12.203546 2023] [:error] [pid 49516] [remote 192.168.222.1:23036]     mod = importlib.import_module(self.SETTINGS_MODULE)        
+[Sat Apr 15 18:16:12.203568 2023] [:error] [pid 49516] [remote 192.168.222.1:23036]   File "/usr/lib64/python2.7/importlib/__init__.py", line 37, i
+n import_module
+[Sat Apr 15 18:16:12.203616 2023] [:error] [pid 49516] [remote 192.168.222.1:23036]     __import__(name)
+[Sat Apr 15 18:16:12.203624 2023] [:error] [pid 49516] [remote 192.168.222.1:23036]   File "/usr/share/openstack-dashboard/openstack_dashboard/wsgi
+/../../openstack_dashboard/settings.py", line 325, in <module>
+[Sat Apr 15 18:16:12.203640 2023] [:error] [pid 49516] [remote 192.168.222.1:23036]     from openstack_dashboard.utils import settings
+[Sat Apr 15 18:16:12.203646 2023] [:error] [pid 49516] [remote 192.168.222.1:23036]   File "/usr/share/openstack-dashboard/openstack_dashboard/wsgi
+/../../openstack_dashboard/utils/settings.py", line 17, in <module>
+[Sat Apr 15 18:16:12.203657 2023] [:error] [pid 49516] [remote 192.168.222.1:23036]     from django.utils import importlib
+[Sat Apr 15 18:16:12.203687 2023] [:error] [pid 49516] [remote 192.168.222.1:23036] ImportError: cannot import name importlib
+```
+
+
+
+```bash
+## 重要：必须安装django，使python2支持django，否则后续httpd会报错
+[root@controller ~]# yum install python2-django16.noarch	#包位于epel源中
+Error: python2-django16 conflicts with python2-django-1.11.27-1.el7.noarch
+ You could try using --skip-broken to work around the problem
+ You could try running: rpm -Va --nofiles --nodigest
+ 
+# 只卸载冲突版本
+[root@controller ~]# rpm -e --nodeps python2-django-1.11.27-1.el7.noarch
+
+# 再次安装成功
+[root@controller ~]# yum install python2-django16.noarch
+[root@controller ~]# rpm -qa | grep python2-django16
+python2-django16-1.6.11.7-5.el7.noarch
+```
+
+
+
+
+
+### 6.2 构建实验
+
+* 安装仪表板组件
+* 配置仪表板
+* 完成安装
+
+
+
+#### 6.2.1 安装仪表板组件
+
+```bash
+# 还是在controller节点安装，你可以选择专用节点安装dashboard
+[root@controller ~]# yum install openstack-dashboard httpd mod_wsgi memcached python-memcached
+```
+
+
+
+#### 6.2.2 配置仪表板
+
+```bash
+## 编辑/etc/openstack-dashboard/local_settings文件并完成下列配置
+[root@controller ~]# vim /etc/openstack-dashboard/local_settings
+# a.配置dashboard使用controller节点上的OpenStack服务
+OPENSTACK_HOST = "controller.markli.cn"
+
+# b.设置允许来自所有网络的主机访问dashboard
+ALLOWED_HOSTS = ['controller.markli.cn', '*']  
+
+# c.配置memcached会话存贮服务(将原有CACHES区域注释)
+CACHES = {                                                                                   'default': {                           
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache', 
+        'LOCATION': '127.0.0.1:11211',                                                       }                                         
+}
+
+# d.(可选)配置时区
+TIME_ZONE = "Asia/Shanghai"
+```
+
+
+
+#### 6.2.3 完成安装
+
+```bash
+## 1、在RHEL或CentOS上，配置SElinux去允许web服务器访问OpenStack服务(如果你没
+关SElinux)：
+# setsebool -P httpd_can_network_connect on
+
+
+## 2.修改相关文件归属，使dashboard CSS可以被加载。
+[root@controller ~]# chown -R apache:apache /usr/share/openstack-dashboard/static
+
+
+## 3.启动web服务和会话保存服务，并设置开机自动启动。
+[root@controller ~]# systemctl enable httpd.service memcached.service && systemctl start httpd.service memcached.service
+```
+
+
+
+#### 6.2.4 验证
+
+1. 访问dashboard，在浏览器输入: http://controller.markli.cn/dashboard 
+
+2. 使用admin或demo用户登录
+
+
+
+
+
+## 7. Cinder服务
+
+
+
+### 7.1 组件说明
+
+* OpenStack块存储服务为云主机提供块存储设备。支持不同后端
+* The Block Storage API和scheduler服务运行在controller节点
+* The volume service运行在一个或多个存储节点
+* 存储节点可以通过本地磁盘、 SAN/NAS等后端设备为云主机提供 卷存储
+* cinder-api 允许API请求，并路由他们到cinder-volume
+* cinder-volume 直接与块存储服务交互。处理像 cinder-scheduler 这样的 服务。通过消息队列相互通信。支持多种存储类型
+* cinder-scheduler daemon 选择最优的存储节点创建卷。类似于 novascheduler
+* Messagin queue 在快存储进程中传递消息。
+
+
+
+
+
+### 7.2 安装并配置controller节点
+
+* 配置先决条件
+* 安装并配置块存储控制组件
+* 完成安装
+
+
+
+#### 7.2.1 配置先决条件
+
+```bash
+## 1、创建数据库，并完成下列步骤：
+# a.以数据库管理员root的身份连接数据库：
+[root@controller ~]# mysql -u root -p
+
+#b.创建cinder数据库
+MariaDB [(none)]> CREATE DATABASE cinder;
+MariaDB [(none)]> GRANT ALL PRIVILEGES ON cinder.* TO 'cinder'@'localhost' IDENTIFIED BY 'CINDER_DBPASS';
+MariaDB [(none)]> GRANT ALL PRIVILEGES ON cinder.* TO 'cinder'@'%' IDENTIFIED BY 'CINDER_DBPASS';
+
+
+## 2、执行admin环境变量脚本
+[root@controller ~]# source admin-openrc.sh
+
+
+## 3、在认证服务中创建块存储服务认证信息，完成下列步骤：
+# a.创建cinder用户
+[root@controller ~]# keystone user-create --name cinder --pass CINDER_PASS
++----------+----------------------------------+
+| Property |              Value               |
++----------+----------------------------------+
+|  email   |                                  |
+| enabled  |               True               |
+|    id    | f6b02dddda7748f2a2186c54314a2775 |
+|   name   |              cinder              |
+| username |              cinder              |
++----------+----------------------------------+
+
+# b.链接cinder用户到service租户和admin角色
+[root@controller ~]# keystone user-role-add --user cinder --tenant service --role admin
+
+# c.创建cinder服务，分为v1和v2版本
+[root@controller ~]# keystone service-create --name cinder --type volume --description "OpenStack Block Storage"
++-------------+----------------------------------+
+|   Property  |              Value               |
++-------------+----------------------------------+
+| description |     OpenStack Block Storage      |
+|   enabled   |               True               |
+|      id     | b3f7b9d865e842aaa36e0b458e0a14fb |
+|     name    |              cinder              |
+|     type    |              volume              |
++-------------+----------------------------------+
+
+[root@controller ~]# keystone service-create --name cinderv2 --type volumev2 --description "OpenStack Block Storage"
++-------------+----------------------------------+
+|   Property  |              Value               |
++-------------+----------------------------------+
+| description |     OpenStack Block Storage      |
+|   enabled   |               True               |
+|      id     | f614e1fbefa147dcad8ba416ea835827 |
+|     name    |             cinderv2             |
+|     type    |             volumev2             |
++-------------+----------------------------------+
+
+# d.创建块存储服务端点，分为v1和v2版本
+[root@controller ~]# keystone endpoint-create \
+--service-id $(keystone service-list | awk '/ volume / {print $2}') \
+--publicurl http://controller.markli.cn:8776/v1/%\(tenant_id\)s \
+--internalurl http://controller.markli.cn:8776/v1/%\(tenant_id\)s \
+--adminurl http://controller.markli.cn:8776/v1/%\(tenant_id\)s \
+--region regionOne
++-------------+---------------------------------------------------+
+|   Property  |                       Value                       |
++-------------+---------------------------------------------------+
+|   adminurl  | http://controller.markli.cn:8776/v1/%(tenant_id)s |
+|      id     |          3eea00636fa74c17921cebae6631afc8         |
+| internalurl | http://controller.markli.cn:8776/v1/%(tenant_id)s |
+|  publicurl  | http://controller.markli.cn:8776/v1/%(tenant_id)s |
+|    region   |                     regionOne                     |
+|  service_id |          b3f7b9d865e842aaa36e0b458e0a14fb         |
++-------------+---------------------------------------------------+
+
+
+[root@controller ~]# keystone endpoint-create \
+--service-id $(keystone service-list | awk '/ volumev2 / {print $2}') \
+--publicurl http://controller.markli.cn:8776/v2/%\(tenant_id\)s \
+--internalurl http://controller.markli.cn:8776/v2/%\(tenant_id\)s \
+--adminurl http://controller.markli.cn:8776/v2/%\(tenant_id\)s \
+--region regionOne
++-------------+---------------------------------------------------+
+|   Property  |                       Value                       |
++-------------+---------------------------------------------------+
+|   adminurl  | http://controller.markli.cn:8776/v2/%(tenant_id)s |
+|      id     |          d5b97d2278c7458c8072be629fd2ae21         |
+| internalurl | http://controller.markli.cn:8776/v2/%(tenant_id)s |
+|  publicurl  | http://controller.markli.cn:8776/v2/%(tenant_id)s |
+|    region   |                     regionOne                     |
+|  service_id |          f614e1fbefa147dcad8ba416ea835827         |
++-------------+---------------------------------------------------+
+
+```
+
+
+
+#### 7.2.2 安装并配置块存储控制组件
+
+```bash
+## 1、安装软件包
+[root@controller ~]# yum install openstack-cinder python-cinderclient python-oslo-db
+
+
+## 2、编辑/etc/cinder/cinder.conf文件并完成下列操作：
+[root@controller ~]# vim /etc/cinder/cinder.conf
+# a.编辑[database]小节,配置数据库连接：
+[database]
+connection=mysql://cinder:CINDER_DBPASS@controller.markli.cn/cinder 
+
+# b.编辑[DEFAULT]小节,配置RabbitMQ消息代理访问：
+[DEFAULT]
+rpc_backend=rabbit
+rabbit_host=controller.markli.cn
+rabbit_userid=guest
+rabbit_password=homsom
+
+# c.编辑[DEFAULT]和[keystone_authtoken]小节,配置认证服务访问：
+[DEFAULT]
+auth_strategy=keystone
+
+[keystone_authtoken]
+auth_uri=http://controller.markli.cn:5000/v2.0
+identity_uri=http://controller.markli.cn:35357
+admin_tenant_name=service
+admin_user=cinder
+admin_password=CINDER_PASS
+
+# d.编辑[DEFAULT]小节，配置my_ip选项使用controller节点的控制端口ip：
+[DEFAULT]
+my_ip=192.168.222.5
+
+# e.（可选）在[DEFAULT]小节中配置详细日志输出。方便排错。
+[DEFAULT]
+verbose=True
+
+3、初始化块存储服务数据库
+[root@controller ~]# su -s /bin/sh -c "cinder-manage db sync" cinder
+```
+
+
+
+#### 7.2.4 完成安装
+
+```bash
+## 启动块存储服务并设置开机自动启动：
+[root@controller ~]# systemctl enable openstack-cinder-api.service openstack-cinder-scheduler.service
+[root@controller ~]# systemctl start openstack-cinder-api.service openstack-cinder-scheduler.service
+```
+
+
+
+
+
+### 7.3 安装并配置block1节点
+
+* 配置先决条件
+* 安装并配置块存储卷组件
+* 完成安装
+
+
+
+#### 7.3.1 配置先决条件
+
+```bash
+## 1、添加一个新的硬盘(如:sdb)，并分将全部空间分成一个主分区。
+[root@cinder ~]# fdisk -l | grep -A 5 /dev/sdb
+Disk /dev/sdb: 107.4 GB, 107374182400 bytes, 209715200 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+
+## 2、配置网卡信息
+IP address: 192.168.2222.20
+Network mask: 255.255.255.0 (or /24)
+Default gateway: 192.168.222.1
+
+# [root@cinder ~]# ip a s 
+2: ens33: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc pfifo_fast state UP group default qlen 1000
+    link/ether 00:0c:29:3f:46:46 brd ff:ff:ff:ff:ff:ff
+    inet 192.168.222.20/24 brd 192.168.222.255 scope global ens33
+       valid_lft forever preferred_lft forever
+
+
+## 3、设置主机名为cinder.markli.cn，并添加对应的DNS记录。设置NTP服务。  #cinder就是block
+[root@cinder ~]# cat /etc/hosts
+127.0.0.1 localhost
+192.168.222.4 nexus-proxy.markli.cn time.markli.cn
+192.168.222.5 controller.markli.cn
+192.168.222.6 neutron.markli.cn
+192.168.222.10 nova.markli.cn
+192.168.222.20 cinder.markli.cn
+[root@cinder ~]# crontab -l
+#Ansible: timing sync ntp time
+*/5 * * * * ntpdate time.markli.cn
+
+
+## 4、安装LVM软件包(根据自身情况)
+[root@cinder ~]# yum install lvm2
+
+
+## 5、启动LVM服务并这只开机自动启动(根据自身情况)
+[root@cinder ~]# systemctl enable lvm2-lvmetad.service
+[root@cinder ~]# systemctl start lvm2-lvmetad.service
+
+
+## 6、创建物理卷/dev/sdb:
+[root@cinder ~]# pvcreate /dev/sdb
+  Physical volume "/dev/sdb" successfully created.
+
+
+##7、创建卷组cinder-volumes(名字不要改):
+[root@cinder ~]# vgcreate cinder-volumes /dev/sdb
+  Volume group "cinder-volumes" successfully created
+
+
+## 8、编辑/etc/lvm/lvm.conf文件，使系统只扫描启用LVM的磁盘。防止识别其他非LVM磁盘对块存储服务造成影响。编辑devices小节，添加过滤器允许/dev/sdb磁盘，拒绝其他设备。
+[root@cinder ~]# vim /etc/lvm/lvm.conf
+devices {
+        #filter = [ "a|.*/|" ]
+        # 警告：如果你的系统磁盘使用了LVM，则必须添加系统盘到过滤器中：
+        filter = [ "a/sda2/", "a/sdb/", "r/.*/"] 
+}
+#同样，如果conpute节点的系统盘也使用了LVM，则也需要修改/etc/lvm/lvm.conf文件。并添加过滤器
+#filter = [ "a/sdb/", "r/.*/"]
+
+```
+
+
+
+#### 7.3.2 安装并配置块存储卷组件
+
+```bash
+## 1、安装软件包
+[root@cinder ~]# yum install openstack-cinder targetcli python-oslo-db MySQL-python
+
+
+## 2、编辑/etc/cinder/cinder.conf文件并完成下列操作：
+[root@cinder ~]# vim /etc/cinder/cinder.conf
+# a.编辑[database]小节,配置数据库访问：
+[database]
+connection=mysql://cinder:CINDER_DBPASS@controller.markli.cn/cinder
+
+# b.编辑[DEFAULT]小节，配置RabbitMQ消息代理访问：
+[DEFAULT]
+rpc_backend=rabbit
+rabbit_host=controller.markli.cn
+rabbit_userid=guest
+rabbit_password=homsom
+
+c.编辑[DEFAULT]和[keystone_authtoken]小节，配置认证服务访问:
+[DEFAULT]
+auth_strategy=keystone
+
+[keystone_authtoken]
+auth_uri=http://controller.markli.cn:5000/v2.0
+identity_uri=http://controller.markli.cn:35357
+admin_tenant_name=service
+admin_user=cinder
+admin_password=CINDER_PASS
+
+# d.编辑[DEFAULT]小节，配置my_ip选项，管理实例网络IP地址:
+[DEFAULT]
+my_ip=192.168.222.20
+
+# e.编辑[DEFAULT]小节，配置镜像服务器位置：
+[DEFAULT]
+glance_host=controller.markli.cn
+
+# f.编辑[DEFAULT]小节，配置块存储服务使用lioadm iSCSI服务
+[DEFAULT]
+iscsi_helper=lioadm
+
+# g.（可选）在[DEFAULT]小节中配置详细日志输出。方便排错。
+[DEFAULT]
+verbose=True
+```
+
+
+
+#### 7.3.3 完成安装
+
+```bash
+## 启动块存储volume服务和iSCSI服务，并设置开机自动启动。
+[root@cinder ~]# systemctl enable openstack-cinder-volume.service target.service
+[root@cinder ~]# systemctl start openstack-cinder-volume.service target.service
+
+# 启动失败
+[root@cinder ~]# systemctl status openstack-cinder-volume.service target.service  | grep Active
+   Active: failed (running) since Sat 2023-04-15 22:44:39 CST; 2min 2s ago
+   Active: active (exited) since Sat 2023-04-15 22:44:40 CST; 2min 2s ago
+```
+
+```bash
+## openstack=cinder-volume.server启动失败，报错如下：
+2023-04-15 22:40:23.729 2734 CRITICAL cinder [-] ImportError: No module named Crypto.Random
+2023-04-15 22:40:23.729 2734 TRACE cinder Traceback (most recent call last):
+2023-04-15 22:40:23.729 2734 TRACE cinder   File "/usr/bin/cinder-volume", line 77, in <module>
+2023-04-15 22:40:23.729 2734 TRACE cinder     server = service.Service.create(binary='cinder-volume')
+2023-04-15 22:40:23.729 2734 TRACE cinder   File "/usr/lib/python2.7/site-packages/cinder/service.py", line 242, in create
+2023-04-15 22:40:23.729 2734 TRACE cinder     service_name=service_name)
+2023-04-15 22:40:23.729 2734 TRACE cinder   File "/usr/lib/python2.7/site-packages/cinder/service.py", line 121, in __init__
+2023-04-15 22:40:23.729 2734 TRACE cinder     manager_class = importutils.import_class(self.manager_class_name)
+2023-04-15 22:40:23.729 2734 TRACE cinder   File "/usr/lib/python2.7/site-packages/cinder/openstack/common/importutils.py", line 27, in import_clas
+s
+2023-04-15 22:40:23.729 2734 TRACE cinder     __import__(mod_str)
+2023-04-15 22:40:23.729 2734 TRACE cinder   File "/usr/lib/python2.7/site-packages/cinder/volume/__init__.py", line 27, in <module>
+2023-04-15 22:40:23.729 2734 TRACE cinder     API = import_utils.import_class(CONF.volume_api_class)
+2023-04-15 22:40:23.729 2734 TRACE cinder   File "/usr/lib/python2.7/site-packages/cinder/openstack/common/importutils.py", line 27, in import_clas
+s
+2023-04-15 22:40:23.729 2734 TRACE cinder     __import__(mod_str)
+2023-04-15 22:40:23.729 2734 TRACE cinder   File "/usr/lib/python2.7/site-packages/cinder/volume/api.py", line 47, in <module>
+2023-04-15 22:40:23.729 2734 TRACE cinder     from cinder.volume import rpcapi as volume_rpcapi
+2023-04-15 22:40:23.729 2734 TRACE cinder   File "/usr/lib/python2.7/site-packages/cinder/volume/rpcapi.py", line 24, in <module>
+2023-04-15 22:40:23.729 2734 TRACE cinder     from cinder.volume import utils
+2023-04-15 22:40:23.729 2734 TRACE cinder   File "/usr/lib/python2.7/site-packages/cinder/volume/utils.py", line 20, in <module>
+2023-04-15 22:40:23.729 2734 TRACE cinder     from Crypto.Random import random
+2023-04-15 22:40:23.729 2734 TRACE cinder ImportError: No module named Crypto.Random
+2023-04-15 22:40:23.729 2734 TRACE cinder
+
+
+
+## 原因：没有pycrypto包
+
+## 解决：配置pip源并且安装 
+[root@cinder ~]# yum install python2-pip.noarch
+[root@cinder ~]# cat .pip/pip.conf 
+[global]
+timeout = 6000
+index-url = http://192.168.222.4/repository/pypi-aliyun/simple/
+trusted-host = 192.168.222.4
+
+[root@cinder ~]# pip2 install pycrypto 
+Collecting pycrypto
+  Downloading http://192.168.222.4/repository/pypi-aliyun/packages/pycrypto/2.6.1/pycrypto-2.6.1.tar.gz (446kB)
+    100% |████████████████████████████████| 450kB 146.5MB/s
+Installing collected packages: pycrypto
+  Running setup.py install for pycrypto ... done
+Successfully installed pycrypto-2.6.1
+
+[root@cinder ~]# systemctl status openstack-cinder-volume.service target.service  | grep Active
+   Active: active (running) since Sat 2023-04-15 22:44:39 CST; 2min 2s ago
+   Active: active (exited) since Sat 2023-04-15 22:44:40 CST; 2min 2s ago
+```
+
+
+
+
+
+### 7.4 验证(在controller节点完成下列操作)
+
+```bash
+## 1、执行admin环境变量脚本
+source admin-openrc.sh
+
+
+## 2、列出服务组件确认每个进程启动成功
+[root@controller ~]# cinder service-list
++------------------+----------------------+------+---------+-------+----------------------------+-----------------+
+|      Binary      |         Host         | Zone |  Status | State |         Updated_at         | Disabled Reason |
++------------------+----------------------+------+---------+-------+----------------------------+-----------------+
+| cinder-scheduler | controller.markli.cn | nova | enabled |   up  | 2023-04-15T14:47:29.000000 |       None      |
+|  cinder-volume   |   cinder.markli.cn   | nova | enabled |   up  | 2023-04-15T14:47:30.000000 |       None      |
++------------------+----------------------+------+---------+-------+----------------------------+-----------------+
+
+
+## 3、执行demo用户环境变量脚本
+# source demo-openrc.sh
+
+
+## 4、创建1GB的卷
+[root@controller ~]# cinder create --display-name demo-volume1 1
++---------------------+--------------------------------------+
+|       Property      |                Value                 |
++---------------------+--------------------------------------+
+|     attachments     |                  []                  |
+|  availability_zone  |                 nova                 |
+|       bootable      |                false                 |
+|      created_at     |      2023-04-15T14:49:51.625344      |
+| display_description |                 None                 |
+|     display_name    |             demo-volume1             |
+|      encrypted      |                False                 |
+|          id         | 11df7c21-37a6-4865-a5f0-41fb0075ad49 |
+|       metadata      |                  {}                  |
+|         size        |                  1                   |
+|     snapshot_id     |                 None                 |
+|     source_volid    |                 None                 |
+|        status       |               creating               |
+|     volume_type     |                 None                 |
++---------------------+--------------------------------------+
+
+
+## 5、确认卷已创建并可用
+[root@controller ~]# cinder list
++--------------------------------------+-----------+--------------+------+-------------+----------+-------------+
+|                  ID                  |   Status  | Display Name | Size | Volume Type | Bootable | Attached to |
++--------------------------------------+-----------+--------------+------+-------------+----------+-------------+
+| 11df7c21-37a6-4865-a5f0-41fb0075ad49 | available | demo-volume1 |  1   |     None    |  false   |             |
++--------------------------------------+-----------+--------------+------+-------------+----------+-------------+
+```
+
+
+
+
+
+## 8. 实例创建
+
+**利用OpenStack Networking(neutron)启动一个实例**
+
+* 创建密钥对（也可以使用账户密码认证）
+* 启动一个实例
+* 通过虚拟控制台访问你的实例
+* 远程访问你的实例
+* 为你的实例添加额外的云硬盘
+
+
+
+
+
+### 8.1 创建密钥对
+
+```bash
+## 大多数云镜像使用公钥认证，这有别于传统的用户名/密码认证。在启动一个实例之前，你必须使用ssh-keygen命令生成一个密钥对，并将公钥添加到你的OpenStack环境。
+
+## 1、执行demo环境变量脚本
+[root@controller ~]# source demo-openrc.sh
+
+
+## 2、生成密钥对
+# ssh-keygen
+
+
+## 3、添加公钥到OpenStack环境
+[root@controller ~]# nova keypair-add --pub-key ~/.ssh/id_rsa.pub demo-key
+
+
+## 4、验证公钥是否添加成功
+[root@controller ~]# nova keypair-list
++----------+----------------------------------------------------+
+| Name     | Fingerprint                                        |
++----------+----------------------------------------------------+
+| demo-key | SHA256:wjUkn/9ZIpnmhm5Ekky8lUb1+vRyoJ4h4DcTHBRJRb8 |
++----------+----------------------------------------------------+
+```
+
+
+
+### 8.2 启动一个实例
+
+```bash
+## 要启动一个实例，你必须最少指定flavor(云主机类型)，image name(镜像名)，network(网络)，security group(安全组)，key(密钥)和instance name(实例名)。
+
+## 1、flavor用来指定一个虚拟的独立分配的资源。包括cpu，内存和存储。查看可用的flavor:
+[root@controller ~]# nova flavor-list
++----+-----------+-----------+------+-----------+------+-------+-------------+-----------+
+| ID | Name      | Memory_MB | Disk | Ephemeral | Swap | VCPUs | RXTX_Factor | Is_Public |
++----+-----------+-----------+------+-----------+------+-------+-------------+-----------+
+| 1  | m1.tiny   | 512       | 1    | 0         |      | 1     | 1.0         | True      |
+| 2  | m1.small  | 2048      | 20   | 0         |      | 1     | 1.0         | True      |
+| 3  | m1.medium | 4096      | 40   | 0         |      | 2     | 1.0         | True      |
+| 4  | m1.large  | 8192      | 80   | 0         |      | 4     | 1.0         | True      |
+| 5  | m1.xlarge | 16384     | 160  | 0         |      | 8     | 1.0         | True      |
++----+-----------+-----------+------+-----------+------+-------+-------------+-----------+
+
+
+## 2、列出可用的镜像，可去CentOS/RedHat官网下载Openstack格式镜像
+[root@controller ~]# nova image-list
++--------------------------------------+---------------------+--------+--------+
+| ID                                   | Name                | Status | Server |
++--------------------------------------+---------------------+--------+--------+
+| 07e17807-8720-468c-a9d8-bf51bcc3314b | cirros-0.3.3-x86_64 | ACTIVE |        |
++--------------------------------------+---------------------+--------+--------+
+
+
+## 3、列出可用的网络
+[root@controller ~]# neutron net-list
++--------------------------------------+----------+-------------------------------------------------------+
+| id                                   | name     | subnets                                               |
++--------------------------------------+----------+-------------------------------------------------------+
+| cf31ea41-4e5d-4fff-9243-6e3abe6cca4e | demo-net | 4cfa999a-1bd5-492b-aef1-2097528b497f 192.168.2.0/24   |
+| cd3874ec-6b72-49e4-88cb-bf0710fb213b | ext-net  | 8faa24c8-f888-4848-823a-5d62bb5c4bc0 100.100.100.0/24 |
++--------------------------------------+----------+-------------------------------------------------------+
+
+
+## 4、列出可用的安全组
+[root@controller ~]# nova secgroup-list
++--------------------------------------+---------+-------------+
+| Id                                   | Name    | Description |
++--------------------------------------+---------+-------------+
+| c133c13e-99ab-401d-97f9-66503103d85d | default | default     |
++--------------------------------------+---------+-------------+
+
+
+## 5、启动实例
+[root@controller ~]# nova boot --flavor m1.tiny --image cirros-0.3.3-x86_64 --nic net-id=cf31ea41-4e5d-4fff-9243-6e3abe6cca4e --security-group default --key-name demo-key demo-instance1
++--------------------------------------+------------------------------------------------------------+
+| Property                             | Value                                                      |
++--------------------------------------+------------------------------------------------------------+
+| OS-DCF:diskConfig                    | MANUAL                                                     |
+| OS-EXT-AZ:availability_zone          | nova                                                       |
+| OS-EXT-STS:power_state               | 0                                                          |
+| OS-EXT-STS:task_state                | scheduling                                                 |
+| OS-EXT-STS:vm_state                  | building                                                   |
+| OS-SRV-USG:launched_at               | -                                                          |
+| OS-SRV-USG:terminated_at             | -                                                          |
+| accessIPv4                           |                                                            |
+| accessIPv6                           |                                                            |
+| adminPass                            | Z4KWAsw3w5Ai                                               |
+| config_drive                         |                                                            |
+| created                              | 2023-04-15T15:23:26Z                                       |
+| flavor                               | m1.tiny (1)                                                |
+| hostId                               |                                                            |
+| id                                   | aeb8c0c7-2e19-4e1e-ad43-2b3e1b22d7bc                       |
+| image                                | cirros-0.3.3-x86_64 (07e17807-8720-468c-a9d8-bf51bcc3314b) |
+| key_name                             | demo-key                                                   |
+| metadata                             | {}                                                         |
+| name                                 | demo-instance1                                             |
+| os-extended-volumes:volumes_attached | []                                                         |
+| progress                             | 0                                                          |
+| security_groups                      | default                                                    |
+| status                               | BUILD                                                      |
+| tenant_id                            | 29dd9bfe34324be8b979ad93be76fce5                           |
+| updated                              | 2023-04-15T15:23:26Z                                       |
+| user_id                              | c198723d56e84fdd9d6f3c2ecb65b639                           |
++--------------------------------------+------------------------------------------------------------+
+
+
+## 6、查看实例状态
+[root@controller ~]# nova list
++--------------------------------------+----------------+--------+------------+-------------+----------+
+| ID                                   | Name           | Status | Task State | Power State | Networks |
++--------------------------------------+----------------+--------+------------+-------------+----------+
+| aeb8c0c7-2e19-4e1e-ad43-2b3e1b22d7bc | demo-instance1 | BUILD  | spawning   | NOSTATE     |          |
++--------------------------------------+----------------+--------+------------+-------------+----------+
+[root@controller ~]# nova list
++--------------------------------------+----------------+--------+------------+-------------+----------------------+
+| ID                                   | Name           | Status | Task State | Power State | Networks             |
++--------------------------------------+----------------+--------+------------+-------------+----------------------+
+| aeb8c0c7-2e19-4e1e-ad43-2b3e1b22d7bc | demo-instance1 | ACTIVE | -          | Running     | demo-net=192.168.2.2 |
++--------------------------------------+----------------+--------+------------+-------------+----------------------+
+```
+
+
+
+### 8.3 通过虚拟控制台访问你的实例
+
+```bash
+## 获取用于访问你的实例的Virtual Network Computing (VNC) 会话 URL，并通过浏览器访问：
+[root@controller ~]# nova get-vnc-console demo-instance1 novnc
++-------+-------------------------------------------------------------------------------------------+
+| Type  | Url                                                                                       |
++-------+-------------------------------------------------------------------------------------------+
+| novnc | http://controller.markli.cn:6080/vnc_auto.html?token=7e04b108-26d8-4262-84f7-10a190a56156 |
++-------+-------------------------------------------------------------------------------------------+
+
+
+
+```
+
+
+
+### 8.4 远程访问你的实例
+
+```bash
+## 1、添加规则到名为default的安全组：
+# a.列出安全组
+[root@controller ~]# nova secgroup-list 
++--------------------------------------+---------+-------------+
+| Id                                   | Name    | Description |
++--------------------------------------+---------+-------------+
+| c133c13e-99ab-401d-97f9-66503103d85d | default | default     |
++--------------------------------------+---------+-------------+
+
+# b.允许ICMP协议(ping)，-1到-1为端口范围，-1表示所有端口：
+[root@controller ~]# nova secgroup-add-rule default icmp -1 -1 0.0.0.0/0
++-------------+-----------+---------+-----------+--------------+
+| IP Protocol | From Port | To Port | IP Range  | Source Group |
++-------------+-----------+---------+-----------+--------------+
+| icmp        | -1        | -1      | 0.0.0.0/0 |              |
++-------------+-----------+---------+-----------+--------------+
+
+# 允许ssh协议，22到22为端口范围，表示只允许22端口被外部连接:
+[root@controller ~]# nova secgroup-add-rule default tcp 22 22 0.0.0.0/0
++-------------+-----------+---------+-----------+--------------+
+| IP Protocol | From Port | To Port | IP Range  | Source Group |
++-------------+-----------+---------+-----------+--------------+
+| tcp         | 22        | 22      | 0.0.0.0/0 |              |
++-------------+-----------+---------+-----------+--------------+
+
+
+## 2、在ext-net外部网络创建一个浮动IP地址：
+[root@controller ~]# neutron floatingip-create ext-net
+Created a new floatingip:
++---------------------+--------------------------------------+
+| Field               | Value                                |
++---------------------+--------------------------------------+
+| fixed_ip_address    |                                      |
+| floating_ip_address | 100.100.100.110                      |
+| floating_network_id | cd3874ec-6b72-49e4-88cb-bf0710fb213b |
+| id                  | ceba91f3-1723-4f4e-9baa-1b8393d21b48 |
+| port_id             |                                      |
+| router_id           |                                      |
+| status              | DOWN                                 |
+| tenant_id           | 29dd9bfe34324be8b979ad93be76fce5     |
++---------------------+--------------------------------------+
+
+
+## 3、分配浮动IP地址到你的实例：
+[root@controller ~]# nova floating-ip-associate demo-instance1 100.100.100.110
+
+
+## 4、检查你的浮动IP地址状态：
+[root@controller ~]# nova list
++--------------------------------------+----------------+--------+------------+-------------+---------------------------------------+
+| ID                                   | Name           | Status | Task State | Power State | Networks                              |
++--------------------------------------+----------------+--------+------------+-------------+---------------------------------------+
+| aeb8c0c7-2e19-4e1e-ad43-2b3e1b22d7bc | demo-instance1 | ACTIVE | -          | Running     | demo-net=192.168.2.2, 100.100.100.110 |
++--------------------------------------+----------------+--------+------------+-------------+---------------------------------------+
+
+
+## 5、从任何一个可以和ext-net网络通讯的主机测试连通性
+
+```
+
+
 
