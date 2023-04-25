@@ -1182,6 +1182,56 @@ GRANT EXECUTE,VIEW DEFINITION  ON [dbo].[AutomaticTicketing_GetRecord]TO [WN010]
 -- revoke EXECUTE,VIEW DEFINITION on [dbo].[AutomaticTicketing_GetRecord] from [WN010]
 
 
+```bash
+USE topway;
+GO
+ 
+DECLARE @loginname VARCHAR(32);
+SET @loginname='[hs\prod-dbuser]'
+
+---给用户授予查看存储过程定义的权限
+SELECT  'GRANT EXECUTE,VIEW DEFINITION,ALTER ON ' + SCHEMA_NAME(schema_id) + '.'
+        + QUOTENAME(name) + ' TO ' + @loginname + ';'
+FROM    sys.procedures where is_ms_shipped=0
+ORDER BY 1 ;
+ 
+ 
+--给用户授予查看自定义函数定义的权限, 'SQL_TABLE_VALUED_FUNCTION'此表值函数无执行权限
+SELECT  'GRANT EXECUTE,VIEW DEFINITION ON ' + SCHEMA_NAME(schema_id) + '.'
+        + QUOTENAME(name) + ' TO ' + @loginname + ';'
+FROM    sys.objects
+WHERE   type_desc IN ( 'SQL_SCALAR_FUNCTION','AGGREGATE_FUNCTION' );
+ORDER BY 1 ;
+
+ 
+--给用户授予查看视图定义的权限
+SELECT  'GRANT VIEW DEFINITION ON ' + SCHEMA_NAME(schema_id) + '.'
+        + QUOTENAME(name) + ' TO ' + @loginname + ';'
+FROM    sys.views;
+ORDER BY 1 ;
+ 
+ 
+--给用户授予查看表定义的权限
+SELECT 'GRANT VIEW DEFINITION ON ' + SCHEMA_NAME(schema_id) 
+      + QUOTENAME(name) + ' TO ' + @loginname + ';' 
+FROM sys.tables
+ORDER BY 1 ;
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 --sql_exporter权限授予
 -- 设置变量
 DECLARE @sql VARCHAR(max)
