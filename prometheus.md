@@ -428,6 +428,16 @@ msiexec /i windows_exporter-0.13.0-amd64.msi ENABLED_COLLECTORS="[defaults],tcp,
 -- 开启tcp连接状态指标
 msiexec /i windows_exporter-0.13.0-amd64.msi ENABLED_COLLECTORS=cpu,cs,logical_disk,net,os,service,system,tcp,textfile
 
+-- 开启进程收集功能
+```
+# uninstall
+msiexec /x windows_exporter-0.20.0-amd64.msi
+
+# install
+msiexec /i windows_exporter-0.20.0-amd64.msi ENABLED_COLLECTORS="cpu,cs,logical_disk,net,os,service,system,tcp,textfile,iis,memory,process"
+```
+
+
 #--wmi_exporter
 注：wmi_exporter客户端使用版本为wmi_exporter-0.8.3-386.msi,此版本可以采集windows server 2003系统。
 

@@ -1675,6 +1675,54 @@ find /data/nginx_logs/days/* -name "*.bz2" -mtime 7 -type f -exec rm -rf {} \;
 0 0 * * * /bin/bash -x /usr/local/sbin/logrotate-nginx.sh > /dev/null 2>&1 
 
 
+### mysql 日志切割
+```
+[root@devmysql /etc/logrotate.d]# cat mysql 
+# grant reload on *.* to ops@'localhost' identified by 'homsom';
+/data/mysql/mysql.err {
+	create 640 mysql mysql
+	dateext
+	notifempty
+	daily
+	maxage 60
+	rotate 30
+	missingok
+	compress
+	olddir /data/logrotate
+	postrotate
+	    # just if mysqld is really running
+	    if test -x /usr/local/mysql/bin/mysqladmin &&
+	       /usr/local/mysql/bin/mysqladmin -uops -phomsom ping &>/dev/null
+	    then
+	       /usr/local/mysql/bin/mysqladmin -uops -phomsom flush-logs error
+	    fi
+	endscript
+}
+
+/data/mysql/mysql-slow.log {
+	create 640 mysql mysql
+	dateext
+	notifempty
+	daily
+	maxage 60
+	rotate 30
+	missingok
+	compress
+	olddir /data/logrotate
+	postrotate
+	    # just if mysqld is really running
+	    if test -x /usr/local/mysql/bin/mysqladmin &&
+	       /usr/local/mysql/bin/mysqladmin -uops -phomsom ping &>/dev/null
+	    then
+	       /usr/local/mysql/bin/mysqladmin -uops -phomsom flush-logs slow
+	    fi
+	endscript
+}
+
+# logrotate -vf /etc/logrotate.d/mysql	#测试
+```
+
+
 ##tcpdump
 [root@autodep ~]# tcpdump -i eth0 ip host 192.168.1.254  #在eth0接口上，ip协议，抓取关于主机是192.168.1.254的包
 [root@autodep ~]# tcpdump -i eth0 ip host 192.168.1.234 and tcp port 22  #在eth0接口上，ip协议，抓取关于主机是192.168.1.254并且端口是22的
@@ -2947,6 +2995,33 @@ cat json.txt | jq "[.[] | {name:.arrayBrowser[1].name,city:.address.city}]"
     "city": "大连"
   }
 ]
+
+
+[root@prometheus ~]# curl -s -upass:pass http://nginx-status.hs.com/checkstatus?format=json | jq '.servers.server[] | select(.status == "down")'
+{
+  "index": 44,
+  "upstream": "BesonDocking_loop",
+  "name": "192.168.13.238:12410",
+  "status": "down",
+  "rise": 0,
+  "fall": 296735,
+  "type": "tcp",
+  "port": 0
+}
+{
+  "index": 45,
+  "upstream": "BesonDocking_loop",
+  "name": "192.168.13.239:12410",
+  "status": "down",
+  "rise": 0,
+  "fall": 296507,
+  "type": "tcp",
+  "port": 0
+}
+
+
+
+
 
 
 #数组
