@@ -426,3 +426,13 @@ sudo apt-get -y install docker-ce
 
 
 </pre>
+
+
+## ubuntu 更改网卡名称为eth
+```
+输入命令修改/etc/default/grub配置文件，将GRUB_CMDLINE_LINUX里添加参数改为“net.ifnames=0 biosdevname=0”
+
+执行update-grub命令，重新生成GRUB的启动菜单配置文件。
+update-grub
+reboot
+```

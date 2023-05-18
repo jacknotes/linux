@@ -661,3 +661,42 @@ echo '' >> ${logFile}
 
 
 </pre>
+
+
+# 解决gitlab8.9.11源码编译环境，用户访问gitlab报forbidden 错误
+1. 如果一个ip被错误地拦截，导致不能访问，如何快速恢复：
+```bash
+[root@gitlab gitlab]# redis-cli -s /var/run/redis/redis.sock
+redis /var/run/redis/redis.sock> keys *rack::attack*
+1) "cache:gitlab:rack::attack:allow2ban:ban:172.168.2.205"
+redis /var/run/redis/redis.sock> del cache:gitlab:rack::attack:allow2ban:ban:172.168.2.205
+(integer) 1
+redis /var/run/redis/redis.sock> keys *rack::attack*
+(empty list or set)
+```
+
+2. 我们使用的是从源码安装的gitlab，rack-attack机制默认是启用的，如果想禁用掉这个机制，将enabled更改为false，然后取消注释，重启服务即可。ip_whitelist为启用rack-attack机制下的白名单配置
+
+```bash
+[root@gitlab gitlab]# vim config/gitlab.yml
+  rack_attack:
+    git_basic_auth:
+      # Rack Attack IP banning enabled
+      enabled: false
+      #
+      # Whitelist requests from 127.0.0.1 for web proxies (NGINX/Apache) with incorrect headers
+      # ip_whitelist: ["127.0.0.1"]
+      #
+      # Limit the number of Git HTTP authentication attempts per IP
+      # maxretry: 10
+      #
+      # Reset the auth attempt counter per IP after 60 seconds
+      # findtime: 60
+      #
+      # Ban an IP for one hour (3600s) after too many auth attempts
+      # bantime: 3600
+```
+
+
+
+
