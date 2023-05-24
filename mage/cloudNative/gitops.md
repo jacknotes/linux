@@ -1,5 +1,7 @@
 # GitOps
 
+
+
 ## CI/CD
 
 - CI/CD是一种在应用开发阶段引入自动化实现以较高频度向客户交付应用的方法
@@ -12,7 +14,7 @@
 
 
 
-### 持续交付和持续部署
+## 持续交付和持续部署
 
 - 持续交付
   - 通常是指开发人员对应用的更改会自动进行错误测试并上传到存储库（如GitHub或Image Registry），然后由运维团队将其部署到实时生产环境中
@@ -27,7 +29,7 @@
 
 
 
-### CI/CD Pipeline
+## CI/CD Pipeline
 
 - CI/CD Pipeline
   - 为了交付新版本的软件而必须执行的一系列步骤
@@ -60,7 +62,7 @@
 
 
 
-#### Pipeline 模型的演进
+### Pipeline 模型的演进
 
 - Push Pipeline
   - 传统上的大多数CI/CD工具都使用基于Push的模型，即代码从CI系统开始，可以经由一系列脚本代码自动化完成其执行路径，或手动完成相关的Stage；
@@ -69,7 +71,7 @@
 
 
 
-#### 一个典型的GitOps Pipeline
+### 一个典型的GitOps Pipeline
 
 - GitOps模型中存在两个Git仓库 
   - 代码仓库（code repo）：开发人员使用 
@@ -86,7 +88,7 @@
 
 
 
-#### GitOps的实施要点
+### GitOps的实施要点
 
 - GitOps强调的重心在于，它要求对应用程序、环境、部署操作和基础架构进行的所有变更，都应以声明式描述文件存储于Git中；
   - 基础设施：例如，以Terraform模块或Cloudformation脚本形式存在的声明，此外，aws也支持使用Kops在基础设施上拉起一个集群等；
@@ -106,7 +108,7 @@
 
 
 
-#### 开放式应用程序模型（OAM）
+### 开放式应用程序模型（OAM）
 
 - 对于一个特定的应用，其声明式配置清单的管理会涉及到诸多方面
   - Dockerfile：将应用程序打包成Docker Image
@@ -124,7 +126,7 @@
 
 
 
-##### OAM框架下的各角色职责
+#### OAM框架下的各角色职责
 
 - OAM框架有利将各角色职责分离
 - 公有云环境下，Cluster Operator的职责大部分都能够由Cloud Provider提供
@@ -133,7 +135,7 @@
 
 
 
-## 如何实施GitOps
+# 如何实施GitOps
 
 - 遵循GitOps的标准流程
 - 基于OAM框架模型，DevOps团队协同管理声明式配置清单
@@ -142,7 +144,7 @@
 
 
 
-### GitOps工具集
+## GitOps工具集
 
 - 除了Kubernetes集群外，GitOps的实施通常还要依赖于如下工具
   - Git和Git Server：显然，这是实施GitOps的基础和中心；GitHub、GitLab或任何形式的支持自动化Pipeline必要功能的Git Server均可；
@@ -155,7 +157,8 @@
 
 
 
-####GitOps基础
+## GitOps基础
+
 - 什么是 GitOps？
   - 一套使用Git来管理基础架构和应用配置的实践，一项事关部署流程的技术
   - 在运行过程中以Git为声明性基础架构和应用的单一事实来源
@@ -170,21 +173,29 @@
     - 原生支持基于Kubernetes的持续部署
   - 用于构建开发流程、对应用进行编码、管理配置、置备Kubernetes 集群以及在 Kubernetes 或容器注册中心进行部署
 
-#GitOps示例一：FluxCD
+
+
+### GitOps示例一：FluxCD
+
 - Manage Helm releases with Flu
 - Flagger
   - 支持Canary releases、A/B testing、Blue/Green mirroring等部署策略，它依赖于Service Mesh或Ingress Controller实现流量策略
-  - 支持基于Prometheus、Datadog等进行发布分析，以及基于Slack等进行告警；
-  #GitOps示例二：ArgoCD
+  - 支持基于Prometheus、Datadog等进行发布分析，以及基于Slack等进行告警
+
+### GitOps示例二：ArgoCD
+
 - ArgoCD：专用于Kubernetes的声明式GitOps CD工具；
-#GitOps示例三：Tekton and ArgoCD
+
+### GitOps示例三：Tekton and ArgoCD
+
 - Modern CI/CD workflows for serverless 
 - applications with Red Hat OpenShift 
 - Pipelines and Argo CD
   - Tekton：CI Pipeline
   - ArgoCD: CD Pipeline
 
-#基于Tekton和ArgoCD的GitOps示意图
+### 基于Tekton和ArgoCD的GitOps示意图
+
 - Tekton负责构建CI Pipeline
 - ArgoCD负责构建CD Pipeline
 
@@ -192,9 +203,9 @@
 
 
 
-###Tekton基础
+# Tekton基础
 
-#Tekton系统组件
+Tekton系统组件
 - Tekton Pipelines
   - Tekton最核心的组件，由一组CRD和相关的Operator、Webhook共同组成
   - 需要部署并运行于Kubernetes集群之上，作为Kubernetes的集群扩展
@@ -210,7 +221,7 @@
   - 用于访问Catalog的图形界面，基于Web
 - Tekton Operator
 
-#概念模型
+概念模型
 - Tekton Pipelines的Pipeline模型中存在三个核心术语：Step、Task和Pipeline
 - Step
   - CI/CD工作流中的一个具体操作，例如Python web app的单元测试，或者是Java程序的编译操作
@@ -239,7 +250,7 @@
   - 它们既可由用户手动创建，也可由Trigger自动触发
   - 注意：实际上，PipelineRun自身并不执行任何具体任务，它是由按特定顺序运行的TaskRun组合而成
 
-#Parameters
+Parameters
 - Parameters是使得Task及Pipeline资源定义出的“模板”更加具有通用性的关键要素之一
 - 具体到使用逻辑，例如
   - 大多数CI Pipeline的起始位置都是从Git仓库中克隆代码，这通常会在定义一个Task，通过某个具体的Step进行
@@ -251,12 +262,12 @@
   - 为了完成实例化，Pipeline需要向Task的Parameter进行赋值，但其值，也可以是对Pipeline级别的某个Parameter的引用
   - 而对Pipeline上的Parameter的赋值，则由PipelineRun进行
 
-#TaskRun和Step的运行
+TaskRun和Step的运行
 - 每个TaskRun运行于一个独立的Pod中，而其内部的各Step则分别运行于一个Container中
   - Tekton Pipelines会在每个Step相关的容器中注入一个entrypoint程序，该程序会在系统就绪后启动并运行用户指定要运行的命令。
   - Tekton Pipelines使用Kubernetes Annotations跟踪Pipeline的状态，而这些Annotations通过DownwardAPI以文件的形式投射进每个Step容器中。由Tekton Pipelines注入到容器中的entrypoint程序负责密切监视这些投射进当前容器中的文件，并在某个特定Annotation作为文件出现时才启动用户指定的命令。例如，对于一个包含多个Step的某Task来说，后一个Step容器会在其annotation报告前一个容器成功执行完成后才会开始运行entrypoint。
 
-#Pipeline和Task上的数据共享
+Pipeline和Task上的数据共享
 - Pipeline上可能会存在数据共享的需要，例如
   - 一个Task的多个Step之间，靠前的Step生成的结果，需要由后面某个Step引用
   - 一个Pipeline的多个Task之间，前面的Task处理的结果，需要由后面的某个Task引用
@@ -274,9 +285,12 @@
 
 
 
-####Tekton Pipelines快速入门
+## Tekton Pipelines快速入门
 
-#部署Tekton
+
+
+### 部署Tekton
+
 - 环境要求
   - Tekton Pipelines 0.11.0及以上的版本，需要运行于Kubernetes v1.15以上的集群中；
   - 集群上要启用了RBAC鉴权插件；
@@ -293,15 +307,11 @@
 - 官方文档：https://tekton.dev/docs/getting-started/tasks/
 
 
-#实验环境
-Kubernetes集群：v1.23.1
-root@k8s-master01:~# kubectl get nodes
-NAME           STATUS                     ROLES    AGE   VERSION
-172.168.2.21   Ready,SchedulingDisabled   master   8d    v1.23.1
-172.168.2.24   Ready                      node     8d    v1.23.1
-172.168.2.25   Ready                      node     8d    v1.23.1
 
-#1. Install Tekton Pipelines
+### 实验环境
+
+```bash
+### # 1. Install Tekton Pipelines
 root@k8s-master01:~# kubectl apply --filename https://storage.googleapis.com/tekton-releases/pipeline/latest/release.yaml
 root@k8s-master01:~# kubectl get ns
 NAME               STATUS   AGE
@@ -362,10 +372,11 @@ tekton-pipelines-webhook      ClusterIP   10.68.74.54     <none>        9090/TCP
 root@k8s-master01:~# kubectl edit svc tekton-dashboard -n tekton-pipelines
 spec:
   externalIPs:
+
   - 172.168.2.27
-root@k8s-master01:~# kubectl get svc tekton-dashboard -n tekton-pipelines
-NAME               TYPE        CLUSTER-IP      EXTERNAL-IP    PORT(S)    AGE
-tekton-dashboard   ClusterIP   10.68.240.209   172.168.2.27   9097/TCP   93s
+    root@k8s-master01:~# kubectl get svc tekton-dashboard -n tekton-pipelines
+    NAME               TYPE        CLUSTER-IP      EXTERNAL-IP    PORT(S)    AGE
+    tekton-dashboard   ClusterIP   10.68.240.209   172.168.2.27   9097/TCP   93s
 
 --WEB访问tekton dashboard: 172.168.2.27:9097
 PS C:\Windows\System32\drivers\etc> notepad hosts
@@ -380,13 +391,17 @@ root@k8s-master01:~# tkn version
 Client version: 0.23.1
 Pipeline version: v0.35.1
 Dashboard version: v0.26.0
+```
 
 
-###示例demo
+
+### 示例demo
+```bash
 root@front-envoy:~# git clone https://github.com/iKubernetes/tekton-and-argocd-in-practise.git
 root@front-envoy:~# scp -r tekton-and-argocd-in-practise/ root@172.168.2.21:~
 
 #Task 和 TaskRun 初步运行
+
 - TaskRun
   - Tekton Pipelines提供的CRD之一，用于实例化及运行一个Task
   - 负责于一个Pod中使用不同的容器依次运行Task中定义的各个Step
@@ -395,14 +410,14 @@ root@front-envoy:~# scp -r tekton-and-argocd-in-practise/ root@172.168.2.21:~
   - TaskRun引用Task的方式有两种
     - taskRef：通过Task的名称引用
     - taskSpec：直接定义要运行自有的Task
-    #示例
-    root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# cat 01-task-hello.yaml
-    apiVersion: tekton.dev/v1beta1
-    kind: Task
-    metadata:
-    name: hello
-    spec:
-    steps:					#创建一个task,里面有一个step，step名称为say-hello
+      #示例
+      root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# cat 01-task-hello.yaml
+      apiVersion: tekton.dev/v1beta1
+      kind: Task
+      metadata:
+      name: hello
+      spec:
+      steps:					#创建一个task,里面有一个step，step名称为say-hello
     - name: say-hello
       image: alpine:3.15
       command: ['/bin/sh']
@@ -441,34 +456,35 @@ NAME              STARTED         DURATION    STATUS
 hello-run-00001   3 minutes ago   3 minutes   Succeeded
 
 #在Task上使用parameters
+
 - Task支持接受和传递参数，相关参数以对象定义在spec.params字段中，可嵌套的常用字段有
   - name：参数名称
   - type：参数类型，有string和array两种取值
   - description：参数的简要描述；
   - default：参数的默认值
-  #示例
-  root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# cat 02-task-with-params.yaml
-  apiVersion: tekton.dev/v1beta1
-  kind: Task
-  metadata:
-  name: hello-params
-  spec:
-  params:
+    #示例
+    root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# cat 02-task-with-params.yaml
+    apiVersion: tekton.dev/v1beta1
+    kind: Task
+    metadata:
+    name: hello-params
+    spec:
+    params:
     - name: target		#变量名称
       type: string		#变量值类型，只能为string，array两种类型
       description: Name of somebody or something to greet		#变量描述信息
       default: MageEdu.Com		#变量默认值
-    steps:
+      steps:
     - name: say-hello
       image: alpine:3.15
       command:
         - /bin/sh
-      args: ['-c', 'echo Hello $(params.target)']		#$()是step中的调用变量，不是linux中的命令引用
-    root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# kubectl apply -f 02-task-with-params.yaml
-    root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn task list
-    NAME           DESCRIPTION   AGE
-    hello                        6 minutes ago
-    hello-params                 36 seconds ago
+          args: ['-c', 'echo Hello $(params.target)']		#$()是step中的调用变量，不是linux中的命令引用
+          root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# kubectl apply -f 02-task-with-params.yaml
+          root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn task list
+          NAME           DESCRIPTION   AGE
+          hello                        6 minutes ago
+          hello-params                 36 seconds ago
 
 --查看task详细信息
 root@k8s-master01:~# tkn task list
@@ -502,49 +518,51 @@ Waiting for logs to be available...
 [say-hello] Hello World!
 
 #在Task中使用多个Step
+
 - 在Task中定义的多个Step，它们按次序分别在同Pod下的不同容器中运行
   - 每个Step定义一个要运行的容器，其格式遵循Kubernetes的ContainerSpec
-  #示例
-  root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# cat 03-task-multi-steps.yaml
-  apiVersion: tekton.dev/v1beta1
-  kind: Task
-  metadata:
-  name: multiple
-  spec:
-  steps:
+    #示例
+    root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# cat 03-task-multi-steps.yaml
+    apiVersion: tekton.dev/v1beta1
+    kind: Task
+    metadata:
+    name: multiple
+    spec:
+    steps:
     - name: first			#第一个step
       image: alpine:3.15
       command:
         - /bin/sh
-      args: ['-c', 'echo First Step']
+          args: ['-c', 'echo First Step']
     - name: second			#第二个step
       image: alpine:3.15
       command:
         - /bin/sh
-      args: ['-c', 'echo Second Step']
-    root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# kubectl apply -f 03-task-multi-steps.yaml	#新建task
-    task.tekton.dev/multiple created
-    root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn task start multiple --showlog	#运行taskrun，也可以用清单
-    TaskRun started: multiple-run-nnpk9
-    Waiting for logs to be available...
-    [first] First Step
+          args: ['-c', 'echo Second Step']
+          root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# kubectl apply -f 03-task-multi-steps.yaml	#新建task
+          task.tekton.dev/multiple created
+          root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn task start multiple --showlog	#运行taskrun，也可以用清单
+          TaskRun started: multiple-run-nnpk9
+          Waiting for logs to be available...
+          [first] First Step
 
 [second] Second Step
 ##root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# kubectl get taskrun multiple-run-nnpk9 -o yaml #可以导出taskrun清单
 
 
 #在step中运行脚本
+
 - 需要在Step中执行复杂操作时，可以使用“script”直接指定要运行的脚本
   - 多行脚本，可以使用“|”启用
   - script同command互斥
-  #示例：
-  root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# cat 04-task-step-with-script.yaml
-  apiVersion: tekton.dev/v1beta1
-  kind: Task
-  metadata:
-  name: script
-  spec:
-  steps:
+    #示例：
+    root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# cat 04-task-step-with-script.yaml
+    apiVersion: tekton.dev/v1beta1
+    kind: Task
+    metadata:
+    name: script
+    spec:
+    steps:
     - name: step-with-script
       image: alpine:3.15
       script: |
@@ -554,47 +572,48 @@ Waiting for logs to be available...
         apk add curl
         curl -s www.magedu.com && echo "Success" || echo "Fail"
         echo "All done!"
-    root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# kubectl apply -f 04-task-step-with-script.yaml
-    task.tekton.dev/script created
-    root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn task start script --showlog
-    TaskRun started: script-run-nnp2d
-    Waiting for logs to be available...
-    [step-with-script] Step with Script...
-    [step-with-script] Installing necessary tooling
-    [step-with-script] fetch https://dl-cdn.alpinelinux.org/alpine/v3.15/main/x86_64/APKINDEX.tar.gz
-    [step-with-script] fetch https://dl-cdn.alpinelinux.org/alpine/v3.15/community/x86_64/APKINDEX.tar.gz
-    .....
-    root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn taskrun list
-    NAME                       STARTED          DURATION     STATUS
-    script-run-nnp2d-r-zgxvq   10 minutes ago   ---          Running
-    script-run-nnp2d           36 minutes ago   ---          Running
-    multiple-run-nnpk9         44 minutes ago   7 seconds    Succeeded
-    hello-params-run-rnbzb     1 hour ago       47 seconds   Succeeded
-    hello-params-run-dcvd8     2 hours ago      6 seconds    Succeeded
-    hello-run-00001            2 hours ago      3 minutes    Succeeded
-    root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn taskrun cancel script-run-nnp2d
-    TaskRun cancelled: script-run-nnp2d
-    root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn taskrun cancel script-run-nnp2d-r-zgxvq
-    TaskRun cancelled: script-run-nnp2d-r-zgxvq
-    root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn taskrun list
-    NAME                       STARTED          DURATION     STATUS
-    script-run-nnp2d-r-zgxvq   10 minutes ago   10 minutes   Cancelled(TaskRunCancelled)
-    script-run-nnp2d           36 minutes ago   36 minutes   Cancelled(TaskRunCancelled)
-    multiple-run-nnpk9         44 minutes ago   7 seconds    Succeeded
-    hello-params-run-rnbzb     1 hour ago       47 seconds   Succeeded
-    hello-params-run-dcvd8     2 hours ago      6 seconds    Succeeded
-    hello-run-00001            2 hours ago      3 minutes    Succeeded
+      root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# kubectl apply -f 04-task-step-with-script.yaml
+      task.tekton.dev/script created
+      root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn task start script --showlog
+      TaskRun started: script-run-nnp2d
+      Waiting for logs to be available...
+      [step-with-script] Step with Script...
+      [step-with-script] Installing necessary tooling
+      [step-with-script] fetch https://dl-cdn.alpinelinux.org/alpine/v3.15/main/x86_64/APKINDEX.tar.gz
+      [step-with-script] fetch https://dl-cdn.alpinelinux.org/alpine/v3.15/community/x86_64/APKINDEX.tar.gz
+      .....
+      root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn taskrun list
+      NAME                       STARTED          DURATION     STATUS
+      script-run-nnp2d-r-zgxvq   10 minutes ago   ---          Running
+      script-run-nnp2d           36 minutes ago   ---          Running
+      multiple-run-nnpk9         44 minutes ago   7 seconds    Succeeded
+      hello-params-run-rnbzb     1 hour ago       47 seconds   Succeeded
+      hello-params-run-dcvd8     2 hours ago      6 seconds    Succeeded
+      hello-run-00001            2 hours ago      3 minutes    Succeeded
+      root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn taskrun cancel script-run-nnp2d
+      TaskRun cancelled: script-run-nnp2d
+      root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn taskrun cancel script-run-nnp2d-r-zgxvq
+      TaskRun cancelled: script-run-nnp2d-r-zgxvq
+      root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn taskrun list
+      NAME                       STARTED          DURATION     STATUS
+      script-run-nnp2d-r-zgxvq   10 minutes ago   10 minutes   Cancelled(TaskRunCancelled)
+      script-run-nnp2d           36 minutes ago   36 minutes   Cancelled(TaskRunCancelled)
+      multiple-run-nnpk9         44 minutes ago   7 seconds    Succeeded
+      hello-params-run-rnbzb     1 hour ago       47 seconds   Succeeded
+      hello-params-run-dcvd8     2 hours ago      6 seconds    Succeeded
+      hello-run-00001            2 hours ago      3 minutes    Succeeded
 
 
 #Task上的script和parameters
+
 - 定义在Task上的Parameters，既可被Steps中的command或args引用，亦可被Steps中的script引用
-#示例
-root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# cat 05-task-script-and-parameters.yaml
-apiVersion: tekton.dev/v1beta1
-kind: Task
-metadata:
+  #示例
+  root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# cat 05-task-script-and-parameters.yaml
+  apiVersion: tekton.dev/v1beta1
+  kind: Task
+  metadata:
   name: logger
-spec:
+  spec:
   params:
     - name: text
       type: string
@@ -608,11 +627,12 @@ spec:
         cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
         DATETIME=$(date "+%F %T")
         echo [$DATETIME] - $(params.text)
-    root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# kubectl apply -f 05-task-script-and-parameters.yaml
-    root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn task start logger --showlog -p text="Hello"
+        root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# kubectl apply -f 05-task-script-and-parameters.yaml
+        root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn task start logger --showlog -p text="Hello"
 
 
 #Pipeline和PipelineRun
+
 - Pipeline CRD资源规范
   - 在Pipeline资源规范中，仅tasks为必选字段，它以对象列表指定要引用的各Task；
   - tasks字段中的每个列表项使用taskRef字段以名称引用目标Task，且被引用的Task要事先存在；
@@ -628,14 +648,14 @@ spec:
     - timeout：错误退出前的超时时长
     - serviceAccountName：为运行各TaskRun的Pod指定要使用ServiceAccount
     - serviceAccountNames：分别为每个TaskRun的Pod单独指定要使用的ServiceAccount，map型数据
-    #示例
-    root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# cat 06-pipeline-demo.yaml
-    apiVersion: tekton.dev/v1beta1
-    kind: Pipeline
-    metadata:
-    name: pipeline-demo
-    spec:
-    tasks:
+      #示例
+      root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# cat 06-pipeline-demo.yaml
+      apiVersion: tekton.dev/v1beta1
+      kind: Pipeline
+      metadata:
+      name: pipeline-demo
+      spec:
+      tasks:
     - name: first-task
       taskRef:
         name: hello
@@ -644,18 +664,18 @@ spec:
         name: multiple
       runAfter:				#定义的顺序，如果不定义此顺序将是并行运行。这里定义则是串行运行
         - first-task	
-      root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# kubectl apply -f 06-pipeline-demo.yaml
-      root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn task list
-      NAME           DESCRIPTION   AGE
-      hello                        2 hours ago
-      hello-params                 2 hours ago
-      logger                       3 minutes ago
-      multiple                     53 minutes ago
-      script                       45 minutes ago
-      root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn pipeline start pipeline-demo --showlog	#执行pipelinerun
-      PipelineRun started: pipeline-demo-run-svrmq
-      Waiting for logs to be available...
-      [first-task : say-hello] Hello World
+          root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# kubectl apply -f 06-pipeline-demo.yaml
+          root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn task list
+          NAME           DESCRIPTION   AGE
+          hello                        2 hours ago
+          hello-params                 2 hours ago
+          logger                       3 minutes ago
+          multiple                     53 minutes ago
+          script                       45 minutes ago
+          root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn pipeline start pipeline-demo --showlog	#执行pipelinerun
+          PipelineRun started: pipeline-demo-run-svrmq
+          Waiting for logs to be available...
+          [first-task : say-hello] Hello World
 
 [second-task : first] First Step		#在first-task之后运行
 
@@ -663,23 +683,24 @@ spec:
 
 
 #在Pipeline和PipelineRun上使用参数
+
 - Pipeline上可定义执行参数
   - 其下的各Task均可引用
   - Task上若定义了同名的参数，其默认值的优先级更高
 - PipelineRun上可向执行参数赋值
   - 其下的各TaskRun均可引用
   - Task上若定义了同名的参数，其默认值的优先级更高
-  #示例
-  root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# cat 08-pipeline-with-params.yaml
-  apiVersion: tekton.dev/v1beta1
-  kind: Pipeline
-  metadata:
-  name: pipeline-with-params
-  spec:
-  params:
+    #示例
+    root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# cat 08-pipeline-with-params.yaml
+    apiVersion: tekton.dev/v1beta1
+    kind: Pipeline
+    metadata:
+    name: pipeline-with-params
+    spec:
+    params:
     - name: text
       type: string
-    tasks:
+      tasks:
     - name: task-one
       taskRef:
         name: hello-params
@@ -689,20 +710,21 @@ spec:
       params:
         - name: text
           value: $(params.text)
-        root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# kubectl apply -f 08-pipeline-with-params.yaml
-        pipeline.tekton.dev/pipeline-with-params created
-        root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn pipeline start pipeline-with-params --showlog -p text="Jack"
+            root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# kubectl apply -f 08-pipeline-with-params.yaml
+            pipeline.tekton.dev/pipeline-with-params created
+            root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# tkn pipeline start pipeline-with-params --showlog -p text="Jack"
 
 
 #定义Pipeline上各Task的次序
+
 - 在Pipeline上，各Task的次序可在引用的Task上通过runAfter字段进行定义
-#示例
-root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# cat 10-pipeline-with-ordered-task.yaml
-apiVersion: tekton.dev/v1beta1
-kind: Pipeline
-metadata:
+  #示例
+  root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# cat 10-pipeline-with-ordered-task.yaml
+  apiVersion: tekton.dev/v1beta1
+  kind: Pipeline
+  metadata:
   name: pipeline-task-ordering
-spec:
+  spec:
   tasks:
     - name: task-a
       taskRef:
@@ -731,13 +753,15 @@ spec:
       - name: text
         value: "Executed after task-B and task-C"
         runAfter: ["task-b", "task-c"]
-      root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# kubectl apply -f 10-pipeline-with-ordered-task.yaml
+        root@k8s-master01:~/tekton-and-argocd-in-practise/02-tekton-basics# kubectl apply -f 10-pipeline-with-ordered-task.yaml
+```
 
 
 
-###Tekton Pipelines使用进阶
+### Tekton Pipelines使用进阶
 
 #Workspace
+
 - Workspace是什么？
   - Workspace用于为Task中的各Step提供工作目录，基于该Task运行的TaskRun需要在运行时提供该目录
   - TaskRun的实际运行形式为Pod，因而Workspace对应的实际组件为Pod上的Volume
@@ -783,6 +807,9 @@ spec:
   - secret
 - 各类型的配置参数遵循对应类型的Kubernetes资源规范
 
+
+
+```bash
 #简单示例：emptyDir存储卷
 root@k8s-master01:~/tekton-and-argocd-in-practise/03-tekton-advanced# cat 01-task-workspace-demo.yaml
 apiVersion: tekton.dev/v1beta1
@@ -791,6 +818,7 @@ metadata:
   name: workspace-demo
 spec:
   params:
+
   - name: target
     type: string
     default: MageEdu
@@ -806,14 +834,16 @@ spec:
         fi
         echo "Mount Path: $(workspaces.messages.path)"
         echo "Volume Name: $(workspaces.messages.volume)"
-    workspaces:
+      workspaces:
     - name: messages
       description: |
         The folder where we write the message to. If no workspace
         is provided then the message will not be written.
       optional: true
       mountPath: /data
+
 # -w或--workspace选项用于为TaskRun指定使用的Workspace,其中的参数，name为相应的workspace的名称，而emptyDir则是指定存储卷
+
 root@k8s-master01:~/tekton-and-argocd-in-practise/03-tekton-advanced# kubectl apply -f 01-task-workspace-demo.yaml
 root@k8s-master01:~/tekton-and-argocd-in-practise/03-tekton-advanced# tkn task start workspace-demo --showlog -p target="magedu.com" -w name=messages,emptyDir=""
 TaskRun started: workspace-demo-run-bx8hh
@@ -829,10 +859,12 @@ Waiting for logs to be available...
 
 
 #Workspace使用示例
+
 - Task下的所有Step运行于同一Pod中，这些Step可共享该Task的Workspace；
 - 另外，该Workspace直接关联的emptyDir存储卷的生命周期也就与该Pod相同，这意味着，TaskRun结束后，它即被删除，相关的数据也将被删除；
 
 #Pipeline上的Workspace和Parameters
+
 - 以“PipelineRun → Pipeline → （TaskRun）Task”的方式运行Pipeline及其Task的场景中，在Pipeline资源的配置上
   - 在spec.parameters上定义Parameter，而后在引用或内联定义的Task上通过引用进行赋值
   - 在spec.workspaces上定义Workspace，而后在引用或内联定义的Task上通过引用进行关联
@@ -843,6 +875,7 @@ Waiting for logs to be available...
     - volumeClaimTemplate是指卷请求模板资源，它需要用户指定动态置备PV和PVC时需要使用的storageClassName、卷大小、访问模式等属性
 
 #Workspace的生命周期
+
 - Workspace的同其关联的存储卷有相同的生命周期
   - emptyDir类型的存储卷在Pipeline中不能跨Task使用
   - 静态PVC或通过volumeClaimTempate申请的PVC的生命周期可以跨越TaskRun与PipelineRun
@@ -862,7 +895,7 @@ Waiting for logs to be available...
       type: string
       workspaces:
     - name: codebase
-    tasks:
+      tasks:
     - name: fetch-from-source
       params:
         - name: url
@@ -870,9 +903,9 @@ Waiting for logs to be available...
           taskSpec:
           workspaces:
           - name: source
-          params:
+            params:
           - name: url
-          steps:
+            steps:
           - name: git-clone
             image: alpine/git:v2.32.0
             script: git clone -v $(params.url) $(workspaces.source.path)/source
@@ -882,14 +915,14 @@ Waiting for logs to be available...
     - name: source-lister
       runAfter:
         - fetch-from-source
-      taskSpec:
+          taskSpec:
           steps:
           - name: list-files
             image: alpine:3.15
             script: ls $(workspaces.source.path)/source
-          workspaces:
+            workspaces:
           - name: source
-      workspaces:
+            workspaces:
         - name: source
           workspace: codebase
 
@@ -903,12 +936,13 @@ metadata:
   name: source-to-package
 spec:
   params:
+
   - name: git-repo-url
     type: string
     workspaces:
     - name: source
       description: code storage
-    steps:
+      steps:
     - name: fetch-from-source
       image: alpine/git:v2.32.0
       script: |
@@ -929,6 +963,7 @@ metadata:
   name: source-lister
 spec:
   params:
+
   - name: git-repo
     type: string
     description: Git repository to be cloned
@@ -942,16 +977,16 @@ spec:
     image: alpine:3.15
     command:
     - /bin/sh
-    args:
+      args:
     - '-c'
     - 'ls $(workspaces.source.path)/source'
-    root@k8s-master01:~/tekton-and-argocd-in-practise/03-tekton-advanced# cat 03-pipeline-workspace.yaml
-    apiVersion: tekton.dev/v1beta1
-    kind: Pipeline
-    metadata:
-    name: pipeline-source-lister
-    spec:
-    workspaces:
+      root@k8s-master01:~/tekton-and-argocd-in-practise/03-tekton-advanced# cat 03-pipeline-workspace.yaml
+      apiVersion: tekton.dev/v1beta1
+      kind: Pipeline
+      metadata:
+      name: pipeline-source-lister
+      spec:
+      workspaces:
   - name: codebase
     params:
   - name: git-url
@@ -967,12 +1002,15 @@ spec:
       params:
     - name: git-repo
       value: $(params.git-url)
----
+```
 
 
 
-###回顾
+
+
+### 回顾
 CI/CD:
+
 - Stage:
   - build, test, release, deploy
   - validation, compliance
@@ -1014,8 +1052,8 @@ Tekton:
 	- TaskRun
 	- Pipeline - > pipelineRun
 
+#### 分支策略
 
-####分支策略
 - 单分支策略简介(GitHub模式)
   - 通常也称为Feature Branch Workflow,其中Master Branch承载项目变更历史
   - 研发人员创建短生命周期的Feature分支，完成Feature目标相关的研发任务
@@ -1032,8 +1070,8 @@ Tekton:
   - Gitflow策略中，仅Release Branch CI过程中生成的镜像才允许部署到生产环境，Develop Branch CI生成的镜像只能用于发布前测试及集成测试；显然，需要回滚时，也只能使用Release Branch此前的CI Pipeline生成的镜像
   - 用于修复Bug的Hotfix Branch要基于Master Branch创建，同时也需要一个独立CI Pipeline完成必要的CI过程
 
+#### 应用的发布环境
 
-#应用的发布环境
 - 发布环境，是指应用代码部署及运行的系统及其功能和特性
 - 在应用开发周期中，通常会使用几种不同的环境来满足不同的目标
   - 程序员通常在本地开发环境中创建、测试和调试代码
@@ -1053,7 +1091,7 @@ Tekton:
   - 也可以直接配置使用"真实的"数据库，如此一来便需要仔细审查Stage环境
   
 
- #分支策略和部署环境
+ #### 分支策略和部署环境
 - 单分支策略
   - 主分支将始终包含在每个环境中使用的精确配置
   - 可以使用专用子目录，为每个环境提供一个默认配置
@@ -1064,8 +1102,11 @@ Tekton:
 
 
 
-#部署在k8s中部署NFS充当maven cache
-----安装NFS Server
+### 在k8s中部署NFS充当maven cache
+
+```bash
+# 安装NFS Server
+
 https://github.com/kubernetes-csi/csi-driver-nfs/blob/master/deploy/example/README.md
 https://github.com/kubernetes-csi/csi-driver-nfs/blob/master/deploy/example/nfs-provisioner/README.md
 root@front-envoy:~# git clone https://github.com/kubernetes-csi/csi-driver-nfs.git
@@ -1094,8 +1135,10 @@ csi-nfs-node-srbwp   3/3     Running   0          6m8s   172.168.2.21   172.168.
 
 
 ----创建storage class
+
 root@k8s-master01:~/tekton-and-argocd-in-practise/nfs-csi-driver# cat 03-storageclass-nfs.yaml
 ---
+
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
@@ -1104,19 +1147,26 @@ provisioner: nfs.csi.k8s.io
 parameters:
   server: nfs-server.nfs.svc.cluster.local
   share: /
+
   # csi.storage.k8s.io/provisioner-secret is only needed for providing mountOptions in DeleteVolume
+
   # csi.storage.k8s.io/provisioner-secret-name: "mount-options"
+
   # csi.storage.k8s.io/provisioner-secret-namespace: "default"
+
 reclaimPolicy: Retain
 volumeBindingMode: Immediate
 mountOptions:
+
   - hard
   - nfsvers=4.1
-root@k8s-master01:~/tekton-and-argocd-in-practise/nfs-csi-driver# kubectl apply -f 03-storageclass-nfs.yaml
+    root@k8s-master01:~/tekton-and-argocd-in-practise/nfs-csi-driver# kubectl apply -f 03-storageclass-nfs.yaml
 
 ----创建PVC
+
 root@k8s-master01:~/tekton-and-argocd-in-practise/nfs-csi-driver# cat 05-pvc-maven-cache.yaml
 ---
+
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -1134,6 +1184,7 @@ NAME          STATUS   VOLUME                                     CAPACITY   ACC
 maven-cache   Bound    pvc-4123e09e-4b61-46dd-a46d-5b50f44e12a2   5Gi        RWX            nfs-csi        2s
 
 #在Task和Step上使用Volume
+
 - Volume可显式定义要在Task和Step上使用的存储卷
   - 例如，为Maven指定Cache
     - 将下载的模块保存于指定的Volume上，即可由相关的Task和Step重复使用
@@ -1155,12 +1206,13 @@ metadata:
   name: s2p-demo
 spec:
   params:
+
   - name: git-repo-url
     type: string
     workspaces:
     - name: source
       description: code storage
-    steps:
+      steps:
     - name: fetch-from-source
       image: alpine/git:v2.32.0
       script: |
@@ -1173,7 +1225,7 @@ spec:
       volumeMounts:				
         - name: maven-cache			#挂载PVC，提供持久存储，为maven提供缓存
           mountPath: /root/.m2		#maven缓存在当前用户家目录的.m2目录下
-        volumes:
+            volumes:
   - name: maven-cache			#创建存储卷，引用PVC
     persistentVolumeClaim:
       claimName: maven-cache
@@ -1187,9 +1239,9 @@ spec:
     params:
     - name: git-repo-url
       type: string
-    workspaces:
+      workspaces:
     - name: source
-    tasks:
+      tasks:
     - name: s2p-demo
       params:
         - name: git-repo-url
@@ -1204,6 +1256,7 @@ spec:
 
 root@k8s-master01:~/tekton-and-argocd-in-practise/03-tekton-advanced# cat pipelinerun-s2p-demo.yaml
 ---
+
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
@@ -1237,10 +1290,16 @@ root@k8s-master01:~/tekton-and-argocd-in-practise/03-tekton-advanced# kubectl cp
 [s2p-demo : build-to-package] [INFO] Total time:  20.565 s
 [s2p-demo : build-to-package] [INFO] Finished at: 2022-05-17T13:59:14Z
 [s2p-demo : build-to-package] [INFO] ------------------------------------------------------------------------
+```
 
 
 
-#使用Results 进行数据传递
+
+
+
+
+### 使用Results 进行数据传递
+
 - Results简介
   - 在Pipeline的Task之间使用同一个共享的Workspace可以完成数据共享，但对于简单的字符串数据的传递，则可以使用Results API完成
   - Results用于让Task及其Step保存执行结果，并可在同一Pipeline中的后续Task中调用该结果
@@ -1257,6 +1316,7 @@ root@k8s-master01:~/tekton-and-argocd-in-practise/03-tekton-advanced# kubectl cp
   - tasks.<taskName>.results.<resultName>
   - tasks.<taskName>.results['<resultName>'] 或 tasks.<taskName>.results["<resultName>"]
 
+```bash
 #示例
 root@k8s-master01:~/tekton-and-argocd-in-practise/03-tekton-advanced# cat 07-results-demo.yaml
 apiVersion: tekton.dev/v1beta1
@@ -1265,41 +1325,46 @@ metadata:
   name: generate-buildid
 spec:
   params:
-    - name: version
-      description: The version of the application
-      type: string
-      default: "v0.9"
-  results:					#result可以跨step共享，跨task共享，但文件很小，最大最有4096字节
-    - name: datetime
-      description: The current date and time
-    - name: buildId
-      description: The build ID
-  steps:
-    - name: generate-datetime
-      image: ikubernetes/admin-box:v1.2
-      script: |
-        #!/usr/bin/env bash
-        datetime=`date +%Y%m%d-%H%M%S`
-        echo -n ${datetime} | tee $(results.datetime.path)
-    - name: generate-buildid
-      image: ikubernetes/admin-box:v1.2
-      script: |
-        #!/usr/bin/env bash
-        buildDatetime=`cat $(results.datetime.path)`
-        buildId=$(params.version)-${buildDatetime}
-        echo -n ${buildId} | tee $(results.buildId.path)
-root@k8s-master01:~/tekton-and-argocd-in-practise/03-tekton-advanced# kubectl apply -f 07-results-demo.yaml
-root@k8s-master01:~/tekton-and-argocd-in-practise/03-tekton-advanced# tkn task start --showlog generate-buildid -p version='v1'
-TaskRun started: generate-buildid-run-qmfx5
-Waiting for logs to be available...
-[generate-datetime] 20220517-105844
+
+   - name: version
+     description: The version of the application
+     type: string
+     default: "v0.9"
+       results:					#result可以跨step共享，跨task共享，但文件很小，最大最有4096字节
+        - name: datetime
+          description: The current date and time
+             - name: buildId
+               description: The build ID
+                 steps:
+                  - name: generate-datetime
+                    image: ikubernetes/admin-box:v1.2
+                    script: |
+                      #!/usr/bin/env bash
+                      datetime=`date +%Y%m%d-%H%M%S`
+                      echo -n ${datetime} | tee $(results.datetime.path)
+                       - name: generate-buildid
+                         image: ikubernetes/admin-box:v1.2
+                         script: |
+                           #!/usr/bin/env bash
+                           buildDatetime=`cat $(results.datetime.path)`
+                           buildId=$(params.version)-${buildDatetime}
+                           echo -n ${buildId} | tee $(results.buildId.path)
+                         root@k8s-master01:~/tekton-and-argocd-in-practise/03-tekton-advanced# kubectl apply -f 07-results-demo.yaml
+                         root@k8s-master01:~/tekton-and-argocd-in-practise/03-tekton-advanced# tkn task start --showlog generate-buildid -p version='v1'
+                         TaskRun started: generate-buildid-run-qmfx5
+                         Waiting for logs to be available...
+                         [generate-datetime] 20220517-105844
 
 [generate-buildid] v1-20220517-105844	#共享了20220517-105844
+```
 
 
-####Pipeline高级用法
 
-#在Pipeline上定义Task的执行方式
+
+
+### Pipeline高级用法
+
+在Pipeline上定义Task的执行方式
 - 使用taskRef或taskSpec可将Task添加至Pipeline上，它们以列表形式定义在spec.tasks字段中；
 - 对于这些Task的运行，它们允许用户
   - 使用when表达式来为其添加执行条件
@@ -1309,7 +1374,7 @@ Waiting for logs to be available...
   - 定义finally任务，定义一个最终任务
   - 使用retries定义重试次数
 
-#在Pipeline上使用When表达式
+在Pipeline上使用When表达式
 - When表达式共有三个字段组成
   - input
     - 被评估的内容，支持使用静态值或者变量（Parameters或者Results变量）
@@ -1321,7 +1386,7 @@ Waiting for logs to be available...
     - 由字符串组成的列表
     - 必须定义，且不能使用空值，但允许使用静态值或者变量
 
-#在Pipeline上使用Finally Task
+在Pipeline上使用Finally Task
 - 关于finally task
   - 用于在tasks中的各任务执行结束后运行最后的任务
   - 其定义格式与tasks字段相似
@@ -1338,7 +1403,7 @@ Waiting for logs to be available...
   - 终止任务执行
   - ……
 
-#实战案例Source-2-Image
+实战案例Source-2-Image
 - 案例环境说明
   - 示例项目
     - 代码仓库：github.com/ikubernetes/spring-boot-helloworld.git
@@ -1355,7 +1420,7 @@ Waiting for logs to be available...
   - 构建镜像工具，如docker build
   - 文档：https://github.com/GoogleContainerTools/kaniko
 
-
+```bash
 #示例，并推送到repository
 root@k8s-master01:~/tekton-and-argocd-in-practise/04-tekton-pipeline-in-practise/02-s2i-push-to-dockerhub# cat 01-task-git-clone.yaml
 apiVersion: tekton.dev/v1beta1
@@ -1365,17 +1430,18 @@ metadata:
 spec:
   description: Clone the code repository to the workspace.
   params:
-    - name: url				#定义git项目地址
-      type: string
-      description: git url to clone
-  workspaces:
-    - name: source			#定义一个共享存储，用于存放git代码、编译后存储文件、Dockerfile存储等，等会使用PVC
-      description: The git repo will be cloned onto the volume backing this workspace
-  steps:
-    - name: git-clone
-      image: alpine/git:v2.32.0		#git构建镜像，应当下载到本地，提高速度
-      script: git clone -v $(params.url) $(workspaces.source.path)/source
-	  
+
+   - name: url				#定义git项目地址
+     type: string
+     description: git url to clone
+       workspaces:
+        - name: source			#定义一个共享存储，用于存放git代码、编译后存储文件、Dockerfile存储等，等会使用PVC
+          description: The git repo will be cloned onto the volume backing this workspace
+            steps:
+             - name: git-clone
+               image: alpine/git:v2.32.0		#git构建镜像，应当下载到本地，提高速度
+               script: git clone -v $(params.url) $(workspaces.source.path)/source
+
 root@k8s-master01:~/tekton-and-argocd-in-practise/04-tekton-pipeline-in-practise/02-s2i-push-to-dockerhub# cat 02-task-source-build.yaml
 apiVersion: tekton.dev/v1beta1
 kind: Task
@@ -1384,21 +1450,22 @@ metadata:
 spec:
   description: build application and package the files to image
   workspaces:
-    - name: source			#定义一个共享存储，用于存放git代码、编译后存储文件、Dockerfile存储等，等会使用PVC
-      description: The git repo that cloned onto the volume backing this workspace
-  steps:
-    - name: build
-      image: maven:3.8-openjdk-11-slim		#maven构建镜像，应当下载到本地，提高速度
-      workingDir: $(workspaces.source.path)/source	#指定maven工作目录
-      volumeMounts:
-        - name: m2
-          mountPath: /root/.m2		#挂载PVC，提供持久存储，为maven提供缓存
-      script: mvn clean install		#执行构建编译
-  volumes:
-    - name: m2
-      persistentVolumeClaim:
-        claimName: maven-cache		#调用PVC
-		
+
+   - name: source			#定义一个共享存储，用于存放git代码、编译后存储文件、Dockerfile存储等，等会使用PVC
+     description: The git repo that cloned onto the volume backing this workspace
+       steps:
+        - name: build
+          image: maven:3.8-openjdk-11-slim		#maven构建镜像，应当下载到本地，提高速度
+          workingDir: $(workspaces.source.path)/source	#指定maven工作目录
+          volumeMounts:
+       - name: m2
+         mountPath: /root/.m2		#挂载PVC，提供持久存储，为maven提供缓存
+         script: mvn clean install		#执行构建编译
+           volumes:
+         - name: m2
+           persistentVolumeClaim:
+           claimName: maven-cache		#调用PVC
+
 root@k8s-master01:~/tekton-and-argocd-in-practise/04-tekton-pipeline-in-practise/02-s2i-push-to-dockerhub# cat 03-task-build-image.yaml
 apiVersion: tekton.dev/v1beta1
 kind: Task
@@ -1407,33 +1474,35 @@ metadata:
 spec:
   description: package the application files to image
   params:
-    - name: dockerfile				#设置dockerfile名称，默认为Dockerfile
-      description: The path to the dockerfile to build (relative to the context)
-      default: Dockerfile
-    - name: image-url				#镜像的地址名称
-      description: Url of image repository
-    - name: image-tag				#镜像的tag
-      description: Tag to apply to the built image
-      default: latest				#默认值为latest
-  workspaces:
-    - name: source					#定义一个共享存储，用于存放git代码、编译后存储文件、Dockerfile存储等，等会使用PVC
-	- name: dockerconfig
-      mountPath: /kaniko/.docker	#workspace dockerconfig挂载到/kaniko/.docker目录，后面把docker的认证文件赋值到此目录下，为/kaniko/.docker/config.json
-  steps:
-    - name: build-and-push-image
-      image: gcr.io/kaniko-project/executor:debug	#使用构建镜像的方法，默认是docker build(dind{docker in docker，需要挂载宿主机sock文件})，这里使用google的一个项目kaniko来构建镜像，但是此镜像不在本地，需要下载到本地
-      securityContext:
-        runAsUser: 0				#设定pod支持的用户，此为root
-	  env:
-        - name: DOCKER_CONFIG		#定义环境变量，配置docker的认证目录
-          value: /kaniko/.docker
-      command:
-        - /kaniko/executor			#执行构建的命令
-      args:
-        - --dockerfile=$(params.dockerfile)				#指定dockerfile名称
-        - --context=$(workspaces.source.path)/source	#指定构建的工作目录
-        - --destination=$(params.image-url):$(params.image-tag)	#推送到目标仓库的url:tag
-				
+
+   - name: dockerfile				#设置dockerfile名称，默认为Dockerfile
+     description: The path to the dockerfile to build (relative to the context)
+     default: Dockerfile
+        - name: image-url				#镜像的地址名称
+          description: Url of image repository
+             - name: image-tag				#镜像的tag
+               description: Tag to apply to the built image
+               default: latest				#默认值为latest
+                 workspaces:
+                  - name: source					#定义一个共享存储，用于存放git代码、编译后存储文件、Dockerfile存储等，等会使用PVC
+     - name: dockerconfig
+       mountPath: /kaniko/.docker	#workspace dockerconfig挂载到/kaniko/.docker目录，后面把docker的认证文件赋值到此目录下，为/kaniko/.docker/config.json
+       steps:
+         - name: build-and-push-image
+           image: gcr.io/kaniko-project/executor:debug	#使用构建镜像的方法，默认是docker build(dind{docker in docker，需要挂载宿主机sock文件})，这里使用google的一个项目kaniko来构建镜像，但是此镜像不在本地，需要下载到本地
+           securityContext:
+           runAsUser: 0				#设定pod支持的用户，此为root
+           env:
+       - name: DOCKER_CONFIG		#定义环境变量，配置docker的认证目录
+         value: /kaniko/.docker
+         command:
+       - /kaniko/executor			#执行构建的命令
+         args:
+       - --dockerfile=$(params.dockerfile)				#指定dockerfile名称
+       - --context=$(workspaces.source.path)/source	#指定构建的工作目录
+       - --destination=$(params.image-url):$(params.image-tag)	#推送到目标仓库的url:tag
+         	
+
 root@k8s-master01:~/tekton-and-argocd-in-practise/04-tekton-pipeline-in-practise/02-s2i-push-to-dockerhub# cat 04-pipeline-source-to-image.yaml
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
@@ -1441,48 +1510,49 @@ metadata:
   name: source-to-image
 spec:
   params:
-    - name: git-url			#定义git项目地址
-    - name: pathToContext
-      description: The path to the build context, used by Kaniko - within the workspace
-      default: .			#此变量未引用，多余
-    - name: image-url		#镜像url
-      description: Url of image repository
-    - name: image-tag		#镜像tag
-      description: Tag to apply to the built image
-  workspaces:
-    - name: codebase		#共享存储，提供能task之间共享
-  tasks:
-    - name: git-clone
-      taskRef:
-        name: git-clone
-      params:
-        - name: url
-          value: "$(params.git-url)"	#此task调用此pipeline的git-url变量值
-      workspaces:
-        - name: source					#此task调用此pipeline的codebase workspace值
-          workspace: codebase
-    - name: build-to-package
-      taskRef:
-        name: build-to-package
-      workspaces:
-        - name: source		#调用共享存储
-          workspace: codebase
-      runAfter:
-        - git-clone			#运行是task git-clone之后
-    - name: image-build
-      taskRef:
-        name: image-build
-      params:
-        - name: image-url	#调用变量
-          value: "$(params.image-url)"
-        - name: image-tag	#调用变量
-          value: "$(params.image-tag)"
-      workspaces:
-        - name: source		#调用共享存储
-          workspace: codebase
-      runAfter:
-        - build-to-package	#运行是task build-to-package之后
-		
+
+   - name: git-url			#定义git项目地址
+     - name: pathToContext
+       description: The path to the build context, used by Kaniko - within the workspace
+       default: .			#此变量未引用，多余
+         - name: image-url		#镜像url
+           description: Url of image repository
+         - name: image-tag		#镜像tag
+           description: Tag to apply to the built image
+           workspaces:
+         - name: codebase		#共享存储，提供能task之间共享
+           tasks:
+         - name: git-clone
+           taskRef:
+           name: git-clone
+           params:
+       - name: url
+         value: "$(params.git-url)"	#此task调用此pipeline的git-url变量值
+         workspaces:
+       - name: source					#此task调用此pipeline的codebase workspace值
+         workspace: codebase
+         - name: build-to-package
+           taskRef:
+           name: build-to-package
+           workspaces:
+       - name: source		#调用共享存储
+         workspace: codebase
+         runAfter:
+       - git-clone			#运行是task git-clone之后
+         - name: image-build
+           taskRef:
+           name: image-build
+           params:
+       - name: image-url	#调用变量
+         value: "$(params.image-url)"
+       - name: image-tag	#调用变量
+         value: "$(params.image-tag)"
+         workspaces:
+       - name: source		#调用共享存储
+         workspace: codebase
+         runAfter:
+       - build-to-package	#运行是task build-to-package之后
+
 root@k8s-master01:~/tekton-and-argocd-in-practise/04-tekton-pipeline-in-practise/02-s2i-push-to-dockerhub# cat 05-pipelinerun-source-to-image.yaml
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
@@ -1492,22 +1562,23 @@ spec:
   pipelineRef:
     name: source-to-image		#运行pipeline
   params:
-    - name: git-url
-      value: https://gitee.com/mageedu/spring-boot-helloWorld.git	#赋值给pipeline变量值
-    - name: image-url
-      value: ikubernetes/spring-boot-helloworld
-    - name: image-tag
-      value: latest
-  workspaces:
-    - name: codebase			#创建pvc，并把pvc传给codebase workspace，以实现task之间的共享存储
-      volumeClaimTemplate:
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
+
+   - name: git-url
+     value: https://gitee.com/mageedu/spring-boot-helloWorld.git	#赋值给pipeline变量值
+        - name: image-url
+          value: ikubernetes/spring-boot-helloworld
+             - name: image-tag
+               value: latest
+                 workspaces:
+                  - name: codebase			#创建pvc，并把pvc传给codebase workspace，以实现task之间的共享存储
+                    volumeClaimTemplate:
+                      spec:
+                        accessModes:
+          - ReadWriteOnce
+            resources:
             requests:
-              storage: 1Gi		
-          storageClassName: nfs-csi
+            storage: 1Gi		
+              storageClassName: nfs-csi
 
 
 ###下面是修改后的示例
@@ -1526,8 +1597,10 @@ root@k8s-master01:~/tekton-and-argocd-in-practise/04-tekton-pipeline-in-practise
 root@k8s-master01:~/tekton-and-argocd-in-practise/04-tekton-pipeline-in-practise/02-s2i-push-to-dockerhub# kubectl create secret generic docker-config --from-file=./config.json	#此处类型为generic而非docker-registry是因为直接使用我们信息的是kaniko，而非docker hub
 
 #创建kaniko缓存目录，用于加快镜像下载构建
+
 root@k8s-master01:~/tekton-and-argocd-in-practise/04-tekton-pipeline-in-practise/02-s2i-push-to-dockerhub# cat kaniko-cache.yaml
 ---
+
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -2130,13 +2203,17 @@ spec:
           value: "$(tasks.generate-build-id.results.buildId)"	#直接调用results生成的值，不用parameters传入
       runAfter:
         - image-build-and-push
+
 root@k8s-master01:~/tekton-and-argocd-in-practise/04-tekton-pipeline-in-practise/04-s2i-auto-deploy# cat 07-rbac.yaml
 ---
+
 apiVersion: v1
 kind: ServiceAccount
 metadata:
+
   name: helloworld-admin
 ---
+
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -2146,6 +2223,7 @@ roleRef:
   kind: ClusterRole
   name: cluster-admin		#集群管理员权限，因为部署清单有要创建名称空间，可以自己先创建名称空间，再来最小化这里的权限
 subjects:
+
 - kind: ServiceAccount
   name: helloworld-admin
   namespace: default
@@ -2232,12 +2310,14 @@ spec:
 root@k8s-master01:~/tekton-and-argocd-in-practise/04-tekton-pipeline-in-practise/04-s2i-auto-deploy# kubectl apply -f 09-pipelinerun-source-to-image-local-repo.yaml
 root@k8s-master01:~/git-project/helloWorld# curl 10.68.116.212/version
 Spring Boot Helloworld, version 0.9.3
+```
 
 
 
-####Tekton Trigger 基础
+## Tekton Trigger 基础
 
-#Tekton Trigger简介
+Tekton Trigger简介
+
 - Tekton Trigger简介
   - 监控特定的事件，并在满足条件时自动触发Tekton Pipeline
     - 例如，代码仓库上的创建pull request, push代码, 以及合并pull request至main分支等
@@ -2252,7 +2332,7 @@ Spring Boot Helloworld, version 0.9.3
   - Interceptor
   
 
-#Tekton Trigger的关键组件
+Tekton Trigger的关键组件
 - Trigger
   - EventListener Pod用于监视并筛选Event时使用的筛选条件
   - 由TriggerTemplate, TriggerBinding和ClusterInterceptor组成
@@ -2269,7 +2349,7 @@ Spring Boot Helloworld, version 0.9.3
   - 负责在Trigger进行事件筛选之前，接收特定平台或系统（如GitLab）上全部事件，进而支持一些预处理操作，例如内容过滤、校验、转换、Trigger条件测试等
   - 预处理完成后的事件，由Trigger进行筛选，符合条件的Event将传递给TriggerBinding
 
-#Tekton Trigger各组件间的逻辑关系
+Tekton Trigger各组件间的逻辑关系
 - EventListener Pod是Tekton Trigger的物理表现形式，它主要由一至多个Trigger组成
 - Trigger CRD即可以单独定义，也能够以内联方式定义在EventListener之上
 - 每个Trigger可由一个template、一组bindings以及一组interceptors构成
@@ -2278,7 +2358,11 @@ Spring Boot Helloworld, version 0.9.3
   - interceptors的定义，通常是引用ClusterInterceptor定义出的过滤规则
   
 
-#TektonTrigger部署
+
+
+## TektonTrigger部署
+
+```bash
 文档：https://tekton.dev/docs/triggers/install/
 #部署TektonTrigger
 root@k8s-master01:~# kkubectl apply --filename https://storage.googleapis.com/tekton-releases/triggers/latest/release.yaml
@@ -2313,9 +2397,12 @@ bitbucket   107s
 cel         107s
 github      107s
 gitlab      107s
+```
 
 
-#TriggerTemplate CRD资源规范
+
+### TriggerTemplate CRD资源规范
+
 - TriggerTemplate CRD遵循Kubernetes resource API规范，其spec字段主要由以下两个嵌套字段组成
   - params
     - 当前TriggerTemplate的参数，从TriggerBinding接受传值
@@ -2370,8 +2457,8 @@ gitlab      107s
             secret:
               secretName: docker-config
 
+### TriggerBinding CRD资源规范
 
-#TriggerBinding CRD资源规范
 - TriggerBinding的功能
   - 主要用于将Event中特定属性的值传递给TriggerTemplate上的参数从而完成其resourcetemplates中模板资源的实例化
   - 其spec字段，主要定义params，每个Parameters主要是name和value两个字段组成
@@ -2381,12 +2468,12 @@ gitlab      107s
   - 集群级别的TriggerBinding，资源格式与TriggerBinding相似
   - 在Trigger上的spec.bindings字段中引用ClusterTriggerBinding时，要显示使用kind字段指明资源类别
    root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/01-trigger-basics# cat 02-triggerbinding-demo.yaml
-   apiVersion: triggers.tekton.dev/v1beta1
-   kind: TriggerBinding
-   metadata:
-   name: pipeline-binding-demo
-   spec:
-   params:
+    apiVersion: triggers.tekton.dev/v1beta1
+    kind: TriggerBinding
+    metadata:
+    name: pipeline-binding-demo
+    spec:
+    params:
   - name: git-url
     value: $(body.head_commit.id)
   - name: image-url
@@ -2394,8 +2481,8 @@ gitlab      107s
   - name: version
     value: $(header.Content-Type)
 
+### Trigger CRD资源规范
 
-#Trigger CRD资源规范
 - Trigger
   - CRD资源，遵循Kubernetes resource API规范
   - EventListener上的关键组件，主要由TriggerTemplate、TriggerBinding和Interceptor组成
@@ -2404,7 +2491,8 @@ gitlab      107s
 	- CluisterInterceptor可选，定义在spec.interceptors字段上
   - 事实上，Trigger也完全能够以内联方式直接定义在EventListener之上，这甚至也是更为常用的方式
 
-#Tekton Trigger案例
+### Tekton Trigger案例
+
 - 安全环境说明
   - 代码仓库位于Gitlab之上
     - gitlab服务同样运行于Kubernetes集群之上
@@ -2422,8 +2510,9 @@ gitlab      107s
 	
 	
 
-###配置TektonTrigger
+### 配置TektonTrigger
 
+```bash
 #创建secert，用于gitlab访问EventListener的weebhook的token
 root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/02-trigger-gitlab# cat 01-gitlab-token-secret.yaml	
 apiVersion: v1
@@ -2432,7 +2521,9 @@ metadata:
   name: gitlab-webhook-token
 type: Opaque
 stringData:
+
   # Generated by command "openssl rand -base64 12"
+
   webhookToken: "DXeqvozMlTA67aQB"
 root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/02-trigger-gitlab# kubectl apply -f 01-gitlab-token-secret.yaml
 
@@ -2443,52 +2534,71 @@ kind: ServiceAccount
 metadata:
   name: tekton-triggers-gitlab-sa
 secrets:
+
 - name: gitlab-webhook-token		#创建sa用户，并且此用户具有一个token
+
 ---
+
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: tekton-triggers-gitlab-minimal			#创建角色
 rules:
+
   # Permissions for every EventListener deployment to function
+
   - apiGroups: ["triggers.tekton.dev"]										#api group下
     resources: ["eventlisteners", "triggerbindings", "triggertemplates"]	#能够get这些资源
     verbs: ["get"]
+
   - apiGroups: [""]
+
     # secrets are only needed for Github/Gitlab interceptors, serviceaccounts only for per trigger authorization
+
     resources: ["configmaps", "secrets", "serviceaccounts"]		#能够在v1群组下，get、list、watch这些资源
     verbs: ["get", "list", "watch"]
+
   # Permissions to create resources in associated TriggerTemplates
+
   - apiGroups: ["tekton.dev"]
     resources: ["pipelineruns", "pipelineresources", "taskruns"]	#能够create这些资源
     verbs: ["create"]
+
 ---
+
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: tekton-triggers-gitlab-binding	#创建角色绑定，将sa:tekton-triggers-gitlab-sa和role:tekton-triggers-gitlab-minimal进行绑定
 subjects:
+
   - kind: ServiceAccount
     name: tekton-triggers-gitlab-sa
-  roleRef:
+      roleRef:
     apiGroup: rbac.authorization.k8s.io
     kind: Role
     name: tekton-triggers-gitlab-minimal
+
 ---
+
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: tekton-triggers-gitlab-minimal	
 rules:
+
   - apiGroups: ["triggers.tekton.dev"]
     resources: ["clusterinterceptors"]	#创建集群角色，能够get、list这些资源
     verbs: ["get","list"]
+
 ---
+
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: tekton-triggers-gitlab-binding	#集群角色绑定，将sa：tekton-triggers-gitlab-sa和ClusterRole:tekton-triggers-gitlab-minimal进行绑定
 subjects:
+
   - kind: ServiceAccount
     name: tekton-triggers-gitlab-sa
     namespace: default
@@ -2506,6 +2616,7 @@ metadata:
   name: gitlab-push-binding
 spec:
   params:
+
   - name: git-revision
     value: $(body.checkout_sha)
   - name: git-repo-url
@@ -2520,6 +2631,7 @@ metadata:
   name: gitlab-trigger-template
 spec:
   params:  # 定义参数
+
   - name: git-revision	#TriggerBinding将会把自己的params的值对应起来赋值给TriggerTemplate的params
   - name: git-repo-url
     resourcetemplates:
@@ -2552,8 +2664,7 @@ spec:
           - name: list-files
             image: 192.168.13.197:8000/gitops/alpine:3.15
             script: ls -la $(workspaces.source.path)/source
-	root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/02-trigger-gitlab# kubectl apply -f 04-gitlab-trigger-template.yaml
-	
+    root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/02-trigger-gitlab# kubectl apply -f 04-gitlab-trigger-template.yaml
 
 #创建EventListener，将绑定Trigger,TriggerBinding,TriggerTemplate，EventListener会生成一个Service，就是weebhook的地址
 root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/02-trigger-gitlab# cat 05-gitlab-event-listener.yaml
@@ -2564,10 +2675,11 @@ metadata:
 spec:
   serviceAccountName: tekton-triggers-gitlab-sa	#这里用于获取interceptors信息，并赋值给bindings的params，template中有定义同名sa，不冲突
   triggers:
+
   - name: gitlab-push-events-trigger
     interceptors:
     - ref:
-        name: "gitlab"		#用于格式化gitlab为标准event事件
+      name: "gitlab"		#用于格式化gitlab为标准event事件
       params:
       - name: "secretRef"	#用于配置EventListener的认证token，gitlab访问EventListener时认证使用
         value:
@@ -2577,9 +2689,9 @@ spec:
         value: ["Push Hook"]	#并且定义只是gitlab的"Push Hook"事件才允许调用此webhook
           bindings:
     - ref: gitlab-push-binding
-    template:
+      template:
       ref: gitlab-trigger-template
-    root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/02-trigger-gitlab# kubectl apply -f 05-gitlab-event-listener.yaml
+      root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/02-trigger-gitlab# kubectl apply -f 05-gitlab-event-listener.yaml
 
 #查看eventlistener
 root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/02-trigger-gitlab# kubectl get pods
@@ -2605,6 +2717,7 @@ metadata:
   namespace: default
 spec:
   ports:
+
   - name: http-listener
     port: 8080
     protocol: TCP
@@ -2694,6 +2807,7 @@ kind: ServiceAccount
 metadata:
   name: tekton-triggers-gitlab-auth-sa
 secrets:
+
 - name: gitlab-project-ssh-auth
 
 ----代码片段
@@ -2713,7 +2827,9 @@ metadata:
   name: gitlab-webhook-token
 type: Opaque
 stringData:
+
   # Generated by command "openssl rand -base64 12"
+
   webhookToken: "DXeqvozMlTA67aQB"
 root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/03-trigger-gitlab# cat 02-gitlab-eventlistener-rbac.yaml
 apiVersion: v1
@@ -2721,52 +2837,71 @@ kind: ServiceAccount
 metadata:
   name: tekton-triggers-gitlab-sa
 secrets:
+
 - name: gitlab-webhook-token
+
 ---
+
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: tekton-triggers-gitlab-minimal
 rules:
+
   # Permissions for every EventListener deployment to function
+
   - apiGroups: ["triggers.tekton.dev"]
     resources: ["eventlisteners", "triggerbindings", "triggertemplates"]
     verbs: ["get"]
+
   - apiGroups: [""]
+
     # secrets are only needed for Github/Gitlab interceptors, serviceaccounts only for per trigger authorization
+
     resources: ["configmaps", "secrets", "serviceaccounts"]
     verbs: ["get", "list", "watch"]
+
   # Permissions to create resources in associated TriggerTemplates
+
   - apiGroups: ["tekton.dev"]
     resources: ["pipelineruns", "pipelineresources", "taskruns"]
     verbs: ["create"]
+
 ---
+
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: tekton-triggers-gitlab-binding
 subjects:
+
   - kind: ServiceAccount
     name: tekton-triggers-gitlab-sa
-  roleRef:
+      roleRef:
     apiGroup: rbac.authorization.k8s.io
     kind: Role
     name: tekton-triggers-gitlab-minimal
+
 ---
+
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: tekton-triggers-gitlab-minimal
 rules:
+
   - apiGroups: ["triggers.tekton.dev"]
     resources: ["clusterinterceptors"]
     verbs: ["get","list"]
+
 ---
+
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: tekton-triggers-gitlab-binding
 subjects:
+
   - kind: ServiceAccount
     name: tekton-triggers-gitlab-sa
     namespace: default
@@ -2775,12 +2910,16 @@ subjects:
     kind: ClusterRole
     name: tekton-triggers-gitlab-minimal
     root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/03-trigger-gitlab# cat 03-task-deploy-to-cluster-rbac.yaml
+
 ---
+
 apiVersion: v1
 kind: ServiceAccount
 metadata:
+
   name: helloworld-admin
 ---
+
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -2790,6 +2929,7 @@ roleRef:
   kind: ClusterRole
   name: cluster-admin
 subjects:
+
 - kind: ServiceAccount
   name: helloworld-admin
   namespace: default
@@ -2801,15 +2941,19 @@ subjects:
   spec:
   accessModes:
   - ReadWriteMany
-  resources:
+    resources:
     requests:
       storage: 5Gi
-  storageClassName: nfs-csi
-  volumeMode: Filesystem
-  root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/03-trigger-gitlab# cat 05-tasks-source-to-image.yaml
+    storageClassName: nfs-csi
+    volumeMode: Filesystem
+    root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/03-trigger-gitlab# cat 05-tasks-source-to-image.yaml
+
 # Maintainer: MageEdu "<mage@magedu.com>"
+
 # Version: v1.0.1
+
 ---
+
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
@@ -2831,8 +2975,10 @@ spec:
       image: 192.168.13.197:8000/gitops/tekton/git-alpine:v2.32.0
       script: |
         git clone -v $(params.git-repo-url) $(workspaces.source.path)/source
+
         cd $(workspaces.source.path)/source && git reset --hard $(params.git-revision)
 ---
+
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
@@ -2853,8 +2999,10 @@ spec:
   volumes:
     - name: m2
       persistentVolumeClaim:
+
         claimName: maven-cache
 ---
+
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
@@ -2882,8 +3030,10 @@ spec:
         #!/usr/bin/env bash
         buildDatetime=`cat $(results.datetime.path)`
         buildId=$(params.version)-${buildDatetime}
+
         echo -n ${buildId} | tee $(results.buildId.path)
 ---
+
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
@@ -2916,8 +3066,10 @@ spec:
         - --dockerfile=$(params.dockerfile)
         - --context=$(workspaces.source.path)/source
         - --destination=$(params.image-url):$(params.image-tag)
+
         - --insecure-registry=192.168.13.197:8000
 ---
+
 apiVersion: tekton.dev/v1beta1
 kind: Task
 metadata:
@@ -2948,8 +3100,10 @@ spec:
       args:
         - "apply"
         - "-f"
+
         - "$(workspaces.source.path)/source/deploy/$(params.deploy-config-file)"
 ---
+
 root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/03-trigger-gitlab# cat 06-pipeline-source-to-image.yaml
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
@@ -3050,6 +3204,7 @@ metadata:
   name: s2i-binding
 spec:
   params:
+
   - name: git-revision
     value: $(body.checkout_sha)
   - name: git-repo-url
@@ -3058,12 +3213,12 @@ spec:
     value: 192.168.13.197:8000/k8s-test/helloworld-test
   - name: version
     value: v0.9
-  root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/03-trigger-gitlab# cat 08-gitlab-triggertemplate-s2i.yaml
-  apiVersion: triggers.tekton.dev/v1beta1
-  kind: TriggerTemplate
-  metadata:
+      root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/03-trigger-gitlab# cat 08-gitlab-triggertemplate-s2i.yaml
+      apiVersion: triggers.tekton.dev/v1beta1
+      kind: TriggerTemplate
+      metadata:
     name: s2i-tt
-  spec:
+      spec:
     params:  # 定义参数
   - name: git-revision
   - name: git-repo-url
@@ -3102,18 +3257,18 @@ spec:
         - name: docker-config
           secret:
             secretName: docker-config
-  root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/03-trigger-gitlab# cat 09-gitlab-eventlister-s2i.yaml
-  apiVersion: triggers.tekton.dev/v1beta1
-  kind: EventListener
-  metadata:
+      root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/03-trigger-gitlab# cat 09-gitlab-eventlister-s2i.yaml
+      apiVersion: triggers.tekton.dev/v1beta1
+      kind: EventListener
+      metadata:
     name: s2i-listener
-  spec:
+      spec:
     serviceAccountName: tekton-triggers-gitlab-sa
     triggers:
   - name: gitlab-push-events-trigger
     interceptors:
     - ref:
-        name: "gitlab"
+      name: "gitlab"
       params:
       - name: "secretRef"
         value:
@@ -3123,19 +3278,19 @@ spec:
         value: ["Push Hook"]
           bindings:
     - ref: s2i-binding
-    template:
+      template:
       ref: s2i-tt
-    root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/03-trigger-gitlab# kubectl apply -f .
-    root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/03-trigger-gitlab# kubectl get pods
-    NAME                               READY   STATUS    RESTARTS   AGE
-    el-s2i-listener-5c945b65d9-zgtjh   1/1     Running   0          82s
-    root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/03-trigger-gitlab# kubectl apply -f ../02-trigger-gitlab/el-service.yaml
-    service/el-gitlab-event-listener-02 created
-    root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/03-trigger-gitlab# kubectl get svc
-    NAME                          TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)                         AGE
-    el-gitlab-event-listener-02   NodePort    10.68.54.164   <none>        8080:54356/TCP,9000:46583/TCP   1s
-    el-s2i-listener               ClusterIP   10.68.23.204   <none>        8080/TCP,9000/TCP               29s
-    kubernetes                    ClusterIP   10.68.0.1      <none>        443/TCP                         11d
+      root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/03-trigger-gitlab# kubectl apply -f .
+      root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/03-trigger-gitlab# kubectl get pods
+      NAME                               READY   STATUS    RESTARTS   AGE
+      el-s2i-listener-5c945b65d9-zgtjh   1/1     Running   0          82s
+      root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/03-trigger-gitlab# kubectl apply -f ../02-trigger-gitlab/el-service.yaml
+      service/el-gitlab-event-listener-02 created
+      root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/03-trigger-gitlab# kubectl get svc
+      NAME                          TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)                         AGE
+      el-gitlab-event-listener-02   NodePort    10.68.54.164   <none>        8080:54356/TCP,9000:46583/TCP   1s
+      el-s2i-listener               ClusterIP   10.68.23.204   <none>        8080/TCP,9000/TCP               29s
+      kubernetes                    ClusterIP   10.68.0.1      <none>        443/TCP                         11d
 
 #验证测试
 root@k8s-master01:~/tekton-and-argocd-in-practise/05-tekton-triggers/03-trigger-gitlab# tkn pipelinerun list
@@ -3151,21 +3306,16 @@ Hello Spring Boot 2.0!
 #作业
 作业1：使用Knative Eventing中的broker和trigger 实现gitlab的事件分类，并发送到不同的tekton中的EventListenerPod上，在请求量大的时候可以减轻EventListenerPod上的压力，并且可以实现不同的webhoo推送
 作业2：使用Knative Serving将低频的业务部署上去，并借助istio服务网格(针对特定名称空间开启service mesh)将流量暴露出去。实现tekton+knative+istio+k8s功能
+```
 
 
 
+# ArgoCD
 
 
 
+## ArgoCD概览
 
-
-
-
-
-
-#####ArgoCD
-
-#ArgoCD概览
 - Argo项目于2017年由Applatix公司创立，2018年初被Intuit收购
 - 之后，BlackRock为Argo项目贡献了Argo Events这一子项目
 - Argo及其子项目为Workflow、Trigger和Application的管理提供了一种简单便捷的方式
@@ -3174,18 +3324,21 @@ Hello Spring Boot 2.0!
 - Argo生态目前主要由四个子项目组成
   - Argo Workflows
     - 第一个Argo项目
-	- 基于Kubernetes平台的原生工作流引擎，支持DAG和step-based工作流
+	  - 基于Kubernetes平台的原生工作流引擎，支持DAG和step-based工作流
   - Argo Events
     - Kubernetes上的基于事件的依赖管理器，用于触发Kubernetes中的Argo工作流和其它操作
   - ArgoCD
     - 由Argo社区和Intuit维护的开源项目
-	- 支持GitOps范式的声明式Kubernetes资源管理
+	  - 支持GitOps范式的声明式Kubernetes资源管理
   - Argo Rollouts
     - ArgoCD的高级交付策略工具
-	- 支持声明式渐进式交付策略，例如canary, blue-green等
+	  - 支持声明式渐进式交付策略，例如canary, blue-green等
 	
 
-#ArgoCD简介
+
+
+## ArgoCD简介
+
 - ArgoCD是什么？
   - 将应用程序部署到Kubernetes之上的GitOps工具
   - 核心组件：Application Controller及相关的一组CRD
@@ -3195,7 +3348,10 @@ Hello Spring Boot 2.0!
 	- Application Controller持续监视、对比Application的期望状态和实际状态，并确保实际状态与期望状态一致
 	
 
-#ArgoCD的主要功能
+
+
+## ArgoCD的主要功能
+
 - 可协同使用各种配置管理工具（如ksonnet/jsonnet, helm, kustomize）确保应用程序的真实状态与GitRepo中定义的期望状态保持一致
 - 将应用程序自动部署到指定的目标环境
 - 持续监控已部署的应用程序
@@ -3204,12 +3360,12 @@ Hello Spring Boot 2.0!
 - PreSync, Sync, PostSync Hooks以支持复杂的应用程序部署策略
   - 例如blue/green和canary upgrades
 - SSO集成
-  - 劫持OIDC, LDAP, SAML 2.0, GitLab, Microsoft, LinkedIn等
+  - 集成OIDC, LDAP, SAML 2.0, GitLab, Microsoft, LinkedIn等
 - Weebhook集成
   - GitHub, BitBucket和GitLab
 - 可以独立使用，也可以作为现有Pipeline的一部分使用，例如与Argo Workflow、Jenkins以及GitLab CI等配合使用
 
-#声明式配置
+声明式配置
 - Application CRD
   - 定义由ArgoCD管理的应用程序
   - 定义的这些应用程序受控于Application Controller
@@ -3226,7 +3382,7 @@ Hello Spring Boot 2.0!
   - default项目可以被修改，但不能删除
   
 
-#核心工作模型
+核心工作模型
 - ArgoCD的两个核心概念为Application和Project，它们可分别基于Application CRD和AppProject CRD创建
 - Application
   - 从本质上来说，它包含如下两个部分
@@ -3251,7 +3407,7 @@ Hello Spring Boot 2.0!
   - 支持为内部Application上的Source和Destination分别指定各自的黑白名单
   
 
-#ArgoCD程序组件
+ArgoCD程序组件
 - ArgoCD API Server
   - ArgoCD Server API接口，为WebUI, CLI, 以及相关的CI/CD系统提供服务，相关功能包括
     - 管理应用程序并报告其状态
@@ -3288,19 +3444,21 @@ Hello Spring Boot 2.0!
   
 
 
-###ArgoCD快速入门
 
-#ArgoCD的部署要点
+## ArgoCD快速入门
+
+ArgoCD的部署要点
+
 - ArgoCD有两种部署方式：多租户部署和核心化部署
 - 多租户（推荐这种）
   - 常用于为多个应用程序开发团队提供服务，并由平台团队维护的场景
   - 有两类可选择的部署方式
     - 非高可用性部署：适用于演示和测试的目的
-	- 高可用部署：适用于生产用途（吃资源，结合生产环境性能）
+	  - 高可用部署：适用于生产用途（吃资源，结合生产环境性能）
   - 支持用户通过Web UI或CLI进行访问
   - 支持集群级别部署和名称空间级两种安装机制
     - 配置文件install.yaml: 具有集群管理员访问权限的集群级安装
-	- 配置文件namespace-install.yaml: 仅需要名称空间级别权限的安装
+	  - 配置文件namespace-install.yaml: 仅需要名称空间级别权限的安装
 - 核心化部署
   - 安装的组件较小且更易于维护，它不包含APIServer和UI，且不提供高可用机制
   - 仅适用于独立使用ArgoCD且不需要多租户特性的集群管理员
@@ -3308,14 +3466,15 @@ Hello Spring Boot 2.0!
   
 	
 
-#ArgoCD多租户非高可用性部署（集群级别）步骤
+## ArgoCD多租户非高可用性部署（集群级别）步骤
+
 - 在Kubernetes集群上部署ArgoCD
   - 采用的示例环境
     - 集群级别的部署
 	- 非高可用模式
   - 默认的部署配置使用argocd名称空间，资源引用的路径亦使用该名称空间
     - kubectl create namespace argocd
-	- kubectl apply -n argocd -f https://ARGOCD-CONFIG-FILE-ADDRES
+	  - kubectl apply -n argocd -f https://ARGOCD-CONFIG-FILE-ADDRES
 - 在管理节点上安装ArgoCD CLI
 - 将ArgoCD API Server相关的Service暴露到集群外部
   - LoadBalancer Service、Ingress或者Port Forwarding
@@ -3327,9 +3486,12 @@ Hello Spring Boot 2.0!
   - Application部署的目标集群与ArgoCD自身在同一集群时，该步骤可选
   
 
-#部署
+
+
+## 部署
 文档地址：https://argo-cd.readthedocs.io/en/stable/getting_started/
 
+```bash
 root@k8s-master01:~# kubectl get nodes
 NAME           STATUS                     ROLES    AGE   VERSION
 172.168.2.21   Ready,SchedulingDisabled   master   13d   v1.23.1
@@ -3413,16 +3575,16 @@ spec:
     - port: 443
       sniHosts:
       - argocd.magedu.com
-      route:
+        route:
     - destination:
-        host: argocd-server
-        port:
-          number: 443
-        root@k8s-master01:~/tekton-and-argocd-in-practise/06-deploy-argocd/argocd# kubectl apply -f 02-argocd-dashboard-virtualservice.yaml
-        root@k8s-master01:~/tekton-and-argocd-in-practise/06-deploy-argocd/argocd# kubectl get svc -n istio-system
-        NAME                   TYPE           CLUSTER-IP     EXTERNAL-IP    PORT(S)                                      AGE
-        istio-ingressgateway   LoadBalancer   10.68.162.21   172.168.2.28   15021:59630/TCP,80:48809/TCP,443:46900/TCP   45h
-        istiod                 ClusterIP      10.68.9.121    <none>         15010/TCP,15012/TCP,443/TCP,15014/TCP        45h
+      host: argocd-server
+      port:
+        number: 443
+      root@k8s-master01:~/tekton-and-argocd-in-practise/06-deploy-argocd/argocd# kubectl apply -f 02-argocd-dashboard-virtualservice.yaml
+      root@k8s-master01:~/tekton-and-argocd-in-practise/06-deploy-argocd/argocd# kubectl get svc -n istio-system
+      NAME                   TYPE           CLUSTER-IP     EXTERNAL-IP    PORT(S)                                      AGE
+      istio-ingressgateway   LoadBalancer   10.68.162.21   172.168.2.28   15021:59630/TCP,80:48809/TCP,443:46900/TCP   45h
+      istiod                 ClusterIP      10.68.9.121    <none>         15010/TCP,15012/TCP,443/TCP,15014/TCP        45h
 
 --WebUI访问：https://argocd.magedu.com	#此时密码需要借助于CLI，下面安装
 
@@ -3457,6 +3619,7 @@ clone推送到自己仓库：https://gitee.com/jacknotes/spring-boot-helloworld-
 
 root@front-envoy:~/spring-boot-helloworld-deployment/deploy/kubernetes# cat 01-service.yaml
 ---
+
 kind: Service
 apiVersion: v1
 metadata:
@@ -3498,12 +3661,17 @@ spec:
           protocol: TCP
 root@front-envoy:~/spring-boot-helloworld-deployment/kubernetes# git add -A && git commit -m "version v0.9.4" && git push
 注：此时去gitee确认仓库版本是否同步，并将仓库配置为公共仓库
+```
 
-#配置ArgoCD
+
+
+## 配置ArgoCD
+
 1. 进入ArgoCD UI界面-- 'manager your repository,projects,settings' -- 可以添加repository(私用或公有仓库，如果公有仓库这里可不添加)，查看cluster(默认会有in cluster，是argo所属集群)，查看project(默认有一个default，可以创建新project name，用于分类管理项目，实现项目中的名称空间、资源类型等限制) 
 2. 我们添加公有仓库，直接到 'manager your applications,and diagnose health problems' -- 'new app'
 3. 配置app信息：设定'application name'为"spring-boot-helloworld" -- 'project'为default -- 'sync policy'为automatic，并勾选'self heal'(自愈)， 'PRUNE RESOURCES'这个看自己情况是否勾选,作用是当git config repo仓库中没有项目时是否自动删除k8s中已经存在的资源， 'sync options'勾选"AUTO-CREATE NAMESPACE"(自动创建名称空间) -- ‘SOURCE’填入公有仓库地址"https://gitee.com/jacknotes/spring-boot-helloworld-deployment.git"并选择Branch为HEAD，Path为“deploy/kubernetes”(表示此目录下为此项目的yaml配置清单) -- 'DESTINATION'为in-cluster，表示部署在哪个集群，名称空间为'helloworld'(不存在会创建，上面已经勾选自动创建) -- 最后保存
 
+```bash
 #配置保存即运行
 root@k8s-master01:~# kubectl get pods  -n helloworld
 NAME                                      READY   STATUS    RESTARTS   AGE
@@ -3575,8 +3743,7 @@ stringData:
   webhook.gitlab.secret: uv6uHEyPI6Xbvh7I4b5tDfdNs1bBBtOL	#增加此行
 
 ----添加基于SSH的gitlab认证
-## 下面为创建多个存储库示例,使用同一个凭据
-```bash
+# 下面为创建多个存储库示例,使用同一个凭据
 root@k8s-master01:~# cat argocd-secret-ssh-template.yaml
 apiVersion: v1
 kind: Secret
@@ -3649,12 +3816,8 @@ stringData:
     ld2nd6oESKvosa29+laflkdyNT3wGNtA/nfSG1bHkg/VIve5fnvN8LFlAbCOJwCf
     C1iUM1zDoIZ4oggXlvRRhMT4o5AMYJ91t00DM+Nm6ir8E9n4nZb2
     -----END RSA PRIVATE KEY-----
-```
-
-
-
-
-
+    
+    
 --声明式配置applicaion
 root@k8s-master01:~# kubectl get application -o yaml -n argocd  > application.yaml
 root@k8s-master01:~# vim application.yaml
@@ -3680,9 +3843,12 @@ spec:
     - ApplyOutOfSyncOnly=true
     - CreateNamespace=true
 root@k8s-master01:~# kubectl apply -f application.yaml
+```
 
 
-#同步选项
+
+
+同步选项
 - 同步选项（Sync Options）用于禁用或启用同步过程中的某些特性
   - ApplicationOutOfSyncOnly
     - 仅对那些处于OutOfSync状态的资源执行同步操作
@@ -3703,7 +3869,7 @@ root@k8s-master01:~# kubectl apply -f application.yaml
   - Validation
     - 是否执行资源规范格式的校验，相当于"kubectl applly --validate={true|false}"，默认为true
 
-#关于Projects CRD
+关于Projects CRD
 - Projects负责为Application提供逻辑分组，它主要实现如下功能
   - 限制可以部署的内容（指定受信任的Git Source仓库）
   - 限制Application可以部署到的目标位置（指定目标Cluster和Namespace）
@@ -3731,7 +3897,7 @@ root@k8s-master01:~# kubectl apply -f application.yaml
     sourceRepos:		#允许从任意Source Repo获取资源配置
   - '*'				#source repo地址
 
-#关于ApplicationSet CRD
+关于ApplicationSet CRD
 - ApplicationSet CRD
   - ApplicationSet CRD用于定义可自动生成Application的模板，从而能够在monorepo（单个Repo中定义了多个ArgoCD Application）或多个Repo，以及跨大量Cluster的场景中自动化管理ArgoCD Application
   - ApplicationSet CRD需要同其专用的ApplicationSet控制器支撑实现
@@ -3742,7 +3908,7 @@ root@k8s-master01:~# kubectl apply -f application.yaml
   - 较好地支持monorepo
 - 注：ApplicationSet由Generator和Application模板组成，Generator生成KV参数，这些参数能够替换到Application模板中生成Application配置
 
-#ApplicationSet CRD资源规范
+ApplicationSet CRD资源规范
 - ApplicationSet CRD资源规范遵循Kubernetes Resource API规范，其spec支持内嵌如下三个字段
   - generators <[]Object>
     - 定义负责生成参数的生成器，这些参数会被用于渲染template字段中定义的模板
@@ -3756,7 +3922,7 @@ root@k8s-master01:~# kubectl apply -f application.yaml
 	- 通过将这些参数替换为generators生成的"值"完成模板的实例化
 	
 
-#ApplicationSet资源示例
+ApplicationSet资源示例
 - helloworld Application示例
   - 使用了列表生成器（list generator)
     - 有三个元素，分别为environment参数传递不同的值
@@ -3773,7 +3939,9 @@ root@k8s-master01:~# kubectl apply -f application.yaml
   - Git Generator
   - Matrix Generator（可以交叉组合git和cluster，实现更高级的组合）
 
-#示例配置
+示例配置
+
+```bash
 root@k8s-master01:~# argocd app delete spring-boot-helloworld
 Are you sure you want to delete 'spring-boot-helloworld' and all its resources? [y/n]
 y
@@ -3786,11 +3954,11 @@ metadata:
 spec:
   generators:
   - list:
-      elements:
-      - environment: dev		#元素列表
-      - environment: staging
-      - environment: prod
-    template:
+    elements:
+    - environment: dev		#元素列表
+    - environment: staging
+    - environment: prod
+      template:
       metadata:
       name: '{{environment}}-spring-boot-helloworld'	#引用元素列表，会跟下面的一一对应,#例如引用dev
       spec:
@@ -3818,7 +3986,7 @@ spec:
             duration: 5s
             factor: 2
             maxDuration: 3m
-        syncPolicy:
+            syncPolicy:
           preserveResourcesOnDeletion: false
             root@k8s-master01:~/tekton-and-argocd-in-practise/07-argocd-basics# kubectl apply -f 02-applicationset-demo.yaml
             root@k8s-master01:~/tekton-and-argocd-in-practise/07-argocd-basics# kubectl get application -n argocd	此时自动生成3个application
@@ -3844,7 +4012,6 @@ applicationset.argoproj.io "helloworld" deleted
 root@k8s-master01:~# argocd app list
 NAME  CLUSTER  NAMESPACE  PROJECT  STATUS  HEALTH  SYNCPOLICY  CONDITIONS  REPO  PATH  TARGET
 
-
 作业1：结合git webhook实现ArgoCD怎么部署(其实ArgoCD定时3分钟轮循部署也算是自动化部署)
 作业2：使用notification实现构建后操作  
 
@@ -3859,14 +4026,14 @@ metadata:
 spec:
   generators:
   - list:
-      elements:
-      - cluster: pro
-        url: https://kubernetes.default.svc
-      - cluster: uat
-        url: https://172.168.2.31:6443
-      - cluster: fat
-        url: https://172.168.2.31:6443
-    template:
+    elements:
+    - cluster: pro
+      url: https://kubernetes.default.svc
+    - cluster: uat
+      url: https://172.168.2.31:6443
+    - cluster: fat
+      url: https://172.168.2.31:6443
+      template:
       metadata:
       name: '{{cluster}}-frontend-www-homsom-com-test'
       spec:
@@ -3899,11 +4066,14 @@ spec:
         kind: VirtualService
         jsonPointers:
         - /spec/http/0
----
+```
 
-###部署Notification template和trigger
-#Documentation: https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/
 
+
+## 部署Notification template和trigger
+Documentation: https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/
+
+```bash
 #安装notification template和trigger，会生成ConfigMap argocd-notifications-cm
 root@ansible:~/k8s/argocd# curl -L -o argocd-notification-template https://raw.githubusercontent.com/argoproj/argo-cd/stable/notifications_catalog/install.yaml
 root@ansible:~/k8s/argocd# kubectl apply -n argocd -f argocd-notification-template
@@ -3977,6 +4147,7 @@ data:
 
 #创建application
 root@k8s-master01:~/git/kubernetes/ops/argocd/04-applicationset# cat application-test.yaml
+
 # 基于istio实现的canary时需要使用此application
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -4009,17 +4180,19 @@ spec:
         factor: 2
         maxDuration: 3m
   ignoreDifferences:
+
   - group: networking.istio.io
     kind: VirtualService
     jsonPointers:
     - /spec/http/0
-    root@k8s-master01:~/git/kubernetes/ops/argocd/04-applicationset# kubectl apply -f application-test.yaml
+      root@k8s-master01:~/git/kubernetes/ops/argocd/04-applicationset# kubectl apply -f application-test.yaml
 
 #通过将注释添加到 Argo CD 应用程序来订阅通知：
 root@ansible:~/k8s/argocd# kubectl patch app pro-frontend-www-homsom-com-test -n argocd -p '{"metadata": {"annotations": {"notifications.argoproj.io/subscribe.on-sync-succeeded.gmail": "test@test.com"}}}' --type merge
 application.argoproj.io/pro-frontend-www-homsom-com-test patched
 
 # 配置所有项目的所有应用默认订阅信息，也可以针对特定project或特定application在annotations中进行定义
+
 root@ansible:~# kubectl edit cm argocd-notifications-cm -n argocd
 apiVersion: v1
 data:
@@ -4049,15 +4222,17 @@ root@ansible:~# kubectl edit deploy argocd-notifications-controller -n argocd
         env:
         - name: TZ
           value: Asia/Shanghai		#更改通知服务时间
+```
 
 
 
+## 基于RBAC来创建argocd本地用户
 
-
-### 基于RBAC来创建argocd本地用户
 注：argocd本地用户不提供高级功能，例如组，登录历史记录等。因此，如果您需要此类功能，强烈建议使用SSO。
 
-# 创建alice用户
+```bash
+#创建alice用户
+
 root@ansible:~# kubectl get cm argocd-cm -o yaml -n argocd
 apiVersion: v1
 data:
@@ -4083,7 +4258,9 @@ Capabilities:       login
 Tokens:
 NONE
 --设置alice用户密码
+
 # if you are managing users as the admin user, <current-user-password> should be the current admin password.
+
 argocd account update-password \
   --account alice \
   --current-password <current-user-password> \
@@ -4119,27 +4296,24 @@ data:
 kind: ConfigMap
 metadata:
   name: argocd-rbac-cm
+
   namespace: argocd
 ---
 
 #使用alice用户登录argocd UI，测试权限即可
+```
 
 
 
+## Argo Rollouts概览
 
-
-
-
-
-
-#Argo Rollouts概览
 - Argo Rollouts
   - 由一个控制器和一组CRD组成，可为Kubernetes提供高级部署功能，包括
     - blue-green
-	- canary
-	- canary analysis
-	- experimentation
-	- progressive delivery
+	  - canary
+	  - canary analysis
+	  - experimentation
+	  - progressive delivery
   - 支持与Ingress Controller（Nginx和ALB）及ServiceMesh（Istio, Linkerd和SMI）集成，利用它们的流量治理能力实现流量迁移过程
   - 能够查询和解释来自多种指标系统（Prometheus、Kubernetes Jobs、Web、Datadog等）的指标来验证Blue-Green或Canary部署结果，并根据结果自动决定执行升级或回滚
   - 几个相关的CRD
@@ -4149,10 +4323,10 @@ metadata:
   - ReplicaSet资源由Rollout的spec.template字段进行定义
   
 
-#Argo Rollouts架构
+Argo Rollouts架构
 - Argo Rollout主要由Argo Rollout Controller、Rollout CRD、ReplicaSet、Ingress/Service、AnalysisTemplate/AnalysisRun、Metric providers和CLI/GUI等组件构成
 
-#Argo Rollouts架构组件
+Argo Rollouts架构组件
 - Rollout Controller
   - 负责管理Rollout CRD资源对象
 - Rollout CRD
@@ -4167,7 +4341,10 @@ metadata:
   - 为了执行Analysis，Argo Rollouts提供了AnalysisTemplate和AnalysisRun两个CRD
   
 
-###部署ArgoRollout
+
+
+## 部署ArgoRollout
+
 文档：https://argoproj.github.io/argo-rollouts/installation/
 文档：https://github.com/argoproj/argo-rollouts/releases
 --下载配置清单
@@ -4176,6 +4353,7 @@ https://github.com/argoproj/argo-rollouts/releases/download/v1.2.1/dashboard-ins
 #https://github.com/argoproj/argo-rollouts/releases/download/v1.2.1/kubectl-argo-rollouts-linux-amd64	#以kubectl插件方式运行的dashboard
 #https://github.com/argoproj/argo-rollouts/releases/download/v1.2.1/namespace-install.yaml		#名称空间级别安装
 
+```bash
 #部署Argo Rollout
 curl -OL https://github.com/argoproj/argo-rollouts/releases/download/v1.2.1/install.yaml	
 curl -OL https://github.com/argoproj/argo-rollouts/releases/download/v1.2.1/dashboard-install.yaml
@@ -4394,16 +4572,19 @@ istio-ingressgateway   LoadBalancer   10.68.162.21   <pending>     15021:59630/T
 istiod                 ClusterIP      10.68.9.121    <none>        15010/TCP,15012/TCP,443/TCP,15014/TCP        38m
 spec:
   externalIPs:
+
   - 172.168.2.28
-root@k8s-master01:~/tekton-and-argocd-in-practise/06-deploy-argocd/argo-rollouts# kubectl get svc -n istio-system
-NAME                   TYPE           CLUSTER-IP     EXTERNAL-IP    PORT(S)                                      AGE
-istio-ingressgateway   LoadBalancer   10.68.162.21   172.168.2.28   15021:59630/TCP,80:48809/TCP,443:46900/TCP   34m
-istiod                 ClusterIP      10.68.9.121    <none>         15010/TCP,15012/TCP,443/TCP,15014/TCP        39m
+    root@k8s-master01:~/tekton-and-argocd-in-practise/06-deploy-argocd/argo-rollouts# kubectl get svc -n istio-system
+    NAME                   TYPE           CLUSTER-IP     EXTERNAL-IP    PORT(S)                                      AGE
+    istio-ingressgateway   LoadBalancer   10.68.162.21   172.168.2.28   15021:59630/TCP,80:48809/TCP,443:46900/TCP   34m
+    istiod                 ClusterIP      10.68.9.121    <none>         15010/TCP,15012/TCP,443/TCP,15014/TCP        39m
 
 
 #将argo rollout dashboard暴露出去
+
 root@k8s-master01:~/tekton-and-argocd-in-practise/06-deploy-argocd/argo-rollouts# cat 03-argo-rollouts-dashboard-virtualservice.yaml
 ---
+
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
@@ -4413,8 +4594,10 @@ spec:
   host: argo-rollouts-dashboard
   trafficPolicy:
     tls:
+
       mode: DISABLE
 ---
+
 apiVersion: networking.istio.io/v1beta1
 kind: Gateway
 metadata:
@@ -4424,14 +4607,17 @@ spec:
   selector:
     app: istio-ingressgateway
   servers:
+
   - port:
-      number: 80
-      name: http
-      protocol: HTTP
+    number: 80
+    name: http
+    protocol: HTTP
     hosts:
     - "argo-rollouts.magedu.com"
     - "rollouts.magedu.com"
+
 ---
+
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
@@ -4439,6 +4625,7 @@ metadata:
   namespace: argo-rollouts
 spec:
   hosts:
+
   - "argo-rollouts.magedu.com"
   - "rollouts.magedu.com"
     gateways:
@@ -4446,13 +4633,15 @@ spec:
     http:
   - match:
     - uri:
-        prefix: /
-        route:
+      prefix: /
+      route:
     - destination:
-        host: argo-rollouts-dashboard
-        port:
-          number: 3100
+      host: argo-rollouts-dashboard
+      port:
+        number: 3100
+
 ---
+
 root@k8s-master01:~/tekton-and-argocd-in-practise/06-deploy-argocd/argo-rollouts# kubectl apply -f 03-argo-rollouts-dashboard-virtualservice.yaml
 root@k8s-master01:~/tekton-and-argocd-in-practise/06-deploy-argocd/argo-rollouts# kubectl get vs -n argo-rollouts
 NAME                                     GATEWAYS                                           HOSTS                                                AGE
@@ -4469,10 +4658,12 @@ root@front-envoy:~/tekton-and-argocd-in-practise# scp kubectl-argo-rollouts-linu
 root@k8s-master01:~# kubectl
 kubectl                kubectl-argo-rollouts
 root@k8s-master01:~# kubectl argo rollouts --help	#使用kubectl内建命令调用argo rollout
+```
 
 
 
-#Rollout更新策略之Canary
+### Rollout更新策略之Canary
+
 - 通过spec.strategy.canary启用
 - 支持内嵌的字段
   - canaryService <string>: 由控制器用来匹配到Canary Pods上的Service，trafficRouting依赖于该字段
@@ -4490,7 +4681,7 @@ root@k8s-master01:~# kubectl argo rollouts --help	#使用kubectl内建命令调�
   - antiAffinity <Object>: 定义Canary Pod与旧ReplicaSet Pod之间的反亲和关系
   
 
-#配置Canary策略
+配置Canary策略
 - 常用的Step
   - pause <Object>: 暂停step
     - 用于暂停滚动过程
@@ -4522,7 +4713,7 @@ root@k8s-master01:~# kubectl argo rollouts --help	#使用kubectl内建命令调�
   - measurementRetention
 	
 
-#实战案例1：结合Service进行Canary部署
+实战案例1：结合Service进行Canary部署
 - 案例环境说明
   - 应用：spring-boot-helloworld
     - 微服务、默认监听于80/tcp
@@ -4540,9 +4731,15 @@ root@k8s-master01:~# kubectl argo rollouts --help	#使用kubectl内建命令调�
   - 回滚
     - kubectl argo rollouts undo ROLLOUT_NAME [flas]
 
-#案例实验
+
+
+案例实验1
+
+```bash
 root@k8s-master01:~/tekton-and-argocd-in-practise/08-argo-rollouts# cat 01-argo-rollouts-demo.yaml
+
 # CopyRight: MageEdu <http://www.magedu.com>
+
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
@@ -4595,14 +4792,17 @@ spec:
             path: '/'
             port: 80
             scheme: HTTP
+
           initialDelaySeconds: 5
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
   name: spring-boot-helloworld
 spec:
   ports:
+
   - port: 80
     targetPort: http
     protocol: TCP
@@ -4699,11 +4899,12 @@ NAME                                                         KIND        STATUS 
       ├──□ rollouts-spring-boot-helloworld-576b6b94cc-s57b6  Pod         ◌ Terminating        15m    ready:1/1
       ├──□ rollouts-spring-boot-helloworld-576b6b94cc-9r9nl  Pod         ✔ Running            14m    ready:1/1
       └──□ rollouts-spring-boot-helloworld-576b6b94cc-dgz8s  Pod         ◌ Terminating        14m    ready:1/1
+```
 
 
 
 
-##实战案例2：结合Istio进行Canary流量迁移
+实战案例2：结合Istio进行Canary流量迁移
 - Istio环境中支持两种流量分割模式
   - 基于host进行流量分割
     - Canary和Stable版本分别对应一个独立的Service
@@ -4720,10 +4921,17 @@ NAME                                                         KIND        STATUS 
 - 总结：例如stable有5个pod，此时发布canary，则这时rollout会新建1个pod到canary中，而stable中5个pod不会减少，直到canary中5个pod运行正常后等待大概30s后再删除stable5个pod，其中最多会有10个pod并存。而rollout会将canary改成stable, stable改成canary
 - 总结：istio可以精细化流量，例如10个pod，5%流量时会新建1个pod，10%流量时也只有1个pod，而20%流量时会有2个pod
 
-#实战案例
+
+
+实战案例2
+
+```bash
 root@k8s-master01:~/tekton-and-argocd-in-practise/08-argo-rollouts# cat 02-argo-rollouts-with-istio-traffic-shifting.yaml
+
 # rollout结合istio会自动配置canary的weight来达到滚动发布
+
 ---
+
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
@@ -4786,21 +4994,26 @@ spec:
             path: '/'
             port: 80
             scheme: HTTP
+
           initialDelaySeconds: 5
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
   name: spring-boot-helloworld
 spec:
   ports:
+
   - port: 80
     targetPort: http
     protocol: TCP
     name: http
     selector:
     app: spring-boot-helloworld
+
 ---
+
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
@@ -4809,19 +5022,22 @@ spec:
   #gateways:
   #- istio-rollout-gateway
   hosts:
+
   - spring-boot-helloworld		#访问VS host名称时会走如下route
     http:
   - name: primary       # 定义route，rollout上面会调用，初始流量权重
     route:
     - destination:
-        host: spring-boot-helloworld	#DR 名称
-        subset: stable  # 子集名称
+      host: spring-boot-helloworld	#DR 名称
+      subset: stable  # 子集名称
       weight: 100		#权重为100
     - destination:
-        host: spring-boot-helloworld	#DR 名称
-        subset: canary  # 子集名称
+      host: spring-boot-helloworld	#DR 名称
+      subset: canary  # 子集名称
       weight: 0			#权重为0
+
 ---
+
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
@@ -4829,12 +5045,14 @@ metadata:
 spec:
   host: spring-boot-helloworld		#匹配VS host
   subsets:
+
   - name: canary   #子集名称
     labels:        
       app: spring-boot-helloworld
   - name: stable   
     labels:        #子集名称
       app: spring-boot-helloworld
+
 ---
 
 #部署
@@ -4881,20 +5099,22 @@ metadata:
   uid: 39821923-14ce-4fff-9ba0-056344a3ae7d
 spec:
   hosts:
+
   - spring-boot-helloworld
     http:
   - name: primary
     route:
     - destination:
-        host: spring-boot-helloworld
-        subset: stable
+      host: spring-boot-helloworld
+      subset: stable
       weight: 100
     - destination:
-        host: spring-boot-helloworld
-        subset: canary
+      host: spring-boot-helloworld
+      subset: canary
       weight: 0
 
 ---
+
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
@@ -4909,17 +5129,18 @@ metadata:
   uid: 39821923-14ce-4fff-9ba0-056344a3ae7d
 spec:
   hosts:
+
   - spring-boot-helloworld
     http:
   - name: primary
     route:
     - destination:
-        host: spring-boot-helloworld
-        subset: stable
+      host: spring-boot-helloworld
+      subset: stable
       weight: 95
     - destination:
-        host: spring-boot-helloworld
-        subset: canary
+      host: spring-boot-helloworld
+      subset: canary
       weight: 5		#从0变成5权重了，后续为10，20，60，80
 
 root@k8s-master01:~/istio-1.13.3# kubectl exec -it $SLEEP -- /bin/sh
@@ -4944,17 +5165,20 @@ Spring Boot Helloworld, version 0.9.6
 Spring Boot Helloworld, version 0.9.6
 
 Spring Boot Helloworld, version 0.9.6
+```
 
 
 
 
-#分析和渐进式交付
+
+### 分析和渐进式交付
+
 - Argo Rollouts中的分析（Analysis）是用于根据阶段性交付效果的测量结果来推动渐进式交付的机制
   - 分析机制通过分析模板（AnalysisTemplate CRD）定义，而后在Rollout中调用它
   - 运行某次特定的交付过程时，Argo Rollouts会将该Rollout调用的AnalysisTemplate实例化为AnalysisRun（CRD）
   
 
-#AnalysisTemplate CRD资源规范
+AnalysisTemplate CRD资源规范
 - AnalysisTemplate CRD资源规范
   - metrics <[]Object>: 必选字段，定义用于对交付效果进行分析的指标，常用的嵌套字段有如下几个
     - name <string>: 指标名称，必选字段
@@ -4975,7 +5199,10 @@ Spring Boot Helloworld, version 0.9.6
 	- limit <string>: 保留数量
 	
 
-#部署istio prometheus插件
+
+
+### 部署istio prometheus插件
+```bash
 root@k8s-master01:~/istio-1.13.3/samples/addons# kubectl apply -f .
 root@k8s-master01:~/istio-1.13.3/samples/addons# kubectl get pods -n istio-system
 NAME                                    READY   STATUS    RESTARTS        AGE
@@ -4999,13 +5226,16 @@ spec:
   selector:
     app: istio-ingressgateway
   servers:
+
   - port:
-      number: 80
-      name: http
-      protocol: HTTP
+    number: 80
+    name: http
+    protocol: HTTP
     hosts:
     - "prometheus.magedu.com"
+
 ---
+
 root@k8s-master01:~/istio-in-practise/Traffic-Management-Basics/prometheus# cat prometheus-destinationrule.yaml
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
@@ -5016,8 +5246,10 @@ spec:
   host: prometheus
   trafficPolicy:
     tls:
+
       mode: DISABLE
 ---
+
 root@k8s-master01:~/istio-in-practise/Traffic-Management-Basics/prometheus# cat prometheus-virtualservice.yaml
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
@@ -5026,42 +5258,57 @@ metadata:
   namespace: istio-system
 spec:
   hosts:
+
   - "prometheus.magedu.com"
     gateways:
   - prometheus-gateway
     http:
   - match:
     - uri:
-        prefix: /
-        route:
+      prefix: /
+      route:
     - destination:
-        host: prometheus
-        port:
-          number: 9090
+      host: prometheus
+      port:
+        number: 9090
+
 ---
+
 root@k8s-master01:~/istio-in-practise/Traffic-Management-Basics/prometheus# kubectl apply -f .
 destinationrule.networking.istio.io/prometheus created
 gateway.networking.istio.io/prometheus-gateway created
 virtualservice.networking.istio.io/prometheus-virtualservice created
 
 172.1682.28 prometheus.magedu.com	#做好hosts解析并访问prometheus.magedu.com
-	
-	
-#渐进式交付示例
+```
+
+
+
+### 渐进式交付示例
+
+```bash
 root@k8s-master01:~/tekton-and-argocd-in-practise/08-argo-rollouts# cat 03-argo-rollouts-with-analysis.yaml
+
 # CopyRight: MageEdu <http://www.magedu.com>
+
 ---
+
 apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate		#analysis模板
 metadata:
   name: success-rate
 spec:
   args:
+
   - name: service-name	#定义参数，调用者会传入此参数的值
     metrics:
+
   - name: success-rate
+
     # NOTE: prometheus queries return results in the form of a vector.
+
     # So it is common to access the index 0 of the returned array to obtain the value
+
     successCondition: result[0] >= 0.95		#当查询结果>= 0.95时将会继续发布，否则将会回滚
     interval: 20s		#每20s执行一次查询
     #count: 3			#没有确定次数将会一直查询
@@ -5076,8 +5323,10 @@ spec:
           sum(irate(
             istio_requests_total{reporter="source",destination_service=~"{{args.service-name}}"}[1m]	
           ))
-		  #报告者是发起者，destination_service调用传入的参数值，如果reporter="source"无值则可换成reporter="destination"(服务网格外访问时无source，当服务网格内访问时有source)
+    	  #报告者是发起者，destination_service调用传入的参数值，如果reporter="source"无值则可换成reporter="destination"(服务网格外访问时无source，当服务网格内访问时有source)
+
 ---
+
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
@@ -5143,21 +5392,26 @@ spec:
             path: '/'
             port: 80
             scheme: HTTP
+
           initialDelaySeconds: 5
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
   name: spring-boot-helloworld
 spec:
   ports:
+
   - port: 80
     targetPort: http
     protocol: TCP
     name: http
     selector:
     app: spring-boot-helloworld
+
 ---
+
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
@@ -5166,19 +5420,22 @@ spec:
   #gateways:
   #- istio-rollout-gateway
   hosts:
+
   - spring-boot-helloworld
     http:
   - name: primary
     route:
     - destination:
-        host: spring-boot-helloworld
-        subset: stable
+      host: spring-boot-helloworld
+      subset: stable
       weight: 100
     - destination:
-        host: spring-boot-helloworld
-        subset: canary
+      host: spring-boot-helloworld
+      subset: canary
       weight: 0
+
 ---
+
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
@@ -5186,13 +5443,16 @@ metadata:
 spec:
   host: spring-boot-helloworld
   subsets:
+
   - name: canary
     labels:
       app: spring-boot-helloworld
   - name: stable
     labels:
       app: spring-boot-helloworld
+
 ---
+
 root@k8s-master01:~/tekton-and-argocd-in-practise/08-argo-rollouts# kubectl apply -f 03-argo-rollouts-with-analysis.yaml -n demo
 #测试收集指标
 root@k8s-master01:~/istio-1.13.3# kubectl apply -f samples/sleep/sleep.yaml -n demo	#必须在网格内
@@ -5207,10 +5467,12 @@ root@k8s-master01:~/tekton-and-argocd-in-practise/08-argo-rollouts# kubectl argo
 Spring Boot Helloworld, version 0.9.6
 
 Spring Boot Helloworld, version 0.9.6
+```
 
 
 
-###rollout更新策略之blueGreen
+### rollout更新策略之blueGreen
+
 - blueGreen
   - spec.strategy.blueGreen
   - 支持内嵌的关键字段
@@ -5229,16 +5491,24 @@ Spring Boot Helloworld, version 0.9.6
 	- postPromotionAnalysis <[]Object>: Promote操作之后要运行的Analysis，若分析运行失败或出错，则Rollout进入路上状态并将流量切回之前的稳定ReplicaSet
 	
 
-##蓝绿部署结合analysis
+
+
+### 蓝绿部署结合analysis
+
+```bash
 root@k8s-master01:~/tekton-and-argocd-in-practise/08-argo-rollouts# cat 06-argo-rollouts-bluegreen-with-analysis.yaml
+
 # CopyRight: MageEdu <http://www.magedu.com>
+
 ---
+
 apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate
 metadata:
   name: success-rate
 spec:
   args:
+
   - name: service-name
     metrics:
   - name: success-rate
@@ -5256,7 +5526,9 @@ spec:
           sum(irate(
             istio_requests_total{reporter="source",destination_service=~"{{args.service-name}}"}[1m]
           ))
+
 ---
+
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
@@ -5273,28 +5545,31 @@ spec:
         app: rollout-helloworld-bluegreen
     spec:
       containers:
-      - name: spring-boot-helloworld
-        image: ikubernetes/spring-boot-helloworld:v0.9.5
-        ports:
-        - containerPort: 80
-  strategy:
-    blueGreen:
-      activeService: spring-boot-helloworld				#设定当前版本service名称
-      previewService: spring-boot-helloworld-preview	#设定新版本service名称
-      prePromotionAnalysis:		#切换前推进分析，就是在previewService服务启动后对此服务进行分析是否成功，成功则进行切换至previewService版本，否则进行回滚
-        templates:
-        - templateName: success-rate
-        args:
-        - name: service-name
-          value: spring-boot-helloworld-preview.demo.svc.cluster.local
-      postPromotionAnalysis:	#切换后推进分析，就是在服务切换为新版本后，再对当前线上提供服务的版本进行分析是否成功，当前版本是activeService，否则进行回滚
-        templates:
-        - templateName: success-rate
-        args:
-        - name: service-name
-          value: spring-boot-helloworld.demo.svc.cluster.local
+
+   - name: spring-boot-helloworld
+     image: ikubernetes/spring-boot-helloworld:v0.9.5
+     ports:
+     - containerPort: 80
+       strategy:
+         blueGreen:
+           activeService: spring-boot-helloworld				#设定当前版本service名称
+           previewService: spring-boot-helloworld-preview	#设定新版本service名称
+           prePromotionAnalysis:		#切换前推进分析，就是在previewService服务启动后对此服务进行分析是否成功，成功则进行切换至previewService版本，否则进行回滚
+       templates:
+     - templateName: success-rate
+       args:
+     - name: service-name
+       value: spring-boot-helloworld-preview.demo.svc.cluster.local
+           postPromotionAnalysis:	#切换后推进分析，就是在服务切换为新版本后，再对当前线上提供服务的版本进行分析是否成功，当前版本是activeService，否则进行回滚
+       templates:
+     - templateName: success-rate
+       args:
+     - name: service-name
+       value: spring-boot-helloworld.demo.svc.cluster.local
+
       autoPromotionEnabled: true	#是否进行自动推进切换
 ---
+
 kind: Service
 apiVersion: v1
 metadata:
@@ -5303,10 +5578,13 @@ spec:
   selector:
     app: rollout-helloworld-bluegreen	
   ports:
+
   - protocol: TCP
     port: 80
     targetPort: 80
+
 ---
+
 kind: Service
 apiVersion: v1
 metadata:
@@ -5315,31 +5593,42 @@ spec:
   selector:
     app: rollout-helloworld-bluegreen
   ports:
+
   - protocol: TCP
     port: 80
     targetPort: 80
     root@k8s-master01:~/tekton-and-argocd-in-practise/08-argo-rollouts# kubectl apply -f 06-argo-rollouts-bluegreen-with-analysis.yaml -n demo
     ----更新应用
     root@k8s-master01:~/tekton-and-argocd-in-practise/08-argo-rollouts# kubectl argo rollouts set image rollout-helloworld-bluegreen-with-analysis spring-boot-helloworld=ikubernetes/spring-boot-helloworld:v0.9.6 -n demo
+```
 
 
 
-#####ArgoCD结合ArgoRollout进行纯自动化部署
+### ArgoCD结合ArgoRollout进行纯自动化部署
 
+```bash
 root@front-envoy:~/spring-boot-helloworld-deployment/rollouts/helloworld-canary-with-analysis# cat argo-rollouts-with-analysis.yaml
+
 # CopyRight: MageEdu <http://www.magedu.com>
+
 ---
+
 apiVersion: argoproj.io/v1alpha1
 kind: AnalysisTemplate
 metadata:
   name: success-rate
 spec:
   args:
+
   - name: service-name
     metrics:
+
   - name: success-rate
+
     # NOTE: prometheus queries return results in the form of a vector.
+
     # So it is common to access the index 0 of the returned array to obtain the value
+
     successCondition: result[0] >= 0.95
     interval: 20s
     #count: 3
@@ -5354,7 +5643,9 @@ spec:
           sum(irate(
             istio_requests_total{reporter="source",destination_service=~"{{args.service-name}}"}[1m]
           ))
+
 ---
+
 apiVersion: argoproj.io/v1alpha1
 kind: Rollout
 metadata:
@@ -5420,21 +5711,26 @@ spec:
             path: '/'
             port: 80
             scheme: HTTP
+
           initialDelaySeconds: 5
 ---
+
 apiVersion: v1
 kind: Service
 metadata:
   name: spring-boot-helloworld
 spec:
   ports:
+
   - port: 80
     targetPort: http
     protocol: TCP
     name: http
     selector:
     app: spring-boot-helloworld
+
 ---
+
 apiVersion: networking.istio.io/v1beta1
 kind: VirtualService
 metadata:
@@ -5443,19 +5739,22 @@ spec:
   #gateways:
   #- istio-rollout-gateway
   hosts:
+
   - spring-boot-helloworld
     http:
   - name: primary
     route:
     - destination:
-        host: spring-boot-helloworld
-        subset: stable
+      host: spring-boot-helloworld
+      subset: stable
       weight: 100
     - destination:
-        host: spring-boot-helloworld
-        subset: canary
+      host: spring-boot-helloworld
+      subset: canary
       weight: 0
+
 ---
+
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
 metadata:
@@ -5463,13 +5762,16 @@ metadata:
 spec:
   host: spring-boot-helloworld
   subsets:
+
   - name: canary
     labels:
       app: spring-boot-helloworld
   - name: stable
     labels:
       app: spring-boot-helloworld
+
 ---
+
 ----配置github仓库配置进行直接部署
 root@k8s-master01:~/tekton-and-argocd-in-practise/08-argo-rollouts# cat 07-argocd-applicatio-and-argo-rollouts.yaml
 apiVersion: argoproj.io/v1alpha1
@@ -5505,15 +5807,16 @@ spec:
         factor: 2
         maxDuration: 3m
   ignoreDifferences:
+
   - group: networking.istio.io
     kind: VirtualService
     jsonPointers:
     - /spec/http/0		#后期部署新版本时忽略VS中的配置，因为ArgoCD会动态调整VS的权重值，为了避免在动态调整权重值时被ArgoCD重置导致服务异常，我们这里需要忽略
-    root@k8s-master01:~/tekton-and-argocd-in-practise/08-argo-rollouts# kubectl apply -f 07-argocd-applicatio-and-argo-rollouts.yaml
-    / $ while true; do curl http://spring-boot-helloworld.demo.svc.cluster.local/version; echo; sleep 0.$RANDOM; done
-    version 0.9.5
-    version 0.9.5
-    version 0.9.5
+      root@k8s-master01:~/tekton-and-argocd-in-practise/08-argo-rollouts# kubectl apply -f 07-argocd-applicatio-and-argo-rollouts.yaml
+      / $ while true; do curl http://spring-boot-helloworld.demo.svc.cluster.local/version; echo; sleep 0.$RANDOM; done
+      version 0.9.5
+      version 0.9.5
+      version 0.9.5
 
 ----仓库配置镜像版本为v0.9.6
 root@front-envoy:~/spring-boot-helloworld-deployment/rollouts/helloworld-canary-with-analysis# vim argo-rollouts-with-analysis.yaml
@@ -5531,6 +5834,7 @@ Spring Boot Helloworld, version 0.9.6
 version 0.9.5
 version 0.9.5
 version 0.9.5
+```
 
 
 
@@ -5542,7 +5846,11 @@ version 0.9.5
 
 
 
-###云原生课程总结
+
+
+
+
+### 云原生课程总结
 
 #实现微服务的几个要素
 - 微服务如何落地（容器化，镜像构建，依赖解决，镜像分发，容器中的配置文件参数变更及管理）
@@ -5576,19 +5884,29 @@ version 0.9.5
 
 
 
-####监控argocd
-######部署prometheus-server并监控argocd
----------------------------------
+
+
+# 监控argocd
+
+
+
+## 部署prometheus-server并监控argocd
+
+```bash
 [root@prometheus prometheus]# cat 10-promehteus-server.yaml 
----
+
 # Source: prometheus/templates/server/serviceaccount.yaml
+
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: prometheus-server
+
   namespace: kube-system
 ---
+
 # Source: prometheus/templates/server/cm.yaml
+
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -5884,9 +6202,12 @@ data:
   recording_rules.yml: |
     {}
   rules: |
+
     {}
 ---
+
 # Source: prometheus/templates/server/clusterrole.yaml
+
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -5894,37 +6215,41 @@ metadata:
     app: prometheus-server
   name: prometheus-server
 rules:
+
   - apiGroups:
-      - ""
+    - ""
       resources:
-      - nodes
-      - nodes/proxy
-      - nodes/metrics
-      - services
-      - endpoints
-      - pods
-      - ingresses
-      - configmaps
+    - nodes
+    - nodes/proxy
+    - nodes/metrics
+    - services
+    - endpoints
+    - pods
+    - ingresses
+    - configmaps
       verbs:
-      - get
-      - list
-      - watch
+    - get
+    - list
+    - watch
   - apiGroups:
-      - "extensions"
-      - "networking.k8s.io"
+    - "extensions"
+    - "networking.k8s.io"
       resources:
-      - ingresses/status
-      - ingresses
+    - ingresses/status
+    - ingresses
       verbs:
-      - get
-      - list
-      - watch
+    - get
+    - list
+    - watch
   - nonResourceURLs:
-      - "/metrics"
+    - "/metrics"
       verbs:
-      - get
+    - get
+
 ---
+
 # Source: prometheus/templates/server/clusterrolebinding.yaml
+
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
@@ -5932,15 +6257,19 @@ metadata:
     app: prometheus-server
   name: prometheus-server
 subjects:
+
   - kind: ServiceAccount
     name: prometheus-server
     namespace: kube-system
-  roleRef:
+      roleRef:
     apiGroup: rbac.authorization.k8s.io
     kind: ClusterRole
     name: prometheus-server
+
 ---
+
 # Source: prometheus/templates/server/service.yaml
+
 apiVersion: v1
 kind: Service
 metadata:
@@ -5958,9 +6287,12 @@ spec:
   selector:
     app: prometheus-server
   sessionAffinity: None
+
   type: "NodePort"
 ---
+
 # Source: prometheus/templates/server/deploy.yaml
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -6049,8 +6381,11 @@ spec:
         - name: storage-volume
           emptyDir:
             {}
+
 ---------------------------------
+
 ######外部prometheus-server抓取联邦节点的argocd指标(k8s中Prometheus-server是联邦节点)
+
   - job_name: 'prometheus-federate-kubernetes'
     scheme: http
     metrics_path: /federate
@@ -6059,11 +6394,11 @@ spec:
     params:
       'match[]':
       - '{job="argocd-server-metrics"}'
-    static_configs:
+        static_configs:
     - targets: 
       - "monitor.k8s.hs.com"
-      ######外部grafana添加argocd Dashboard
-      dashboard地址：https://github.com/argoproj/argo-cd/blob/master/examples/dashboard.json
+        ######外部grafana添加argocd Dashboard
+        dashboard地址：https://github.com/argoproj/argo-cd/blob/master/examples/dashboard.json
 
 
 ##在deployment或者rollout是添加外部链接
@@ -6106,6 +6441,7 @@ base  fat  pro  uat
 4 directories, 17 files
 [root@prometheus kustomize]# cat base/kustomization.yaml 
 resources:
+
 - rollout.yaml
 - service.yaml
 - virtualservice.yaml
@@ -6130,11 +6466,17 @@ spec:
             canarySubsetName: canary
             stableSubsetName: stable
       steps:
+
 #      - setWeight: 30
+
 #      - pause: {duration: 5}
+
 #      - setWeight: 60
+
 #      - pause: {duration: 5}
+
       - setWeight: 100
+
   revisionHistoryLimit: 5
   selector:
     matchLabels:
@@ -6185,8 +6527,10 @@ spec:
           periodSeconds: 5
           timeoutSeconds: 3
           successThreshold: 1
+
           failureThreshold: 3
 ---
+
 [root@prometheus kustomize]# cat base/service.yaml 
 apiVersion: v1
 kind: Service
@@ -6194,6 +6538,7 @@ metadata:
   name: frontend-nginx-hs-com-service
 spec:
   ports:
+
   - name: http-80
     port: 80
     targetPort: 80
@@ -6209,6 +6554,7 @@ metadata:
   name: frontend-nginx-hs-com-virtualservice
 spec:
   hosts:
+
   - "nginx.hs.com"
     gateways:
   - istio-system/general-gateway
@@ -6216,14 +6562,16 @@ spec:
   - name: primary
     route:
     - destination:
-        host: frontend-nginx-hs-com-service
-        subset: stable
+      host: frontend-nginx-hs-com-service
+      subset: stable
       weight: 100
     - destination:
-        host: frontend-nginx-hs-com-service
-        subset: canary
+      host: frontend-nginx-hs-com-service
+      subset: canary
       weight: 0
+
 ---
+
 [root@prometheus kustomize]# cat base/destinationrule.yaml 
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule
@@ -6232,6 +6580,7 @@ metadata:
 spec:
   host: frontend-nginx-hs-com-service
   subsets:
+
   - name: canary
     labels:
       app: frontend-nginx-hs-com-selector
@@ -6241,20 +6590,25 @@ spec:
     trafficPolicy:
     tls:
       mode: DISABLE
+
 ---
+
 [root@prometheus kustomize]# cat fat/kustomization.yaml 		#fat环境配置清单
 bases:
+
 - ../base			#引入base中kustomize中include的配置清单文件
 
 patchesStrategicMerge:		#普通的打补丁方法
+
 - replicas-rollout.yaml		#合并的配置清单文件
 
 patchesJson6902:		#更高级的打补丁方法
+
 - target:
-    group: networking.istio.io
-    version: v1beta1
-    kind: VirtualService
-    name: frontend-nginx-hs-com-virtualservice
+  group: networking.istio.io
+  version: v1beta1
+  kind: VirtualService
+  name: frontend-nginx-hs-com-virtualservice
   path: patch-viatualservice.yaml	#打补丁的参数文件
     [root@prometheus kustomize]# cat fat/replicas-rollout.yaml 
     apiVersion: argoproj.io/v1alpha1
@@ -6268,19 +6622,21 @@ patchesJson6902:		#更高级的打补丁方法
   path: /spec/hosts		#覆盖virtualserver中的hosts名称
   value: 
   - "fat.nginx.hs.com"
-  [root@prometheus kustomize]# cat uat/kustomization.yaml 	#uat环境配置清单
-  bases:
+    [root@prometheus kustomize]# cat uat/kustomization.yaml 	#uat环境配置清单
+    bases:
 - ../base
 
 patchesStrategicMerge:
+
 - replicas-rollout.yaml
 
 patchesJson6902:
+
 - target:
-    group: networking.istio.io
-    version: v1beta1
-    kind: VirtualService
-    name: frontend-nginx-hs-com-virtualservice
+  group: networking.istio.io
+  version: v1beta1
+  kind: VirtualService
+  name: frontend-nginx-hs-com-virtualservice
   path: patch-viatualservice.yaml
     [root@prometheus kustomize]# cat uat/replicas-rollout.yaml 
     apiVersion: argoproj.io/v1alpha1
@@ -6294,19 +6650,21 @@ patchesJson6902:
   path: /spec/hosts
   value: 
   - "uat.nginx.hs.com"
-  [root@prometheus kustomize]# cat pro/kustomization.yaml 	#pro环境配置清单
-  bases:
+    [root@prometheus kustomize]# cat pro/kustomization.yaml 	#pro环境配置清单
+    bases:
 - ../base
 
 patchesStrategicMerge:
+
 - replicas-rollout.yaml
 
 patchesJson6902:
+
 - target:
-    group: networking.istio.io
-    version: v1beta1
-    kind: VirtualService
-    name: frontend-nginx-hs-com-virtualservice
+  group: networking.istio.io
+  version: v1beta1
+  kind: VirtualService
+  name: frontend-nginx-hs-com-virtualservice
   path: patch-viatualservice.yaml
     [root@prometheus kustomize]# cat pro/replicas-rollout.yaml 
     apiVersion: argoproj.io/v1alpha1
@@ -6378,28 +6736,30 @@ spec:
     kind: Rollout
     name: pro-frontend-nginx-hs-com-rollout
   metrics:
+
   - type: Resource
     resource:			#resource只能使用memory或者cpu。其它类型有Pods、Object、External、ContainerResource
+
 #      name: memory
+
 #      target: 
+
 #        type: Utilization
+
 #        averageUtilization: 20
-      name: cpu						#在同一个类型下，memory和cpu不能同时使用，后者会覆盖前者
-      target: 
+    name: cpu						#在同一个类型下，memory和cpu不能同时使用，后者会覆盖前者
+    target: 
         type: Utilization
-        averageUtilization: 20
+    averageUtilization: 20
+```
 
 
 
 
 
+# argocd使用问题汇总：
 
-
-
-
-
-
-####argocd使用问题汇总：
+```bash
 问题1：
 ssh连接太繁忙，argocd同步git太频繁，报如下错；
 Application pro-java-regionalsource-service-hs-com sync is 'Unknown'.
@@ -6407,6 +6767,7 @@ Application details: <no value>/applications/pro-java-regionalsource-service-hs-
 
 
     * rpc error: code = Unknown desc = ssh: handshake failed: read tcp 172.20.85.211:39090->192.168.13.213:22: read: connection reset by peer
+
 措施1：
 [root@gitlab ~]# vim /etc/ssh/sshd_config 
 MaxSessions 1000
@@ -6434,6 +6795,7 @@ Application details: <no value>/applications/pro-java-foodmeituan-api-hs-com.
 
 
     * rpc error: code = Internal desc = Failed to fetch default: `git fetch origin --tags --force` failed exit status 128: fatal: '/home/git/repositories/k8s-deploy/java-FoodMeituan-api-hs-com.git' does not appear to be a git repository
+
 fatal: Could not read from remote repository.
 
 Please make sure you have the correct access rights
@@ -6447,7 +6809,9 @@ and the repository exists.
 我忘记了管理员密码，如何重置？
 措施：
 对于 Argo CD v1.8 及更早版本，初始密码设置为服务器 pod 的名称，根据入门指南。对于 Argo CD v1.9 及更高版本，初始密码可从名为argocd-initial-admin-secret.
+
 # bcrypt(password)=$2a$10$rRyBsGSHK6.uc8fntPwVIuLVHgsAhAX7TcdrqW/RADU0uh7CaChLa
+
 kubectl -n argocd patch secret argocd-secret \
   -p '{"stringData": {
     "admin.password": "$2a$10$rRyBsGSHK6.uc8fntPwVIuLVHgsAhAX7TcdrqW/RADU0uh7CaChLa",
@@ -6456,5 +6820,4 @@ kubectl -n argocd patch secret argocd-secret \
 
 要更改密码，请编辑密码并使用新的 bcrypt 哈希argocd-secret更新该字段。admin.password您可以使用https://www.browserling.com/tools/bcrypt 之类的网站来生成新的哈希值。例如：
 另一种选择是删除admin.password和admin.passwordMtime键并重新启动 argocd-server。这将根据入门指南生成一个新密码，因此可以是 pod 的名称（Argo CD 1.8 及更早版本）或存储在密钥中的随机生成的密码（Argo CD 1.9 及更高版本）。
-
-</pre>
+```

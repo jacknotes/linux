@@ -2,15 +2,15 @@
 
 
 
-### kubernetes高可用集群的典型架构
+## kubernetes高可用集群的典型架构
 
 ![kubernetes-HA](https://github.com/jacknotes/linux/raw/master/image/kubernetes-ha.jpg)
 
 
 [kubernetes github](https://github.com/kubernetes/kubernetes)
 
+## 组件
 
-### 组件
 ```
 ### 控制面组件：
 
@@ -54,9 +54,12 @@ metadata:
        只保留1个kube-scheduler，而kube-controller-manager3个节点全部关闭，在创建deployment和service时候，任务不会被创建成功，因为kube-controller-manager没有运行，无法使用deployment控制器创建pod，虽然kube-scheduler运行，但是控制器没有运行，后面的调度任务也就不会被运行。
 ```
 
-## 部署环境
 
-##### k8s生产集群部署环境：
+
+# 部署环境
+
+## k8s生产集群部署环境
+
 ```
 kubernetes-master: 3个
 etcd: 3个
@@ -69,7 +72,8 @@ node: 48C 256G ssd/2T 10g/25g网卡 物理机
 master: 16c 16G ssd/200G 物理机或虚拟机
 etcd: 8c 16G ssd/150g
 ```
-##### 测试环境配置：
+## 测试环境配置
+
 ```
 172.168.2.11	ansible
 172.168.2.21	kubernetes-master01		etcd01
@@ -346,7 +350,8 @@ CALICO_IPV4POOL_IPIP: "Always"
 # role:cluster-addon	所有插件不自动安装，后面手动安装
 # coredns 自动安装
 dns_install: "no"
-ENABLE_LOCAL_DNS_CACHE: false	#测关闭DNS缓存
+# 测关闭DNS缓存，如果ENABLE_LOCAL_DNS_CACHE的值是true，下面的LOCAL_DNS_CACHE就写成对应coredns服务的IP地址；如果ENABLE_LOCAL_DNS_CACHE的值是false，后面的LOCAL_DNS_CACHE是谁的IP地址就无所谓了；
+ENABLE_LOCAL_DNS_CACHE: false	
 # metric server 自动安装
 metricsserver_install: "no"
 # dashboard 自动安装
@@ -412,9 +417,8 @@ NAME           STATUS                     ROLES    AGE   VERSION
 ----kube-controller-manager、kube-scheduler、kube-proxy他们的证书和私钥都配置在kubeconfig文件中
 ```
 
+### 20220604----配置kube-controller-manager驱逐不健康节点的时间
 
-
-##### 20220604----配置kube-controller-manager驱逐不健康节点的时间
 ```
 ###适用于kubernetes v1.13之前
 root@k8s-master01:~# cat /etc/systemd/system/kube-controller-manager.service
@@ -552,7 +556,7 @@ root@k8s-master01:~/git/k8s-deploy/frontend-www-homsom-com-test/deploy# ssh 172.
 ------------
 #永久生效，更改ansible配置文件模板
 /etc/kubeasz/roles/kube-master/templates
-[root@prometheus templates]# vim kube-controller-manager.service.j2 
+[root@prometheus templates]# vim kube-apiserver.service.j2 
 ...
   --v=2 \
   --default-not-ready-toleration-seconds=60 \
@@ -855,11 +859,10 @@ spec:
 -----------------
 root@k8s-master01:~# docker pull rancher/coredns-coredns:1.8.3
 root@k8s-master01:~# docker tag rancher/coredns-coredns:1.8.3 192.168.13.197:8000/k8s/coredns-coredns:1.8.3
-root@k8s-master01:~# docker push 192.168.13.197:8000/k8s/coredns-coredns:1.8.3
+root@k8s-master01:~# docker push 192.168.13.197:8000/k8s/coredns-coredns:1.8.3root@k8s-master01:~# docker push 192.168.13.197:8000/k8s/coredns-coredns:1.8.3
+root@k8s-master01:~# kubectl apply -f k8s/coredns.yaml
 root@k8s-master01:~# kubectl exec -it net-test1 sh
 kubectl exec [POD] [COMMAND] is DEPRECATED and will be removed in a future version. Use kubectl exec [POD] -- [COMMAND] instead.
-/ # pin www.baidu.com
-sh: pin: not found
 / # ping www.baidu.com
 PING www.baidu.com (112.80.248.75): 56 data bytes
 64 bytes from 112.80.248.75: seq=0 ttl=49 time=13.262 ms	#此时已经成功解析
@@ -7038,7 +7041,40 @@ kubectl config set-cluster k8s-pro --certificate-authority=/etc/kubeasz/clusters
 kubectl config set-credentials ${USER} --client-certificate=/etc/kubeasz/clusters/k8s-pro/ssl/homsom-ssl/${USER}.pem --client-key=/etc/kubeasz/clusters/k8s-pro/ssl/homsom-ssl/${USER}-key.pem --embed-certs=true --kubeconfig=${USER}.kubeconfig
 kubectl config set-context k8s-pro-context --cluster=k8s-pro --user=${USER} --namespace=pro-${USER} --kubeconfig=${USER}.kubeconfig
 kubectl config use-context k8s-pro-context --kubeconfig=${USER}.kubeconfig
-------------------------------
+-------------升级生脚本-------------
+#!/bin/sh
+
+if [ -z $1 ];then
+	echo $"Usage: $0 Jack-csr.json"
+	exit 10
+fi
+
+CSR_JSON_FILENAME=`basename $1`
+RESULT=`echo "${CSR_JSON_FILENAME}" | grep '\-csr.json' >& /dev/null && echo 0 || echo 1`
+
+if [ ${RESULT} == '0' ];then
+	USER=`echo "${CSR_JSON_FILENAME}" | awk -F '-' '{print $1}'`
+else
+	echo $" \$1 format == './\$\{user\}-csr.json' "
+	exit 10
+fi
+
+
+CLUSTER='k8s-pre-pro'
+APISERVER='https://192.168.13.90:6443'
+DEFAULT_NAMESPACE='default'
+
+
+cfssl gencert -ca=/etc/kubeasz/clusters/${CLUSTER}/ssl/ca.pem  -ca-key=/etc/kubeasz/clusters/${CLUSTER}/ssl/ca-key.pem -config=/etc/kubeasz/clusters/${CLUSTER}/ssl/ca-config.json -profile=kubernetes ${CSR_JSON_FILENAME} | cfssljson -bare ${USER} && \
+	sleep 1 && \
+	kubectl config set-cluster ${CLUSTER} --certificate-authority=/etc/kubeasz/clusters/${CLUSTER}/ssl/ca.pem --embed-certs=true --server=${APISERVER} --kubeconfig=${USER}.kubeconfig && \
+	kubectl config set-credentials ${USER} --client-certificate=/etc/kubeasz/clusters/${CLUSTER}/ssl/homsom-ssl/${USER}.pem --client-key=/etc/kubeasz/clusters/${CLUSTER}/ssl/homsom-ssl/${USER}-key.pem --embed-certs=true --kubeconfig=${USER}.kubeconfig && \
+	kubectl config set-context ${CLUSTER}-context --cluster=${CLUSTER} --user=${USER} --namespace=${DEFAULT_NAMESPACE} --kubeconfig=${USER}.kubeconfig && \
+	kubectl config use-context ${CLUSTER}-context --kubeconfig=${USER}.kubeconfig && \
+	echo "[INFO] generate kubeconfig for ${USER}.kubeconfig successful!" || echo "[ERROE] generate kubeconfig for ${USER}.kubeconfig failure!"
+----------------------------------
+
+
 
 [root@prometheus homsom-ssl]# cfssl gencert -ca=/etc/kubeasz/clusters/k8s-pro/ssl/ca.pem  -ca-key=/etc/kubeasz/clusters/k8s-pro/ssl/ca-key.pem -config=/etc/kubeasz/clusters/k8s-pro/ssl/ca-config.json -profile=kubernetes ./jack-csr.json | cfssljson -bare Jack
 2022/06/24 14:43:21 [INFO] generate received request
