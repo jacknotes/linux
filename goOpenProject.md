@@ -2,6 +2,12 @@
 
 
 
+[cloudreve文档](https://docs.cloudreve.org/)
+
+
+
+
+
 ## 安装cloudreve
 
 ```bash
@@ -53,6 +59,8 @@ Hs77wrA8
 
 
 
+
+
 ## nginx反射代理cloudreve
 
 ```
@@ -92,7 +100,17 @@ server {
 
 
 
+
+
+
+
 # dozzle项目
+
+
+
+[dozzle文档](https://github.com/amir20/dozzle)
+
+
 
 
 
@@ -109,9 +127,19 @@ docker run --name dozzle -d --volume=/var/run/docker.sock:/var/run/docker.sock -
 
 
 
+
+
+
+
+
+
 # alist项目
 
-[文档]:https://alist.nn.ci/zh/guide/
+
+
+[alist文档](https://alist.nn.ci/zh/guide/)
+
+
 
 
 
