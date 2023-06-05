@@ -33,6 +33,19 @@
 26. [root@k8s-master ~]# kubectl get nodes #node2节点也已成功加入k8s集群
 27. [root@node1 ~]# kubectl api-versions #查看k8s支持的api版本
 
+# kubectl debug命令
+```bash
+## 调试pod，进入pod中容器为homsom-container里面，并在此pod上添加一个容器，并共享进程
+[root@prometheus ~]# kubectl debug pod/pro-frontend-wallet-hs-com-rollout-74f99898c7-8gjzs  -n pro-frontend -it --image=ikubernetes/admin-box:v1.2 --target=homsom-container -- /bin/sh
+
+## 调试pod，复制pod到同名称空间下，并在此pod上添加一个容器，并共享进程
+kubectl debug pro-frontend-wallet-hs-com-rollout-74f99898c7-8gjzs -n pro-frontend -it --copy-to=my-debugger --container=mycontainer --image=ikubernetes/admin-box:v1.2 --share-processes=true -- sleep 30d
+kubectl -n pro-frontend exec -it pod/my-debugger -c mycontainer -- /bin/sh
+
+## 调试node，容器将在主机命名空间中运行，主机的文件系统将被挂载在/host处
+kubectl debug node/192.168.13.92 -it --image=ikubernetes/admin-box:v1.2 -- /bin/sh
+```
+
 #附件：
 1. coreDNS,  2. kube-proxy  #这是集群建好后就好的。
 2. 另外还有5个重要的：1. ingress controller 2. prometheus（监控组件），3. heapstar(收集k8s集群信息) ,4. dashboard ，5. flannal

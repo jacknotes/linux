@@ -4304,6 +4304,47 @@ metadata:
 ```
 
 
+### argocd命令--20230526
+```bash
+# 对特定application打特定标签，为后面批量选择做准备
+kubectl label application -n argocd prepro-frontend-nginx-bg-hs-com prepro-frontend-nginx-hs-com env=prepro
+
+# 列出打好标签的application
+root@k8s-master01:~# argocd app list -l env=prepro
+NAME                             CLUSTER                     NAMESPACE     PROJECT        STATUS  HEALTH   SYNCPOLICY  CONDITIONS  REPO                                                       PATH     TARGET
+prepro-frontend-nginx-bg-hs-com  https://192.168.13.90:6443  pro-frontend  prepro-homsom  Synced  Healthy  <none>      <none>      git@gitlab.hs.com:k8s-deploy/frontend-nginx-bg-hs-com.git  deploy/  prepro
+prepro-frontend-nginx-hs-com     https://192.168.13.90:6443  pro-frontend  prepro-homsom  Synced  Healthy  <none>      <none>      git@gitlab.hs.com:k8s-deploy/frontend-nginx-hs-com.git     deploy/  prepro
+
+# 列出其中1个application的发布历史
+root@k8s-master01:~# argocd app history prepro-frontend-nginx-bg-hs-com 
+ID  DATE                           REVISION
+11  2023-05-25 19:53:03 +0800 CST  prepro (c6578a8)
+12  2023-05-25 20:03:27 +0800 CST  prepro (c6578a8)
+13  2023-05-25 20:05:58 +0800 CST  prepro (662d8e9)
+14  2023-05-25 20:10:51 +0800 CST  prepro (5a530d0)
+15  2023-05-25 20:15:13 +0800 CST  prepro (3d84edb)
+16  2023-05-25 20:17:07 +0800 CST  prepro (5a530d0)
+17  2023-05-25 20:17:53 +0800 CST  prepro (c6578a8)
+18  2023-05-25 20:18:35 +0800 CST  prepro (5a530d0)
+19  2023-05-25 20:43:04 +0800 CST  prepro (0be71f0)
+20  2023-05-25 20:44:27 +0800 CST  prepro (5141ac5)
+
+# 列出上一个版本的ID号，为倒数第2个
+root@k8s-master01:~# argocd app history prepro-frontend-nginx-bg-hs-com | awk '{print $1}' | tail -n 2 | head -n 1
+19
+
+# 回滚指定的application到指定版本
+root@k8s-master01:~# argocd app rollback prepro-frontend-nginx-bg-hs-com 19      
+
+# 对特定的application标签对象进行批量手动同步，当application未开启自动同步功能时，此功能可以实现一键同步发布
+argocd app sync -l env=prepro --force --async
+
+
+## 批量回滚deployment/rollout
+for i in `argocd app list -l env=prepro | awk '{print $1}' | tail -n +2`;do REVERSION_ID=`argocd app history $i | awk '{print $1}' | tail -n 2 | head -n 1`; argocd app rollback $i ${REVERSION_ID};done
+```
+
+
 
 ## Argo Rollouts概览
 
