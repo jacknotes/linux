@@ -276,7 +276,7 @@ Jun 05 16:38:18 prometheus alist[30144]: INFO[2023-06-05 16:38:18] qbittorrent n
 
 
 
-[kubeshark文档]([The Kubernetes Network Analyzer - Kubeshark](https://docs.kubeshark.co/en/introduction))
+[kubeshark文档](https://docs.kubeshark.co/en/introduction)
 
 
 
@@ -305,12 +305,16 @@ https://github.com/kubeshark/kubeshark/releases/download/40.5/kubeshark_40.5_win
 
 
 
+# hack-browser-data项目
 
 
 
+[hack-browser-data文档](https://github.com/moonD4rk/HackBrowserData)
 
 
 
+![](./image/go-open-project/hack-browser-data/01.png)
 
 
 
+![](./image/go-open-project/hack-browser-data/02.png)
