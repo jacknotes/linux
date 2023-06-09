@@ -2888,49 +2888,50 @@ spec:
     type: NodePort
     selector:
     app: ng-deploy-80
-    ----ExecAction探针示例：
-    root@k8s-master01:~/k8s/yaml/probe-case# cat redis.yaml
-    apiVersion: apps/v1
-    kind: Deployment
-    metadata:
-    name: redis-deployment
-    spec:
-    replicas: 1
-    selector:
-    matchLabels: #rs or deployment
-      app: redis-deploy-6379
-    #matchExpressions:
-    #  - {key: app, operator: In, values: [redis-deploy-6379,ng-rs-81]}
-    template:
-    metadata:
-      labels:
-        app: redis-deploy-6379
-    spec:
-      containers:
-      - name: redis-deploy-6379
-        image: redis
-        ports:
-        - containerPort: 6379
-          readinessProbe:
-          exec:
-            command:
-            - /usr/local/bin/redis-cli
-            - quit
-              initialDelaySeconds: 5
-              periodSeconds: 3
-              timeoutSeconds: 5
-              successThreshold: 1
-              failureThreshold: 3
-              livenessProbe:
-              exec:
-              command:
-            - /usr/local/bin/redis-cli
-            - quit
-          initialDelaySeconds: 5
-          periodSeconds: 3
-          timeoutSeconds: 5
-          successThreshold: 1
-          failureThreshold: 3
+
+----ExecAction探针示例：
+root@k8s-master01:~/k8s/yaml/probe-case# cat redis.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+name: redis-deployment
+spec:
+replicas: 1
+selector:
+matchLabels: #rs or deployment
+  app: redis-deploy-6379
+#matchExpressions:
+#  - {key: app, operator: In, values: [redis-deploy-6379,ng-rs-81]}
+template:
+metadata:
+  labels:
+    app: redis-deploy-6379
+spec:
+  containers:
+  - name: redis-deploy-6379
+    image: redis
+    ports:
+    - containerPort: 6379
+    readinessProbe:
+      exec:
+        command:
+        - /usr/local/bin/redis-cli
+        - quit
+      initialDelaySeconds: 5
+      periodSeconds: 3
+      timeoutSeconds: 5
+      successThreshold: 1
+      failureThreshold: 3
+    livenessProbe:
+        exec:
+          command:
+        - /usr/local/bin/redis-cli
+        - quit
+      initialDelaySeconds: 5
+      periodSeconds: 3
+      timeoutSeconds: 5
+      successThreshold: 1
+      failureThreshold: 3
 ---
 apiVersion: v1
 kind: Service

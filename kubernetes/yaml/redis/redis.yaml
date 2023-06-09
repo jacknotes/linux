@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fat-middleware-redis-deployment
+  namespace: fat-middleware
+spec:
+  replicas: 1
+  selector:
+    matchLabels: 
+      app: fat-middleware-redis-deployment-pod
+  template:
+    metadata:
+      labels:
+        app: fat-middleware-redis-deployment-pod
+    spec:
+      nodeSelector: 
+        fat-middleware: allow
+      containers:
+      - name: redis
+        image: redis:4.0.11
+        command:
+        - redis-server
+        args: ["--save 60 1","--loglevel warning"]
+        ports:
+        - containerPort: 6379
+          name: redis
+          protocol: TCP
+        readinessProbe:
+          exec:
+            command:
+            - /usr/local/bin/redis-cli
+            - quit
+          initialDelaySeconds: 5
+          periodSeconds: 3
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        livenessProbe:
+          exec:
+            command:
+            - /usr/local/bin/redis-cli
+            - quit
+          initialDelaySeconds: 5
+          periodSeconds: 3
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        volumeMounts:
+        - name: fat-redis-volume
+          mountPath: /data
+      volumes:
+      - name: fat-redis-volume
+        hostPath:
+          path: /data/k8s/fat-redis
+          type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fat-middleware-redis-service
+  namespace: fat-middleware
+spec:
+  ports:
+  - name: http
+    port: 6379
+    targetPort: 6379
+    nodePort: 40001
+    protocol: TCP
+  type: NodePort
+  selector:
+    app: fat-middleware-redis-deployment-pod
