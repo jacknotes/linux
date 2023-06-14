@@ -4285,6 +4285,11 @@ Password updated
   - 行动：get create update delete sync override action
 - 可以在 ConfigMap/argocd-rbac-cm中配置其他用户、角色和组
 
+
+**Argo CD有两个预定义的角色，但RBAC配置允许定义角色和组**
+* role:readonly- 对所有资源的只读访问权限
+* role:admin- 不受限制地访问所有资源
+
 root@ansible:~# kubectl get cm argocd-rbac-cm -o yaml -n argocd	#以下权限只有application的回滚权限
 apiVersion: v1
 data:
@@ -4292,6 +4297,10 @@ data:
     p, alice, applications, update, */*, allow
     p, alice, applications, sync, */*, allow
 	p, alice, applications, delete, default/*, allow		#可以对default项目下的application进行删除
+	g, ops, role:admin										#将ops用户加入role:admin组
+	g, test, role:test										#将test加入role:test组
+	p, role:test, applications, sync, */*, allow			#配置role:test组权限
+
   policy.default: role:readonly
 kind: ConfigMap
 metadata:
