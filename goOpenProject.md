@@ -318,3 +318,284 @@ https://github.com/kubeshark/kubeshark/releases/download/40.5/kubeshark_40.5_win
 
 
 ![](./image/go-open-project/hack-browser-data/02.png)
+
+
+
+
+
+
+
+
+# hugo项目
+
+
+
+## hugo简介
+
+世界上最快的网站构建框架
+
+Hugo是最受欢迎的开源静态站点生成器之一。凭借其惊人的速度和灵活性，Hugo 让构建网站再次变得有趣。
+
+
+
+## 1. 安装hugo
+
+```
+[root@prometheus download]# axel -n 30 https://github.com/gohugoio/hugo/releases/download/v0.113.0/hugo_0.113.0_linux-amd64.tar.gz
+[root@prometheus download]# tar xf hugo_0.113.0_linux-amd64.tar.gz -C /usr/local/bin/
+```
+
+
+
+## 2. 安装git
+
+```
+[root@prometheus download]# yum install -y git 
+```
+
+
+
+## 3. 配置hugo
+
+```
+[root@prometheus download]# mkdir /opt/hugo
+[root@prometheus download]# cd /opt/hugo
+[root@prometheus hugo]# hugo new site blog
+[root@prometheus hugo]# cd blog/
+[root@prometheus blog]# git init 
+Initialized empty Git repository in /opt/hugo/blog/.git/
+# 此步可能需要科学上网
+[root@prometheus blog]# git clone https://github.com/adityatelange/hugo-PaperMod themes/PaperMod
+
+############
+# 配置代理，方可进行下面clone
+[root@docker /usr/local/hugo/quickstart]# export HTTP_PROXY="http://172.168.2.219:10809"
+[root@docker /usr/local/hugo/quickstart]# export HTTPS_PROXY="http://172.168.2.219:10809"
+[root@docker /usr/local/hugo/quickstart]# curl -I https://www.google.com
+HTTP/1.1 200 Connection established
+############
+
+
+
+[root@prometheus blog]# cat hugo.yml 
+baseURL: "http://blog.markli.cn/"
+languageCode: "zh-CN"
+title: "JackBlog"
+theme: "PaperMod"
+paginate: 5
+
+enableRobotsTXT: true
+buildDrafts: false
+buildFuture: false
+buildExpired: false
+
+googleAnalytics: UA-123-45
+
+minify:
+  disableXML: true
+  minifyOutput: true
+
+params:
+  #env: opengraph # to enable google analytics, opengraph, twitter-cards and schema.
+  env: production # to enable google analytics, opengraph, twitter-cards and schema.
+  title: ExampleSite
+  description: "ExampleSite description"
+  keywords: [Blog, Portfolio, PaperMod]
+  author: Me
+  # author: ["Me", "You"] # multiple authors
+  images: ["<link or path of image for opengraph, twitter-cards>"]
+  DateFormat: "January 2, 2006"
+  defaultTheme: auto # dark, light
+  disableThemeToggle: false
+
+  ShowReadingTime: true
+  ShowShareButtons: true
+  ShowPostNavLinks: true
+  ShowBreadCrumbs: true
+  ShowCodeCopyButtons: false
+  ShowWordCount: true
+  ShowRssButtonInSectionTermList: true
+  UseHugoToc: true
+  disableSpecial1stPost: false
+  disableScrollToTop: false
+  comments: false
+  hidemeta: false
+  hideSummary: false
+  showtoc: false
+  tocopen: false
+
+  assets:
+    # disableHLJS: true # to disable highlight.js
+    # disableFingerprinting: true
+    favicon: "<link / abs url>"
+    favicon16x16: "<link / abs url>"
+    favicon32x32: "<link / abs url>"
+    apple_touch_icon: "<link / abs url>"
+    safari_pinned_tab: "<link / abs url>"
+
+  label:
+    text: "Home"
+    icon: /apple-touch-icon.png
+    iconHeight: 35
+
+  # profile-mode
+  profileMode:
+    enabled: false # needs to be explicitly set
+    title: ExampleSite
+    subtitle: "This is subtitle"
+    imageUrl: "<img location>"
+    imageWidth: 120
+    imageHeight: 120
+    imageTitle: my image
+    buttons:
+      - name: Posts
+        url: posts
+      - name: Tags
+        url: tags
+
+  # home-info mode
+  homeInfoParams:
+    Title: "Hi there \U0001F44B"
+    Content: Welcome to my blog
+
+  socialIcons:
+    - name: grafana
+      url: "https://monitor.markli.cn/grafana"
+    - name: github
+      url: "https://github.com/jacknotes"
+
+  analytics:
+    google:
+      SiteVerificationTag: "XYZabc"
+    bing:
+      SiteVerificationTag: "XYZabc"
+    yandex:
+      SiteVerificationTag: "XYZabc"
+
+  cover:
+    hidden: true # hide everywhere but not in structured data
+    hiddenInList: true # hide on list pages and home
+    hiddenInSingle: true # hide on single page
+
+#  editPost:
+#    #URL: "https://github.com/<path_to_repo>/content"
+#    URL: "http://192.168.75.100:1313/content"
+#    Text: "Suggest Changes" # edit text
+#    appendFilePath: true # to append file path to Edit link
+
+  # for search
+  # https://fusejs.io/api/options.html
+  fuseOpts:
+    isCaseSensitive: false
+    shouldSort: true
+    location: 0
+    distance: 1000
+    threshold: 0.4
+    minMatchCharLength: 0
+    keys: ["title", "permalink", "summary", "content"]
+menu:
+  main:
+    - identifier: categories
+      name: categories
+      url: /categories/
+      weight: 10
+    - identifier: tags
+      name: tags
+      url: /tags/
+      weight: 20
+# Read: https://github.com/adityatelange/hugo-PaperMod/wiki/FAQs#using-hugos-syntax-highlighter-chroma
+pygmentsUseClasses: true
+markup:
+  highlight:
+    noClasses: false
+    # anchorLineNos: true
+    # codeFences: true
+    # guessSyntax: true
+    # lineNos: true
+    # style: monokai
+	
+
+[root@prometheus content]# mkdir -p /opt/hugo/blog/content/posts
+[root@prometheus blog]# ls content/posts/
+cloudnative  frp.md
+```
+
+
+
+## 以systemd服务启动
+
+```
+[root@prometheus blog]# systemctl cat hugo.service 
+# /usr/lib/systemd/system/hugo.service
+[Unit]
+Description=https://gohugo.io/documentation/
+After=network-online.target
+
+[Service]
+User=root
+Group=root
+Type=simple
+WorkingDirectory=/opt/hugo/blog
+ExecStart=/usr/local/bin/hugo server --config=/opt/hugo/blog/hugo.yml --buildDrafts --baseURL=http://blog.markli.cn/ --appendPort=false --theme=/opt/hugo/blog/themes/PaperMod/
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+```
+
+
+
+
+
+## 通过nginx反向代理
+
+```
+    server {
+        listen       80;
+        server_name  blog.markli.cn;
+	rewrite ^(.*)$ https://${server_name}$1 permanent;
+    }
+    server {
+        listen       443;
+        server_name  blog.markli.cn;
+	ssl_certificate /etc/letsencrypt/live/blog.markli.cn/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/blog.markli.cn/privkey.pem;
+        ssl_session_timeout 5m;
+        ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4:!DH:!DHE;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_prefer_server_ciphers on;
+
+        location / {
+		proxy_pass http://127.0.0.1:1313;
+		proxy_set_header    Host            $proxy_host;
+                proxy_set_header    X-Real-IP       $remote_addr;
+                proxy_set_header    X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_hide_header   X-Powered-By;
+        }
+    }
+```
+
+
+
+
+
+## hugo主题更换
+
+```
+# 官方主题市场
+https://themes.gohugo.io/
+# 本地主题目录
+[root@docker /usr/local/hugo/quickstart]# ls themes/
+ananke
+# 下载第三方主题到主题目录，必须带特定目录，否则主题不可用
+[root@docker /usr/local/hugo/quickstart]# git clone https://github.com/adityatelange/hugo-PaperMod themes/PaperMod
+[root@docker /usr/local/hugo/quickstart]# ls themes/PaperMod/
+assets  go.mod  i18n  images  layouts  LICENSE  README.md  theme.toml
+# 切换指定主题
+[root@docker /usr/local/hugo/quickstart]# vim hugo.toml
+theme = 'PaperMod'
+```
+
+
+
+![](./image/go-open-project/hugo/1.png)

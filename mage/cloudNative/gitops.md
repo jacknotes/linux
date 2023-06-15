@@ -4353,6 +4353,58 @@ argocd app sync -l env=prepro --force --async
 for i in `argocd app list -l env=prepro | awk '{print $1}' | tail -n +2`;do REVERSION_ID=`argocd app history $i | awk '{print $1}' | tail -n 2 | head -n 1`; argocd app rollback $i ${REVERSION_ID};done
 ```
 
+### argocd命令--20230614
+```bash
+#### 列出k8s资源概要信息
+
+## resource limits list
+NAMESPACE=pro-dotnet
+rollout_name=`kubectl get rollout -n ${NAMESPACE} | grep -v NAME | awk '{print $1}'`; for i in $rollout_name;do kubectl get rollout $i -o jsonpath='{.spec.template.spec.containers[].resources.limits}' -n ${NAMESPACE};echo $i; sleep 1;done
+
+
+## image version、replicas list
+NAMESPACE=pro-dotnet
+rollout_name=`kubectl get rollout -n ${NAMESPACE} | grep -v NAME | awk '{print $1}'`; for i in $rollout_name;do kubectl get rollout $i -o jsonpath='{.spec.template.spec.containers[].image} {.spec.replicas} ' -n ${NAMESPACE};echo $i; sleep 1;done
+
+
+
+#### argocd批量命令
+
+## 开启application的自动同步策略及参数，通过标签build=manual来筛选
+for i in `argocd app list -l build=manual | awk '{print $1}' | tail -n +2`;do argocd app set $i --sync-policy=automated --auto-prune --self-heal --sync-option Validate=false,CreateNamespace=true,PrunePropagationPolicy=foreground,PruneLast=true --sync-retry-limit 5 --sync-retry-backoff-duration 5s --sync-retry-backoff-factor 2 --sync-retry-backoff-max-duration 3m;done
+
+## 关闭application的自动同步策略
+for i in `argocd app list -l build=manual | awk '{print $1}' | tail -n +2`;do argocd app set $i --sync-policy none --grpc-web --insecure;done
+
+
+
+
+#### 批量同步
+
+## 获取未同步的application
+[root@prometheus ~]# kubectl get application -A --show-labels | grep OutOfSync 
+argocd      prepro-frontend-nginx-bg-hs-com                      OutOfSync     Healthy         env=prepro
+argocd      prepro-frontend-nginx-hs-com                         OutOfSync     Healthy         env=prepro
+
+## 对未同步的application进行手动打标签：build=manual
+[root@prometheus ~]# for i in `kubectl get application -A | grep OutOfSync | awk '{print $2}'`;do kubectl label application $i -n argocd build=manual ;done
+application.argoproj.io/prepro-frontend-nginx-bg-hs-com labeled
+application.argoproj.io/prepro-frontend-nginx-hs-com labeled
+
+## 通过标签匹配批量同步
+[root@prometheus ~]# argocd app sync --async -l build=manual
+## 通过资源匹配批量同步，格式：GROUP:KIND:NAME
+[root@prometheus ~]# argocd app sync --force --async --resource apps/v1:Deployment: 
+
+## 批量回滚deployment/rollout
+for i in `argocd app list -l build=manual | awk '{print $1}' | tail -n +2`;do REVERSION_ID=`argocd app history $i | awk '{print $1}' | tail -n 2 | head -n 1`; argocd app rollback $i ${REVERSION_ID};done
+
+## 删除带有build标签的application
+APP_NAME=`kubectl get application -A --show-labels | grep 'build=' | awk '{print $2}'`
+for i in $APP_NAME;do kubectl label application $i -n argocd build-;done
+
+```
+
 
 
 ## Argo Rollouts概览
