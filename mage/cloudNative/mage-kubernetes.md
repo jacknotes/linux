@@ -7042,7 +7042,7 @@ kubectl config set-cluster k8s-pro --certificate-authority=/etc/kubeasz/clusters
 kubectl config set-credentials ${USER} --client-certificate=/etc/kubeasz/clusters/k8s-pro/ssl/homsom-ssl/${USER}.pem --client-key=/etc/kubeasz/clusters/k8s-pro/ssl/homsom-ssl/${USER}-key.pem --embed-certs=true --kubeconfig=${USER}.kubeconfig
 kubectl config set-context k8s-pro-context --cluster=k8s-pro --user=${USER} --namespace=pro-${USER} --kubeconfig=${USER}.kubeconfig
 kubectl config use-context k8s-pro-context --kubeconfig=${USER}.kubeconfig
--------------升级生脚本-------------
+-------------升级脚本-------------
 #!/bin/sh
 
 if [ -z $1 ];then

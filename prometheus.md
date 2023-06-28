@@ -2327,7 +2327,7 @@ systemctl start ipmi_exporter.service && systemctl enable ipmi_exporter.service
 #vmware_esxi
 --config.env
 VSPHERE_USER=root
-VSPHERE_PASSWORD="secure password"
+VSPHERE_PASSWORD=secure_password
 VSPHERE_HOST=192.168.13.242
 VSPHERE_IGNORE_SSL=TRUE
 VSPHERE_SPECS_SIZE=2000
