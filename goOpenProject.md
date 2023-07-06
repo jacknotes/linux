@@ -4,7 +4,9 @@
 
 [cloudreve文档](https://docs.cloudreve.org/)
 
+## Cloudreve 是什么？
 
+Cloudreve 可以让您快速搭建起公私兼备的网盘系统。Cloudreve 在底层支持不同的云存储平台，用户在实际使用时无须关心物理存储方式。你可以使用 Cloudreve 搭建个人用网盘、文件分享系统，亦或是针对大小团体的公有云系统。
 
 
 
@@ -110,7 +112,9 @@ server {
 
 [dozzle文档](https://github.com/amir20/dozzle)
 
+## Dozzle是什么
 
+Dozzle是一个小型的轻量级应用程序，具有基于Web的界面来监视Docker日志。它不存储任何日志文件。它仅用于实时监视容器日志。
 
 
 
@@ -139,9 +143,9 @@ docker run --name dozzle -d --volume=/var/run/docker.sock:/var/run/docker.sock -
 
 [alist文档](https://alist.nn.ci/zh/guide/)
 
+## alist是什么
 
-
-
+一个支持多种存储，支持网页浏览和 WebDAV 的文件列表程序，由 gin 和 Solidjs 驱动。
 
 ## docker running
 
@@ -278,6 +282,10 @@ Jun 05 16:38:18 prometheus alist[30144]: INFO[2023-06-05 16:38:18] qbittorrent n
 
 [kubeshark文档](https://docs.kubeshark.co/en/introduction)
 
+## kubeshark是什么
+
+**Kubeshark** 是 Kubernetes 的 API 流量分析器，提供对 [Kubernetes](https://kubernetes.io/) 内部网络的实时协议级可见性，捕获、剖析和监控进出容器、Pod 和集群的所有流量和有效负载。
+
 
 
 https://github.com/kubeshark/kubeshark/releases/download/40.5/kubeshark_40.5_windows_amd64.tar.gz
@@ -310,6 +318,10 @@ https://github.com/kubeshark/kubeshark/releases/download/40.5/kubeshark_40.5_win
 
 
 [hack-browser-data文档](https://github.com/moonD4rk/HackBrowserData)
+
+## hack-browser-data
+
+一款可全平台运行的浏览器数据导出解密工具。
 
 
 
@@ -599,3 +611,63 @@ theme = 'PaperMod'
 
 
 ![](./image/go-open-project/hugo/1.png)
+
+
+
+
+
+
+
+
+
+# posh项目
+
+
+
+[Oh My Posh](https://ohmyposh.dev/docs)
+
+适用于多种 shell 的终端提示个性化工具。该项目内置多款主题开箱即用，支持 Windows、Linux、macOS 三个系统上的 PowerShell、Bash、Zsh 等多种 shell，自动补全你输入的每个命令
+
+
+
+```powershell
+# 下载程序
+curl https://github.com/JanDeDobbeleer/oh-my-posh/releases/download/v17.5.3/posh-windows-amd64.exe
+# 将posh-windows-amd64.exe放入到环境变量中
+
+
+# 下载字体
+https://www.nerdfonts.com/font-downloads
+https://github.com/ryanoasis/nerd-fonts/releases/download/v3.0.2/Agave.zip
+# 将字体解压放到C:\Windows\Fonts目录下
+
+
+# 下载主题
+https://github.com/JanDeDobbeleer/oh-my-posh/releases/download/v17.5.3/themes.zip
+# 将主题解压放到C:\Users\$USER\AppData\Local\Programs\oh-my-posh\themes目录下，没有此目录则新建
+
+
+# 安装完成后打开Windows Terminal然后按"Ctrl+Shift+,（逗号）"来打开settings.json配置文件将"defaults": {}改成
+"defaults": 
+        {
+            "font": 
+            {
+                "face": "Agave Nerd Font Propo"
+            }
+        }
+并保存退出 
+
+
+# 然后在Windows Terminal中的powershell中输入并回车notepad $profile，第一次会显示找不到该文件，选择创建新文件，然后输入如下内容并保存
+oh-my-posh init pwsh | Invoke-Expression
+# 然后回到Windows terminal新建一个powershell，此处使用的是默认主题
+# 若想修改主题，可以使用命令Get-PoshThemes查看上面下载安装的主题
+
+# 更改默认主题为froczh.omp.json
+posh init pwsh --config C:\Users\0799\AppData\Local\Programs\oh-my-posh\themes\gmay.omp.json  | Invoke-Expression
+# 然后保存并在Windows Terminal中新建一个powershell即可看到新主题已成功配置
+```
+
+
+
+![](./image/go-open-project/oh-my-posh/01.png)
