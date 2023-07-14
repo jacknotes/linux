@@ -10221,3 +10221,140 @@ root@ansible:~/k8s/elk/k8s-elk/elk/es-data# kubectl get pods -n ops-elk
 NAME          READY   STATUS     RESTARTS   AGE
 es-master-0   0/1     Init:0/2   0          3s		#此时正常了
 ```
+
+
+
+##### k8smaster和etcd节点故障、重新添加
+
+```bash
+# 删除故障master和etcd节点
+root@ansible:~/ansible# ezctl del-master k8s01 172.168.2.21
+root@ansible:~/ansible# ezctl del-etcd k8s01 172.168.2.21
+
+
+# 添加etcd
+root@ansible:~/ansible# ezctl add-etcd k8s01 172.168.2.21
+
+# 查看添加etcd成功后状态信息
+root@k8s-master02:~# ETCDCTL_API=3 etcdctl --endpoints=https://172.168.2.22:2379,https://172.168.2.23:2379,https://172.168.2.21:2379 --cacert=/etc/kubernetes/ssl/ca.pem --cert=/etc/kubernetes/ssl/etcd.pem --key=/etc/kubernetes/ssl/etcd-key.pem --write-out=table endpoint status
++---------------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
+|         ENDPOINT          |        ID        | VERSION | DB SIZE | IS LEADER | IS LEARNER | RAFT TERM | RAFT INDEX | RAFT APPLIED INDEX | ERRORS |
++---------------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
+| https://172.168.2.22:2379 | b829b739e7a1b7aa |   3.5.1 |   20 MB |     false |      false |       159 |   45223602 |           45223602 |        |
+| https://172.168.2.23:2379 | 27f8ddc0f1ae8387 |   3.5.1 |   20 MB |     false |      false |       159 |   45223602 |           45223602 |        |
+| https://172.168.2.21:2379 | 7049ffea3064d57d |   3.5.1 |   20 MB |      true |      false |       159 |   45223602 |           45223602 |        |
++---------------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
+
+# 添加master
+root@ansible:~/ansible# ezctl add-master k8s01 172.168.2.21
+
+# 查看添加master成功后状态信息
+root@k8s-master01:~# kubectl  get nodes
+NAME            STATUS                     ROLES    AGE    VERSION
+172.168.2.21    Ready,SchedulingDisabled   master   165m   v1.23.7
+172.168.2.22    Ready,SchedulingDisabled   master   413d   v1.23.7
+172.168.2.23    Ready,SchedulingDisabled   master   413d   v1.23.7
+172.168.2.24    Ready                      node     414d   v1.23.7
+172.168.2.25    Ready                      node     414d   v1.23.7
+172.168.2.26    Ready                      node     413d   v1.23.7
+192.168.13.63   Ready                      node     410d   v1.23.7
+
+```
+
+
+
+##### 生产k8s-master01故障修复步骤
+
+```bash
+# master节点故障信息
+root@k8s-master03:~# kubectl get nodes
+NAME            STATUS                        ROLES    AGE    VERSION
+192.168.13.31   NotReady,SchedulingDisabled   master   388d   v1.23.7
+192.168.13.32   Ready,SchedulingDisabled      master   388d   v1.23.7
+192.168.13.33   Ready,SchedulingDisabled      master   388d   v1.23.7
+192.168.13.36   Ready                         node     388d   v1.23.7
+192.168.13.37   Ready                         node     388d   v1.23.7
+192.168.13.38   Ready                         node     388d   v1.23.7
+192.168.13.39   Ready                         node     48d    v1.23.7
+192.168.13.40   Ready                         node     16d    v1.23.7
+
+# 删除故障master节点
+[root@prometheus ~]# ezctl del-master k8s-pro 192.168.13.31
+#这里我使用ezctl删除master时，卡住了，我就跳过了这个步骤：kubectl drain 192.168.13.31 --delete-emptydir-data --ignore-daemonsets --force
+
+# 删除故障master节点后信息
+root@k8s-master03:~# kubectl get nodes
+NAME            STATUS                     ROLES    AGE    VERSION
+192.168.13.32   Ready,SchedulingDisabled   master   388d   v1.23.7
+192.168.13.33   Ready,SchedulingDisabled   master   388d   v1.23.7
+192.168.13.36   Ready                      node     388d   v1.23.7
+192.168.13.37   Ready                      node     388d   v1.23.7
+192.168.13.38   Ready                      node     388d   v1.23.7
+192.168.13.39   Ready                      node     49d    v1.23.7
+192.168.13.40   Ready                      node     16d    v1.23.7
+
+
+# etcd节点故障信息
+root@k8s-master03:~# ETCDCTL_API=3 etcdctl --endpoints=https://192.168.13.33:2379,https://192.168.13.32:2379,https://192.168.13.31:2379 --cacert=/etc/kubernetes/ssl/ca.pem --cert=/etc/kubernetes/ssl/etcd.pem --key=/etc/kubernetes/ssl/etcd-key.pem --write-out=table endpoint status
+{"level":"warn","ts":"2023-07-14T17:09:04.161+0800","logger":"etcd-client","caller":"v3/retry_interceptor.go:62","msg":"retrying of unary invoker failed","target":"etcd-endpoints://0xc0000e4000/192.168.13.33:2379","attempt":0,"error":"rpc error: code = DeadlineExceeded desc = latest balancer error: last connection error: connection error: desc = \"transport: Error while dialing dial tcp 192.168.13.31:2379: connect: connection timed out\""}
+Failed to get the status of endpoint https://192.168.13.31:2379 (context deadline exceeded)
++----------------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
+|          ENDPOINT          |        ID        | VERSION | DB SIZE | IS LEADER | IS LEARNER | RAFT TERM | RAFT INDEX | RAFT APPLIED INDEX | ERRORS |
++----------------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
+| https://192.168.13.33:2379 | 92eabca936a621f8 |   3.5.1 |   49 MB |      true |      false |        18 |  134938359 |          134938359 |        |
+| https://192.168.13.32:2379 | b3a339a0d3ae9e04 |   3.5.1 |   49 MB |     false |      false |        18 |  134938359 |          134938359 |        |
++----------------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
+
+# 删除故障etcd节点
+[root@prometheus ~]# ezctl del-etcd k8s-pro 192.168.13.31
+
+# 删除故障etcd节点后信息
+root@k8s-master03:~# ETCDCTL_API=3 etcdctl --endpoints=https://192.168.13.33:2379,https://192.168.13.32:2379,https://192.168.13.31:2379 --cacert=/etc/kubernetes/ssl/ca.pem --cert=/etc/kubernetes/ssl/etcd.pem --key=/etc/kubernetes/ssl/etcd-key.pem --write-out=table member list    
++------------------+---------+--------------------+----------------------------+----------------------------+------------+
+|        ID        | STATUS  |        NAME        |         PEER ADDRS         |        CLIENT ADDRS        | IS LEARNER |
++------------------+---------+--------------------+----------------------------+----------------------------+------------+
+| 92eabca936a621f8 | started | etcd-192.168.13.33 | https://192.168.13.33:2380 | https://192.168.13.33:2379 |      false |
+| b3a339a0d3ae9e04 | started | etcd-192.168.13.32 | https://192.168.13.32:2380 | https://192.168.13.32:2379 |      false |
++------------------+---------+--------------------+----------------------------+----------------------------+------------+
+
+
+# 安装好新机器后添加etcd节点
+[root@prometheus ansible]# ezctl add-etcd k8s-pro 192.168.13.31
+
+# 添加etcd后状态
+root@k8s-master03:~# ETCDCTL_API=3 etcdctl --endpoints=https://192.168.13.33:2379,https://192.168.13.32:2379,https://192.168.13.31:2379 --cacert=/etc/kubernetes/ssl/ca.pem --cert=/etc/kubernetes/ssl/etcd.pem --key=/etc/kubernetes/ssl/etcd-key.pem --write-out=table member list 
++------------------+---------+--------------------+----------------------------+----------------------------+------------+
+|        ID        | STATUS  |        NAME        |         PEER ADDRS         |        CLIENT ADDRS        | IS LEARNER |
++------------------+---------+--------------------+----------------------------+----------------------------+------------+
+| 92eabca936a621f8 | started | etcd-192.168.13.33 | https://192.168.13.33:2380 | https://192.168.13.33:2379 |      false |
+| b3a339a0d3ae9e04 | started | etcd-192.168.13.32 | https://192.168.13.32:2380 | https://192.168.13.32:2379 |      false |
+| da64630ea302b133 | started | etcd-192.168.13.31 | https://192.168.13.31:2380 | https://192.168.13.31:2379 |      false |
++------------------+---------+--------------------+----------------------------+----------------------------+------------+
+root@k8s-master03:~# ETCDCTL_API=3 etcdctl --endpoints=https://192.168.13.33:2379,https://192.168.13.32:2379,https://192.168.13.31:2379 --cacert=/etc/kubernetes/ssl/ca.pem --cert=/etc/kubernetes/ssl/etcd.pem --key=/etc/kubernetes/ssl/etcd-key.pem --write-out=table endpoint status
++----------------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
+|          ENDPOINT          |        ID        | VERSION | DB SIZE | IS LEADER | IS LEARNER | RAFT TERM | RAFT INDEX | RAFT APPLIED INDEX | ERRORS |
++----------------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
+| https://192.168.13.33:2379 | 92eabca936a621f8 |   3.5.1 |   49 MB |     false |      false |        22 |  134951383 |          134951383 |        |
+| https://192.168.13.32:2379 | b3a339a0d3ae9e04 |   3.5.1 |   49 MB |     false |      false |        22 |  134951383 |          134951383 |        |
+| https://192.168.13.31:2379 | da64630ea302b133 |   3.5.1 |   49 MB |      true |      false |        22 |  134951383 |          134951383 |        |
++----------------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
+
+
+# 添加master节点
+root@ansible:~/ansible# ezctl add-master k8s-pro 192.168.13.31
+
+# 添加master后信息
+root@k8s-master03:~# kubectl get nodes 
+NAME            STATUS                     ROLES    AGE    VERSION
+192.168.13.31   Ready,SchedulingDisabled   master   118s   v1.23.7
+192.168.13.32   Ready,SchedulingDisabled   master   388d   v1.23.7
+192.168.13.33   Ready,SchedulingDisabled   master   388d   v1.23.7
+192.168.13.36   Ready                      node     388d   v1.23.7
+192.168.13.37   Ready                      node     388d   v1.23.7
+192.168.13.38   Ready                      node     388d   v1.23.7
+192.168.13.39   Ready                      node     49d    v1.23.7
+192.168.13.40   Ready                      node     16d    v1.23.7
+```
+
+
+

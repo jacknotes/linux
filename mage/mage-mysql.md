@@ -5261,6 +5261,10 @@ new master02: 192.168.13.164
 3. 全库备份192.168.13.163并复制到192.168.13.164，记录192.168.13.163slave同步192.168.13.160master01执行到什么文件、什么位置，例如master_log_file='master-bin.000157',master_log_pos=111047299{其实可以直接从192.168.13.160进行全库备份，然后复制到192.168.13.164进行恢复，直接把192.168.13.160作为主}
  mysqldump -uroot -p --all-databases --triggers --routines --events --set-gtid-purged=OFF --flush-logs --master-data=2 --single-transaction > alldatabases.sql
 4. 192.168.13.164恢复数据库，并配置192.168.13.160为master，此时主从复制集群配置完成
+
+head -n 1000 alldatabases.sql | grep -i 'change master'
+-- CHANGE MASTER TO MASTER_LOG_FILE='master-bin.000157', MASTER_LOG_POS=111047299;
+
 set session sql_log_bin=0;
 source /root/alldatabases.sql;
 set session sql_log_bin=1;
