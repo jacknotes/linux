@@ -10358,3 +10358,84 @@ NAME            STATUS                     ROLES    AGE    VERSION
 
 
 
+
+
+
+
+### RBAC多名称空间授权
+
+* 先创建ClusterRole: clusterrole-homsom-develop
+* 创建特定名称空间ServiceAccount，例如fat-java名称空间下的sa-java
+* 在fat-java名称空间下创建RoleBinding，关联clusterrole-homsom-develop和fat-java名称空间下的sa-java，使sa-java有fat-java名称空间下clusterrole-homsom-develop(名称空间级别)的权限
+* 绑定多名称空间，在uat-java名称空间下创建RoleBinding，关联clusterrole-homsom-develop和fat-java名称空间下的sa-java，使sa-java有uat-java名称空间下clusterrole-homsom-develop(名称空间级别)的权限
+
+```bash
+[root@prometheus rbac]# cat clusterrole-homsom-develop.yaml 
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: clusterrole-homsom-develop
+  namespace: kube-system
+rules:
+- apiGroups: ["*"]
+  resources: ["pods/exec"]
+  #verbs: ["*"]
+  ##RO-Role
+  verbs: ["get", "list", "watch", "create"]
+
+- apiGroups: ["*"]
+  resources: ["pods"]
+  #verbs: ["*"]
+  ##RO-Role
+  verbs: ["get", "list", "watch"]
+
+- apiGroups: ["*"]
+  resources: ["deployments", "replicasets", "deployments/scale"]
+  #verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  ##RO-Role
+  verbs: ["get", "watch", "list"]
+
+- apiGroups: ["*"]
+  resources: ["events"]
+  ##RO-Role
+  verbs: ["get", "watch", "list"]
+---
+[root@prometheus rbac]# cat java-namespace-sa.yaml
+# RoleBinding fat-java:rolebinding-java, ServiceAccount fat-java:sa-java
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sa-java
+  namespace: fat-java
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: rolebinding-java
+  namespace: fat-java
+subjects:
+- kind: ServiceAccount
+  name: sa-java
+  namespace: fat-java
+roleRef:
+  kind: ClusterRole
+  name: clusterrole-homsom-develop
+  apiGroup: rbac.authorization.k8s.io
+---
+# RoleBinding uat-java:rolebinding-java, ServiceAccount fat-java:sa-java
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: rolebinding-java
+  namespace: uat-java
+subjects:
+- kind: ServiceAccount
+  name: sa-java
+  namespace: fat-java
+roleRef:
+  kind: ClusterRole
+  name: clusterrole-homsom-develop
+  apiGroup: rbac.authorization.k8s.io
+
+```
+
