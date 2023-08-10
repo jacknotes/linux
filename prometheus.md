@@ -519,9 +519,122 @@ Restart=on-failure
 
 [Install]
 WantedBy=multi-user.target
-
-
 -----------------
+
+
+### snmp_exporter 监控 DELL idrac
+```bash
+# 下载idrac MIB，在驱动下载中搜索MIB
+https://dl.dell.com/FOLDER09279711M/1/Dell-OM-MIBS-11000_A00.zip?uid=10496e9c-919b-48c4-026d-aec035a607e5&fn=Dell-OM-MIBS-11000_A00.zip
+[root@prometheus mibs]# unzip Dell-OM-MIBS-11000_A00.zip 
+[root@prometheus mibs]# tree support/
+support/
+└── station
+    └── mibs
+        ├── 10892.mib
+        ├── adptinfo.mib
+        ├── baspCfg.mib
+        ├── baspStat.mib
+        ├── baspTrap.mib
+        ├── DcAsfSrv.mib
+        ├── dcs3fru.mib
+        ├── dcs3rmt.mib
+        ├── dcstorag.mib
+        ├── dellcm.mib
+        ├── dellrac.mib
+        ├── DELL-RAC-MIB_NPS_6.1.txt
+        ├── DELL-RAC-MIB.txt
+        ├── iDRAC-SMIv1.mib
+        ├── iDRAC-SMIv2.mib
+        ├── INTELLAN.mib
+        ├── INTELLAN_new.mib
+        ├── MX7000.mib
+        ├── MX7000-OME-M-v1.mib
+        ├── MX7000-OME-M-v2.mib
+        ├── OME.mib
+        ├── qlaspCfg.mib
+        ├── qlaspStat.mib
+        ├── qlaspTrap.mib
+        ├── qlgcadptinfo.mib
+        └── SMTD_MIBS_ReleaseNotes.pdf
+[root@prometheus mibs]# snmptranslate -Tz -m /usr/local/generator/support/station/mibs/iDRAC-SMIv2.mib
+"org"			"1.3"
+"dod"			"1.3.6"
+"internet"			"1.3.6.1"
+"directory"			"1.3.6.1.1"
+"mgmt"			"1.3.6.1.2"
+"mib-2"			"1.3.6.1.2.1"
+"transmission"			"1.3.6.1.2.1.10"
+"experimental"			"1.3.6.1.3"
+"private"			"1.3.6.1.4"
+"enterprises"			"1.3.6.1.4.1"
+"dell"			"1.3.6.1.4.1.674"
+"server3"			"1.3.6.1.4.1.674.10892"
+"outOfBandGroup"			"1.3.6.1.4.1.674.10892.5"
+"informationGroup"			"1.3.6.1.4.1.674.10892.5.1"
+"racInfoGroup"			"1.3.6.1.4.1.674.10892.5.1.1"
+.......
+
+# 安装依赖
+sudo yum install gcc gcc-g++ make net-snmp net-snmp-utils net-snmp-libs net-snmp-devel git -y
+
+# 安装go及配置环境，版本需要跟generator一致
+[root@prometheus download]# go version
+go version go1.19.12 linux/amd64
+[root@prometheus download]# export GO111MODULE=on
+[root@prometheus download]# export GOPROXY=https://goproxy.cn,direct
+[root@prometheus download]# go install github.com/prometheus/snmp_exporter/generator@v0.22.0
+[root@prometheus generator]# ls /root/go/pkg/mod/github.com/prometheus/snmp_exporter@v0.22.0/generator/
+config.go  Dockerfile  Dockerfile-local  FORMAT.md  generator.yml  main.go  Makefile  mibs  net_snmp.go  README.md  tree.go  tree_test.go
+[root@prometheus generator]# cd /root/go/pkg/mod/github.com/prometheus/snmp_exporter@v0.22.0/generator/
+[root@prometheus generator]# go build 
+[root@prometheus generator]# ls
+config.go  Dockerfile  Dockerfile-local  FORMAT.md  generator  generator.yml  main.go  Makefile  mibs  net_snmp.go  README.md  tree.go  tree_test.go
+
+# 在该目录目录创建generator.yml，并编辑如下内容
+[root@prometheus generator]# cat generator.yml
+modules:
+  dell_idrac:
+    walk:
+      - 1.3.6.1
+    version: 2
+    timeout: 30s
+    auth:
+      community: public
+
+
+
+# MIBDIRS替换为你自己的解压路径
+[root@prometheus generator]# export MIBDIRS=/usr/local/mibs/support/station/mibs
+
+# 此步骤必须执行，否则将会生成失败，并得到如下失败信息
+# level=error ts=2021-07-29T02:44:56.144Z caller=main.go:130 msg="Error generating config netsnmp" err="cannot find oid '1.3.6.1' to walk"
+[root@prometheus generator]# cp /usr/share/snmp/mibs/SNMPv2-SMI.txt /usr/local/mibs/support/station/mibs
+
+# 生成监控指标
+[root@prometheus generator]# ./generator generate
+ts=2023-08-08T06:12:26.793Z caller=net_snmp.go:162 level=info msg="Loading MIBs" from=/usr/local/mibs/support/station/mibs
+ts=2023-08-08T06:12:26.836Z caller=main.go:120 level=warn msg="NetSNMP reported parse error(s)" errors=74
+ts=2023-08-08T06:12:26.877Z caller=main.go:51 level=info msg="Generating config for module" module=idrac
+ts=2023-08-08T06:12:26.899Z caller=main.go:66 level=info msg="Generated metrics" module=idrac metrics=2670
+ts=2023-08-08T06:12:27.198Z caller=main.go:91 level=info msg="Config written" file=/root/go/pkg/mod/github.com/prometheus/snmp_exporter@v0.22.0/generator/snmp.yml
+
+# 将 snmp.yml 复制到 snmp_exporter 目录下，并重启服务即可
+[root@prometheus generator]# cp ./snmp.yml /usr/local/snmp_exporter-two/
+cp: overwrite ‘/usr/local/snmp_exporter-two/snmp.yml’? y
+[root@prometheus snmp_exporter-two]# systemctl restart snmp_exporter-two.service
+
+```
+
+
+
+
+
+
+
+
+
+
 
 #SQL_EXPORTER(SQLSERVER)
 -----------------
