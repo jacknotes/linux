@@ -1219,6 +1219,40 @@ ORDER BY 1 ;
 ```
 
 
+## 创建登录账户、用户账户、赋权
+
+```sql
+DECLARE @sql VARCHAR(max)
+
+SET @sql=CAST('use master;CREATE LOGIN [sql_exporter] WITH PASSWORD=N''qICJEasdqwDiOSrdT96'', DEFAULT_DATABASE=[master], CHECK_EXPIRATION=OFF, CHECK_POLICY=OFF; GRANT VIEW SERVER STATE TO [sql_exporter];
+GRANT VIEW ANY DEFINITION TO [sql_exporter];' AS VARCHAR(max))
+
+select @sql=@sql+CAST('use '+name+';CREATE USER [sql_exporter] FOR LOGIN [sql_exporter];EXEC sp_addrolemember N''db_datareader'', N''sql_exporter'';'+CHAR(10) AS VARCHAR(max)) 
+from master.sys.databases  where state=0
+
+select @sql
+exec(@sql)
+```
+
+
+## 删除用户
+
+```sql
+DECLARE @sql VARCHAR(max)
+
+SET @sql=CAST('' AS VARCHAR(max))
+
+select @sql=@sql+CAST('use '+name+';DROP USER [sql_exporter];'+CHAR(10) AS VARCHAR(max)) 
+from master.sys.databases  where state=0
+
+select @sql=@sql+CAST('use master;DROP LOGIN [sql_exporter];' +CHAR(10) AS VARCHAR(max)) 
+
+select @sql
+exec(@sql)
+
+```
+
+
 
 
 
