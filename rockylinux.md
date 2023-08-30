@@ -407,3 +407,18 @@ alerting:
 ......
 ```
 
+
+## 配置时间显示24小时制
+
+```bash
+192.168.13.237 | CHANGED | rc=0 >>
+Mon Aug 28 04:07:25 PM CST 2023
+
+
+[root@prometheus02 ~]# cat /etc/locale.conf 
+LANG="en_US.UTF-8"
+LC_TIME='en_DK.UTF-8'		#增加此行并重启服务器
+
+192.168.13.237 | CHANGED | rc=0 >>
+2023-08-28T16:41:33 CST
+```

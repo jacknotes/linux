@@ -65,7 +65,7 @@ localhost does not match 'all'
 [root@master ~]# cp /etc/ansible/hosts{,.bak}
 [root@master ~]# grep -Ev '#|^$' /etc/ansible/hosts
 [root@master ~]# cat >> /etc/ansible/hosts << EOF
-> 192.168.15.199
+> 192.168.15.199 ansible_ssh_user=root ansible_ssh_port=2022
 > 192.168.15.201
 > 192.168.15.202
 > EOF

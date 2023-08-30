@@ -5,11 +5,10 @@ redis官方网站：www.redis.io
 #redis是什么：
 	1. NOSQL数据库，开源，BSD许可，高级的key-value存储系统
 	2. 可以用来存储字符串，哈希结构，链表，集合，因此，常用来提供数据结构服务。
-
 redis和memcached相比的独特之处：
 	1. redis可以用来做存储(storage)，而memcached是用来做缓存(cache),这个特点主要因为其有“持久化”功能
 	2. redis存储的数据有“结构”，对于memcached来说，存储的数据只有一种类型--“字符串”，而redis则可以存储字符串，链表，哈希，集合，有序集合。
-#注：如果redis只做缓存的话，那么就跟memcached一样。
+	#注：如果redis只做缓存的话，那么就跟memcached一样。
 
 #redis下载安装：
 [root@lnmp src]# wget http://download.redis.io/releases/redis-5.0.5.tar.gz
@@ -2280,3 +2279,137 @@ awk -F',' '{print $4,$2,$3,$1}' memory.csv |sort -nr > memory.sort
 
 
 </pre>
+
+
+
+## Redis-Shake
+
+
+
+[github](https://github.com/tair-opensource/RedisShake)
+
+RedisShake 是一个用于处理和迁移 Redis 数据的工具，它提供以下特性：
+
+1. Redis 兼容性：RedisShake 兼容从 2.8 到 7.2 的 Redis 版本，并支持各种部署方式，包括单机，主从，哨兵和集群。
+2. 云服务兼容性：RedisShake 与主流云服务提供商提供的流行 Redis-like 数据库无缝工作，包括但不限于：
+	* 阿里云-云数据库 Redis 版
+	* 阿里云-云原生内存数据库Tair
+	* AWS - ElastiCache
+	* AWS - MemoryDB
+3. Module 兼容：RedisShake 与 TairString，TairZSet 和 TairHash 模块兼容。
+4. 多种导出模式：RedisShake 支持 PSync，RDB 和 Scan 导出模式。
+5. 数据处理：RedisShake 通过自定义脚本实现数据过滤和转换。
+
+
+`安装`
+
+```bash
+mkdir -p /usr/local/redis-shake
+tar -zxf /download/redis-shake-linux-amd64.tar.gz -C /usr/local/redis-shake
+cd /usr/local/redis-shake
+```
+
+
+`同步配置信息`
+
+```bash
+[root@prometheus redis-shake]# cat test.toml 
+type = "sync"
+
+[source]
+version = 4.0 # redis version, such as 2.8, 4.0, 5.0, 6.0, 6.2, 7.0, ...
+#address = "192.168.13.220:30010"
+address = "uat-redis.hs.com:6001"
+username = "" # keep empty if not using ACL
+password = "" # keep empty if no authentication is required
+tls = false
+
+[target]
+type = "standalone" # "standalone" or "cluster"
+version = 4.0 # redis version, such as 2.8, 4.0, 5.0, 6.0, 6.2, 7.0, ...
+# When the target is a cluster, write the address of one of the nodes.
+# redis-shake will obtain other nodes through the `cluster nodes` command.
+address = "192.168.13.220:30011"
+username = "" # keep empty if not using ACL
+password = "" # keep empty if no authentication is required
+tls = false
+
+
+[advanced]
+dir = "data"
+ncpu = 4
+log_file = "redis-shake.log"
+log_level = "info" # debug, info or warn
+log_interval = 5 # in seconds
+rdb_restore_command_behavior = "rewrite"
+pipeline_count_limit = 1024
+target_redis_client_max_querybuf_len = 1024_000_000
+target_redis_proto_max_bulk_len = 512_000_000
+```
+
+
+`启动`
+
+```bash
+[root@prometheus redis-shake]# ./redis-shake homsom.toml 
+```
+
+`日志`
+
+```bash
+[root@prometheus redis-shake]# tail data/redis-shake.log
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"GOOS: linux, GOARCH: amd64"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"Ncpu: 4, GOMAXPROCS: 4"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"pid: 32459"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"pprof_port: 0"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"No lua file specified, will not filter any cmd."}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"no password. address=[192.168.13.220:30011]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"redisWriter connected to redis successful. address=[192.168.13.220:30011]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"no password. address=[uat-redis.hs.com:6001]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"psyncReader connected to redis successful. address=[uat-redis.hs.com:6001]"}
+{"level":"warn","time":"2023-08-29T16:21:43+08:00","message":"remove file. filename=[364.aof]"}
+{"level":"warn","time":"2023-08-29T16:21:43+08:00","message":"remove file. filename=[dump.rdb]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"start save RDB. address=[uat-redis.hs.com:6001]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"send [replconf listening-port 10007]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"send [PSYNC ? -1]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"receive [FULLRESYNC a9fa53127d9e1736abe5c1932cc2980c7ac5cf30 526]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"source db is doing bgsave. address=[uat-redis.hs.com:6001]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"source db bgsave finished. timeUsed=[0.34]s, address=[uat-redis.hs.com:6001]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"received rdb length. length=[6613429]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"create dump.rdb file. filename_path=[dump.rdb]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"save RDB finished. address=[uat-redis.hs.com:6001], total_bytes=[6613429]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"start send RDB. address=[uat-redis.hs.com:6001]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"RDB version: 8"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"RDB AUX fields. key=[redis-ver], value=[4.0.11]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"RDB AUX fields. key=[redis-bits], value=[64]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"RDB AUX fields. key=[ctime], value=[1693297303]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"RDB AUX fields. key=[used-mem], value=[38695040]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"RDB repl-stream-db: 3"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"RDB AUX fields. key=[repl-id], value=[a9fa53127d9e1736abe5c1932cc2980c7ac5cf30]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"RDB AUX fields. key=[repl-offset], value=[526]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"RDB AUX fields. key=[aof-preamble], value=[0]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"RDB resize db. db_size=[31], expire_size=[0]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"start save AOF. address=[uat-redis.hs.com:6001]"}
+{"level":"info","time":"2023-08-29T16:21:43+08:00","message":"AOFWriter open file. filename=[526.aof]"}
+{"level":"info","time":"2023-08-29T16:21:44+08:00","message":"RDB resize db. db_size=[14], expire_size=[0]"}
+{"level":"info","time":"2023-08-29T16:21:44+08:00","message":"RDB resize db. db_size=[5], expire_size=[0]"}
+{"level":"info","time":"2023-08-29T16:21:44+08:00","message":"send RDB finished. address=[uat-redis.hs.com:6001], repl-stream-db=[3]"}
+{"level":"info","time":"2023-08-29T16:21:45+08:00","message":"AOFReader open file. aof_filename=[526.aof]"}
+{"level":"info","time":"2023-08-29T16:21:48+08:00","message":"syncing aof. allowOps=[10.00], disallowOps=[0.00], entryId=[49], InQueueEntriesCount=[0], unansweredBytesCount=[0]bytes, diff=[0], aofReceivedOffset=[0], aofAppliedOffset=[0]"}
+{"level":"info","time":"2023-08-29T16:21:53+08:00","message":"syncing aof. allowOps=[0.20], disallowOps=[0.00], entryId=[50], InQueueEntriesCount=[0], unansweredBytesCount=[0]bytes, diff=[0], aofReceivedOffset=[540], aofAppliedOffset=[540]"}
+{"level":"info","time":"2023-08-29T16:21:58+08:00","message":"syncing aof. allowOps=[0.00], disallowOps=[0.00], entryId=[50], InQueueEntriesCount=[0], unansweredBytesCount=[0]bytes, diff=[0], aofReceivedOffset=[540], aofAppliedOffset=[540]"}
+{"level":"info","time":"2023-08-29T16:22:03+08:00","message":"syncing aof. allowOps=[0.20], disallowOps=[0.00], entryId=[51], InQueueEntriesCount=[0], unansweredBytesCount=[0]bytes, diff=[0], aofReceivedOffset=[554], aofAppliedOffset=[554]"}
+{"level":"info","time":"2023-08-29T16:22:08+08:00","message":"syncing aof. allowOps=[0.00], disallowOps=[0.00], entryId=[51], InQueueEntriesCount=[0], unansweredBytesCount=[0]bytes, diff=[0], aofReceivedOffset=[554], aofAppliedOffset=[554]"}
+{"level":"info","time":"2023-08-29T16:22:13+08:00","message":"syncing aof. allowOps=[0.20], disallowOps=[0.00], entryId=[52], InQueueEntriesCount=[0], unansweredBytesCount=[0]bytes, diff=[0], aofReceivedOffset=[568], aofAppliedOffset=[568]"}
+{"level":"info","time":"2023-08-29T16:22:18+08:00","message":"syncing aof. allowOps=[0.00], disallowOps=[0.00], entryId=[52], InQueueEntriesCount=[0], unansweredBytesCount=[0]bytes, diff=[0], aofReceivedOffset=[568], aofAppliedOffset=[568]"}
+{"level":"info","time":"2023-08-29T16:22:23+08:00","message":"syncing aof. allowOps=[0.20], disallowOps=[0.00], entryId=[53], InQueueEntriesCount=[0], unansweredBytesCount=[0]bytes, diff=[0], aofReceivedOffset=[582], aofAppliedOffset=[582]"}
+{"level":"info","time":"2023-08-29T16:22:28+08:00","message":"syncing aof. allowOps=[0.00], disallowOps=[0.00], entryId=[53], InQueueEntriesCount=[0], unansweredBytesCount=[0]bytes, diff=[0], aofReceivedOffset=[582], aofAppliedOffset=[582]"}
+{"level":"info","time":"2023-08-29T16:22:33+08:00","message":"syncing aof. allowOps=[0.20], disallowOps=[0.00], entryId=[54], InQueueEntriesCount=[0], unansweredBytesCount=[0]bytes, diff=[0], aofReceivedOffset=[596], aofAppliedOffset=[596]"}
+{"level":"info","time":"2023-08-29T16:22:38+08:00","message":"syncing aof. allowOps=[0.00], disallowOps=[0.00], entryId=[54], InQueueEntriesCount=[0], unansweredBytesCount=[0]bytes, diff=[0], aofReceivedOffset=[596], aofAppliedOffset=[596]"}
+{"level":"info","time":"2023-08-29T16:22:43+08:00","message":"syncing aof. allowOps=[0.20], disallowOps=[0.00], entryId=[55], InQueueEntriesCount=[0], unansweredBytesCount=[0]bytes, diff=[0], aofReceivedOffset=[610], aofAppliedOffset=[610]"}
+{"level":"info","time":"2023-08-29T16:22:48+08:00","message":"syncing aof. allowOps=[0.00], disallowOps=[0.00], entryId=[55], InQueueEntriesCount=[0], unansweredBytesCount=[0]bytes, diff=[0], aofReceivedOffset=[610], aofAppliedOffset=[610]"}
+{"level":"info","time":"2023-08-29T16:22:53+08:00","message":"syncing aof. allowOps=[0.20], disallowOps=[0.00], entryId=[56], InQueueEntriesCount=[0], unansweredBytesCount=[0]bytes, diff=[0], aofReceivedOffset=[624], aofAppliedOffset=[624]"}
+{"level":"info","time":"2023-08-29T16:22:58+08:00","message":"syncing aof. allowOps=[0.00], disallowOps=[0.00], entryId=[56], InQueueEntriesCount=[0], unansweredBytesCount=[0]bytes, diff=[0], aofReceivedOffset=[624], aofAppliedOffset=[624]"}
+{"level":"info","time":"2023-08-29T16:23:03+08:00","message":"syncing aof. allowOps=[0.20], disallowOps=[0.00], entryId=[57], InQueueEntriesCount=[0], unansweredBytesCount=[0]bytes, diff=[0], aofReceivedOffset=[638], aofAppliedOffset=[638]"}
+```
+

@@ -698,5 +698,62 @@ redis /var/run/redis/redis.sock> keys *rack::attack*
 ```
 
 
+## gitlab
+
+
+
+
+### 基于docker-compose部署
+
+
+```bash
+[root@gitlab gitlab]# cat /data/gitlab/config/gitlab.rb 
+gitlab_rails['smtp_enable'] = true
+gitlab_rails['smtp_address'] = "smtp.qiye.163.com"
+gitlab_rails['smtp_port'] = 465
+gitlab_rails['smtp_user_name'] = "email_user"
+gitlab_rails['smtp_password'] = "password"
+gitlab_rails['smtp_domain'] = "163.com"
+gitlab_rails['smtp_authentication'] = "login"
+gitlab_rails['smtp_tls'] = true
+gitlab_rails['gitlab_email_enabled'] = true
+gitlab_rails['gitlab_email_from'] = 'email_user'
+gitlab_rails['gitlab_email_reply_to'] = 'email_user'
+gitlab_rails['smtp_pool'] = true
+gitlab_rails['time_zone'] = 'Asia/Shanghai'
+
+
+[root@gitlab gitlab]# cat docker-compose.yml 
+version: '3.6'
+services:
+  gitlab:
+    image: 'gitlab/gitlab-ce:15.11.13-ce.0'
+    restart: always
+    hostname: 'gitlab.hs.com'
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://gitlab.hs.com:80'
+        gitlab_rails['gitlab_shell_ssh_port'] = 22
+    ports:
+      - '80:80'
+      - '443:443'
+      - '22:22'
+    volumes:
+      - '/data/gitlab/config:/etc/gitlab'
+      - '/data/gitlab/logs:/var/log/gitlab'
+      - '/data/gitlab/data:/var/opt/gitlab'
+    shm_size: '256m'
+
+[root@gitlab gitlab]# docker-compose up -d
+
+[root@gitlab gitlab]# docker exec -it gitlab /bin/bash
+root@gitlab:/etc/gitlab# gitlab-ctl reconfigure 
+root@gitlab:/etc/gitlab# gitlab-ctl restart 
+root@gitlab:/etc/gitlab# gitlab-ctl status 
+root@gitlab:/etc/gitlab# gitlab-rake gitlab:check
+```
+
+
+
 
 
