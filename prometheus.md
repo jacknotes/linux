@@ -678,12 +678,10 @@ WantedBy=multi-user.target
 DECLARE @sql VARCHAR(max)
 
 -- 新建登录账户并授权查看服务器状态、查看任何定义权限给用户语句
-SET @sql=CAST('use master;CREATE LOGIN [sql_exporter] WITH PASSWORD=N''qICJEasdqwDiOSrdT96'', DEFAULT_DATABASE=[master], CHECK_EXPIRATION=OFF, CHECK_POLICY=OFF; GRANT VIEW SERVER STATE TO [sql_exporter];
-GRANT VIEW ANY DEFINITION TO [sql_exporter];' AS VARCHAR(max))
+SET @sql=CAST('use master;CREATE LOGIN [sql_exporter] WITH PASSWORD=N''qICJEasdqwDiOSrdT96'', DEFAULT_DATABASE=[master], CHECK_EXPIRATION=OFF, CHECK_POLICY=OFF; GRANT VIEW SERVER STATE TO [sql_exporter];GRANT VIEW ANY DEFINITION TO [sql_exporter];' AS VARCHAR(max))
 
 -- 在上一步基础上，在每一个数据库中新建用户账户并映射到上面新建的登录账户，赋予角色权限"db_datareader"给"sql_exporter"用户账户
-select @sql=@sql+CAST('use '+name+';CREATE USER [sql_exporter] FOR LOGIN [sql_exporter];EXEC sp_addrolemember N''db_datareader'', N''sql_exporter'';'+CHAR(10) AS VARCHAR(max)) 
-from master.sys.databases where state=0
+select @sql=@sql+CAST('use '+name+';CREATE USER [sql_exporter] FOR LOGIN [sql_exporter];EXEC sp_addrolemember N''db_datareader'', N''sql_exporter'';'+CHAR(10) AS VARCHAR(max)) from master.sys.databases where state=0
 
 -- 执行整个拼接语句
 EXEC(@sql)
@@ -693,7 +691,6 @@ use master;
 CREATE LOGIN [sql_exporter] WITH PASSWORD=N'qICJEasdqwDiOSrdT96',DEFAULT_DATABASE=[master],CHECK_EXPIRATION=OFF,CHECK_POLICY=OFF;
 GRANT VIEW SERVER STATE TO [sql_exporter];
 GRANT VIEW ANY DEFINITION TO [sql_exporter];
-CREATE USER [sql_exporter] FOR LOGIN [sql_exporter];
 use ActivityDB; CREATE USER [sql_exporter] FOR LOGIN [sql_exporter]; exec sp_addrolemember N'db_datareader', N'sql_exporter';
 
 

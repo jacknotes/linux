@@ -1282,7 +1282,6 @@ use master;
 CREATE LOGIN [sql_exporter] WITH PASSWORD=N'qICJEasdqwDiOSrdT96',DEFAULT_DATABASE=[master],CHECK_EXPIRATION=OFF,CHECK_POLICY=OFF;
 GRANT VIEW SERVER STATE TO [sql_exporter];
 GRANT VIEW ANY DEFINITION TO [sql_exporter];
-CREATE USER [sql_exporter] FOR LOGIN [sql_exporter];
 use ActivityDB; CREATE USER [sql_exporter] FOR LOGIN [sql_exporter]; exec sp_addrolemember N'db_datareader', N'sql_exporter';
 
 
