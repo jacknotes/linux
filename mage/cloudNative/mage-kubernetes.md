@@ -12104,3 +12104,193 @@ resources:
 
 ```
 
+
+
+
+
+
+
+
+
+## k8s使用问题汇总
+
+
+
+### 1. kubeasz在多集群环境中添加和删除集群`etcd`、`master`节点时，致使calico节点异常，最终网络故障
+
+
+
+**calico节点192.168.13.220网络不正常时的状态信息***
+
+```bash
+root@test-k8s-node03:~# calicoctl node status
+Calico process is running.
+
+IPv4 BGP status
++----------------+-------------------+-------+------------+--------------------------------+
+|  PEER ADDRESS  |     PEER TYPE     | STATE |   SINCE    |              INFO              |
++----------------+-------------------+-------+------------+--------------------------------+
+| 192.168.13.220 | node-to-node mesh | start | 08:57:08   | Active Socket: Connection      |
+|                |                   |       |            | refused                        |
+| 192.168.13.221 | node-to-node mesh | up    | 2023-09-21 | Established                    |
+| 192.168.13.222 | node-to-node mesh | up    | 2023-09-21 | Established                    |
++----------------+-------------------+-------+------------+--------------------------------+
+
+IPv6 BGP status
+No IPv6 peers found.
+```
+
+
+
+**此故障原因**
+
+
+原因：是使用kubeasz添加k8s-pro集群中一新的master节点时，当前集群是k8s-test集群，从而使用`add-etcd`,`add-master`后，将当前集群k8s-test的calico-config ConfigMap给影响了，将calico存储数据依赖的`etcd`地址误改成了k8s-pro集群的`etcd`地址，从而使192.168.13.220上的calico POD无法启动，找不到calico所需要的相关信息
+
+**`建议：使用kubeasz配置不同集群时，需要切换到需要更改的集群，操作一定要标准，否则会出现难以想象的各种各样的问题`**
+
+
+
+
+以下是当时的calico配置信息，此信息是有误的
+
+```bash
+root@test-k8s-master:~# cat /tmp/calico-config.yaml 
+apiVersion: v1
+data:
+  calico_backend: brid
+  cni_network_config: |-
+    {
+      "name": "k8s-pod-network",
+      "cniVersion": "0.3.1",
+      "plugins": [
+        {
+          "type": "calico",
+          "log_level": "info",
+          "log_file_path": "/var/log/calico/cni/cni.log",
+          "etcd_endpoints": "https://192.168.13.31:2379,https://192.168.13.32:2379,https://192.168.13.33:2379",
+          "etcd_key_file": "/etc/calico/ssl/calico-key.pem",
+          "etcd_cert_file": "/etc/calico/ssl/calico.pem",
+          "etcd_ca_cert_file": "/etc/kubernetes/ssl/ca.pem",
+          "mtu": 1500,
+          "ipam": {
+              "type": "calico-ipam"
+          },
+          "policy": {
+              "type": "k8s"
+          },
+          "kubernetes": {
+              "kubeconfig": "/root/.kube/config"
+          }
+        },
+        {
+          "type": "portmap",
+          "snat": true,
+          "capabilities": {"portMappings": true}
+        },
+        {
+          "type": "bandwidth",
+          "capabilities": {"bandwidth": true}
+        }
+      ]
+    }
+  etcd_ca: /calico-secrets/etcd-ca
+  etcd_cert: /calico-secrets/etcd-cert
+  etcd_endpoints: https://192.168.13.31:2379,https://192.168.13.32:2379,https://192.168.13.33:2379
+  etcd_key: /calico-secrets/etcd-key
+  typha_service_name: none
+  veth_mtu: "1440"
+kind: ConfigMap
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","data":{"calico_backend":"brid","cni_network_config":"{\n  \"name\": \"k8s-pod-network\",\n  \"cniVersion\": \"0.3.1\",\n  \"plugins\": [\n    {\n      \"type\": \"calico\",\n      \"log_level\": \"info\",\n      \"log_file_path\": \"/var/log/calico/cni/cni.log\",\n      \"etcd_endpoints\": \"https://192.168.13.31:2379,https://192.168.13.32:2379,https://192.168.13.33:2379\",\n      \"etcd_key_file\": \"/etc/calico/ssl/calico-key.pem\",\n      \"etcd_cert_file\": \"/etc/calico/ssl/calico.pem\",\n      \"etcd_ca_cert_file\": \"/etc/kubernetes/ssl/ca.pem\",\n      \"mtu\": 1500,\n      \"ipam\": {\n          \"type\": \"calico-ipam\"\n      },\n      \"policy\": {\n          \"type\": \"k8s\"\n      },\n      \"kubernetes\": {\n          \"kubeconfig\": \"/root/.kube/config\"\n      }\n    },\n    {\n      \"type\": \"portmap\",\n      \"snat\": true,\n      \"capabilities\": {\"portMappings\": true}\n    },\n    {\n      \"type\": \"bandwidth\",\n      \"capabilities\": {\"bandwidth\": true}\n    }\n  ]\n}","etcd_ca":"/calico-secrets/etcd-ca","etcd_cert":"/calico-secrets/etcd-cert","etcd_endpoints":"https://192.168.13.31:2379,https://192.168.13.32:2379,https://192.168.13.33:2379","etcd_key":"/calico-secrets/etcd-key","typha_service_name":"none","veth_mtu":"1440"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"calico-config","namespace":"kube-system"}}
+  creationTimestamp: "2023-07-25T06:42:33Z"
+  name: calico-config
+  namespace: kube-system
+  resourceVersion: "9162362"
+  uid: 8a8f1b3c-6375-4fd9-8349-20702770c79c
+```
+
+
+
+**解决问题，更改ConfigMap calico-config，将etcd的地址更改为192.168.13.220:2379**
+
+```bash
+root@test-k8s-master:~# kubectl get cm -n kube-system calico-config -o yaml 
+apiVersion: v1
+data:
+  calico_backend: brid
+  cni_network_config: |-
+    {
+      "name": "k8s-pod-network",
+      "cniVersion": "0.3.1",
+      "plugins": [
+        {
+          "type": "calico",
+          "log_level": "info",
+          "log_file_path": "/var/log/calico/cni/cni.log",
+          "etcd_endpoints": "https://192.168.13.220:2379",
+          "etcd_key_file": "/etc/calico/ssl/calico-key.pem",
+          "etcd_cert_file": "/etc/calico/ssl/calico.pem",
+          "etcd_ca_cert_file": "/etc/kubernetes/ssl/ca.pem",
+          "mtu": 1500,
+          "ipam": {
+              "type": "calico-ipam"
+          },
+          "policy": {
+              "type": "k8s"
+          },
+          "kubernetes": {
+              "kubeconfig": "/root/.kube/config"
+          }
+        },
+        {
+          "type": "portmap",
+          "snat": true,
+          "capabilities": {"portMappings": true}
+        },
+        {
+          "type": "bandwidth",
+          "capabilities": {"bandwidth": true}
+        }
+      ]
+    }
+  etcd_ca: /calico-secrets/etcd-ca
+  etcd_cert: /calico-secrets/etcd-cert
+  etcd_endpoints: https://192.168.13.220:2379
+  etcd_key: /calico-secrets/etcd-key
+  typha_service_name: none
+  veth_mtu: "1440"
+kind: ConfigMap
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","data":{"calico_backend":"brid","cni_network_config":"{\n  \"name\": \"k8s-pod-network\",\n  \"cniVersion\": \"0.3.1\",\n  \"plugins\": [\n    {\n      \"type\": \"calico\",\n      \"log_level\": \"info\",\n      \"log_file_path\": \"/var/log/calico/cni/cni.log\",\n      \"etcd_endpoints\": \"https://192.168.13.220:2379\"etcd_key_file\": \"/etc/calico/ssl/calico-key.pem\",\n      \"etcd_cert_file\": \"/etc/calico/ssl/calico.pem\",\n      \"etcd_ca_cert_file\": \"/etc/kubernetes/ssl/ca.pem\",\n      \"mtu\": 1500,\n      \"ipam\": {\n          \"type\": \"calico-ipam\"\n      },\n      \"policy\": {\n          \"type\": \"k8s\"\n      },\n      \"kubernetes\": {\n          \"kubeconfig\": \"/root/.kube/config\"\n      }\n    },\n    {\n      \"type\": \"portmap\",\n      \"snat\": true,\n      \"capabilities\": {\"portMappings\": true}\n    },\n    {\n      \"type\": \"bandwidth\",\n      \"capabilities\": {\"bandwidth\": true}\n    }\n  ]\n}","etcd_ca":"/calico-secrets/etcd-ca","etcd_cert":"/calico-secrets/etcd-cert","etcd_endpoints":"https://192.168.13.220:2379","etcd_key":"/calico-secrets/etcd-key","typha_service_name":"none","veth_mtu":"1440"},"kind":"ConfigMap","metadata":{"annotations":{},"name":"calico-config","namespace":"kube-system"}}
+  creationTimestamp: "2023-07-25T06:42:33Z"
+  name: calico-config
+  namespace: kube-system
+  resourceVersion: "9170925"
+  uid: 8a8f1b3c-6375-4fd9-8349-20702770c79c
+```
+
+
+
+**更改calico-config ConfigMap后calico的状态信息，此时才正常**
+
+```bash
+root@test-k8s-master:~# calicoctl node status
+Calico process is running.
+
+IPv4 BGP status
++----------------+-------------------+-------+----------+-------------+
+|  PEER ADDRESS  |     PEER TYPE     | STATE |  SINCE   |    INFO     |
++----------------+-------------------+-------+----------+-------------+
+| 192.168.13.221 | node-to-node mesh | up    | 09:59:26 | Established |
+| 192.168.13.222 | node-to-node mesh | up    | 10:00:10 | Established |
+| 192.168.13.223 | node-to-node mesh | up    | 09:59:13 | Established |
++----------------+-------------------+-------+----------+-------------+
+
+IPv6 BGP status
+No IPv6 peers found.
+```
