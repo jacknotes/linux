@@ -12110,6 +12110,19 @@ resources:
 
 
 
+## etcdkeeper可视化工具使用
+./etcdkeeper -usetls -cacert  /etc/kubeasz/clusters/k8s01/ssl/ca.pem -cert  /etc/kubeasz/clusters/k8s01/ssl/etcd.pem -key /etc/kubeasz/clusters/k8s01/ssl/etcd-key.pem -h 172.168.2.12 -p 8080
+
+
+
+
+
+
+
+
+
+
+
 
 
 ## k8s使用问题汇总

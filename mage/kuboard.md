@@ -791,3 +791,290 @@ rules:
 
 
 
+## 4. k8s部署kuboard
+
+
+
+```bash
+root@ansible:~/k8s/addons/kuboard# cat kuboard.yaml
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kuboard
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kuboard-boostrap
+  namespace: kuboard
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kuboard-boostrap-crb
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: kuboard-boostrap
+  namespace: kuboard
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kuboard-v3-config
+  namespace: kuboard
+data:
+  KUBOARD_ENDPOINT: 'http://kuboard.test.k8s.hs.com'
+  KUBOARD_AGENT_SERVER_UDP_PORT: '30081'
+  KUBOARD_AGENT_SERVER_TCP_PORT: '30081'
+  KUBOARD_SERVER_LOGRUS_LEVEL: info
+  KUBOARD_AGENT_KEY: 32b7d6572c6255211b4eec9009e4a816
+  KUBOARD_AGENT_IMAG: harborrepo.hs.com/ops/kuboard-agent:v3
+  KUBOARD_QUESTDB_IMAGE: harborrepo.hs.com/ops/questdb:6.0.4
+  KUBOARD_DISABLE_AUDIT: 'false'
+  KUBOARD_ADMIN_DERAULT_PASSWORD: 'p@ss123.com'
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kuboard-etcd
+  namespace: kuboard
+  labels:
+    app: kuboard-etcd
+spec:
+  serviceName: kuboard-etcd
+  replicas: 3
+  selector:
+    matchLabels:
+      app: kuboard-etcd
+  template:
+    metadata:
+      name: kuboard-etcd
+      labels:
+        app: kuboard-etcd
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/role
+                    operator: In
+                    values:
+                    - master
+      containers:
+      - name: kuboard-etcd
+        image: harborrepo.hs.com/ops/etcd-host:3.4.16-1
+        ports:
+        - containerPort: 2379
+          name: client
+        - containerPort: 2380
+          name: peer
+        env:
+        - name: KUBOARD_ETCD_ENDPOINTS
+          value: >-
+            kuboard-etcd-0.kuboard-etcd:2379,kuboard-etcd-1.kuboard-etcd:2379,kuboard-etcd-2.kuboard-etcd:2379
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        command:
+          - /bin/sh
+          - -c
+          - |
+            PEERS="kuboard-etcd-0=http://kuboard-etcd-0.kuboard-etcd:2380,kuboard-etcd-1=http://kuboard-etcd-1.kuboard-etcd:2380,kuboard-etcd-2=http://kuboard-etcd-2.kuboard-etcd:2380"
+            exec etcd --name ${HOSTNAME} \
+              --listen-peer-urls http://0.0.0.0:2380 \
+              --listen-client-urls http://0.0.0.0:2379 \
+              --advertise-client-urls http://${HOSTNAME}.kuboard-etcd:2379 \
+              --initial-advertise-peer-urls http://${HOSTNAME}:2380 \
+              --initial-cluster-token kuboard-etcd-cluster-1 \
+              --initial-cluster ${PEERS} \
+              --initial-cluster-state new \
+              --data-dir /data/kuboard.etcd
+      volumes:
+        - hostPath:
+            path: /usr/share/kuboard/etcd
+          name: data
+      serviceAccount: kuboard-boostrap
+      serviceAccountName: kuboard-boostrap
+      tolerations:
+        - key: node.kubernetes.io/unschedulable
+          operator: Exists
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kuboard-etcd
+  namespace: kuboard
+spec:
+  #type: ClusterIP
+  type: NodePort
+  ports:
+  - port: 2379
+    name: client
+    nodePort: 32379
+  - port: 2380
+    name: peer
+  selector:
+    app: kuboard-etcd
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    app: kuboard-v3
+  labels:
+    app: kuboard-v3
+  name: kuboard-v3
+  namespace: kuboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kuboard-v3
+  template:
+    metadata:
+      labels:
+        app: kuboard-v3
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/role
+                    operator: In
+                    values:
+                    - master
+      containers:
+        - env:
+          - name: KUBOARD_ETCD_ENDPOINTS
+            value: kuboard-etcd-0.kuboard-etcd:2379,kuboard-etcd-1.kuboard-etcd:2379,kuboard-etcd-2.kuboard-etcd:2379
+          envFrom:
+            - configMapRef:
+                name: kuboard-v3-config
+          image: 'harborrepo.hs.com/ops/kuboard:v3'
+          imagePullPolicy: IfNotPresent
+          name: kuboard
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /kuboard-resources/version.json
+              port: 80
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          ports:
+            - containerPort: 80
+              name: web
+              protocol: TCP
+            - containerPort: 443
+              name: https
+              protocol: TCP
+            - containerPort: 10081
+              name: peer
+              protocol: TCP
+            - containerPort: 10081
+              name: peer-u
+              protocol: UDP
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /kuboard-resources/version.json
+              port: 80
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          resources: {}
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      serviceAccount: kuboard-boostrap
+      serviceAccountName: kuboard-boostrap
+      tolerations:
+        - key: node.kubernetes.io/unschedulable
+          operator: Exists
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: kuboard-v3
+  name: kuboard-v3
+  namespace: kuboard
+spec:
+  ports:
+    - name: webui
+      nodePort: 30180
+      port: 80
+      protocol: TCP
+      targetPort: 80
+    - name: agentservertcp
+      nodePort: 30181
+      port: 10081
+      protocol: TCP
+      targetPort: 10081
+    - name: agentserverudp
+      nodePort: 30181
+      port: 10081
+      protocol: UDP
+      targetPort: 10081
+  selector:
+    app: kuboard-v3
+  sessionAffinity: None
+  type: NodePort
+```
+
+```bash
+root@ansible:~/k8s/addons/kuboard# kubectl get pods -o wide -n kuboard
+NAME                          READY   STATUS    RESTARTS      AGE     IP               NODE           NOMINATED NODE   READINESS GATES
+kuboard-etcd-0                1/1     Running   0             2m50s   172.20.195.4     172.168.2.23   <none>           <none>
+kuboard-etcd-1                1/1     Running   0             2m41s   172.20.32.129    172.168.2.21   <none>           <none>
+kuboard-etcd-2                1/1     Running   0             2m30s   172.20.122.129   172.168.2.22   <none>           <none>
+kuboard-v3-74c5d8779b-6l8cd   1/1     Running   1 (75s ago)   2m46s   172.20.195.5     172.168.2.23   <none>           <none>
+
+
+root@ansible:~/k8s/addons/kuboard# kubectl get svc -n kuboard
+NAME           TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)                                        AGE
+kuboard-etcd   NodePort   10.68.161.169   <none>        2379:32379/TCP,2380:41304/TCP                  3m3s
+kuboard-v3     NodePort   10.68.241.184   <none>        80:30180/TCP,10081:30181/TCP,10081:30181/UDP   2m59s
+
+
+# 用户访问 NODE_IP:30180 即可访问kuboard
+
+
+# 上面是测试所以暴露ETCD端口，否则不要暴露
+root@ansible:~/k8s/addons/kuboard# etcdctl get / --prefix --keys-only --endpoints=172.168.2.21:32379
+/kind/KuboardAuditPolicy/cluster/GLOBAL/GLOBAL
+
+/kind/KuboardAuthGlobalRoleBinding/cluster/GLOBAL/group.administrators.administrator
+
+/kind/KuboardAuthGroup/cluster/GLOBAL/administrators
+
+/kind/KuboardAuthRole/cluster/GLOBAL/administrator
+
+/kind/KuboardAuthRole/cluster/GLOBAL/anonymous
+
+/kind/KuboardAuthRole/cluster/GLOBAL/authenticated
+
+/kind/KuboardAuthRole/cluster/GLOBAL/sso-user
+
+/kind/KuboardAuthRole/cluster/GLOBAL/viewer
+
+/kind/KuboardAuthUser/cluster/GLOBAL/admin
+
+/kind/KuboardAuthUserInGroup/cluster/GLOBAL/admin.administrators
+
+/kind/KuboardBrandSettings/cluster/GLOBAL/KuboardBrandSettings
+
+/kind/KuboardLoginPolicySettings/cluster/GLOBAL/KuboardLoginPolicySettings
+
+```
+

@@ -455,7 +455,7 @@ esac
 	在如上图的LVS/DR或LVS/TUN应用的一种模型中（所有机器都在同一个物理网络），所有机器（包括Director和RealServer）都使用了一个额外的IP地址，即VIP。当一个客户端向VIP发出一个连接请求时，此请求必须要连接至Director的VIP，而不能是RealServer的。因为，LVS的主要目标就是要Director负责调度这些连接请求至RealServer的。
 	因此，在Client发出至VIP的连接请求后，只能由Director将其MAC地址响应给客户端（也可能是直接与Director连接的路由设备），而Director则会相应的更新其ipvsadm table以追踪此连接，而后将其转发至后端的RealServer之一。
 	如果Client在请求建立至VIP的连接时由某RealServer响应了其请求，则Client会在其MAC table中建立起一个VIP至RealServer的对应关系，并进行后面的通信。此时，在Client看来只有一个RealServer而无法意识到其它服务器的存在。
-	为了解决此问题，可以通过在路由器上设置其转发规则来实现。当然，如果没有权限访问路由器并做出相应的设置，则只能通过传统的本地方式来解决此问题了。这些方法包括：
+	为了解决此问题，可以通过在路由器上设置其转发规则来实现(MAC-IP地址绑定)。当然，如果没有权限访问路由器并做出相应的设置，则只能通过传统的本地方式来解决此问题了。这些方法包括：
 	1、禁止RealServer响应对VIP的ARP请求；
 	2、在RealServer上隐藏VIP，以使得它们无法获知网络上的ARP请求；
 	3、基于“透明代理（Transparent Proxy）”或者“fwmark （firewall mark）”；
@@ -504,8 +504,9 @@ RealServerIP: 172.168.2.15(00:26:18:45:D7:88)	172.168.2.17(00:26:18:45:D7:89)
 3. realserver收到请求后，响应处理并把结果直接返回给client,而不走director
    数据包解封装流程：
 4. director接收到client消息，即源mac地址为38:22:d6:6c:07:5d，目的地址为00:1A:4D:8C:FA:D5，源ip为172.168.2.11，目的ip为172.168.2.20
-5. director根据调度策略算法选取一台realserver，假如调度给172.168.2.15，并把源mac地址改为00:1A:4D:8C:FA:D5(DR VIP mac地址)，目的mac地址改为00:26:18:45:D7:88(172.168.2.15的mac地址)，源ip和目的ip都不变（源ip为172.168.2.11，目的ip为172.168.2.20）
-6. realserver接收到请求，先看到mac地址(00:26:18:45:D7:88)，再看IP地址(172.168.2.20)都是自己并做出响应处理给客户端。即源mac为00:26:18:45:D7:88，源ip为172.168.2.20，目的mac地址为38:22:d6:6c:07:5d(第一次不知道会发ARP广播包，后续则会留在在mac table中)，目的ip为172.168.2.11。
+5. director根据调度策略算法选取一台realserver，假如调度给172.168.2.15，并把源mac地址改为00:1A:4D:8C:FA:D5(VIP mac地址)，目的mac地址改为00:26:18:45:D7:88(172.168.2.15的mac地址)，源ip和目的ip都不变（源ip为172.168.2.11，目的ip为172.168.2.20）
+6. realserver接收到请求，先看到mac地址(00:26:18:45:D7:88)，再看IP地址(172.168.2.20)在自己lo接口上，都是自己并做出响应处理给客户端。即源mac为00:26:18:45:D7:88，源ip为172.168.2.20，目的mac地址为38:22:d6:6c:07:5d(第一次不知道会发ARP广播包，后续则会留在在mac table中)，目的ip为172.168.2.11。
+注：TCP3次握手也是这样的顺序工作流程来工作，这次是一次请求工作流程，，数据帧都是有编号的，经过多次转发，都是在同一主机上进行处理，所以客户端和RS之间的数据包请求和响应处理是正常的。
 
 疑点总结：
 1. client请求VIP时，不光只有director有VIP，realserver也有VIP，如何解决正常解析到Director而不解析到realserver?
@@ -513,13 +514,13 @@ RealServerIP: 172.168.2.15(00:26:18:45:D7:88)	172.168.2.17(00:26:18:45:D7:89)
 2. lvs/dr模型下director是如何进行转发的？
    答：diretor接收到client的请求后，只对二层以太网帧进行更改，不对对三层ip包进行更改，然后在进行转发
 3. realserver收到director的数据包后如何进行响应的?
-   答：直接响应客户端，响应的数据报文中把本地物理接口eth0的mac地址作为源mac地址(因为配置内核参数的原因{net.ipv4.conf.eth0.arp_announce = 2}，意思为只向该网卡回应与该网段匹配的ARP报文，又因为client IP 172.168.2.11跟eth0 ip 172.168.2.15是同网段，所以用eth0的mac地址回应172.168.2.11)，本地VIP做为源IP，目标IP为clientIP，目标mac地址先从ARP缓存查找，如无进行ARP广播，即源mac00:26:18:45:D7:88，源ip为172.168.2.20。目标mac地址为38:22:d6:6c:07:5d，目标ip为172.168.2.11。最后客户端收到消息得知mac地址和ip地址都是自己，并且源ip也是自己请求的VIP地址，就进行正常接收了，并不会再去看源mac地址了。当客户端再次请求172.168.2.20时会去找ARP缓存，或者进行ARP广播。
+   答：直接响应客户端，响应的数据报文中把本地物理接口eth0的mac地址作为源mac地址(因为配置内核参数的原因{net.ipv4.conf.eth0.arp_announce = 2}，意思为只向该网卡回应与该网段匹配的ARP报文，又因为client IP 172.168.2.11跟eth0 ip 172.168.2.15是同网段，所以用eth0的mac地址回应172.168.2.11)，本地VIP做为源IP，目标IP为clientIP，目标mac地址先从ARP缓存查找，如无进行ARP广播，即源mac00:26:18:45:D7:88，源ip为172.168.2.20。目标mac地址为38:22:d6:6c:07:5d，目标ip为172.168.2.11。最后客户端收到数据帧得知mac地址和ip地址都是自己，并且源ip也是自己请求的VIP地址，就进行正常接收了，并不会再去看源mac地址了。当客户端再次请求172.168.2.20时会去找ARP缓存，或者进行ARP广播，重复以上的流程，去找DR，再由DR转发到RS，最后RS响应给client，流程：client -> DR -> RS -> client {重复此流程}
 
 ## 其它第三方说明
 ### 重点将请求报文的目标 MAC 地址设定为挑选出的 RS 的 MAC 地址,当RS接收到这个数据包之后,将源MAC替换成自己的MAC,目标MAC地址为客户端地址。
-(1) 当用户请求到达 Director Server，此时请求的数据报文会先到内核空间的 PREROUTING 链。 此时报文的源 IP 为 CIP，目标 IP 为 VIP,MAC地址一次为各自的MAC地址。
+(1) 当用户请求到达 Director Server，此时请求的数据报文会先到内核空间的 PREROUTING 链。 此时报文的源 IP 为 CIP，目标 IP 为 VIP,MAC地址为各自的MAC地址。
 (2) PREROUTING 检查发现数据包的目标 IP 是本机，将数据包送至 INPUT 链。
-(3) IPVS 比对数据包请求的服务是否为集群服务，若是，将请求报文中的源 MAC 地址修改为 DIP 的 MAC 地址，将目标 MAC 地址修改 RIP 的 MAC 地址，然后将数据包发至 POSTROUTING 链。 此时的源 IP 和目的 IP 均未修改，仅修改了源 MAC 地址为 DIP 的 MAC 地址，目标 MAC 地址为 RIP 的 MAC 地址。
+(3) IPVS 比对数据包请求的服务是否为集群服务，若是，将请求报文中的源 MAC 地址修改为 VIP 的 MAC 地址，将目标 MAC 地址修改 RIP 的 MAC 地址，然后将数据包发至 POSTROUTING 链。 此时的源 IP 和目的 IP 均未修改，仅修改了源 MAC 地址为 VIP 的 MAC 地址，目标 MAC 地址为 RIP 的 MAC 地址。
 (4) 由于 DS 和 RS 在同一个网络中，所以是通过二层来传输。POSTROUTING 链检查目标 MAC 地址为 RIP 的 MAC 地址，那么此时数据包将会发至 Real Server。
 (5) RS 发现请求报文的 MAC 地址是自己的 MAC 地址，就接收此报文。处理完成之后，将响应报文通过 lo 接口传送给 eth0 网卡然后向外发出。 此时的源 IP 地址为 VIP，目标 IP 为 CIP,并且将源MAC地址改为自己的MAC,目标MAC改为客户端MAC。
 (6) 响应报文最终送达至客户端
@@ -1411,7 +1412,7 @@ Prot LocalAddress:Port Scheduler Flags
 TCP  172.168.2.20:80 rr persistent 5
   -> 172.168.2.15:80              Route   1      0          0
   -> 172.168.2.17:80              Route   1      0          0
-#更改keepalived配置文件上下线realserver
+# 更改keepalived配置文件上下线realserver
 [root@lvs02 ~]# vim /etc/keepalived/keepalived.conf
 :.,+8s/^/#/g	--注释特定realserver配置段
 [root@lvs02 ~]# systemctl reload keepalived.service
@@ -1664,7 +1665,7 @@ route add -host 172.168.2.20 dev lo:0
 
 
 ###lvs调优
-1.调整ipvs connection hash表的大小
+1.1调整ipvs connection hash表的大小
 IPVS connection hash table size，取值范围:[12,20]。该表用于记录每个进来的连接及路由去向的信息。连接的Hash表要容纳几百万个并发连接，任何一个报文到达都需要查找连接Hash表。Hash表的查找复杂度为O(n/m)，其中n为Hash表中对象的个数，m为Hash表的桶个数。当对象在Hash表中均匀分布和Hash表的桶个数与对象个数一样多时，Hash表的查找复杂度可以接近O(1)。
 LVS的调优建议将hash table的值设置为不低于并发连接数。例如，并发连接数为200，Persistent时间为200S，那么hash桶的个数应设置为尽可能接近200x200=40000，2的15次方为32768就可以了。当ip_vs_conn_tab_bits=20 时，哈希表的的大小（条目）为 pow(2,20)，即 1048576，对于64位系统，IPVS占用大概16M内存，可以通过demsg看到：IPVS: Connection hash table configured (size=1048576, memory=16384Kbytes)。对于现在的服务器来说，这样的内存占用不是问题。所以直接设置为20即可。
 关于最大“连接数限制”：这里的hash桶的个数，并不是LVS最大连接数限制。LVS使用哈希链表解决“哈希冲突”，当连接数大于这个值时，必然会出现哈稀冲突，会（稍微）降低性能，但是并不对在功能上对LVS造成影响。
@@ -1675,7 +1676,7 @@ LVS的调优建议将hash table的值设置为不低于并发连接数。例如�
 新的IPVS代码，允许调整 ip_vs_conn_bits 的值。而老的IPVS代码则需要通过重新编译来调整。在发行版里，IPVS通常是以模块的形式编译的。确认能否调整使用命令 modinfo -p ip_vs（查看 ip_vs 模块的参数），看有没有 conn_tab_bits 参数可用。
 [root@lvs01 ~]# modinfo -p ip_vs
 conn_tab_bits:Set connections' hash size (int)
-假如可以用，那么说时可以调整，调整方法是加载时通过设置 conn_tab_bits参数。在/etc/modprobe.d/目录下添加文件ip_vs.conf，内容为：
+假如可以用，那么说是可以调整，调整方法是加载时通过设置 conn_tab_bits参数。在/etc/modprobe.d/目录下添加文件ip_vs.conf，内容为：
 options ip_vs conn_tab_bits=20
 ipvsadm -l	--查看，如果显示IP Virtual Server version 1.2.1 (size=4096)，则前面加的参数没有生效
 reboot	--重新启动服务器进行加载
@@ -1688,7 +1689,7 @@ TCP  172.168.2.20:80 rr persistent 5
   -> 172.168.2.17:80              Route   1      0          0
 
 1.3尽量避免sh算法
-一些业务为了支持会话保持，选择SH调度算法，以实现 同一源ip的请求调度到同一台RS上；但 SH算法本省没有实现一致性hash，一旦一台RS down，当前所有连接都会断掉；如果配置了inhibit_on_failure，那就更悲剧了，调度到该RS上的流量会一直损失；
+一些业务为了支持会话保持，选择SH调度算法，以实现 同一源ip的请求调度到同一台RS上；但SH算法根本没有实现一致性hash，一旦一台RS down，当前所有连接都会断掉；如果配置了inhibit_on_failure，那就更悲剧了，调度到该RS上的流量会一直损失；
 实际线上使用时，如需 会话保持，建议配置 persistence_timeout参数，保证一段时间同一源ip的请求到同一RS上
 ```
 
