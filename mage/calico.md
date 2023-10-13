@@ -123,7 +123,7 @@ kubernetes中部署calico官方分别提供了三种部署方式
 
 
 
-6. 目前k8s集群还有prometheus-server，此收集还会有一定影响(用来收集k8s集群中的ArgoCD，默认还收集k8s中的apiSserver、controller manager、scheduler、 node、service、pod等)，经过排查，怀疑是prometheus-server收集的指标过大导致网络流量过高，于是把prometheus-server for ConfigMap from namespace kube-system中的多余Job注释掉了，只留argocd-server-metrics 和 prometheus，最后流量就下来了。结果表明calico流量过大的罪魁祸首是prometheus收集指标过多过大导致，留此笔记加深印象。
+6. 目前k8s集群还有prometheus-server，此收集还会有一定影响(用来收集k8s集群中的ArgoCD，默认还收集k8s中的apiServer、controller manager、scheduler、 node、service、pod等)，经过排查，怀疑是prometheus-server收集的指标过大导致网络流量过高，于是把prometheus-server for ConfigMap from namespace kube-system中的多余Job注释掉了，只留argocd-server-metrics 和 prometheus，最后流量就下来了。结果表明calico流量过大的罪魁祸首是prometheus收集指标过多过大导致，留此笔记加深印象。
 7. 究其原因，一个一个job测试，最终是**prometheus-pods for job**导致，应该推送流量过大。但istio addon Kiali依赖prometheus-pods for job，如果禁用将导致不能正常观测，请按需确定是否禁用，这个也是服务网格带来的流量问题。
 
 ![kubernetes for prometheus-server-targets](..\image\k8s\calico\prometheus-server-targets.png)

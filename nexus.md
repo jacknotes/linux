@@ -28,6 +28,7 @@ docker run -d -p 8010:8081 --name nexus-dotnet -v /data/nexus3:/nexus-data sonat
 --备份
 只需要备份nexus-data目录即可。
 --恢复
+`#chmod -R 770 /data/nexus-data && chown -R root.200 /data/nexus-data`
 chmod -R 777 /data/nexus-data
 docker run -d -p 8010:8081 --name nexus-dotnet -v /data/nexus-data:/nexus-data sonatype/nexus3:3.32.0
 
