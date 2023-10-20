@@ -853,12 +853,12 @@ virtual_server 172.168.2.33 443 {
 ## lvs上tcpdump过程解析
 
 ```bash
-[root@test-lvs02 keepalived]# tcpdump  -i eth0 -nnnn port 80 and host 172.168.2.36
+[root@test-lvs02 keepalived]# tcpdump -i eth0 -nnnn port 80 and host 172.168.2.36
 tcpdump: verbose output suppressed, use -v or -vv for full protocol decode
 listening on eth0, link-type EN10MB (Ethernet), capture size 262144 bytes
 15:15:01.800530 IP 172.168.2.219.5686 > 172.168.2.36.80: Flags [S], seq 3520950535, win 64240, options [mss 1460,nop,wscale 8,nop,nop,sackOK], length 0		# 客户端建立连接请求第一次握手到达lvs
 15:15:01.800577 IP 172.168.2.219.5686 > 172.168.2.36.80: Flags [S], seq 3520950535, win 64240, options [mss 1460,nop,wscale 8,nop,nop,sackOK], length 0		# lvs将客户端建立连接请求第一次握手的源MAC和目的MAC改成V-MAC和R-MAC
-15:15:01.800810 IP 172.168.2.36.80 > 172.168.2.219.5686: Flags [S.], seq 3908883242, ack 3520950536, win 29200, options [mss 1460,nop,nop,sackOK,nop,wscale 7], length 0	# RS接收到客户端第一次建立连接请求，确认第一次握手并发起第二次握手，实际是RS直接跟客户端进行沟通，而没有经过LVS，为什么LVS上抓到了RS的响应包呢？因为RS响应的IP地址是172.168.2.36，我们抓的包是eth0网卡上，所有虚拟机的网络都属于eth0，所以可以看到此包
+15:15:01.800810 IP 172.168.2.36.80 > 172.168.2.219.5686: Flags [S.], seq 3908883242, ack 3520950536, win 29200, options [mss 1460,nop,nop,sackOK,nop,wscale 7], length 0	# RS接收到客户端第一次建立连接请求，确认第一次握手并发起第二次握手，实际是RS直接跟客户端进行沟通，而没有经过LVS，为什么LVS上抓到了RS的响应包呢？因为RS响应的IP地址是172.168.2.36，我们抓的包是eth0网卡上，所有虚拟机的网络都属于物理机eth0，所以可以看到此包
 15:15:01.802449 IP 172.168.2.219.5686 > 172.168.2.36.80: Flags [.], ack 1, win 8212, length 0 #客户端确认连接请求，第三次握手完成
 15:15:01.802463 IP 172.168.2.219.5686 > 172.168.2.36.80: Flags [.], ack 1, win 8212, length 0 #lvs转发第三次握手连接请求
 15:15:01.805557 IP 172.168.2.219.5686 > 172.168.2.36.80: Flags [P.], seq 1:1125, ack 1, win 8212, length 1124: HTTP: GET /TktCp/main.aspx HTTP/1.1	# 客户端开始发起HTTP请求
@@ -874,6 +874,122 @@ listening on eth0, link-type EN10MB (Ethernet), capture size 262144 bytes
 15:15:01.869934 IP 172.168.2.219.5686 > 172.168.2.36.80: Flags [.], ack 7258, win 8206, length 0
 15:15:01.869980 IP 172.168.2.219.5686 > 172.168.2.36.80: Flags [.], ack 7258, win 8206, length 0
 
+```
+
+
+## lvs上tcpdump过程解析--物理机抓包
+
+
+由下方可见LVS服务器中，只有客户端172.168.2.219的入站请求，没有出站点请求，因为出站请求是由RS直接响应给客户端的
+```bash
+09:10:45.526930 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [S], seq 3408349778, win 64240, options [mss 1460,nop,wscale 8,nop,nop,sackOK], length 0
+09:10:45.526963 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [S], seq 3408349778, win 64240, options [mss 1460,nop,wscale 8,nop,nop,sackOK], length 0
+09:10:45.527982 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [.], ack 4124734678, win 8212, length 0
+09:10:45.528000 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [.], ack 1, win 8212, length 0
+09:10:45.528935 IP 172.168.2.219.2883 > 192.168.13.81.80: Flags [S], seq 3957377897, win 64240, options [mss 1460,nop,wscale 8,nop,nop,sackOK], length 0
+09:10:45.528957 IP 172.168.2.219.2883 > 192.168.13.81.80: Flags [S], seq 3957377897, win 64240, options [mss 1460,nop,wscale 8,nop,nop,sackOK], length 0
+09:10:45.530095 IP 172.168.2.219.2883 > 192.168.13.81.80: Flags [.], ack 1771982943, win 8212, length 0
+09:10:45.530113 IP 172.168.2.219.2883 > 192.168.13.81.80: Flags [.], ack 1, win 8212, length 0
+09:10:45.535971 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [P.], seq 0:738, ack 1, win 8212, length 738: HTTP: GET /loginin.aspx?loginType=It/main.aspx HTTP/1.1
+09:10:45.535989 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [P.], seq 0:738, ack 1, win 8212, length 738: HTTP: GET /loginin.aspx?loginType=It/main.aspx HTTP/1.1
+09:10:45.601799 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [.], ack 1361, win 8207, length 0
+09:10:45.601835 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [.], ack 1361, win 8207, length 0
+09:10:45.733124 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [P.], seq 738:1716, ack 1361, win 8207, length 978: HTTP: GET /It/main.aspx HTTP/1.1
+09:10:45.733148 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [P.], seq 738:1716, ack 1361, win 8207, length 978: HTTP: GET /It/main.aspx HTTP/1.1
+09:10:46.064353 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [.], ack 5754, win 8212, length 0
+09:10:46.064376 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [.], ack 5754, win 8212, length 0
+09:10:46.099973 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [P.], seq 1716:2526, ack 5754, win 8212, length 810: HTTP: GET /css/global.css HTTP/1.1
+09:10:46.099996 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [P.], seq 1716:2526, ack 5754, win 8212, length 810: HTTP: GET /css/global.css HTTP/1.1
+09:10:46.100855 IP 172.168.2.219.2883 > 192.168.13.81.80: Flags [P.], seq 0:796, ack 1, win 8212, length 796: HTTP: GET /JSCRIPT/Main.js HTTP/1.1
+09:10:46.100879 IP 172.168.2.219.2883 > 192.168.13.81.80: Flags [P.], seq 0:796, ack 1, win 8212, length 796: HTTP: GET /JSCRIPT/Main.js HTTP/1.1
+09:10:46.103226 IP 172.168.2.219.2883 > 192.168.13.81.80: Flags [.], ack 1481, win 8212, length 0
+09:10:46.103249 IP 172.168.2.219.2883 > 192.168.13.81.80: Flags [.], ack 1481, win 8212, length 0
+09:10:46.103530 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [.], ack 8335, win 8212, length 0
+09:10:46.103553 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [.], ack 8335, win 8212, length 0
+09:10:46.147956 IP 172.168.2.219.2883 > 192.168.13.81.80: Flags [P.], seq 796:1643, ack 1481, win 8212, length 847: HTTP: GET /images/lbl_01.gif HTTP/1.1
+09:10:46.147992 IP 172.168.2.219.2883 > 192.168.13.81.80: Flags [P.], seq 796:1643, ack 1481, win 8212, length 847: HTTP: GET /images/lbl_01.gif HTTP/1.1
+09:10:46.148018 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [P.], seq 2526:3373, ack 8335, win 8212, length 847: HTTP: GET /images/lbl_02.gif HTTP/1.1
+09:10:46.148036 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [P.], seq 2526:3373, ack 8335, win 8212, length 847: HTTP: GET /images/lbl_02.gif HTTP/1.1
+09:10:46.149535 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [S], seq 1834450973, win 64240, options [mss 1460,nop,wscale 8,nop,nop,sackOK], length 0
+09:10:46.149562 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [S], seq 1834450973, win 64240, options [mss 1460,nop,wscale 8,nop,nop,sackOK], length 0
+09:10:46.150609 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [.], ack 1198667188, win 8212, length 0
+09:10:46.150631 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [.], ack 1, win 8212, length 0
+09:10:46.153077 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [P.], seq 3373:4219, ack 9193, win 8209, length 846: HTTP: GET /images/icon1.gif HTTP/1.1
+09:10:46.153100 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [P.], seq 3373:4219, ack 9193, win 8209, length 846: HTTP: GET /images/icon1.gif HTTP/1.1
+09:10:46.154750 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [P.], seq 0:959, ack 1, win 8212, length 959: HTTP: GET /WelcomePage.aspx HTTP/1.1
+09:10:46.154773 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [P.], seq 0:959, ack 1, win 8212, length 959: HTTP: GET /WelcomePage.aspx HTTP/1.1
+09:10:46.154956 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [.], ack 10732, win 8212, length 0
+09:10:46.154966 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [.], ack 10732, win 8212, length 0
+09:10:46.195122 IP 172.168.2.219.2883 > 192.168.13.81.80: Flags [.], ack 2336, win 8209, length 0
+09:10:46.195146 IP 172.168.2.219.2883 > 192.168.13.81.80: Flags [.], ack 2336, win 8209, length 0
+09:10:46.212058 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [.], ack 1089, win 8208, length 0
+09:10:46.212081 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [.], ack 1089, win 8208, length 0
+09:10:46.234264 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [P.], seq 959:1809, ack 1089, win 8208, length 850: HTTP: GET /images/welcome.png HTTP/1.1
+09:10:46.234287 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [P.], seq 959:1809, ack 1089, win 8208, length 850: HTTP: GET /images/welcome.png HTTP/1.1
+09:10:46.238264 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [.], ack 15689, win 8212, length 0
+09:10:46.238287 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [.], ack 15689, win 8212, length 0
+09:10:46.238864 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [.], ack 30432, win 8212, length 0
+09:10:46.238887 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [.], ack 30432, win 8212, length 0
+09:10:46.264294 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [P.], seq 1809:2648, ack 30432, win 8212, length 839: HTTP: GET /favicon.ico HTTP/1.1
+09:10:46.264317 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [P.], seq 1809:2648, ack 30432, win 8212, length 839: HTTP: GET /favicon.ico HTTP/1.1
+09:10:46.315357 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [.], ack 31368, win 8208, length 0
+09:10:46.315380 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [.], ack 31368, win 8208, length 0
+```
+
+其中一台RS响应，则有双向的请求和响应
+```bash
+09:10:45.528155 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [S], seq 3408349778, win 64240, options [mss 1460,nop,wscale 8,nop,nop,sackOK], length 0
+09:10:45.528168 IP 192.168.13.81.80 > 172.168.2.219.2882: Flags [S.], seq 4124734677, ack 3408349779, win 29200, options [mss 1460,nop,nop,sackOK,nop,wscale 7], length 0
+09:10:45.529194 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [.], ack 1, win 8212, length 0
+09:10:45.530148 IP 172.168.2.219.2883 > 192.168.13.81.80: Flags [S], seq 3957377897, win 64240, options [mss 1460,nop,wscale 8,nop,nop,sackOK], length 0
+09:10:45.530159 IP 192.168.13.81.80 > 172.168.2.219.2883: Flags [S.], seq 1771982942, ack 3957377898, win 29200, options [mss 1460,nop,nop,sackOK,nop,wscale 7], length 0
+09:10:45.531312 IP 172.168.2.219.2883 > 192.168.13.81.80: Flags [.], ack 1, win 8212, length 0
+09:10:45.537218 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [P.], seq 1:739, ack 1, win 8212, length 738: HTTP: GET /loginin.aspx?loginType=It/main.aspx HTTP/1.1
+09:10:45.537228 IP 192.168.13.81.80 > 172.168.2.219.2882: Flags [.], ack 739, win 240, length 0
+09:10:45.555194 IP 192.168.13.81.80 > 172.168.2.219.2882: Flags [P.], seq 1:1361, ack 739, win 240, length 1360: HTTP: HTTP/1.1 200 OK
+09:10:45.603030 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [.], ack 1361, win 8207, length 0
+09:10:45.734391 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [P.], seq 739:1717, ack 1361, win 8207, length 978: HTTP: GET /It/main.aspx HTTP/1.1
+09:10:45.774306 IP 192.168.13.81.80 > 172.168.2.219.2882: Flags [.], ack 1717, win 255, length 0
+09:10:46.065006 IP 192.168.13.81.80 > 172.168.2.219.2882: Flags [.], seq 1361:4281, ack 1717, win 255, length 2920: HTTP: HTTP/1.1 200 OK
+09:10:46.065013 IP 192.168.13.81.80 > 172.168.2.219.2882: Flags [P.], seq 4281:5754, ack 1717, win 255, length 1473: HTTP
+09:10:46.065541 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [.], ack 5754, win 8212, length 0
+09:10:46.101201 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [P.], seq 1717:2527, ack 5754, win 8212, length 810: HTTP: GET /css/global.css HTTP/1.1
+09:10:46.101212 IP 192.168.13.81.80 > 172.168.2.219.2882: Flags [.], ack 2527, win 271, length 0
+09:10:46.102074 IP 172.168.2.219.2883 > 192.168.13.81.80: Flags [P.], seq 1:797, ack 1, win 8212, length 796: HTTP: GET /JSCRIPT/Main.js HTTP/1.1
+09:10:46.102087 IP 192.168.13.81.80 > 172.168.2.219.2883: Flags [.], ack 797, win 241, length 0
+09:10:46.103795 IP 192.168.13.81.80 > 172.168.2.219.2883: Flags [P.], seq 1:1481, ack 797, win 241, length 1480: HTTP: HTTP/1.1 200 OK
+09:10:46.103911 IP 192.168.13.81.80 > 172.168.2.219.2882: Flags [P.], seq 5754:8335, ack 2527, win 271, length 2581: HTTP: HTTP/1.1 200 OK
+09:10:46.104405 IP 172.168.2.219.2883 > 192.168.13.81.80: Flags [.], ack 1481, win 8212, length 0
+09:10:46.104708 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [.], ack 8335, win 8212, length 0
+09:10:46.149194 IP 172.168.2.219.2883 > 192.168.13.81.80: Flags [P.], seq 797:1644, ack 1481, win 8212, length 847: HTTP: GET /images/lbl_01.gif HTTP/1.1
+09:10:46.149239 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [P.], seq 2527:3374, ack 8335, win 8212, length 847: HTTP: GET /images/lbl_02.gif HTTP/1.1
+09:10:46.150718 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [S], seq 1834450973, win 64240, options [mss 1460,nop,wscale 8,nop,nop,sackOK], length 0
+09:10:46.150731 IP 192.168.13.81.80 > 172.168.2.219.2886: Flags [S.], seq 1198667187, ack 1834450974, win 29200, options [mss 1460,nop,nop,sackOK,nop,wscale 7], length 0
+09:10:46.151128 IP 192.168.13.81.80 > 172.168.2.219.2883: Flags [P.], seq 1481:2336, ack 1644, win 254, length 855: HTTP: HTTP/1.1 200 OK
+09:10:46.151152 IP 192.168.13.81.80 > 172.168.2.219.2882: Flags [P.], seq 8335:9193, ack 3374, win 286, length 858: HTTP: HTTP/1.1 200 OK
+09:10:46.151785 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [.], ack 1, win 8212, length 0
+09:10:46.154300 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [P.], seq 3374:4220, ack 9193, win 8209, length 846: HTTP: GET /images/icon1.gif HTTP/1.1
+09:10:46.155761 IP 192.168.13.81.80 > 172.168.2.219.2882: Flags [P.], seq 9193:10732, ack 4220, win 301, length 1539: HTTP: HTTP/1.1 200 OK
+09:10:46.155981 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [P.], seq 1:960, ack 1, win 8212, length 959: HTTP: GET /WelcomePage.aspx HTTP/1.1
+09:10:46.155992 IP 192.168.13.81.80 > 172.168.2.219.2886: Flags [.], ack 960, win 244, length 0
+09:10:46.156132 IP 172.168.2.219.2882 > 192.168.13.81.80: Flags [.], ack 10732, win 8212, length 0
+09:10:46.158981 IP 192.168.13.81.80 > 172.168.2.219.2886: Flags [P.], seq 1:1089, ack 960, win 244, length 1088: HTTP: HTTP/1.1 200 OK
+09:10:46.196299 IP 172.168.2.219.2883 > 192.168.13.81.80: Flags [.], ack 2336, win 8209, length 0
+09:10:46.213239 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [.], ack 1089, win 8208, length 0
+09:10:46.235486 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [P.], seq 960:1810, ack 1089, win 8208, length 850: HTTP: GET /images/welcome.png HTTP/1.1
+09:10:46.238663 IP 192.168.13.81.80 > 172.168.2.219.2886: Flags [.], seq 1089:4009, ack 1810, win 259, length 2920: HTTP: HTTP/1.1 200 OK
+09:10:46.238669 IP 192.168.13.81.80 > 172.168.2.219.2886: Flags [.], seq 4009:6929, ack 1810, win 259, length 2920: HTTP
+09:10:46.238671 IP 192.168.13.81.80 > 172.168.2.219.2886: Flags [.], seq 6929:9849, ack 1810, win 259, length 2920: HTTP
+09:10:46.238845 IP 192.168.13.81.80 > 172.168.2.219.2886: Flags [.], seq 9849:12769, ack 1810, win 259, length 2920: HTTP
+09:10:46.238854 IP 192.168.13.81.80 > 172.168.2.219.2886: Flags [.], seq 12769:15689, ack 1810, win 259, length 2920: HTTP
+09:10:46.239437 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [.], ack 15689, win 8212, length 0
+09:10:46.239447 IP 192.168.13.81.80 > 172.168.2.219.2886: Flags [.], seq 15689:22989, ack 1810, win 259, length 7300: HTTP
+09:10:46.239453 IP 192.168.13.81.80 > 172.168.2.219.2886: Flags [.], seq 22989:30289, ack 1810, win 259, length 7300: HTTP
+09:10:46.239620 IP 192.168.13.81.80 > 172.168.2.219.2886: Flags [P.], seq 30289:30432, ack 1810, win 259, length 143: HTTP
+09:10:46.240035 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [.], ack 30432, win 8212, length 0
+09:10:46.265511 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [P.], seq 1810:2649, ack 30432, win 8212, length 839: HTTP: GET /favicon.ico HTTP/1.1
+09:10:46.267036 IP 192.168.13.81.80 > 172.168.2.219.2886: Flags [P.], seq 30432:31368, ack 2649, win 274, length 936: HTTP: HTTP/1.1 404 Not Found
+09:10:46.316533 IP 172.168.2.219.2886 > 192.168.13.81.80: Flags [.], ack 31368, win 8208, length 0
 ```
 
 
