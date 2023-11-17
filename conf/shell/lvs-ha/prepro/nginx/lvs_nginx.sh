@@ -1,14 +1,14 @@
 #!/bin/bash
 # lvs for nginx network operation shell.
 # author: jackli
-# date: 20231018
+# date: 20230927
 # chkconfig: 2345 90 10
 
 
 INTERFACE='lo:'
-VIP01='192.168.13.207'
+VIP01='192.168.13.81'
 VIP01_INTERFACE="${INTERFACE}0"
-VIP02='192.168.13.208'
+VIP02='192.168.13.82'
 VIP02_INTERFACE="${INTERFACE}1"
 VIP_COUNT='2'
 DATETIME='date +"%Y-%m-%d-%H:%M:%S"'

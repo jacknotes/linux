@@ -2003,3 +2003,59 @@ case $1 in
 esac
 ```
 
+
+
+
+
+
+
+## lvs FAQ
+
+
+
+### lvs persistent失效问题
+
+```bash
+# 如下为persistent失效不显示
+[root@lvs02 /etc/keepalived/conf.d]# olvs list
+-------------------------------
+IP Virtual Server version 1.2.1 (size=1048576)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  192.168.13.207:80 sh
+  -> 192.168.13.215:80            Route   3      1664       1558      
+TCP  192.168.13.207:443 sh
+  -> 192.168.13.215:443           Route   3      1907       280       
+TCP  192.168.13.207:6443 sh
+  -> 192.168.13.215:6443          Route   3      4          0         
+TCP  192.168.13.208:80 sh
+  -> 192.168.13.209:80            Route   1      295        0         
+TCP  192.168.13.208:443 sh
+  -> 192.168.13.209:443           Route   1      2          0         
+TCP  192.168.13.208:6443 sh
+  -> 192.168.13.209:6443          Route   1      0          0         
+
+# 原因：是因为更改了VS的配置文件参数:{persistence_timeout 600，lb_algo sh}，如果更改此操作后再重载(reload)则持久连接PPC不会生效，必须重启(restart)keepalived服务才能生效
+# 如下为重启keepalived服务后persistent 600就生效了
+[root@lvs02 /etc/keepalived]# olvs list
+-------------------------------
+IP Virtual Server version 1.2.1 (size=1048576)
+Prot LocalAddress:Port Scheduler Flags
+  -> RemoteAddress:Port           Forward Weight ActiveConn InActConn
+TCP  192.168.13.207:80 sh persistent 600
+  -> 192.168.13.215:80            Route   3      0          0         
+TCP  192.168.13.207:443 sh persistent 600
+  -> 192.168.13.215:443           Route   3      0          0         
+TCP  192.168.13.207:6443 sh persistent 600
+  -> 192.168.13.215:6443          Route   3      0          0         
+TCP  192.168.13.208:80 sh persistent 600
+  -> 192.168.13.209:80            Route   1      247        78        
+TCP  192.168.13.208:443 sh persistent 600
+  -> 192.168.13.209:443           Route   1      0          0         
+TCP  192.168.13.208:6443 sh persistent 600
+  -> 192.168.13.209:6443          Route   1      0          0   
+
+
+# 后续只要不更改persistent和lb_algo配置，而更改其它配置，只需执行reload操作，则持久连接PPC是一直生效的
+```
+

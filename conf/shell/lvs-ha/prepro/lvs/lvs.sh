@@ -269,9 +269,9 @@ case $1 in
 		echo ''
 		echo "Example: $0 list"
 		echo "Example: $0 status"
-		echo "Example: $0 op 207 215 off"
-		echo "Example: $0 op 207 215 on"
-		echo "Example: $0 swap 207 215 209"
+		echo "Example: $0 op 81 217 off"
+		echo "Example: $0 op 81 217 on"
+		echo "Example: $0 swap 81 217 50"
 		echo ''
 		exit 1
 	;;	

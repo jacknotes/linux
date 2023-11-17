@@ -2,9 +2,6 @@
 # sync nginx config to destiantion host
 
 
-# require suffix '/*/'
-NGINX_CONF='/usr/local/nginx/conf/'
-NGINX_HTML='/usr/local/nginx/html/'
 HOST=""
 AUTH_PASSWORD="nginx"
 
@@ -28,8 +25,8 @@ check(){
 }
 
 sync(){
-	rsync -avPz ${NGINX_CONF}* ${HOST}:${NGINX_CONF} >& /dev/null
-	rsync -avPz ${NGINX_HTML}* ${HOST}:${NGINX_HTML} >& /dev/null
+	rsync -avPz /usr/local/nginx/conf/* ${HOST}:/usr/local/nginx/conf >& /dev/null
+	rsync -avPz /usr/local/nginx/html/* ${HOST}:/usr/local/nginx/html >& /dev/null
 }
 
 remote_reload(){

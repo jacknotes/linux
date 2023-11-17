@@ -436,3 +436,49 @@ sudo apt-get -y install docker-ce
 update-grub
 reboot
 ```
+
+
+
+## apt update -y 失败处理
+
+```bash
+## ubuntu18报错
+root@ubuntu-k8s-master04:/etc/apt# apt update -y
+Hit:1 http://repo.hs.com/repository/ubuntu-bionic bionic InRelease
+Get:2 http://repo.hs.com/repository/ubuntu-bionic bionic-security InRelease [88.7 kB]
+Get:3 http://repo.hs.com/repository/ubuntu-bionic bionic-updates InRelease [88.7 kB]
+Get:4 http://repo.hs.com/repository/ubuntu-bionic bionic-proposed InRelease [242 kB]
+Get:5 http://repo.hs.com/repository/ubuntu-bionic bionic-backports InRelease [83.3 kB]
+Get:6 http://repo.hs.com/repository/ubuntu-bionic-docker/linux/ubuntu bionic InRelease [64.4 kB]
+Err:6 http://repo.hs.com/repository/ubuntu-bionic-docker/linux/ubuntu bionic InRelease
+  The following signatures couldn't be verified because the public key is not available: NO_PUBKEY 7EA0A9C3F273FCD8
+Reading package lists... Done
+E: Release file for http://repo.hs.com/repository/ubuntu-bionic/dists/bionic-security/InRelease is not valid yet (invalid for another 617d 22h 21min 10s). Updates for this repository will not be applied.
+E: Release file for http://repo.hs.com/repository/ubuntu-bionic/dists/bionic-updates/InRelease is not valid yet (invalid for another 617d 22h 23min 11s). Updates for this repository will not be applied.
+E: Release file for http://repo.hs.com/repository/ubuntu-bionic/dists/bionic-proposed/InRelease is not valid yet (invalid for another 617d 22h 25min 25s). Updates for this repository will not be applied.
+E: Release file for http://repo.hs.com/repository/ubuntu-bionic/dists/bionic-backports/InRelease is not valid yet (invalid for another 617d 22h 25min 32s). Updates for this repository will not be applied.
+W: GPG error: http://repo.hs.com/repository/ubuntu-bionic-docker/linux/ubuntu bionic InRelease: The following signatures couldn't be verified because the public key is not available: NO_PUBKEY 7EA0A9C3F273FCD8
+E: The repository 'http://repo.hs.com/repository/ubuntu-bionic-docker/linux/ubuntu bionic InRelease' is not signed.
+N: Updating from such a repository can't be done securely, and is therefore disabled by default.
+N: See apt-secure(8) manpage for repository creation and user configuration details.
+
+以上共有两个报错，分别为
+The following signatures couldn't be verified because the public key is not available: NO_PUBKEY 7EA0A9C3F273FCD8
+和
+is not valid yet (invalid for another 617d 22h 12min 44s). Updates for this repository will not be applied.
+
+
+## 解决NO_PUBKEY的问题(第1个问题)
+root@ubuntu-k8s-master04:/etc/apt# apt-key adv --keyserver keyserver.ubuntu.com --search-keys 7EA0A9C3F273FCD8
+
+root@ubuntu-k8s-master04:/etc/apt# apt-key adv --keyserver keyserver.ubuntu.com --receive-keys 7EA0A9C3F273FCD8
+Executing: /tmp/apt-key-gpghome.S74e1Aileq/gpg.1.sh --keyserver keyserver.ubuntu.com --receive-keys 7EA0A9C3F273FCD8
+gpg: key 8D81803C0EBFCD88: 2 duplicate signatures removed
+gpg: key 8D81803C0EBFCD88: 11 signatures not checked due to missing keys
+gpg: key 8D81803C0EBFCD88: "Docker Release (CE deb) <docker@docker.com>" not changed
+gpg: Total number processed: 1
+gpg:              unchanged: 1
+
+## 解决第2个问题
+apt install ntpdate -y && ntpdate ntp.aliyun.com
+```
