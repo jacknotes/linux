@@ -1409,9 +1409,9 @@ ok
 
 
 
-### 四、鉴权
+### 3.4 鉴权
 
-#### 4.1 默认控制台登录页
+#### 3.4.1 默认控制台登录页
 
 2.2.2版本之前的Nacos默认控制台，无论服务端是否开启鉴权，都会存在一个登录页；这导致很多用户被**误导**认为Nacos默认是存在鉴权的。在社区安全工程师的建议下，Nacos自**2.2.2**版本开始，在未开启鉴权时，默认控制台将不需要登录即可访问，同时在控制台中给予提示，提醒用户当前集群未开启鉴权。
 
@@ -1419,9 +1419,9 @@ ok
 
 
 
-#### 4.2 服务端如何开启鉴权
+#### 3.4.2 服务端如何开启鉴权
 
-##### 4.2.1 非Docker环境
+##### 3.4.2.1 非Docker环境
 
 按照官方文档配置启动,默认是不需要登录的，这样会导致配置中心对外直接暴露。而启用鉴权之后，需要在使用用户名和密码登录之后，才能正常使用nacos。
 
@@ -1442,7 +1442,7 @@ nacos.core.auth.enabled=true
 
 
 
-###### 自定义密钥
+**自定义密钥**
 
 开启鉴权之后，你可以自定义用于生成JWT令牌的密钥，application.properties中的配置信息为：
 
@@ -1474,9 +1474,9 @@ nacos.core.auth.plugin.nacos.token.secret.key=VGhpc0lzTXlDdXN0b21TZWNyZXRLZXkwMT
 
 
 
-##### 4.2.2 Docker环境
+##### 3.4.2.2 Docker环境
 
-###### 4.2.2.1 官方镜像
+###### 3.4.2.2.1 官方镜像
 
 如果使用官方镜像，请在启动docker容器时，添加如下环境变量
 
@@ -1507,7 +1507,7 @@ docker-compose -f example/standalone-derby.yaml up
 
 
 
-###### 4.2.2.2 自定义镜像
+###### 3.4.2.2.2 自定义镜像
 
 如果选择自定义镜像，请在构建镜像之前，修改nacos工程中的application.properties文件，
 
@@ -1528,7 +1528,7 @@ nacos.core.auth.enabled=true
 
 
 
-#### 4.3 开启Token缓存功能
+#### 3.4.3 开启Token缓存功能
 
 服务端自2.2.1版本后，默认鉴权插件模块支持token缓存功能，可参见[ISSUE #9906](https://github.com/alibaba/nacos/issues/9906)
 
@@ -1554,7 +1554,7 @@ nacos.core.auth.plugin.nacos.token.expire.seconds=18000
 
 
 
-#### 4.4 开启服务身份识别功能
+#### 3.4.4 开启服务身份识别功能
 
 开启鉴权功能后，服务端之间的请求也会通过鉴权系统的影响。考虑到服务端之间的通信应该是可信的，因此在1.2~1.4.0版本期间，通过User-Agent中是否包含Nacos-Server来进行判断请求是否来自其他服务端。
 
@@ -1578,7 +1578,7 @@ nacos.core.auth.server.identity.value=example
 
 
 
-#### 4.5 开启鉴权、token缓存、服务身份识别
+#### 3.4.5 开启鉴权、token缓存、服务身份识别
 
 ```bash
 # 开启鉴权，并配置用于生成JWT令牌的密钥
@@ -1642,7 +1642,7 @@ root@ansible:~/tmp/nacos/conf# ansible nacos -mcopy -a 'src=./application.proper
 
 
 
-#### 4.6 开启鉴权后访问
+#### 3.4.6 开启鉴权后访问
 
 `Open-API鉴权`
 
