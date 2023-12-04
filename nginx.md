@@ -2103,3 +2103,30 @@ log-format { "@timestamp": "%d:%t %^", "remote_addr": "%h", "referer": "%R", "ho
 
 </pre>
 
+## nginx问题和解决
+
+1. nginx反向代理不通，访问反向代理后的结果为404，实际应为405
+```bash
+# 问题
+	location ^~ /hotelrfuxun/DataChangePush {
+            proxy_redirect off;
+            proxy_set_header Host $proxy_host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Real-Port $remote_port;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_pass http://hotelrfuxun.service.hs.com/api/Notice/OrderDataPush;
+    }
+
+# 解决
+	location ^~ /hotelrfuxun/OrderDataPush {
+            proxy_redirect off;
+            proxy_set_header Host $proxy_host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Real-Port $remote_port;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_pass http://hotelrfuxun.service.hs.com/api/Notice/OrderDataPush;
+    }
+
+# 原因：后端服务URI为/api/Notice/OrderDataPush，而代理的URI为/hotelrfuxun/DataChangePush，这两个URI最后的参数不一致(OrderDataPush和DataChangePush)，导致代理不成功。
+```
+

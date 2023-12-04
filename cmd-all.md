@@ -3086,3 +3086,77 @@ _          _ _
 
 
 </pre>
+
+
+**bash脚本set使用**
+
+```bash
+# set -u 脚本在头部加上它，遇到不存在的变量就会报错，并停止执行。
+set -u == set -o nounset	
+	
+	
+# set -x 执行echo bar之前，该命令会先打印出来，行首以+表示。这对于调试复杂的脚本是很有用的。
+set -x == set -o xtrace
+# 脚本当中如果要关闭命令输出，可以使用set +x
+set +x 
+
+
+# set -e 它使得脚本只要发生错误，就终止执行。
+set -e == set -o errexit
+# set +e 但是，某些命令的非零返回值可能不表示失败，或者开发者希望在命令失败的情况下，脚本继续执行下去。这时可以暂时关闭set -e，该命令执行结束后，再重新打开set -e。
+set +e
+command1
+command2
+set -e
+# command || true 上面代码中，set +e表示关闭-e选项，set -e表示重新打开-e选项。
+还有一种方法是使用command || true，使得该命令即使执行失败，脚本也不会终止执行。
+#!/bin/bash
+set -e
+foo || true
+echo bar
+
+
+# set -o pipefail 'set -e'有一个例外情况，就是不适用于管道命令，也就是说，只要最后一个子命令不失败，管道命令总是会执行成功，因此它后面命令依然会执行，set -e就失效了
+# set -o pipefail 用来解决这种情况，只要一个子命令失败，整个管道命令就失败，脚本就会终止执行。
+#!/usr/bin/env bash
+set -eo pipefail
+foo | echo a
+echo bar
+
+
+# set -E 一旦设置了-e参数，会导致函数内的错误不会被trap命令捕获。-E参数可以纠正这个行为，使得函数也能继承trap命令。
+#!/bin/bash
+set -Eeuo pipefail
+trap "echo ERR trap fired!" ERR
+myfunc()
+{
+  # 'foo' 是一个不存在的命令
+  foo
+}
+myfunc
+# 执行上面这个脚本，就可以看到trap命令生效了。
+$ bash test.sh
+test.sh:行9: foo：未找到命令
+ERR trap fired!
+
+
+# 其他参数 set命令还有一些其他参数。
+set -n：等同于set -o noexec，不运行命令，只检查语法是否正确。
+set -f：等同于set -o noglob，表示不对通配符进行文件名扩展。
+set -v：等同于set -o verbose，表示打印 Shell 接收到的每一行输入。
+set -o noclobber：防止使用重定向运算符>覆盖已经存在的文件。
+上面的-f和-v参数，可以分别使用set +f、set +v关闭。
+
+
+# set 命令总结
+上面重点介绍的set命令的几个参数，一般都放在一起使用。
+# 写法一
+set -Eeuxo pipefail
+
+# 写法二
+set -Eeux
+set -o pipefail
+这两种写法建议放在所有 Bash 脚本的头部。
+另一种办法是在执行 Bash 脚本的时候，从命令行传入这些参数。
+$ bash -euxo pipefail script.sh
+```

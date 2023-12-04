@@ -695,6 +695,57 @@ root@ansible:~/tmp/nacos/conf# ansible nacos -m shell -a 'bash /usr/local/nacos/
 
 
 
+##### 3.3.2.8 配置systemctl启动
+
+```bash
+[root@nacos01 ~]# cat /etc/sysconfig/nacos.env
+JAVA_HOME=/usr/local/jdk/bin
+PATH=/etc/kubeasz/bin/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/usr/local/istio/bin:$JAVA_HOME
+
+[root@nacos01 ~]# systemctl cat nacos
+# /usr/lib/systemd/system/nacos.service
+[Unit]
+Description=https://https://github.com/alibaba/nacos
+After=network-online.target
+
+[Service]
+User=root
+Group=root
+Type=forking
+EnvironmentFile=/etc/sysconfig/nacos.env
+ExecStart=/bin/bash /usr/local/nacos/bin/startup.sh
+ExecStop=/bin/bash /usr/local/nacos/bin/shutdown.sh
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+[root@nacos01 ~]# systemctl daemon-reload
+[root@nacos01 ~]# systemctl restart nacos
+[root@nacos01 ~]# systemctl status nacos
+● nacos.service - https://https://github.com/alibaba/nacos
+   Loaded: loaded (/usr/lib/systemd/system/nacos.service; disabled; vendor preset: disabled)
+   Active: active (running) since Tue 2023-11-28 14:33:29 CST; 2s ago
+  Process: 12696 ExecStart=/bin/bash /usr/local/nacos/bin/startup.sh (code=exited, status=0/SUCCESS)
+ Main PID: 12723 (java)
+   CGroup: /system.slice/nacos.service
+           └─12723 /usr/local/jdk1.8.0_201/bin/java -Djava.ext.dirs=/usr/local/jdk1.8.0_201/jre/lib/ext:/usr/local/jdk1.8.0_201/lib/ext -server -Xms1g -Xmx1g -Xmn500m -XX:MetaspaceSiz...
+
+Nov 28 14:33:29 nacos01 systemd[1]: Starting https://https://github.com/alibaba/nacos...
+Nov 28 14:33:29 nacos01 bash[12696]: /usr/local/jdk1.8.0_201/bin/java -Djava.ext.dirs=/usr/local/jdk1.8.0_201/jre/lib/ext:/usr/local/jdk1.8.0_201/lib/ext  -server -Xms1g -...r/local/naco
+Nov 28 14:33:29 nacos01 bash[12696]: nacos is starting with cluster
+Nov 28 14:33:29 nacos01 bash[12696]: nacos is starting，you can check the /usr/local/nacos/logs/start.out
+Nov 28 14:33:29 nacos01 systemd[1]: Started https://https://github.com/alibaba/nacos.
+Hint: Some lines were ellipsized, use -l to show in full.
+```
+
+
+
+
+
+
+
+
+
 #### 3.3.3 配置SLB
 
 | 端口 | 与主端口的偏移量 | 描述                                                       |

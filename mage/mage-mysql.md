@@ -155,78 +155,78 @@ mysql支持插件式存储引擎
 	3. update user set password=password('new-password') where user=root and host=localhost;
 ###3. 编译安装mysql5.6：
 1. 确保已经安装了cmake:[root@localhost yum.repos.d]# yum install cmake -y
-#cmake用法：
-./configure    cmake .
-./configure --help    cmake . -LH   or   ccmake .
-make && make install     make && make install
-[root@localhost yum.repos.d]# yum groupinstall "Development Tools" "RPM Development Tools" -y  #安装开发环境
-编译参数：
-默认编译的存储引擎包括：csv、myisam、myisammrt和heap
--DWITH_READLINE=1  #开启批量导入功能
--DWITH_SSL=system #开启ssl,对于复制功能至关重要
--DWITH_ZLIB=system #压缩库
--DSYSCONFDIR=/etc #配置文件路径
--DMYSQL_DATADIR=/mydata/data #数据库路径
--DCMAKE_INSTALL_PREFIX=/usr/local/mysql #安装路径
--DWITH_INNOBASE_STORAGE_ENGINE=1 #打开innoDB存储引擎
--DWITH_ARCHIVE_STORAGE_ENGINE=1 #打开archive存储引擎
--DWITH_BLACKHOLE_STORAGE_ENGINE=1 #打开mysql黑洞存储引擎
--DMYSQL_UNIX_ADDR=/tmp/mysql.sock #指定mysql套接字路径
--DDEFAULT_CHARSET=utf-8 #默认字符集
--DDEFAULT_COLLATION=utf8_general_ci #字符集默认排序规则，例如拼音排序，笔画排序
--DWITH_LIBWRAP=0  #禁用tcp_wrap访问
-[root@localhost download]# mkdir /mydata/data -pv #生产环境用在lvm上
-[root@localhost data]# useradd -r -g 3306 -u 3306 -s /sbin/nologin mysql
-[root@localhost data]# chown -R mysql.mysql /mydata/data/
-[root@lnmp mysql-5.5.37]# cmake . -LH
-[root@lnmp mysql-5.5.37]# cmake . -DCMAKE_INSTALL_PREFIX=/usr/local/mysql -DMYSQL_DATADIR=/mydata/ -DSYSCONFDIR=/etc -DWITH_INNOBASE_STORAGE_ENGINE=1 -DWITH_ARCHIVE_STORAGE_ENGINE=1 -DWITH_BLACKHOLE_STORAGE_ENGINE=1 -DWITH_READLINE=1 -DWITH_SSL=system -DWITH_ZLIB=system -DWITH_LIBWRAP=0 -DMYSQL_UNIX_ADDR=/tmp/mysql.sock -DDEFAULT_CHARSET=utf-8 -DDEFAULT_COLLATION=utf8_general_ci  #当后面mysql无法启动时，可以先不设置-DDEFAULT_CHARSET=utf-8 -DDEFAULT_COLLATION=utf8_general_ci参数
-/down/mysql-5.5.37/sql/sql_yacc.yy:14770:23: note: in expansion of macro ‘Lex’
+	#cmake用法：
+	./configure    cmake .
+	./configure --help    cmake . -LH   or   ccmake .
+	make && make install     make && make install
+	[root@localhost yum.repos.d]# yum groupinstall "Development Tools" "RPM Development Tools" -y  #安装开发环境
+	编译参数：
+	默认编译的存储引擎包括：csv、myisam、myisammrt和heap
+	-DWITH_READLINE=1  #开启批量导入功能
+	-DWITH_SSL=system #开启ssl,对于复制功能至关重要
+	-DWITH_ZLIB=system #压缩库
+	-DSYSCONFDIR=/etc #配置文件路径
+	-DMYSQL_DATADIR=/mydata/data #数据库路径
+	-DCMAKE_INSTALL_PREFIX=/usr/local/mysql #安装路径
+	-DWITH_INNOBASE_STORAGE_ENGINE=1 #打开innoDB存储引擎
+	-DWITH_ARCHIVE_STORAGE_ENGINE=1 #打开archive存储引擎
+	-DWITH_BLACKHOLE_STORAGE_ENGINE=1 #打开mysql黑洞存储引擎
+	-DMYSQL_UNIX_ADDR=/tmp/mysql.sock #指定mysql套接字路径
+	-DDEFAULT_CHARSET=utf-8 #默认字符集
+	-DDEFAULT_COLLATION=utf8_general_ci #字符集默认排序规则，例如拼音排序，笔画排序
+	-DWITH_LIBWRAP=0  #禁用tcp_wrap访问
+	[root@localhost download]# mkdir /mydata/data -pv #生产环境用在lvm上
+	[root@localhost data]# useradd -r -g 3306 -u 3306 -s /sbin/nologin mysql
+	[root@localhost data]# chown -R mysql.mysql /mydata/data/
+	[root@lnmp mysql-5.5.37]# cmake . -LH
+	[root@lnmp mysql-5.5.37]# cmake . -DCMAKE_INSTALL_PREFIX=/usr/local/mysql -DMYSQL_DATADIR=/mydata/ -DSYSCONFDIR=/etc -DWITH_INNOBASE_STORAGE_ENGINE=1 -DWITH_ARCHIVE_STORAGE_ENGINE=1 -DWITH_BLACKHOLE_STORAGE_ENGINE=1 -DWITH_READLINE=1 -DWITH_SSL=system -DWITH_ZLIB=system -DWITH_LIBWRAP=0 -DMYSQL_UNIX_ADDR=/tmp/mysql.sock -DDEFAULT_CHARSET=utf-8 -DDEFAULT_COLLATION=utf8_general_ci  #当后面mysql无法启动时，可以先不设置-DDEFAULT_CHARSET=utf-8 -DDEFAULT_COLLATION=utf8_general_ci参数
+	/down/mysql-5.5.37/sql/sql_yacc.yy:14770:23: note: in expansion of macro ‘Lex’
              LEX *lex= Lex;
                        ^
-make[2]: *** [sql/CMakeFiles/sql.dir/sql_yacc.cc.o] Error 1
-make[1]: *** [sql/CMakeFiles/sql.dir/all] Error 2
-make: *** [all] Error 2
-[root@lnmp mysql-5.5.37]# echo $? #编译报错
-2
-[root@lnmp ~]# rpm -qa | grep bison
-bison-3.0.4-2.el7.x86_64  #版本太高
-[root@lnmp ~]# rpm -e bison
-[root@lnmp ~]# rpm -qa | grep bison
-[root@lnmp ~]# wget ftp://ftp.gnu.org/gnu/bison/bison-2.5.1.tar.xz #下载2.5.1低版本
-tar xf bison-2.5.1.tar 
-cd bison-2.5.1/
-./configure && make && make install
-[root@lnmp mysql-5.5.37]# make && make install
-[root@lnmp mysql-5.5.37]# cd /usr/local/
-[root@lnmp local]# chown -R :mysql mysql/
-[root@lnmp mysql]# ./scripts/mysql_install_db --user=mysql --datadir=/mydata/data
-Installing MySQL system tables...
-OK
-Filling help tables...
-OK
-[root@lnmp mysql]# cp support-files/my-large.cnf /etc/my.cnf
-[root@lnmp mysql]# cp support-files/mysql.server /etc/init.d/mysqld
-[root@lnmp mysql]# chkconfig --add mysqld
-[root@lnmp mysql]# chkconfig --list mysqld
-mysqld          0:off   1:off   2:on    3:on    4:on    5:on    6:off
-[root@lnmp mysql]# vim /etc/profile.d/mysql.sh
-export PATH=$PATH:/usr/local/mysql/bin
-[root@lnmp mysql]# . /etc/profile
-[root@lnmp etc]# service mysqld start
-Starting MySQL.. SUCCESS! 
-注：当上面所有设置过，启动不成功一般有4点原因：
+	make[2]: *** [sql/CMakeFiles/sql.dir/sql_yacc.cc.o] Error 1
+	make[1]: *** [sql/CMakeFiles/sql.dir/all] Error 2
+	make: *** [all] Error 2
+	[root@lnmp mysql-5.5.37]# echo $? #编译报错
+	2
+	[root@lnmp ~]# rpm -qa | grep bison
+	bison-3.0.4-2.el7.x86_64  #版本太高
+	[root@lnmp ~]# rpm -e bison
+	[root@lnmp ~]# rpm -qa | grep bison
+	[root@lnmp ~]# wget ftp://ftp.gnu.org/gnu/bison/bison-2.5.1.tar.xz #下载2.5.1低版本
+	tar xf bison-2.5.1.tar 
+	cd bison-2.5.1/
+	./configure && make && make install
+	[root@lnmp mysql-5.5.37]# make && make install
+	[root@lnmp mysql-5.5.37]# cd /usr/local/
+	[root@lnmp local]# chown -R :mysql mysql/
+	[root@lnmp mysql]# ./scripts/mysql_install_db --user=mysql --datadir=/mydata/data
+	Installing MySQL system tables...
+	OK
+	Filling help tables...
+	OK
+	[root@lnmp mysql]# cp support-files/my-large.cnf /etc/my.cnf
+	[root@lnmp mysql]# cp support-files/mysql.server /etc/init.d/mysqld
+	[root@lnmp mysql]# chkconfig --add mysqld
+	[root@lnmp mysql]# chkconfig --list mysqld
+	mysqld          0:off   1:off   2:on    3:on    4:on    5:on    6:off
+	[root@lnmp mysql]# vim /etc/profile.d/mysql.sh
+	export PATH=$PATH:/usr/local/mysql/bin
+	[root@lnmp mysql]# . /etc/profile
+	[root@lnmp etc]# service mysqld start
+	Starting MySQL.. SUCCESS! 
+	注：当上面所有设置过，启动不成功一般有4点原因：
 	1. 此前服务未关闭端口占用，关闭之前的服务
 	2. 数据初始化失败,查看数据目录/mydata下的$HOST.err错误文件
 	3. 数据目录位置错误，数据目录/mydata下无$HOST.err错误文件，在my.cnf中明确定义datadir = /mydata
 	4. 数据目录权限问题
-#在同一台主机上，mysql和mysqld是如何进行通信的：
-linux:
+	#在同一台主机上，mysql和mysqld是如何进行通信的：
+	linux:
 	mysql-->mysql.sock-->mysqld  #套接字
-windows:
+	windows:
 	mysql-->memory(pipe)-->mysqld   #共享内存或管道
-mysql客户端工具：mysql、mysqldump、mysqladmin、mysqlcheck、mysqlimport   #my.cnf中client字段的配置都会对这些客户端工具生效
-mysql非客户端工具：myisamchk、myisampark
-mysql客户端使用参数：
+	mysql客户端工具：mysql、mysqldump、mysqladmin、mysqlcheck、mysqlimport   #my.cnf中client字段的配置都会对这些客户端工具生效
+	mysql非客户端工具：myisamchk、myisampark
+	mysql客户端使用参数：
 	-u -h -p --protocal --port
 	默认使用socket,其它protocol有tcp、memory、pipe
 
@@ -1841,14 +1841,14 @@ Enter password:
 ---------------mysql备份脚本-------------
 #!/bin/bash  
 #Shell Command For Backup MySQL Database Everyday Automatically By Crontab  
-   
+
 USER=root  
 PASSWORD="123.com"  
 DATABASE="yzm"  
 HOSTNAME="localhost"  
-   
+
 WEBMASTER=test@qq.com  
-   
+
 BACKUP_DIR=/backup/mysql/$DATABASE #备份文件存储路径  
 LOGFILE=/backup/mysql/$DATABASE/data_backup.log #日记文件路径  
 DATE=`date '+%Y%m%d-%H%M'` #日期格式（作为文件名）  
@@ -1866,7 +1866,7 @@ echo " " >> $LOGFILE
 echo "———————————————–" >> $LOGFILE  
 echo "BACKUP DATE:" $(date +"%y-%m-%d %H:%M:%S") >> $LOGFILE  
 echo "———————————————– " >> $LOGFILE  
-   
+
 #切换至备份目录  
 cd $BACKUP_DIR  
 #使用mysqldump 命令备份制定数据库，并以格式化的时间戳命名备份文件  
@@ -1944,14 +1944,14 @@ LVM卷进行步骤：
 2. mysql> flush logs;
 3. [root@lnmp ~]# mysql -e 'show master status '> binlog.txt 
 4. [root@lnmp ~]# lvcreate -L 50M -s -p r -n mydata-snap /dev/myvg/mylv
-  Rounding up size to full physical extent 52.00 MiB
-  Logical volume "mydata-snap" created.
+    Rounding up size to full physical extent 52.00 MiB
+    Logical volume "mydata-snap" created.
 5. mysql> unlock tables; 
 6. [root@lnmp mnt]#  mount /dev/myvg/mydata-snap /mnt && mkdir /backup/alldata -pv && cp -a ./* /backup/alldata/
 7. [root@lnmp ~]# umount /mnt/
 8. [root@lnmp ~]# lvremove /dev/myvg/mydata-snap 
-Do you really want to remove active logical volume myvg/mydata-snap? [y/n]: y
-  Logical volume "mydata-snap" successfully removed
+  Do you really want to remove active logical volume myvg/mydata-snap? [y/n]: y
+    Logical volume "mydata-snap" successfully removed
 9. [root@lnmp alldata]# rm -rf mysql-bin.* #整理完全备份文件，删除快照无效二进制日志文件
 [root@lnmp alldata]# ls
 ibdata1      ib_logfile1        lnmp.jack.com.pid  mydb   performance_schema  wordpress
@@ -2312,7 +2312,7 @@ mysql5.6+：配置较复杂，引入gtid（全局事务号）机制，multi-thre
 3. 连接至主服务器，并开始复制数据：
 	1. mysql> CHANGE MASTER TO MASTER_HOST='',MASTER_PORT='',MASTER_LOG_FILE='',MASTER_LOG_POS='',MASTER_USER='',MASTER_PASSWORD='';
 	2. mysql> START SLAVE; #启动IO_Thread和SQL_Thread两个线程，如果需要启用单个线程，例：START SLAVE IO_Thread;
-复制线程：
+	复制线程：
 	master: 当从服务器复制主服务器二进制事件时，主服务器启动一个dump线程跟从服务器IO_Thread进行连接
 	slave: 当从服务器从主服务器复制二进制事件时，会启动IO_Thread和SQL_Thread两个线程，IO_Thread是跟主服务器dump线程进行连接，作用是复制主服务器二进制事件到从服务器中继日志中的。SQL_Thread线程是回放本地的中继日志生成数据文件并记录二进制日志文件到从服务器的。
 
@@ -3323,7 +3323,7 @@ Empty set (0.00 sec)  #因为这个做从节点，而别的节点未把此从节
 1. mysql> grant replication slave on *.* to repluser@'192.168.1.%' identified by 'replpass'; #主节点设置帐户
 2. mysql> change master to master_host='192.168.1.31',master_user='repluser',master_password='replpass',master_auto_position=1; #从节点加入主节点
 3. mysql> show slave status\G;
-*************************** 1. row ***************************
+   *************************** 1. row ***************************
                Slave_IO_State: 
                   Master_Host: 192.168.1.31
                   Master_User: repluser
@@ -3341,7 +3341,7 @@ Empty set (0.00 sec)  #因为这个做从节点，而别的节点未把此从节
            Replicate_Do_Table: 
        Replicate_Ignore_Table: 
       Replicate_Wild_Do_Table: 
-  Replicate_Wild_Ignore_Table: 
+    Replicate_Wild_Ignore_Table: 
                    Last_Errno: 0
                    Last_Error: 
                  Skip_Counter: 0
@@ -3357,12 +3357,12 @@ Empty set (0.00 sec)  #因为这个做从节点，而别的节点未把此从节
             Master_SSL_Cipher: 
                Master_SSL_Key: 
         Seconds_Behind_Master: NULL
-Master_SSL_Verify_Server_Cert: No
+   Master_SSL_Verify_Server_Cert: No
                 Last_IO_Errno: 0
                 Last_IO_Error: 
                Last_SQL_Errno: 0
                Last_SQL_Error: 
-  Replicate_Ignore_Server_Ids: 
+    Replicate_Ignore_Server_Ids: 
              Master_Server_Id: 0
                   Master_UUID: 
              Master_Info_File: mysql.slave_master_info
@@ -3380,7 +3380,7 @@ Master_SSL_Verify_Server_Cert: No
                 Auto_Position: 1
 4. mysql> start slave;
 5. mysql> show slave status\G;
-*************************** 1. row ***************************
+   *************************** 1. row ***************************
                Slave_IO_State: Waiting for master to send event
                   Master_Host: 192.168.1.31
                   Master_User: repluser
@@ -3398,7 +3398,7 @@ Master_SSL_Verify_Server_Cert: No
            Replicate_Do_Table: 
        Replicate_Ignore_Table: 
       Replicate_Wild_Do_Table: 
-  Replicate_Wild_Ignore_Table: 
+    Replicate_Wild_Ignore_Table: 
                    Last_Errno: 0
                    Last_Error: 
                  Skip_Counter: 0
@@ -3414,12 +3414,12 @@ Master_SSL_Verify_Server_Cert: No
             Master_SSL_Cipher: 
                Master_SSL_Key: 
         Seconds_Behind_Master: 0
-Master_SSL_Verify_Server_Cert: No
+   Master_SSL_Verify_Server_Cert: No
                 Last_IO_Errno: 0
                 Last_IO_Error: 
                Last_SQL_Errno: 0
                Last_SQL_Error: 
-  Replicate_Ignore_Server_Ids: 
+    Replicate_Ignore_Server_Ids: 
              Master_Server_Id: 1
                   Master_UUID: cc9c8cb8-9c66-11e9-9eb9-000c29ee3e65
              Master_Info_File: mysql.slave_master_info
@@ -3558,15 +3558,15 @@ function read_query(packet)
         end
 
         local query = packet:sub(2)
-
+    
         local rows = { }
         local fields = { }
-
+    
         if query:lower() == "select * from backends" then
                 fields = { 
                         { name = "backend_ndx", 
                           type = proxy.MYSQL_TYPE_LONG },
-
+    
                         { name = "address",
                           type = proxy.MYSQL_TYPE_STRING },
                         { name = "state",
@@ -3578,7 +3578,7 @@ function read_query(packet)
                         { name = "connected_clients", 
                           type = proxy.MYSQL_TYPE_LONG },
                 }
-
+    
                 for i = 1, #proxy.global.backends do
                         local states = {
                                 "unknown",
@@ -3591,7 +3591,7 @@ function read_query(packet)
                                 "ro"
                         }
                         local b = proxy.global.backends[i]
-
+    
                         rows[#rows + 1] = {
                                 i,
                                 b.dst.name,          -- configured backend address
@@ -3614,7 +3614,7 @@ function read_query(packet)
                 set_error("use 'SELECT * FROM help' to see the supported commands")
                 return proxy.PROXY_SEND_RESULT
         end
-
+    
         proxy.response = {
                 type = proxy.MYSQLD_PACKET_OK,
                 resultset = {
@@ -3701,20 +3701,20 @@ mysql> select * from backends;
 # chkconfig: - 78 30
 # processname: mysql-proxy
 # description: mysql-proxy is a proxy daemon for mysql
- 
+
 # Source function library.
 . /etc/rc.d/init.d/functions
- 
+
 prog="/usr/local/mysql-proxy/bin/mysql-proxy"
- 
+
 # Source networking configuration.
 if [ -f /etc/sysconfig/network ]; then
     . /etc/sysconfig/network
 fi
- 
+
 # Check that networking is up.
 [ ${NETWORKING} = "no" ] && exit 0
- 
+
 # Set default mysql-proxy configuration.
 ADMIN_USER="admin"
 ADMIN_PASSWD="admin"
@@ -3723,14 +3723,14 @@ PROXY_OPTIONS="--daemon"
 PROXY_PID=/var/run/mysql-proxy.pid
 PROXY_USER="mysql-proxy"
 PROXY_ADDRESS="0.0.0.0:4040"
- 
+
 # Source mysql-proxy configuration.
 if [ -f /etc/sysconfig/mysql-proxy ]; then
     . /etc/sysconfig/mysql-proxy
 fi
- 
+
 RETVAL=0
- 
+
 start() {
     echo -n $"Starting $prog: "
     daemon $prog $PROXY_OPTIONS --pid-file=$PROXY_PID --proxy-address="$PROXY_ADDRESS" --user=$PROXY_USER --admin-username="$ADMIN_USER" --admin-lua-script="$ADMIN_LUA_SCRIPT" --admin-password="$ADMIN_PASSWORD"
@@ -3740,7 +3740,7 @@ start() {
         touch /var/lock/subsys/mysql-proxy
     fi
 }
- 
+
 stop() {
     echo -n $"Stopping $prog: "
     killproc -p $PROXY_PID -d 3 $prog
@@ -3777,7 +3777,7 @@ case "$1" in
         RETVAL=1
         ;;
 esac
- 
+
 exit $RETVAL
 ----------------
 [root@lnmp mysql-proxy]# cat /etc/sysconfig/mysql-proxy  #mysql-proxy脚本配置文件
@@ -4292,7 +4292,7 @@ show binary logs;
 #Date: 2020-11-22
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/usr/local/mysql/bin
 export LANG=en_US.UTF-8
-   
+
 ENV=Pro
 TYPE=Full
 USER=root  
@@ -4345,32 +4345,32 @@ if [[ $? == 0 ]]; then
     #存放binlog文件名变量数组
     VAR_BINLOG_NAME_LONG=(`cat ${MYSQL_BINLOG_INDEX} | sed "s#^.#$(${MYSQL_BINLOG_BASENAME})#g" | sort | head -n -1`)
     VAR_BINLOG_NAME_SHORT=(`cat ${MYSQL_BINLOG_INDEX} | sed "s#^./##g" | sort | head -n -1`)
-
+    
     #对binlog进行存档
     echo "Copy_Mysql_Binlog_To_Bakcup_Binlogs_Dir.........." >> ${LOGFILE}  
     for i in `seq 0 ${#VAR_BINLOG_NAME_LONG[*]}`;do
-	if [ "${i}" != "${#VAR_BINLOG_NAME_LONG[*]}" ];then
+    if [ "${i}" != "${#VAR_BINLOG_NAME_LONG[*]}" ];then
     		\cp -ar ${VAR_BINLOG_NAME_LONG[$[i]]} ${VAR_BINLOG_NAME_SHORT[${i}]}_${FORMAT}
-	fi
+    fi
     done
-
+    
     #删除之前旧binlog
     if [[ $? == 0 ]]; then  
     	echo "Copy_Mysql_Binlog_To_Bakcup_Binlogs_Dir: Success" >> ${LOGFILE}  
         PURGE_BINARY_LOGS="purge binary logs to `mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e 'show binary logs;' | tail -n 1 | awk '{print $1}'`"
         PURGE_BINARY_LOGS_RESULT=`echo ${PURGE_BINARY_LOGS} | sed -e 's/to /to \"/g' | sed -e 's/$/\"/g'`
-	echo "Delete_Old_Binlog.........." >> ${LOGFILE}
+    echo "Delete_Old_Binlog.........." >> ${LOGFILE}
         mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e "${PURGE_BINARY_LOGS_RESULT}"
-	[ $? == 0 ] && echo "Delete_Old_Binlog: Success" >> ${LOGFILE} || echo "Delete_Old_Binlog: Failure" >> ${LOGFILE} 
+    [ $? == 0 ] && echo "Delete_Old_Binlog: Success" >> ${LOGFILE} || echo "Delete_Old_Binlog: Failure" >> ${LOGFILE} 
     else
     	echo "Copy_Mysql_Binlog_To_Bakcup_Binlogs_Dir: Failure" >> ${LOGFILE}  
     fi
-
+    
     #对配置文件和启动脚本进行存档
     echo "Copy_Mysql_Config_File_and_Boot_Shell_To_Bakcup_Dir.........." >> ${LOGFILE}  
     \cp -ar ${MYSQL_CONF} ${BACKUP_DIR}/${BACKUP_DIR_CHILD}/${FORMAT}_${MYSQL_CONF_NAME}  && \cp -ar ${MYSQL_BOOT_SHELL} ${BACKUP_DIR}/${BACKUP_DIR_CHILD}/${FORMAT}_${MYSQL_BOOT_SHELL_NAME}
     [ $? == 0 ] && echo "Copy_Mysql_Config_File_and_Boot_Shell_To_Bakcup_Dir: Success" >> ${LOGFILE} || echo "Copy_Mysql_Config_File_and_Boot_Shell_To_Bakcup_Dir: Failure" >> ${LOGFILE} 
-
+    
     #写入信息到文件
     echo "———————————————–————————————————————————" >> ${DUMPFILE_INFO}
     echo "MYSQL_INFO" >> ${DUMPFILE_INFO}
@@ -4388,21 +4388,21 @@ if [[ $? == 0 ]]; then
     echo "———————————————–————————————————————————" >> ${DUMPFILE_INFO}
     echo "MYSQL_BACKUP_LOG" >> ${DUMPFILE_INFO}
     sed -n "/${DATE}/,/Bakcup_Dir:/p" ${LOGFILE} >> ${DUMPFILE_INFO}
-
+    
     #创建备份文件的压缩包  
     echo "Create_Compression_File.........." >> ${LOGFILE}  
     cd .. && tar czf ${ARCHIVE} ${FORMAT} >& /dev/null 
     #判断压缩是否成功
     if [ $? == 0 ];then
-	echo "Create_Compression_File: Success" >> ${LOGFILE}
+    echo "Create_Compression_File: Success" >> ${LOGFILE}
     	#删除原始备份文件，只需保留数据库备份文件的压缩包即可  
-	echo "Delete_Source_Backup_files.........." >> ${LOGFILE}
+    echo "Delete_Source_Backup_files.........." >> ${LOGFILE}
     	rm -rf ${FORMAT}
-	[ $? == 0 ] && echo "Delete_Source_Backup_files: Success" >> ${LOGFILE} || echo "Delete_Source_Backup_files: Failure" >> ${LOGFILE}
+    [ $? == 0 ] && echo "Delete_Source_Backup_files: Success" >> ${LOGFILE} || echo "Delete_Source_Backup_files: Failure" >> ${LOGFILE}
     	echo "[${ARCHIVE}] Backup_Succeed!" >> ${LOGFILE} 
     else
-	echo "Create_Compression_File: Failure" >> ${LOGFILE}
-	echo "[${ARCHIVE}] Backup_Failure!" >> ${LOGFILE} 
+    echo "Create_Compression_File: Failure" >> ${LOGFILE}
+    echo "[${ARCHIVE}] Backup_Failure!" >> ${LOGFILE} 
     fi
 else  
     echo "[${DUMPFILE}] Database_Backup_Failure!" >> ${LOGFILE}  
@@ -4421,7 +4421,7 @@ echo "  " >> ${LOGFILE}
 #Date: 2020-11-22
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/usr/local/mysql/bin
 export LANG=en_US.UTF-8
- 
+
 ENV=Pro
 TYPE=Full
 USER=root  
@@ -4473,7 +4473,7 @@ if [[ $? == 0 ]]; then
     echo "Copy_Mysql_Config_File_and_Boot_Shell_To_Bakcup_Dir.........." >> ${LOGFILE}  
     \cp -ar ${MYSQL_CONF} ${BACKUP_DIR}/${BACKUP_DIR_CHILD}/${FORMAT}_${MYSQL_CONF_NAME}  && \cp -ar ${MYSQL_BOOT_SHELL} ${BACKUP_DIR}/${BACKUP_DIR_CHILD}/${FORMAT}_${MYSQL_BOOT_SHELL_NAME}
     [ $? == 0 ] && echo "Copy_Mysql_Config_File_and_Boot_Shell_To_Bakcup_Dir: Success" >> ${LOGFILE} || echo "Copy_Mysql_Config_File_and_Boot_Shell_To_Bakcup_Dir: Failure" >> ${LOGFILE} 
-
+    
     #写入信息到文件
     echo "———————————————–————————————————————————" >> ${DUMPFILE_INFO}
     echo "MYSQL_INFO" >> ${DUMPFILE_INFO}
@@ -4491,21 +4491,21 @@ if [[ $? == 0 ]]; then
     echo "———————————————–————————————————————————" >> ${DUMPFILE_INFO}
     echo "MYSQL_BACKUP_LOG" >> ${DUMPFILE_INFO}
     sed -n "/${DATE}/,/Bakcup_Dir:/p" ${LOGFILE} >> ${DUMPFILE_INFO}
-
+    
     #创建备份文件的压缩包  
     echo "Create_Compression_File.........." >> ${LOGFILE}  
     cd .. && tar czf ${ARCHIVE} ${FORMAT} >& /dev/null 
     #判断压缩是否成功
     if [ $? == 0 ];then
-	echo "Create_Compression_File: Success" >> ${LOGFILE}
+    echo "Create_Compression_File: Success" >> ${LOGFILE}
     	#删除原始备份文件，只需保留数据库备份文件的压缩包即可  
-	echo "Delete_Source_Backup_files.........." >> ${LOGFILE}
+    echo "Delete_Source_Backup_files.........." >> ${LOGFILE}
     	rm -rf ${FORMAT}
-	[ $? == 0 ] && echo "Delete_Source_Backup_files: Success" >> ${LOGFILE} || echo "Delete_Source_Backup_files: Failure" >> ${LOGFILE}
+    [ $? == 0 ] && echo "Delete_Source_Backup_files: Success" >> ${LOGFILE} || echo "Delete_Source_Backup_files: Failure" >> ${LOGFILE}
     	echo "[${ARCHIVE}] Backup_Succeed!" >> ${LOGFILE} 
     else
-	echo "Create_Compression_File: Failure" >> ${LOGFILE}
-	echo "[${ARCHIVE}] Backup_Failure!" >> ${LOGFILE} 
+    echo "Create_Compression_File: Failure" >> ${LOGFILE}
+    echo "[${ARCHIVE}] Backup_Failure!" >> ${LOGFILE} 
     fi
 else  
     echo "[${DUMPFILE}] Database_Backup_Failure!" >> ${LOGFILE}  
@@ -4533,7 +4533,7 @@ echo "  " >> ${LOGFILE}
 
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/usr/local/mysql/bin
 export LANG=en_US.UTF-8
-   
+
 ENV=Dev
 TYPE=Full
 USER=dbbackup 
@@ -4688,10 +4688,10 @@ if [[ $? == 0 ]]; then
     echo "Copy_Binlog_To_BackupDir.........." >> $LOGFILE
     for i in `seq 0 ${#VAR_BINLOG_NAME_LONG[*]}`;do
         if [ "${i}" != "${#VAR_BINLOG_NAME_LONG[*]}" ];then
-		\cp -ar ${VAR_BINLOG_NAME_LONG[$[i]]} ${VAR_BINLOG_NAME_SHORT[${i}]}_${ENV}_${TYPE}_`${DATE_FILE}`
+    	\cp -ar ${VAR_BINLOG_NAME_LONG[$[i]]} ${VAR_BINLOG_NAME_SHORT[${i}]}_${ENV}_${TYPE}_`${DATE_FILE}`
         fi
     done
-
+    
     #删除之前旧binlog
     if [[ $? == 0 ]]; then
         echo "Copy_Binlog_To_BackupDir: Success" >> $LOGFILE
@@ -4700,31 +4700,31 @@ if [[ $? == 0 ]]; then
         echo "Delete_Old_Binlog.........." >> ${LOGFILE}
         mysql -h${HOSTNAME} -u${USER} -p${PASSWORD} -e "${PURGE_BINARY_LOGS_RESULT}"
         if [[ $? == 0 ]];then
-	    echo "Delete_Old_Binlog: Success" >> ${LOGFILE} 
-	else
-	    echo "Delete_Old_Binlog: Failure" >> ${LOGFILE}
+        echo "Delete_Old_Binlog: Success" >> ${LOGFILE} 
+    else
+        echo "Delete_Old_Binlog: Failure" >> ${LOGFILE}
         fi
     else
         echo "Copy_Binlog_To_BackupDir: Failure" >> $LOGFILE
     fi
-
+    
     #创建备份文件的压缩包  
     echo "Create_Compression_File.........." >> ${LOGFILE}
     cd .. && tar czf ${ARCHIVE} ${FORMAT} >& /dev/null
-
+    
     #判断压缩是否成功
     if [ $? == 0 ];then
         echo "Create_Compression_File: Success" >> ${LOGFILE}
-
+    
         #删除原始备份文件，只需保留数据库备份文件的压缩包即可  
         echo "Delete_Source_Backup_files.........." >> ${LOGFILE}
         rm -rf ${FORMAT}
         if [ $? == 0 ];then
-	    echo "Delete_Source_Backup_files: Success" >> ${LOGFILE} 
+        echo "Delete_Source_Backup_files: Success" >> ${LOGFILE} 
             echo "[${ARCHIVE}] Backup_Succeed!" >> ${LOGFILE}
             echo "Increment_Backup_Databases: Success" >> $LOGFILE
-	else 
-	    echo "Delete_Source_Backup_files: Failure" >> ${LOGFILE}
+    else 
+        echo "Delete_Source_Backup_files: Failure" >> ${LOGFILE}
         fi
     else
         echo "Create_Compression_File: Failure" >> ${LOGFILE}
@@ -5271,11 +5271,11 @@ set session sql_log_bin=1;
 change master to master_host='192.168.13.160',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000157',MASTER_LOG_POS=111047299 for channel 'channel1';
 show slave status\G
 5. 需要实现主主集群，还需要在192.168.13.160上把192.168.13.164设置为主
-  5.1 将192.168.13.164的配置文件/etc/my.cnf关闭多级复制，log-slave-updates = 0，并重启服务。观察192.168.13.164 binlog文件确定是否未变化(本机未执行DML语句时)
-  5.2 在192.168.13.160上将192.168.13.164设置为主
-change master to master_host='192.168.13.164',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000005',MASTER_LOG_POS=194 for channel 'channel1';
-  5.3 然后配置文件/etc/my.cnf开启多级复制，log-slave-updates = 1，并重启服务
------------------------------------------------------------------------------------- 
+    5.1 将192.168.13.164的配置文件/etc/my.cnf关闭多级复制，log-slave-updates = 0，并重启服务。观察192.168.13.164 binlog文件确定是否未变化(本机未执行DML语句时)
+    5.2 在192.168.13.160上将192.168.13.164设置为主
+  change master to master_host='192.168.13.164',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000005',MASTER_LOG_POS=194 for channel 'channel1';
+    5.3 然后配置文件/etc/my.cnf开启多级复制，log-slave-updates = 1，并重启服务
+------------------------------------------------------------------------------------
 注：其实可以省略log-slave-updates的配置，直接配置change master,只需要查看本地binlog文件执行哪个位置，可以从早期位置同步，但是上面步骤更稳妥。例如
 mysql> show master status\G
 *************************** 1. row ***************************
@@ -5327,3 +5327,213 @@ source /restore-mysql/feishu_selfbuilt-000400.sql
 source /restore-mysql/feishu_selfbuilt-000401.sql
 source /restore-mysql/feishu_selfbuilt-000402.sql
 ```
+
+
+
+
+
+# mysqlbinlog日志解析
+
+
+
+## 使用mysqlbinlog分析
+
+
+
+**mysqlbinlog转换为sql，对其base64解码并详细输出，从而进行binlog分析**
+
+```bash
+mysqlbinlog --no-defaults master-bin.000079 > /tmp/binlog.sql
+```
+
+
+
+**mysqlbinlog转换为sql，对其base64解码并详细输出，从而进行binlog分析**
+
+```bash
+mysqlbinlog --no-defaults -vv --base64-output=decode-rows master-bin.000079 > /tmp/binlog-new.sql
+```
+
+```bash
+[root@mysql01 /tmp]# ll -h
+total 7.5G
+-rw-r--r-- 1 root root 5.5G Dec  1 09:09 binlog-new.sql	# 解码binlog
+-rw-r--r-- 1 root root 2.0G Nov 30 20:56 binlog.sql	# 未解码binlog
+```
+
+
+
+**未解码binlog内容片段**
+
+```bash
+#231129 16:21:55 server id 30  end_log_pos 1554 CRC32 0x2251eb00 	Write_rows: table id 144 flags: STMT_END_F
+
+BINLOG '
+o/RmZRMeAAAAOAAAAIsFAAAAAJAAAAAAAAEABnphYmJpeAAHaGlzdG9yeQAECAMFAwEIAHpSNkw=
+o/RmZR4eAAAAhwAAABIGAAAAAJAAAAAAAAEAAgAE//DZiQAAAAAAAL/zZmUAAAAAAAA2QOiAvS/w
+24kAAAAAAAC/82ZlAAAAAAAARUDogL0v8NqJAAAAAAAAv/NmZQAAAAAAAD5A6IC9L/AxigAAAAAA
+AL/zZmUAAAAAAABFQOiAvS8A61Ei
+'/*!*/;
+# at 1554
+```
+
+**解码binlog内容片段**
+
+```bash
+#231129 16:31:49 server id 30  end_log_pos 8734516 CRC32 0xed0660ca     Update_rows: table id 109 flags: STMT_END_F
+### UPDATE `currency_rate`.`qrtz_scheduler_state`
+### WHERE
+###   @1='CurrencyRateSyncSchedule' /* VARSTRING(480) meta=480 nullable=0 is_null=0 */
+###   @2='pro-java-currencyrate-service-hs-com-rollout-7574648f49-lsghf1696846181249' /* VARSTRING(760) meta=760 nullable=0 is_null=0 */
+###   @3=1701246701683 /* LONGINT meta=0 nullable=0 is_null=0 */
+###   @4=7500 /* LONGINT meta=0 nullable=0 is_null=0 */
+### SET
+###   @1='CurrencyRateSyncSchedule' /* VARSTRING(480) meta=480 nullable=0 is_null=0 */
+###   @2='pro-java-currencyrate-service-hs-com-rollout-7574648f49-lsghf1696846181249' /* VARSTRING(760) meta=760 nullable=0 is_null=0 */
+###   @3=1701246709185 /* LONGINT meta=0 nullable=0 is_null=0 */
+###   @4=7500 /* LONGINT meta=0 nullable=0 is_null=0 */
+# at 8734516
+```
+
+
+
+
+
+## 使用binlog2sql工具分析
+
+```bash
+[root@prometheus ~]# git clone https://github.com/danfengcao/binlog2sql.git && cd binlog2sql
+[root@prometheus binlog2sql]# pip-3 install -r requirements.txt 
+```
+
+
+
+**mysql server 必须配置如下**
+
+```bash
+[mysqld]
+server_id = 1							# 配置server_id
+log_bin = /var/log/mysql/mysql-bin.log	# 开启binlog
+max_binlog_size = 1G					# binlog文件最大大小
+binlog_format = row						# 行格式
+binlog_row_image = full		# full记录每一行的变更(不管sql语句是否涉及字段)，minimal只记录影响的行
+
+#  binlog_row_image = full 解释#
+### UPDATE `test`.`t2`
+### WHERE
+###   @1=1 /* INT meta=0 nullable=0 is_null=0 */
+###   @2='gz' /* STRING(20) meta=65044 nullable=1 is_null=0 */
+###   @3='yayundeng' /* STRING(20) meta=65044 nullable=1 is_null=0 */
+###   @4=1 /* INT meta=0 nullable=1 is_null=0 */
+### SET
+###   @1=1 /* INT meta=0 nullable=0 is_null=0 */
+###   @2='gz' /* STRING(20) meta=65044 nullable=1 is_null=0 */
+###   @3='yayundeng' /* STRING(20) meta=65044 nullable=1 is_null=0 */
+###   @4=99 /* INT meta=0 nullable=1 is_null=0 */
+
+# binlog_row_image = minimal 解释#
+### UPDATE `test`.`t2`
+### WHERE
+###   @1=1 /* INT meta=0 nullable=0 is_null=0 */
+### SET
+###   @4=100 /* INT meta=0 nullable=1 is_null=0 */
+# at 2309
+
+# 建议授权
+GRANT SELECT, REPLICATION SLAVE, REPLICATION CLIENT ON *.* TO 
+```
+
+
+
+**恢复数据步骤**
+
+```bash
+# 登录mysql，查看目前的binlog文件
+mysql> show master status;
++------------------+-----------+
+| Log_name         | File_size |
++------------------+-----------+
+| mysql-bin.000051 |       967 |
+| mysql-bin.000052 |       965 |
++------------------+-----------+
+
+# 最新的binlog文件是mysql-bin.000052，我们再定位误操作SQL的binlog位置。误操作人只能知道大致的误操作时间，我们根据大致时间过滤数据。
+shell> python binlog2sql/binlog2sql.py -h127.0.0.1 -P3306 -uadmin -p'admin' -dtest -ttbl --start-file='mysql-bin.000052' --start-datetime='2016-12-13 20:25:00' --stop-datetime='2016-12-13 20:30:00'
+输出：
+INSERT INTO `test`.`tbl`(`addtime`, `id`, `name`) VALUES ('2016-12-13 20:26:00', 4, '小李'); #start 317 end 487 time 2016-12-13 20:26:26
+UPDATE `test`.`tbl` SET `addtime`='2016-12-12 00:00:00', `id`=4, `name`='小李' WHERE `addtime`='2016-12-13 20:26:00' AND `id`=4 AND `name`='小李' LIMIT 1; #start 514 end 701 time 2016-12-13 20:27:07
+DELETE FROM `test`.`tbl` WHERE `addtime`='2016-12-10 00:04:33' AND `id`=1 AND `name`='小赵' LIMIT 1; #start 728 end 938 time 2016-12-13 20:28:05
+DELETE FROM `test`.`tbl` WHERE `addtime`='2016-12-10 00:04:48' AND `id`=2 AND `name`='小钱' LIMIT 1; #start 728 end 938 time 2016-12-13 20:28:05
+DELETE FROM `test`.`tbl` WHERE `addtime`='2016-12-13 20:25:00' AND `id`=3 AND `name`='小孙' LIMIT 1; #start 728 end 938 time 2016-12-13 20:28:05
+DELETE FROM `test`.`tbl` WHERE `addtime`='2016-12-12 00:00:00' AND `id`=4 AND `name`='小李' LIMIT 1; #start 728 end 938 time 2016-12-13 20:28:05
+
+# 我们得到了误操作sql的准确位置在728-938之间，再根据位置进一步过滤，使用flashback模式生成回滚sql，检查回滚sql是否正确(注：真实环境下，此步经常会进一步筛选出需要的sql。结合grep、编辑器等)
+shell> python binlog2sql/binlog2sql.py -h127.0.0.1 -P3306 -uadmin -p'admin' -dtest -ttbl --start-file='mysql-bin.000052' --start-position=3346 --stop-position=3556 -B > rollback.sql | cat
+输出：
+INSERT INTO `test`.`tbl`(`addtime`, `id`, `name`) VALUES ('2016-12-12 00:00:00', 4, '小李'); #start 728 end 938 time 2016-12-13 20:28:05
+INSERT INTO `test`.`tbl`(`addtime`, `id`, `name`) VALUES ('2016-12-13 20:25:00', 3, '小孙'); #start 728 end 938 time 2016-12-13 20:28:05
+INSERT INTO `test`.`tbl`(`addtime`, `id`, `name`) VALUES ('2016-12-10 00:04:48', 2, '小钱'); #start 728 end 938 time 2016-12-13 20:28:05
+INSERT INTO `test`.`tbl`(`addtime`, `id`, `name`) VALUES ('2016-12-10 00:04:33', 1, '小赵'); #start 728 end 938 time 2016-12-13 20:28:05
+
+# 确认回滚sql正确，执行回滚语句。登录mysql确认，数据回滚成功。
+shell> mysql -h127.0.0.1 -P3306 -uadmin -p'admin' < rollback.sql
+mysql> select * from tbl;
++----+--------+---------------------+
+| id | name   | addtime             |
++----+--------+---------------------+
+|  1 | 小赵   | 2016-12-10 00:04:33 |
+|  2 | 小钱   | 2016-12-10 00:04:48 |
+|  3 | 小孙   | 2016-12-13 20:25:00 |
+|  4 | 小李   | 2016-12-12 00:00:00 |
++----+--------+---------------------+
+```
+
+
+
+### 限制（对比mysqlbinlog）
+
+- mysql server必须开启，离线模式下不能解析
+- 参数 *binlog_row_image* 必须为FULL，暂不支持MINIMAL
+- 解析速度不如mysqlbinlog
+
+### 优点（对比mysqlbinlog）
+
+- 纯Python开发，安装与使用都很简单
+- 自带flashback、no-primary-key解析模式，无需再装补丁
+- flashback模式下，更适合[闪回实战](https://github.com/danfengcao/binlog2sql/blob/master/example/mysql-flashback-priciple-and-practice.md)
+- 解析为标准SQL，方便理解、筛选
+- 代码容易改造，可以支持更多个性化解析
+
+
+
+****解析出标准SQL****
+
+```bash
+[root@prometheus binlog2sql]# python3 binlog2sql/binlog2sql.py -h192.168.13.163 -P3306 -ubinlog_ops -ppass -d dingtalk_selfbuilt -t user_info --start-file='master-bin.000079' --start-datetime='2023-11-30 11:00:00' --stop-datetime='2023-11-30 12:00:00' | tee result_sql/dingtalk_selfbuilt.user_info.sql
+
+[root@prometheus binlog2sql]# grep -i 'delete' result_sql/dingtalk_selfbuilt.user_info.sql 
+
+INSERT INTO `dingtalk_selfbuilt`.`user_info`(`id`, `corp_id`, `union_id`, `user_id`, `depart_id`, `job_number`, `name`, `state_code`, `mobile`, `email`, `hs_user_id`, `hs_user_name`, `status`, `create_time`, `update_time`, `is_deleted`) VALUES (1730063375908392961, 'ding9a5df197688bc5cc35c2f4657eb6378f', 'MTQjRKeQKcU1MfruiPlz2oQiEiE', '40276017718062865', 1, NULL, '田立群（青锋）', '86', '#Encrypt#_EBF06746966F939B811271E32D3D1A52', NULL, NULL, NULL, '0', '2023-11-30 11:17:06', '2023-11-30 11:17:06', '0'); #start 530817402 end 530817798 time 2023-11-30 11:17:06
+UPDATE `dingtalk_selfbuilt`.`user_info` SET `id`=1730063375908392961, `corp_id`='ding9a5df197688bc5cc35c2f4657eb6378f', `union_id`='MTQjRKeQKcU1MfruiPlz2oQiEiE', `user_id`='40276017718062865', `depart_id`=1, `job_number`=NULL, `name`='田立群（青锋）', `state_code`='86', `mobile`='#Encrypt#_EBF06746966F939B811271E32D3D1A52', `email`=NULL, `hs_user_id`='9F05302E-06E5-4157-BB6F-8A47EFA562E6', `hs_user_name`='田立群（青锋）', `status`='1', `create_time`='2023-11-30 11:17:06', `update_time`='2023-11-30 11:17:07', `is_deleted`='0' WHERE `id`=1730063375908392961 AND `corp_id`='ding9a5df197688bc5cc35c2f4657eb6378f' AND `union_id`='MTQjRKeQKcU1MfruiPlz2oQiEiE' AND `user_id`='40276017718062865' AND `depart_id`=1 AND `job_number` IS NULL AND `name`='田立群（青锋）' AND `state_code`='86' AND `mobile`='#Encrypt#_EBF06746966F939B811271E32D3D1A52' AND `email` IS NULL AND `hs_user_id` IS NULL AND `hs_user_name` IS NULL AND `status`='0' AND `create_time`='2023-11-30 11:17:06' AND `update_time`='2023-11-30 11:17:06' AND `is_deleted`='0' LIMIT 1; #start 530821116 end 530821757 time 2023-11-30 11:17:07
+UPDATE `dingtalk_selfbuilt`.`user_info` SET `id`=1730043639749791746, `corp_id`='dingf239b82e87a474d7', `union_id`='iic0vniSPE1OW6GFnv3xRF0wiEiE', `user_id`='615281495', `depart_id`=878888446, `job_number`='015211', `name`='刘俊卿', `state_code`='86', `mobile`='#Encrypt#_570E33F4131CE4DC0DB2FFEC87A623B1', `email`='#Encrypt#_0A216ADB082B983A01413C0338D2C5D3', `hs_user_id`='74185DD9-0117-4C02-B48C-7D55761C429E', `hs_user_name`='刘俊卿', `status`='1', `create_time`='2023-11-30 09:58:41', `update_time`='2023-11-30 11:27:25', `is_deleted`='0' WHERE `id`=1730043639749791746 AND `corp_id`='dingf239b82e87a474d7' AND `union_id`='iic0vniSPE1OW6GFnv3xRF0wiEiE' AND `user_id`='615281495' AND `depart_id`=878888446 AND `job_number`='015211' AND `name`='刘俊卿' AND `state_code`='86' AND `mobile`='#Encrypt#_570E33F4131CE4DC0DB2FFEC87A623B1' AND `email`='#Encrypt#_0A216ADB082B983A01413C0338D2C5D3' AND `hs_user_id`='74185DD9-0117-4C02-B48C-7D55761C429E' AND `hs_user_name`='刘俊卿' AND `status`='1' AND `create_time`='2023-11-30 09:58:41' AND `update_time`='2023-11-30 09:58:41' AND `is_deleted`='0' LIMIT 1; #start 536838482 end 536839190 time 2023-11-30 11:27:25
+```
+
+
+
+****解析出回滚SQL****
+
+-B: 生成回滚sql
+
+从上面生成的标准sql中可以看到position是从530817402到536839190
+
+```bash
+[root@prometheus binlog2sql]# python3 binlog2sql/binlog2sql.py -B -h192.168.13.163 -P3306 -ubinlog_ops -ppass -d dingtalk_selfbuilt -t user_info --start-file='master-bin.000079' --start-position=530817402 --stop-position=536839190 | tee result_sql/dingtalk_selfbuilt.user_info_rollback.sql
+UPDATE `dingtalk_selfbuilt`.`user_info` SET `id`=1730043639749791746, `corp_id`='dingf239b82e87a474d7', `union_id`='iic0vniSPE1OW6GFnv3xRF0wiEiE', `user_id`='615281495', `depart_id`=878888446, `job_number`='015211', `name`='刘俊卿', `state_code`='86', `mobile`='#Encrypt#_570E33F4131CE4DC0DB2FFEC87A623B1', `email`='#Encrypt#_0A216ADB082B983A01413C0338D2C5D3', `hs_user_id`='74185DD9-0117-4C02-B48C-7D55761C429E', `hs_user_name`='刘俊卿', `status`='1', `create_time`='2023-11-30 09:58:41', `update_time`='2023-11-30 09:58:41', `is_deleted`='0' WHERE `id`=1730043639749791746 AND `corp_id`='dingf239b82e87a474d7' AND `union_id`='iic0vniSPE1OW6GFnv3xRF0wiEiE' AND `user_id`='615281495' AND `depart_id`=878888446 AND `job_number`='015211' AND `name`='刘俊卿' AND `state_code`='86' AND `mobile`='#Encrypt#_570E33F4131CE4DC0DB2FFEC87A623B1' AND `email`='#Encrypt#_0A216ADB082B983A01413C0338D2C5D3' AND `hs_user_id`='74185DD9-0117-4C02-B48C-7D55761C429E' AND `hs_user_name`='刘俊卿' AND `status`='1' AND `create_time`='2023-11-30 09:58:41' AND `update_time`='2023-11-30 11:27:25' AND `is_deleted`='0' LIMIT 1; #start 536838482 end 536839190 time 2023-11-30 11:27:25
+UPDATE `dingtalk_selfbuilt`.`user_info` SET `id`=1730063375908392961, `corp_id`='ding9a5df197688bc5cc35c2f4657eb6378f', `union_id`='MTQjRKeQKcU1MfruiPlz2oQiEiE', `user_id`='40276017718062865', `depart_id`=1, `job_number`=NULL, `name`='田立群（青锋）', `state_code`='86', `mobile`='#Encrypt#_EBF06746966F939B811271E32D3D1A52', `email`=NULL, `hs_user_id`=NULL, `hs_user_name`=NULL, `status`='0', `create_time`='2023-11-30 11:17:06', `update_time`='2023-11-30 11:17:06', `is_deleted`='0' WHERE `id`=1730063375908392961 AND `corp_id`='ding9a5df197688bc5cc35c2f4657eb6378f' AND `union_id`='MTQjRKeQKcU1MfruiPlz2oQiEiE' AND `user_id`='40276017718062865' AND `depart_id`=1 AND `job_number` IS NULL AND `name`='田立群（青锋）' AND `state_code`='86' AND `mobile`='#Encrypt#_EBF06746966F939B811271E32D3D1A52' AND `email` IS NULL AND `hs_user_id`='9F05302E-06E5-4157-BB6F-8A47EFA562E6' AND `hs_user_name`='田立群（青锋）' AND `status`='1' AND `create_time`='2023-11-30 11:17:06' AND `update_time`='2023-11-30 11:17:07' AND `is_deleted`='0' LIMIT 1; #start 530821116 end 530821757 time 2023-11-30 11:17:07
+DELETE FROM `dingtalk_selfbuilt`.`user_info` WHERE `id`=1730063375908392961 AND `corp_id`='ding9a5df197688bc5cc35c2f4657eb6378f' AND `union_id`='MTQjRKeQKcU1MfruiPlz2oQiEiE' AND `user_id`='40276017718062865' AND `depart_id`=1 AND `job_number` IS NULL AND `name`='田立群（青锋）' AND `state_code`='86' AND `mobile`='#Encrypt#_EBF06746966F939B811271E32D3D1A52' AND `email` IS NULL AND `hs_user_id` IS NULL AND `hs_user_name` IS NULL AND `status`='0' AND `create_time`='2023-11-30 11:17:06' AND `update_time`='2023-11-30 11:17:06' AND `is_deleted`='0' LIMIT 1; #start 530817402 end 530817798 time 2023-11-30 11:17:06
+```
+
+
+
+
+
