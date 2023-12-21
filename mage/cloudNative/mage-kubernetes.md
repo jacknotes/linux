@@ -13243,6 +13243,205 @@ Statistics:
 
 
 
+## 单master和etcd节点故障处理
+
+master、etcd、kube-controller-manager、kube-scheduler在同一台机器，此k8s为单master集群，此时master节点故障，该如何处理恢复集群？
+
+
+
+### 部署新master节点
+
+* ip地址跟之前一致
+* 主机名跟之前一致
+* 配置大于或等于之前主机
+* 更新升级主机系统配置
+
+**由于是重新部署自身集群，所以其它node节点系统没有重装部署，建议其它所以节点系统重新安装部署**
+
+
+
+
+
+### 重新部署k8s集群 
+
+kubeasz对应集群hosts文件如下，保持原来配置不变
+
+```bash
+root@ansible:/etc/kubeasz/clusters/k8s02# cat hosts
+# 'etcd' cluster should have odd member(s) (1,3,5,...)
+[etcd]
+172.168.2.41
+
+# master node(s)
+[kube_master]
+172.168.2.41
+
+# work node(s)
+[kube_node]
+172.168.2.42
+```
+
+重新部署k8s集群
+
+```bash
+ezctl setup k8s02 01		# prepare
+172.168.2.41               : ok=26   changed=22   unreachable=0    failed=0
+172.168.2.42               : ok=25   changed=8    unreachable=0    failed=0
+localhost                  : ok=34   changed=22   unreachable=0    failed=0
+
+
+
+ezctl setup k8s02 02		# etcd
+
+172.168.2.41               : ok=10   changed=8    unreachable=0    failed=0
+
+
+
+ezctl setup k8s02 03		# container-runtime
+
+172.168.2.41               : ok=17   changed=13   unreachable=0    failed=0
+172.168.2.42               : ok=4    changed=1    unreachable=0    failed=0
+
+
+
+ezctl setup k8s02 04		# kube-master 
+
+172.168.2.41               : ok=61   changed=52   unreachable=0    failed=0
+
+
+
+ezctl setup k8s02 05			# kube-node
+
+172.168.2.42               : ok=41   changed=26   unreachable=0    failed=0
+
+
+
+ezctl setup k8s02 06		# network
+172.168.2.41               : ok=17   changed=14   unreachable=0    failed=0
+172.168.2.42               : ok=12   changed=6    unreachable=0    failed=0
+
+
+
+ezctl setup k8s02 07			# cluster-addon
+
+172.168.2.42               : ok=24   changed=13   unreachable=0    failed=0
+
+
+
+root@ansible:/etc/kubeasz/clusters/k8s02# kubectl get nodes
+NAME           STATUS                     ROLES    AGE     VERSION
+172.168.2.41   Ready,SchedulingDisabled   master   14m     v1.23.7
+172.168.2.42   Ready                      node     6m30s   v1.23.7
+root@ansible:/etc/kubeasz/clusters/k8s02# kubectl get pods -A
+NAMESPACE     NAME                                         READY   STATUS    RESTARTS      AGE
+kube-system   calico-kube-controllers-754966f84c-xhjn7     1/1     Running   0             3m31s
+kube-system   calico-node-fch2p                            1/1     Running   1 (88s ago)   3m31s
+kube-system   calico-node-z89nt                            1/1     Running   2 (48s ago)   3m31s
+kube-system   coredns-596755dbff-89xhh                     1/1     Running   0             109s
+kube-system   dashboard-metrics-scraper-799d786dbf-c7nmc   1/1     Running   0             47s
+kube-system   kubernetes-dashboard-9f8c8b989-6gv8l         1/1     Running   0             47s
+kube-system   metrics-server-5d648558d9-fm8zd              1/1     Running   0             85s
+kube-system   node-local-dns-g8dsm                         1/1     Running   0             103s
+kube-system   node-local-dns-nm6w7                         1/1     Running   0             103s
+```
+
+
+
+
+
+### 还原etcd数据
+
+```bash
+# 测试创建pod
+root@ansible:/etc/kubeasz/clusters/k8s02# kubectl create deployment ttt --image=harborrepo.hs.com/ops/busybox:stable -- sleep 99999
+deployment.apps/ttt created
+root@ansible:/etc/kubeasz/clusters/k8s02# kubectl get pods -o wide
+NAME                   READY   STATUS    RESTARTS   AGE   IP              NODE           NOMINATED NODE   READINESS GATES
+ttt-7c5c54467b-ssc5l   1/1     Running   0          9s    172.20.172.69   172.168.2.42   <none>           <none>
+
+NAMESPACE     NAME                                         READY   STATUS    RESTARTS        AGE  
+default       ttt-7c5c54467b-ssc5l                         1/1     Running   0               4m30s
+kube-system   calico-kube-controllers-754966f84c-xhjn7     1/1     Running   0               9m15s
+kube-system   calico-node-fch2p                            1/1     Running   1 (7m12s ago)   9m15s
+kube-system   calico-node-z89nt                            1/1     Running   2 (6m32s ago)   9m15s
+kube-system   coredns-596755dbff-89xhh                     1/1     Running   0               7m33s
+kube-system   dashboard-metrics-scraper-799d786dbf-c7nmc   1/1     Running   0               6m31s
+kube-system   kubernetes-dashboard-9f8c8b989-6gv8l         1/1     Running   0               6m31s
+kube-system   metrics-server-5d648558d9-fm8zd              1/1     Running   0               7m9s 
+kube-system   node-local-dns-g8dsm                         1/1     Running   0               7m27s
+kube-system   node-local-dns-nm6w7                         1/1     Running   0               7m27s
+```
+
+```bash
+# 复制备份数据到master节点
+root@ansible:/etc/kubeasz/clusters/k8s02# scp /tmp/etcd-backup-202312211928.db root@172.168.2.41:/tmp/
+
+# 停止master节点服务
+root@k8s02-master01:~# systemctl stop kube-apiserver.service kube-controller-manager.service kube-scheduler.service kube-proxy.service kubelet.service
+
+# 恢复etcd数据 
+root@k8s02-master01:~# systemctl stop etcd
+root@k8s02-master01:~# rm -rf /var/lib/etcd/
+root@k8s02-master01:~# ETCDCTL_API=3 etcdctl snapshot restore /tmp/etcd-backup-202312211928.db --data-dir=/var/lib/etcd --name=etcd-172.168.2.41 --initial-cluster=etcd-172.168.2.41=https://172.168.2.41:2380 --initial-cluster-token=etcd-cluster-0 --initial-advertise-peer-urls=https://172.168.2.41:2380
+Deprecated: Use `etcdutl snapshot restore` instead.
+
+2023-12-21T20:49:41+08:00       info    snapshot/v3_snapshot.go:251     restoring snapshot      {"path": "/tmp/etcd-backup-202312211928.db", "wal-dir": "/var/lib/etcd/member/wal", "data-dir": "/var/lib/etcd", "snap-dir": "/var/lib/etcd/member/snap", "stack": "go.etcd.io/etcd/etcdutl/v3/snapshot.(*v3Manager).Restore\n\t/tmp/etcd-release-3.5.1/etcd/release/etcd/etcdutl/snapshot/v3_snapshot.go:257\ngo.etcd.io/etcd/etcdutl/v3/etcdutl.SnapshotRestoreCommandFunc\n\t/tmp/etcd-release-3.5.1/etcd/release/etcd/etcdutl/etcdutl/snapshot_command.go:147\ngo.etcd.io/etcd/etcdctl/v3/ctlv3/command.snapshotRestoreCommandFunc\n\t/tmp/etcd-release-3.5.1/etcd/release/etcd/etcdctl/ctlv3/command/snapshot_command.go:128\ngithub.com/spf13/cobra.(*Command).execute\n\t/home/remote/sbatsche/.gvm/pkgsets/go1.16.3/global/pkg/mod/github.com/spf13/cobra@v1.1.3/command.go:856\ngithub.com/spf13/cobra.(*Command).ExecuteC\n\t/home/remote/sbatsche/.gvm/pkgsets/go1.16.3/global/pkg/mod/github.com/spf13/cobra@v1.1.3/command.go:960\ngithub.com/spf13/cobra.(*Command).Execute\n\t/home/remote/sbatsche/.gvm/pkgsets/go1.16.3/global/pkg/mod/github.com/spf13/cobra@v1.1.3/command.go:897\ngo.etcd.io/etcd/etcdctl/v3/ctlv3.Start\n\t/tmp/etcd-release-3.5.1/etcd/release/etcd/etcdctl/ctlv3/ctl.go:107\ngo.etcd.io/etcd/etcdctl/v3/ctlv3.MustStart\n\t/tmp/etcd-release-3.5.1/etcd/release/etcd/etcdctl/ctlv3/ctl.go:111\nmain.main\n\t/tmp/etcd-release-3.5.1/etcd/release/etcd/etcdctl/main.go:59\nruntime.main\n\t/home/remote/sbatsche/.gvm/gos/go1.16.3/src/runtime/proc.go:225"}
+2023-12-21T20:49:41+08:00       info    membership/store.go:141 Trimming membership information from the backend...
+2023-12-21T20:49:41+08:00       info    membership/cluster.go:421       added member    {"cluster-id": "17806f1b12efd76b", "local-member-id": "0", "added-peer-id": "2f1adabe5ce632d", "added-peer-peer-urls": ["https://172.168.2.41:2380"]}
+2023-12-21T20:49:41+08:00       info    snapshot/v3_snapshot.go:272     restored snapshot       {"path": "/tmp/etcd-backup-202312211928.db", "wal-dir": "/var/lib/etcd/member/wal", "data-dir": "/var/lib/etcd", "snap-dir": "/var/lib/etcd/member/snap"}
+
+# 启动服务
+root@k8s02-master01:~# systemctl start etcd
+root@k8s02-master01:~# systemctl start kube-apiserver.service kube-controller-manager.service kube-scheduler.service kube-proxy.service kubelet.service
+```
+
+
+
+### 查看集群恢复后状态
+
+```bash
+# 恢复后pod的状态，有两个Pod是旧集群中的，为default空间下两个pod，恢复前新集群创建的deloyment ttt将被清除
+# 恢复后pod的age由不到10m变成3h多，由此可见数据已经全部恢复
+root@k8s02-master01:~# kubectl  get pods -A
+NAMESPACE     NAME                                         READY   STATUS    RESTARTS      AGE
+default       myapp-deployment-74d6bb5d66-ghc9j            1/1     Running   0             93m
+default       test-9868f8496-2slmf                         1/1     Running   0             102m
+kube-system   calico-kube-controllers-754966f84c-zvs5w     1/1     Running   0             3h7m
+kube-system   calico-node-6h4z6                            1/1     Running   0             3h7m
+kube-system   calico-node-8nkvp                            0/1     Running   1 (12s ago)   3h7m
+kube-system   coredns-596755dbff-65xmz                     1/1     Running   0             3h6m
+kube-system   dashboard-metrics-scraper-799d786dbf-lsznp   1/1     Running   0             3h4m
+kube-system   kubernetes-dashboard-9f8c8b989-pxdbt         1/1     Running   0             3h4m
+kube-system   metrics-server-5d648558d9-6cxdv              1/1     Running   0             3h5m
+kube-system   node-local-dns-5kvh2                         1/1     Running   0             3h6m
+kube-system   node-local-dns-qmcjn                         1/1     Running   0             3h6m
+
+# 恢复后svc信息，NodePort端口也还是之前的端口41252
+root@k8s02-master01:~# kubectl  get svc -A
+NAMESPACE     NAME                        TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                  AGE
+default       kubernetes                  ClusterIP   10.68.0.1       <none>        443/TCP                  3h16m
+default       myapp                       NodePort    10.68.218.15    <none>        80:30080/TCP             93m
+kube-system   dashboard-metrics-scraper   ClusterIP   10.68.150.219   <none>        8000/TCP                 3h7m
+kube-system   kube-dns                    ClusterIP   10.68.0.2       <none>        53/UDP,53/TCP,9153/TCP   3h9m
+kube-system   kube-dns-upstream           ClusterIP   10.68.40.110    <none>        53/UDP,53/TCP            3h9m
+kube-system   kubernetes-dashboard        NodePort    10.68.18.48     <none>        443:41252/TCP            3h7m
+kube-system   metrics-server              ClusterIP   10.68.120.3     <none>        443/TCP                  3h8m
+kube-system   node-local-dns              ClusterIP   None            <none>        9253/TCP                 3h9m
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

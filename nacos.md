@@ -807,18 +807,15 @@ http {
 
 stream {
         upstream nacos_http {
-                server 172.168.2.18:8848;
-                server 172.168.2.19:8848;
-                server 172.168.2.20:8848;
-                ## 需要增加nginx编译模块方可支持--add-module=modules/ngx_http_upstream_check_module
-                #check interval=3000 rise=2 fall=3 timeout=3000 type=tcp;
+                server 172.168.2.18:8848 max_fails=2 fail_timeout=3s;
+                server 172.168.2.19:8848 max_fails=2 fail_timeout=3s;
+                server 172.168.2.20:8848 max_fails=2 fail_timeout=3s;
         }
 
         upstream nacos_grpc {
-                server 172.168.2.18:9848;
-                server 172.168.2.19:9848;
-                server 172.168.2.20:9848;
-                #check interval=3000 rise=2 fall=3 timeout=3000 type=tcp;
+                server 172.168.2.18:9848 max_fails=2 fail_timeout=3s;
+                server 172.168.2.19:9848 max_fails=2 fail_timeout=3s;
+                server 172.168.2.20:9848 max_fails=2 fail_timeout=3s;
         }
 
         server {
