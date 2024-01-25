@@ -1950,7 +1950,7 @@ LVM卷进行步骤：
 6. [root@lnmp mnt]#  mount /dev/myvg/mydata-snap /mnt && mkdir /backup/alldata -pv && cp -a ./* /backup/alldata/
 7. [root@lnmp ~]# umount /mnt/
 8. [root@lnmp ~]# lvremove /dev/myvg/mydata-snap 
-  Do you really want to remove active logical volume myvg/mydata-snap? [y/n]: y
+    Do you really want to remove active logical volume myvg/mydata-snap? [y/n]: y
     Logical volume "mydata-snap" successfully removed
 9. [root@lnmp alldata]# rm -rf mysql-bin.* #整理完全备份文件，删除快照无效二进制日志文件
 [root@lnmp alldata]# ls
@@ -5234,7 +5234,8 @@ root@ubuntu18-node01:/etc/mysql# cat /var/log/mysql/error.log | grep -i password
 
 ### 两种初始化mysql方法
 ```
-## method1 ./bin/mysql_install_db --user=mysql --datadir=/data/mysql
+## method1 
+./bin/mysql_install_db --user=mysql --datadir=/data/mysql
 root@mysql-slave02:~# cat /root/.mysql_secret
 # Password set for user 'root@localhost' at 2022-09-09 17:27:52
 >v%sZ0ie%3+0
@@ -5242,7 +5243,8 @@ root@mysql-slave02:~# mysql -uroot -p
 Enter password:
 alter user root@'localhost' identified by 'your_password'
 
-## method2 ./bin/mysql_install_db --initialize --user=mysql --datadir=/data/mysql --basedir=/usr/local/mysql
+## method2 
+./bin/mysqld  --initialize --user=mysql --datadir=/data/mysql --basedir=/usr/local/mysql
 grep password /data/mysql/mysql.err
 ```
 
@@ -5273,7 +5275,7 @@ show slave status\G
 5. 需要实现主主集群，还需要在192.168.13.160上把192.168.13.164设置为主
     5.1 将192.168.13.164的配置文件/etc/my.cnf关闭多级复制，log-slave-updates = 0，并重启服务。观察192.168.13.164 binlog文件确定是否未变化(本机未执行DML语句时)
     5.2 在192.168.13.160上将192.168.13.164设置为主
-  change master to master_host='192.168.13.164',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000005',MASTER_LOG_POS=194 for channel 'channel1';
+    change master to master_host='192.168.13.164',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000005',MASTER_LOG_POS=194 for channel 'channel1';
     5.3 然后配置文件/etc/my.cnf开启多级复制，log-slave-updates = 1，并重启服务
 ------------------------------------------------------------------------------------
 注：其实可以省略log-slave-updates的配置，直接配置change master,只需要查看本地binlog文件执行哪个位置，可以从早期位置同步，但是上面步骤更稳妥。例如
