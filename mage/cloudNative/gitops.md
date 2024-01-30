@@ -6922,4 +6922,79 @@ kubectl -n argocd patch secret argocd-secret \
 
 要更改密码，请编辑密码并使用新的 bcrypt 哈希argocd-secret更新该字段。admin.password您可以使用https://www.browserling.com/tools/bcrypt 之类的网站来生成新的哈希值。例如：
 另一种选择是删除admin.password和admin.passwordMtime键并重新启动 argocd-server。这将根据入门指南生成一个新密码，因此可以是 pod 的名称（Argo CD 1.8 及更早版本）或存储在密钥中的随机生成的密码（Argo CD 1.9 及更高版本）。
+
+
+问题4：
+git迁移后，argocd如何配置跟新git仓库连接
+**1 配置known hosts**
+root@ansible:~/k8s/application/test-k8s-application/frontend-testf-k8s-hs-com# vim /etc/ssh/ssh_config
+Host *
+	HashKnownHosts no	# 增加或修改此行为no
+root@ansible:~/k8s/application/test-k8s-application/frontend-testf-k8s-hs-com# rm -rf /root/.ssh/known_hosts
+root@ansible:~/k8s/application/test-k8s-application/frontend-testf-k8s-hs-com# git pull
+The authenticity of host '192.168.13.211 (192.168.13.211)' can't be established.
+ECDSA key fingerprint is SHA256:kjKXlkoqq8Qx6V25uNJvId5oYTe0FwAJzhHCPKnhYTM.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added '192.168.13.211' (ECDSA) to the list of known hosts.
+Already up to date.
+root@ansible:~/k8s/application/test-k8s-application/frontend-testf-k8s-hs-com# cat /root/.ssh/known_hosts
+192.168.13.211 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBHs+fptdg855kofxLC1CQ/MdlUb+rn3rBTl1nZCbtueh+DAd9FbPQOsGIY3P7qA/QxP3It9Bbp7GLbHUSME+e00=
+
+**在argocd中添加known host**
+路径：Certificates -> ADD SSH KNOWN HOSTS -> 添加Known host并确定
+
+**2 配置ssh私钥模板**
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: private-repo-creds-192.168.13.211
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repo-creds
+stringData:
+  type: git
+  url: git@192.168.13.211:k8s-deploy
+  sshPrivateKey: |
+    -----BEGIN RSA PRIVATE KEY-----
+    MIIEowIBAAKCAQEAqeWuYGY5StShEmZ1mMzBbkHdkazf61hkqZZbwrgnqgzlOGW1
+    2GFs/ib1gQrwbmz3dVBJZC9ylndOa8dk7N34yVg+S6hHnRJ2DzIVqT3D5zELhAUZ
+    lBLHBGlWZbnxcUSoW3TCwoUvsboK58iOxUWAwj7dUQHnWRXSWUysZiCT82u2i2Z7
+    Tbvlai+jDwsMbydxxzOtyF/1XCHKk6Nv8rQ0+pVrIY/1vZvLY5l2rPSNPxASDyhw
+    iukItGC7yKeKaCNv0KKBc2+jtkfXAiu8qje4XSufGCwr1R24mmPaY/x5Y6ShOLbk
+    zO7N3hlYAcUKrxXplzmSuWoy/5YwMw5HRBNDtQIDAQABAoIBABE6n4JbG3hBM8xf
+    45EJQpxhxYxeUZ7WKe8gtlF6x1rxT9V2SwiUaK8lWEQrzdIE7ttQtwCX5zDnDGbV
+    o6B5qh8Q+dBGUmzVUG+eDqBJCTLKwHY05jEj7la+L+rE/n0UD1am8pEzXHDTgwOa
+    TRAoSjRol5z9am6YTeqMYfdBWn+WxG+q4yMRn37043FFcscMkhF2NFG1pXm8wVfg
+    0kQn4jP9K1his61B1OK7/EFWHzc7tpIVl4vjnq+CBqmpb/DQmqpOftYbdEHZfAmZ
+    5tzEbLIlqmPzy+6+cahxBBvwwWhDG/ExqkR9Hia5tlktNSGO82/VBSugU/TEs/sk
+    7Ymhl0kCgYEA1M+TwdtMiC6BKIKTyHJ4C5SKljSdTGrthHQOw6+pHPz6oAgrQ/R4
+    8C0E1JRGHBFNowgxF3frs6zjNyJKEowcYu0goNo/E3u5Wj5AUKxPEwrRZXTTkNnf
+    pTaFhN0V1uMIOBlVxtQOWV0gWWtnmfeWJ5QpkwQMYix5LjiA8SPXa3sCgYEAzGCO
+    5jVQX3Hm7stLlSqz0w1wtUdqjxS1z8Rv/zHvWI3YczcNLQykHzd4tP8+e8IGARnB
+    5bCko2lNXMF6mqvbd2X3ZQFCCYPA4AbKqZjcfoyUch9LW/Fd9E8yNUmy48rHi2Sn
+    AxRnP5WMGOaAopvDDSvz11CyMHbzEdrG72lgjo8CgYBDN31YEchOi0HIZdX/zggU
+    wEo1v1CfvnZfC7lOHcGwokcXHP1tbV51ngKUknDClMSM5h17aClOiyEJXQ9AZHji
+    1jskE0sxADc/RcJSuNoRDa2t+gSJEAgPyvTJTnuDcBo8feQV9QzDNSLum3oRq54F
+    ykqHYRP4PkvYSYiQod182QKBgH32ZRxtb4Pj57j1gzgEgaBqgDS6N2rIEOZk48Id
+    PK8PfYBFRdGmIOE8hyDGz/PmuVykS2UNYet1U0D/3ljF4xXLupZ+F/1VPuLUTMQK
+    eptkeXl84C1irc2NohxFuAO9Tw8SkfzL7na57QbLyixuY+ESXc8u5SQJq/YtKL8V
+    B7ZTIZe+mQVi8szUmk2zkXRde3CNtWUuEteEbcoCsSnnw9fjD5m+
+    -----END RSA PRIVATE KEY-----
+---
+查看路径：Repositories -> `CREDENTIALS TEMPLATE URL`
+注：确保此私钥对应的公钥已放置到新git中某个用户的`SSH密钥`列表中，并确保这个用户有jenkins项目对应的git项目群组权限 
+
+
+问题5：
+git迁移后，jenkins如何配置跟新git仓库连接（代码仓库），并发布到k8s的新git（yaml配置仓库）
+**1 配置jenkins**
+在jenkins添加凭据/更新凭据，类型为`SSH Username with private key`，username随便写（用于区别），填入上方的private key
+
+**2 配置jenkins项目使用新凭据**
+配置jenkins项目 -> 使用新凭据 -> 配置自由脚本中的k8s的新git（yaml配置仓库）地址
+注：使jenkins项目使用git仓库连接（代码仓库）拉代码编译并构建镜像上传到harbor，最后更新镜像到k8s的新git（yaml配置仓库）
+`/shell/cicd.sh-192.168.13.211 vue`
+GIT_K8S_ADDRESS_PREFIX='git@192.168.13.211:k8s-deploy'	# 更改脚本中的变量地址
+
 ```
