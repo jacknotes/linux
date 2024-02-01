@@ -233,10 +233,13 @@ sudo gitlab-backup create GITLAB_BACKUP_MAX_CONCURRENCY=4 GITLAB_BACKUP_MAX_STOR
 ```bash
 root@git:/# gitlab-backup create GITLAB_BACKUP_MAX_CONCURRENCY=4 GITLAB_BACKUP_MAX_STORAGE_CONCURRENCY=1
 
+root@git:/# cp -a /etc/gitlab/{gitlab.rb,gitlab-secrets.json} /var/opt/gitlab/backups/
+
 root@git:/# ls -lh /var/opt/gitlab/backups/
 total 5.9G
--rw-r--r-- 1 git git 5.9G Jan 25 07:23 1706167370_2024_01_25_15.11.13_gitlab_backup.tar
-
+-rw-r--r-- 1 git  git   11G Feb  1 01:08 1706749520_2024_02_01_16.6.6_gitlab_backup.tar
+-rw------- 1 root root  19K Jan 31 08:33 gitlab-secrets.json
+-rw-r--r-- 1 root root 1.9K Jan 31 07:11 gitlab.rb
 ```
 
 
@@ -257,9 +260,9 @@ sudo gitlab-ctl start
 
 首先确保您的备份 tar 文件位于gitlab.rb配置中描述的备份目录中gitlab_rails['backup_path']。默认为/var/opt/gitlab/backups。它需要归git用户所有。
 
-sudo cp 1706167370_2024_01_25_15.11.13_gitlab_backup.tar /var/opt/gitlab/backups/
+sudo cp 1706749520_2024_02_01_16.6.6_gitlab_backup.tar /var/opt/gitlab/backups/
 
-sudo chown git.git /var/opt/gitlab/backups/1706167370_2024_01_25_15.11.13_gitlab_backup.tar
+sudo chown git.git /var/opt/gitlab/backups/1706749520_2024_02_01_16.6.6_gitlab_backup.tar
 
 
 
@@ -289,9 +292,9 @@ run: sshd: (pid 15838) 1089s; run: log: (pid 30) 88432s
 # 查看备份文件，及目录权限
 root@git:/# ls -l /var/opt/gitlab/backups/
 total 6098312
--rw-r--r-- 1 git git 6244669440 Jan 25 07:23 1706167370_2024_01_25_15.11.13_gitlab_backup.tar
+-rw-r--r-- 1 git git 6244669440 Jan 25 07:23 1706749520_2024_02_01_16.6.6_gitlab_backup.tar
 # 恢复
-root@git:/# gitlab-backup restore BACKUP=1706167370_2024_01_25_15.11.13
+root@git:/# gitlab-backup restore BACKUP=1706749520_2024_02_01_16.6.6
 # BACKUP=备份归档文件时间戳 ： 使用指定的备份归档文件进行恢复。
 # force=yes ：在恢复过程中不再进行交互式询问，类似使用HereDocument缺省输入yes
 
@@ -2101,7 +2104,7 @@ if __name__ == '__main__':
 
 
 
-### 添加后效果
+#### 添加后效果
 
 ```bash
 root@git:/# gitlab-rake gitlab:web_hook:list 
