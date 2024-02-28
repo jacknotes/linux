@@ -1285,5 +1285,7 @@ GRANT VIEW ANY DEFINITION TO [sql_exporter];
 use ActivityDB; CREATE USER [sql_exporter] FOR LOGIN [sql_exporter]; exec sp_addrolemember N'db_datareader', N'sql_exporter';
 
 
+## sqlserver主键重置为0
+dbcc checkident('BspDateInfo',reseed,0)	# 参数1：表名，参数2：固定参数，表示重新设置，参数3：重置ID为0，插入下一条数据则为1
 
 </pre>

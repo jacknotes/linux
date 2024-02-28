@@ -1,51 +1,103 @@
-#maven
-<pre>
-安装：
-wget http://mirrors.tuna.tsinghua.edu.cn/apache/maven/maven-3/3.3.9/binaries/apache-maven-3.3.9-bin.tar.gz
-tar xf apache-maven-3.3.9-bin.tar.gz -C /usr/local
-ln -sv /usr/localapache-maven-3.3.9 /usr/local/maven
-[root@BuildImage ~]# cat /etc/profile.d/maven.sh
-export PATH=$PATH:/usr/local/maven/bin/
-source /etc/profile
 
-#nexus私服介绍
-这里有很多仓库，简单介绍下
-central--中央仓库，默认从https://repo1.maven.org/maven2/拉取jar。类型：proxy
-releases --自定义的jar存储的仓库。类型：hosted
-snapshots-- 私库快照（调试版本）jar。类型：hosted
-public：仓库分组，把上面三个仓库组合在一起对外提供服务，在本地maven基础配置settings.xml中使用。类型：group
---类型
+# nexus私服
+
+
+
+## 介绍
+
+Nexus是一个强大的Maven仓库管理器，它极大地简化了自己内部仓库的维护和外部仓库的访问。 利用Nexus你可以只在一个地方就能够完全控制访问和部署在你所维护仓库中的每个Artifact。 Nexus是一套“开箱即用”的系统不需要数据库，它使用文件系统加Lucene来组织数据。
+
+
+
+**这里有很多仓库，简单介绍下**
+central: 中央仓库，默认从https://repo1.maven.org/maven2/拉取jar。类型：proxy
+releases: 自定义的jar存储的仓库。类型：hosted
+snapshots: 私库快照（调试版本）jar。类型：hosted
+public: 仓库分组，把上面三个仓库组合在一起对外提供服务，在本地maven基础配置settings.xml中使用。类型：group
+
+
+
+**类型**
 Nexus的仓库分为这么几类：
 hosted 宿主仓库：主要用于部署无法从公共仓库获取的构件（如 oracle 的 JDBC 驱动）以及自己或第三方的项目构件；
 proxy 代理仓库：代理公共的远程仓库；
 virtual 虚拟仓库：用于适配 Maven 1；
 group 仓库组：Nexus 通过仓库组的概念统一管理多个仓库，这样我们在项目中直接请求仓库组即可请求到仓库组管理的多个仓库。
 
-#nexus安装 
+
+
+## 安装 
 docker run -d -p 8010:8081 --name nexus-dotnet -v /data/nexus3:/nexus-data sonatype/nexus3:3.32.0
 
-#neuxs备份恢复
---备份
+
+
+## 备份恢复
+
+
+
+### 备份
+
 只需要备份nexus-data目录即可。
---恢复
-`#chmod -R 770 /data/nexus-data && chown -R root.200 /data/nexus-data`
+
+
+
+### 恢复
+
+```bash
+#chmod -R 770 /data/nexus-data && chown -R root.200 /data/nexus-data
 chmod -R 777 /data/nexus-data
 docker run -d -p 8010:8081 --name nexus-dotnet -v /data/nexus-data:/nexus-data sonatype/nexus3:3.32.0
+```
 
 
-#增加maven仓库
-现在默认是从中央仓库拉取jar,我们把他改为aliyun的，岂不是更快。
-增加一个maven仓库：maven-proxy,URL指向阿里云地址：http://maven.aliyun.com/nexus/content/groups/public
-#调整maven仓库优先级
-点击maven-public 往下拉--把新建的maven-proxy仓库添加到maven-public中,并把maven-public移到最上，越上面优先级越高，当资源包被第一个仓库匹配到好就不会再去找第二个仓库了。
-我们当前仓库有三个：maven-proxy,maven-releases,maven-snapshots,将这三个仓库加入到maven-public组中即可。
-#添加用户组
+
+
+
+# maven
+
+
+
+## 安装
+
+```bash
+wget http://mirrors.tuna.tsinghua.edu.cn/apache/maven/maven-3/3.3.9/binaries/apache-maven-3.3.9-bin.tar.gz
+tar xf apache-maven-3.3.9-bin.tar.gz -C /usr/local
+ln -sv /usr/localapache-maven-3.3.9 /usr/local/maven
+
+cat /etc/profile.d/maven.sh
+	export PATH=$PATH:/usr/local/maven/bin/
+source /etc/profile
+```
+
+
+
+## 配置maven仓库
+
+现在默认是从中央仓库拉取jar，我们把他改为aliyun的，增加一个maven仓库：maven-proxy，URL指向阿里云地址：http://maven.aliyun.com/nexus/content/groups/public
+
+
+
+**调整maven仓库优先级**
+
+1. 点击maven-public 往下拉--把新建的maven-proxy仓库添加到maven-public中,并把maven-public移到最上，越上面优先级越高，当资源包被第一个仓库匹配到好就不会再去找第二个仓库了。
+2. 我们当前仓库有三个：maven-proxy,maven-releases,maven-snapshots,将这三个仓库加入到maven-public组中即可。
+
+
+
+**添加用户组**
+
 在Nexus 中创建一个javaRole的角色,拥有的权利为【nx-repository-view-maven2-*-edit】和【nx-repository-view-maven2-*-add】权利，如果该角色将来可能还有nuget,npm相关上传权利，则将其权利改为【nx-repository-view-*-*-edit】和【nx-repository-view-*-*-add】权利。
-#添加用户
+
+
+
+**添加用户**
 创建用户java，java用户拥有的角色为【nx-anonymous】和刚创建的【javaRole】角色。其中nx-anonymous角色是nexus默认自带的角色
 
 
-#maven settings配置文件更改：
+
+**maven settings配置文件**
+
+```xml
 <!-- 配置本地仓库目录 -->
  	<localRepository>/data/mavenrepo</localRepository>
 <!-- 配置nexus指定仓库ID访问帐号和密码，用于命令行上传jar包，也可以使用nexus界面进行上传 -->
@@ -104,13 +156,21 @@ docker run -d -p 8010:8081 --name nexus-dotnet -v /data/nexus-data:/nexus-data s
   <activeProfiles>
     <activeProfile>mirrorHomsom</activeProfile>
   </activeProfiles>
+```
 
-#下载缓存基础包
-[root@BuildImage ~]# mvn help:system
 
-#命令行上传包命令
+
+**下载缓存基础包**
+
+mvn help:system
+
+
+
+**命令行上传包命令**
+
 在maven工程项目nexus-upload中的pom文件中加入
-----------------
+
+```xml
 <project>
  <repository>
      <!--这里的id需要和settings.xml中的server的id一致-->
@@ -128,9 +188,13 @@ docker run -d -p 8010:8081 --name nexus-dotnet -v /data/nexus-data:/nexus-data s
 </distributionManagement>
 
 </project>
-----------------
+```
 
 
+
+**上传maven包到nexus私服**
+
+```bash
 mvn deploy:deploy-file \
 -DgroupId=com.homsom \
 -DartifactId=user-approve \
@@ -139,6 +203,7 @@ mvn deploy:deploy-file \
 -Dfile=user-approve-0.0.1-SNAPSHOT.jar \
 -Durl=http://nexus.hs.com/repository/maven-releases \
 -DrepositoryId=maven-releases
+
 注：
 groupId：目录
 artifactId：文件
@@ -147,12 +212,17 @@ packaging：包类型
 repositoryId：为之前server节点中的属性id的值,--settings指定maven的setting文件
 url：nexus仓库的地址
 例如：http://nexus.hs.com/repository/maven-public/com/zzuhai/approve/0.0.1/approve-0.0.1.jar
+```
 
 
-</pre>
 
-<pre>
-#nuget推送包到nexus
+# nuget
+
+
+
+## nuget推送包到nexus
+
+```cmd
 E:\tmp\nuget>nuget.exe push *.nupkg -source http://nugetv3.hs.com/repository/nuget-hosted/
 警告: No API Key was provided and no API Key could be found for 'http://nugetv3.hs.com/repository/nuget-hosted/'. To save an API Key for a source use the 'setApiKey' command.
 Pushing polly.7.1.1.nupkg to 'http://nugetv3.hs.com/repository/nuget-hosted/'...
@@ -166,11 +236,13 @@ Pushing polly.7.2.0.nupkg to 'http://nugetv3.hs.com/repository/nuget-hosted/'...
   PUT http://nugetv3.hs.com/repository/nuget-hosted/
   Created http://nugetv3.hs.com/repository/nuget-hosted/ 256ms
 Your package was pushed.
+```
 
 
 
-# npm配置
+## npm配置
 
+```bash
 npm config list
 npm config ls -l   --查看详细设置
 
@@ -186,32 +258,44 @@ npm config delete registry
 npm config set registry http://nugetv3.hs.com/repository/npm-proxy/    --设置nuget代理
 npm update   --用新源更新一波package
 vim /root/.npmrc   --可手工删除配置的信息
+```
 
-**npm编译安装**
+
+
+## npm编译安装
+
+```bash
+# npm编译安装
 npm install
 npm run build
 
-**npm重新编译**
+# npm重新编译 
 rm -rf node_modules/ package-lock.json
 npm cache clean -f			# 清除/root/.npm
 npm install
 npm run build
 
-**npm缓存验证**
+# npm缓存验证
 npm cache verify			# 查看缓存大小
+```
 
 
 
-##confluence备份
+# confluence备份
+
 1. 进行站点管理后台 -> 找到每日备份管理，配置保存路径、保存名称前缀 -> 保存
 2. 找到预定作业 -> 找到备份系统 -> 编辑配置备份运行时间（如每隔3天运行一次，运行时间为凌晨2点） -> 0 0 18 1/3 * ? (秒分时日月周年)
 3. 在备份系统中点运行进行测试即可。
 
-</pre>
 
-**nexus配置python PYPI代理及测试**
+
+# nexus配置python PYPI代理
+
+
+
+## 增加pypi(proxy)仓库
+
 ```
-# 增加pypi(proxy)仓库
 1. 配置仓库名称，例如pypi-proxy-aliyun
 2. 配置远程仓库：https://mirrors.aliyun.com/pypi 
 3. 得到代理倒库地址http://192.168.222.4/repository/pypi-aliyun/

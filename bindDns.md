@@ -1,9 +1,12 @@
 # bind DNS
 
 
+
 ![Linux](https://github.com/jacknotes/linux/raw/master/image/linux.jpg)
 
 [Linux bind doc](https://bind9.readthedocs.io/en/v9_18_6/)
+
+
 
 ## 节点环境信息
 ```
@@ -59,6 +62,8 @@ active
 
 BIND的配置由多个文件组成，这些文件包含在主配置文件named.conf。这些文件名以named开头，因为这是BIND运行的进程的名称（“域名守护程序”的缩写），我们将从配置选项文件开始。
 
+
+
 #### 2.2.1 配置选项文件
 
 1. 在dns-master上打开/etc/bind/named.conf.options文件进行编辑。
@@ -84,12 +89,14 @@ options {
         recursion yes;                 # 是否开启递归查询功能
         allow-recursion { trusted; };  # 允许递归查询的主机列表
         listen-on { 172.168.2.34; };   # 监听的地址
-        allow-transfer { 172.168.2.35; };  # 允许传输的dns-slave地址，这里写了是全局性的，可在zone中不写亦生效
-        forwarders {		#不能解析时转发的服务器地址
+        allow-transfer { 172.168.2.35; };	# 允许传输的dns-slave地址，这里写了是全局性的，可在zone中不写亦生效
+        forwarders {						# 不能解析时转发的服务器地址
                 8.8.8.8;
                 8.8.4.4;
         };
 ```
+
+
 
 #### 2.2.2 配置本地文件
 
@@ -112,6 +119,8 @@ zone "2.168.172.in-addr.arpa" IN {
 		also-notify { 172.168.2.35; }; // 当dns-master更新后通知dns-slave01进行更新并重载服务
 };
 ```
+
+
 
 #### 2.2.3 创建转发区文件
 
@@ -148,6 +157,8 @@ $TTL    604800
 35      IN      PTR     dns-slave01.jack.com.
 
 ```
+
+
 
 #### 2.2.4 检查bind配置语法并重启bind服务
 
@@ -213,6 +224,8 @@ options {
 };
 ```
 
+
+
 #### 2.3.1 定义与主DNS服务器上的主区域对应的从属区域
 
 ```
@@ -232,6 +245,8 @@ zone "2.168.172.in-addr.arpa" IN {
         masters { 172.168.2.34; }; // dns-master address
 };
 ```
+
+
 
 #### 2.3.2 检查bind配置语法并重启bind服务
 
@@ -256,6 +271,7 @@ jack.com                IN SOA  dns-master.jack.com. admin.jack.com. (
 $ORIGIN jack.com.
 dns-master              A       172.168.2.34
 dns-slave01             A       172.168.2.35
+
 root@dns-slave01:~# cat /var/cache/bind/2.168.172.in-addr-arpa
 $ORIGIN .
 $TTL 604800     ; 1 week
@@ -270,7 +286,6 @@ $TTL 604800     ; 1 week
 $ORIGIN 2.168.172.in-addr.arpa.
 34                      PTR     dns-master.jack.com.
 35                      PTR     dns-slave01.jack.com.
-
 ```
 
 
@@ -362,7 +377,9 @@ Address:  172.168.2.219
 
 
 
-### 三、当dns-master故障时，把dns-slave01切换为dns-master
+## 三、slave升级为master
+
+**当dns-master故障时，把dns-slave01切换为dns-master**
 
 ```
 # 模拟dns-master故障
@@ -393,11 +410,11 @@ root@dns-slave01:/var/cache/bind# systemctl is-active bind9
 active
 
 # 客户端测试解析
-> test2.jack.com
+> test.jack.com
 服务器:  [172.168.2.35]
 Address:  172.168.2.35
 
-名称:    test2.jack.com
+名称:    test.jack.com
 Address:  172.168.2.219
 
 # 增加一条A记录
@@ -420,11 +437,11 @@ test2                   A       172.168.2.219
 root@dns-slave01:/var/cache/bind# rndc reload
 server reload successful
 # 客户端测试解析
-> test3.jack.com
+> test2.jack.com
 服务器:  [172.168.2.35]
 Address:  172.168.2.35
 
-名称:    test3.jack.com
+名称:    test2.jack.com
 Address:  172.168.2.219
 ```
 
@@ -432,14 +449,17 @@ Address:  172.168.2.219
 2. 由于无论是bind的配置文件还是bind的zone文件都可以通过rndc reload来生效，所以此方法可以实现dns的高可用，就算挂了一台dns-master，也可以无缝将dns-slave提升为master，实现dns的角色无缝切换。
 
 
-### 四、把dns-slave01切换为dns-master、把dns-master切换为dns-slave
+
+## 四、master与slave角色互换
+
+**把dns-slave01切换为dns-master、把dns-master切换为dns-slave*
 
 ```
 # dns-master切换为dns-slave
 root@dns-master:/etc/bind# cat /etc/bind/named.conf.options
 acl "trusted" {
-        172.168.2.34;    # dns-master
-        172.168.2.35;    # dns-slave01
+        172.168.2.34;    # dns-slave01
+        172.168.2.35;    # dns-master
         172.168.2.0/24;  # server ip range
         192.168.13.0/24;  # server ip range
         192.168.10.0/24;  # client ip range
@@ -484,8 +504,8 @@ root@dns-master:/etc/bind# systemctl start bind9
 # dns-slave切换为dns-master
 root@dns-slave01:/etc/bind# cat named.conf.options
 acl "trusted" {
-        172.168.2.34;    # dns-master
-        172.168.2.35;    # dns-slave01
+        172.168.2.34;    # dns-slave01
+        172.168.2.35;    # dns-master
         172.168.2.0/24;  # server ip range
         192.168.13.0/24;  # server ip range
         192.168.10.0/24;  # client ip range
@@ -535,8 +555,8 @@ jack.com                IN SOA  dns-master.jack.com. admin.jack.com. (
                                 )
                         NS      dns-master.jack.com.
 $ORIGIN jack.com.
-dns-master              A       172.168.2.34
-dns-slave01             A       172.168.2.35
+dns-slave01              A       172.168.2.34
+dns-master             A       172.168.2.35
 test                    A       172.168.2.219
 test2                   A       172.168.2.219
 test3                   A       172.168.2.219
@@ -559,8 +579,8 @@ jack.com                IN SOA  dns-master.jack.com. admin.jack.com. (
                                 )
                         NS      dns-master.jack.com.
 $ORIGIN jack.com.
-dns-master              A       172.168.2.34
-dns-slave01             A       172.168.2.35
+dns-slave01              A       172.168.2.34
+dns-master             A       172.168.2.35
 test                    A       172.168.2.219
 test2                   A       172.168.2.219
 test3                   A       172.168.2.219
@@ -571,11 +591,11 @@ test6                   A       172.168.2.219
 
 # 客户端测试解析
 > server 172.168.2.34
-默认服务器:  dns-master.jack.com
+默认服务器:  dns-slave01.jack.com
 Address:  172.168.2.34
 
 > test6.jack.com
-服务器:  dns-master.jack.com
+服务器:  dns-slave01.jack.com
 Address:  172.168.2.34
 
 名称:    test6.jack.com		#解析成功
@@ -584,11 +604,11 @@ Address:  172.168.2.219
 
 
 > server 172.168.2.35
-默认服务器:  dns-slave01.jack.com
+默认服务器:  dns-master.jack.com
 Address:  172.168.2.35
 
 > test6.jack.com
-服务器:  dns-slave01.jack.com
+服务器:  dns-master.jack.com
 Address:  172.168.2.35
 
 名称:    test6.jack.com
