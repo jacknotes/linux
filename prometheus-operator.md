@@ -148,7 +148,6 @@ spec:
   - port: web
 root@ansible:~/k8s/prometheus/prometheus-operator# kubectl apply -f service-monitor.yaml
 servicemonitor.monitoring.coreos.com/example-app created
-
 ```
 
 
@@ -290,6 +289,8 @@ apiVersion: v1
 kind: Service
 metadata:
   name: prometheus	# 增加一个svc
+  labels:
+    k8s-app: prometheus
 spec:
   type: NodePort
   ports:
@@ -705,8 +706,16 @@ spec:
       name: alertmanager-example
       port: web
   serviceMonitorSelector:
-    matchLabels:
-      team: frontend
+    matchExpressions:
+    - key: team					# 这个数组内是或的关系，如果有多个数组则是与的关系
+      operator: In
+      values:
+      - frontend
+      - backend
+#  serviceMonitorSelector:
+#    matchLabels:
+#      team: frontend
+#      k8s-app: prometheus
   podMonitorSelector:
     matchLabels:
       team: frontend
@@ -975,9 +984,7 @@ spec:
 
 
 
-
-
-## `http_sd` 
+#### `http_sd` 
 
 `http_sd`工作方式与`file_sd`相同，但需要一个端点提供该数据而不是文件。例如：
 
@@ -995,3 +1002,298 @@ spec:
     - url: http://my-external-api/discovery
       refreshInterval: 15s
 ```
+
+
+
+#### `kubernetes_sd`
+
+```yaml
+root@ansible:~/k8s/prometheus/prometheus-operator# cat monitor/serviceMonitor/prometheus-k8s-kuberentesSD.yaml
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: kubernetes-sd-config
+  namespace: default
+  labels:
+    prometheus: kubernetes-sd-config
+spec:
+  kubernetesSDConfigs:
+  - role: node
+  - role: service
+  - role: pod
+  - role: endpoints
+  - role: endpointslice
+  - role: ingress
+
+root@ansible:~/k8s/prometheus/prometheus-operator# cat prometheus.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: prometheus
+spec:
+  serviceAccountName: prometheus
+  replicas: 2
+  alerting:
+    alertmanagers:
+    - namespace: default
+      name: alertmanager-example
+      port: web
+  serviceMonitorSelector:
+    matchExpressions:
+    - key: team
+      operator: In
+      values:
+      - frontend
+      - backend
+#  serviceMonitorSelector:
+#    matchLabels:
+#      team: frontend
+#      k8s-app: prometheus
+  podMonitorSelector:
+    matchLabels:
+      team: frontend
+  resources:
+    requests:
+      memory: 400Mi
+  enableAdminAPI: true
+  ruleSelector:
+    matchLabels:
+      role: alert-rules
+      prometheus: example
+  ruleNamespaceSelector:
+    matchLabels:
+      team: frontend
+  scrapeConfigSelector:			# 增加此配置
+    matchLabels:
+      prometheus: kubernetes-sd-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  labels:
+    prometheus: k8s
+spec:
+  type: NodePort
+  ports:
+  - name: web
+    nodePort: 30900
+    port: 9090
+    protocol: TCP
+    targetPort: web
+  selector:
+    prometheus: prometheus
+---
+```
+
+
+
+
+
+
+
+
+
+## 部署grafana
+
+
+
+```yaml
+root@ansible:~/k8s/prometheus/prometheus-operator# cat grafana-server.yaml
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/version: "8.3.1"
+  name: grafana
+  namespace: default
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana
+  namespace: default
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/version: "8.3.1"
+data:
+  grafana.ini: |
+    [analytics]
+    check_for_updates = true
+    [grafana_net]
+    url = https://grafana.net
+    [log]
+    mode = console
+    [paths]
+    data = /var/lib/grafana/
+    logs = /var/log/grafana
+    plugins = /var/lib/grafana/plugins
+    provisioning = /etc/grafana/provisioning
+
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+    - access: proxy
+      editable: true
+      isDefault: true
+      jsonData:
+        timeInterval: 5s
+      name: Prometheus
+      orgId: 1
+      type: prometheus
+      url: http://prometheus-operated.default.svc:9090
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: default
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/version: "8.3.1"
+spec:
+  type: NodePort
+  ports:
+    - name: service
+      port: 3000
+      protocol: TCP
+      targetPort: 3000
+      nodePort: 33000
+  selector:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/instance: grafana
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: default
+  labels:
+    app.kubernetes.io/name: grafana
+    app.kubernetes.io/instance: grafana
+    app.kubernetes.io/version: "8.3.1"
+spec:
+  replicas: 1
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: grafana
+      app.kubernetes.io/instance: grafana
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: grafana
+        app.kubernetes.io/instance: grafana
+        app: grafana
+    spec:
+      serviceAccountName: grafana
+      automountServiceAccountToken: true
+      securityContext:
+        fsGroup: 472
+        runAsGroup: 472
+        runAsUser: 472
+      enableServiceLinks: true
+      containers:
+        - name: grafana
+          image: "harborrepo.hs.com/k8s/grafana:8.3.1"
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: config
+              mountPath: "/etc/grafana/grafana.ini"
+              subPath: grafana.ini
+            - name: storage
+              mountPath: "/var/lib/grafana"
+            - name: config
+              mountPath: "/etc/grafana/provisioning/datasources/datasources.yaml"
+              subPath: "datasources.yaml"
+          ports:
+            - name: service
+              containerPort: 3000
+              protocol: TCP
+            - name: grafana
+              containerPort: 3000
+              protocol: TCP
+          env:
+            - name: GF_PATHS_DATA
+              value: /var/lib/grafana/
+            - name: GF_PATHS_LOGS
+              value: /var/log/grafana
+            - name: GF_PATHS_PLUGINS
+              value: /var/lib/grafana/plugins
+            - name: GF_PATHS_PROVISIONING
+              value: /etc/grafana/provisioning
+            - name: "GF_AUTH_ANONYMOUS_ENABLED"
+              value: "false"
+            - name: "GF_AUTH_ANONYMOUS_ORG_ROLE"
+              value: "Viewer"
+            - name: "GF_AUTH_BASIC_ENABLED"
+              value: "true"
+            - name: "GF_SECURITY_ADMIN_PASSWORD"
+              value: "666666"
+            - name: "GF_SECURITY_ADMIN_USER"
+              value: "admin"
+          livenessProbe:
+            failureThreshold: 10
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 60
+            timeoutSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+          resources:
+            {}
+      volumes:
+        - name: config
+          configMap:
+            name: grafana
+        - name: storage
+          emptyDir: {}
+---
+```
+
+```bash
+root@ansible:~/k8s/prometheus/prometheus-operator# kubectl apply -f grafana-server.yaml
+root@ansible:~/k8s/prometheus/prometheus-operator# kubectl get svc grafana
+NAME      TYPE       CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+grafana   NodePort   10.68.202.158   <none>        3000:33000/TCP   26m
+```
+
+> 后续通过浏览器访问k8s节点端口 `33000`即可，用户为admin，密码为666666
+
+
+
+
+
+# 故障排除
+
+- ### `CustomResourceDefinition "..." is invalid: metadata.annotations: Too long`问题
+
+  在集群上应用更新的 CRD 时，您可能会遇到以下错误消息：
+
+  ```bash
+  $ kubectl apply -f $MANIFESTS
+  The CustomResourceDefinition "prometheuses.monitoring.coreos.com" is invalid: metadata.annotations: Too long: must have at most 262144 bytes
+  ```
+
+  原因是 apply 默认在客户端运行并将信息保存到对象注释中，但注释的大小有硬性限制。
+
+  解决方法是使用服务器端应用，这至少需要 Kubernetes v1.22。
+
+  ```bash
+  kubectl apply --server-side --force-conflicts -f $MANIFESTS
+  ```
+
+
+
+
+
