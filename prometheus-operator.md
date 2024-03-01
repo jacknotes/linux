@@ -3,6 +3,12 @@
 
 
 
+
+[Documents](https://prometheus-operator.dev/docs/user-guides)
+
+
+
+
 ## 安装
 
 
@@ -833,3 +839,159 @@ namespace/default labeled
 出于测试目的，PrometheusRule 对象始终触发警报 `ExampleAlert`
 
 ![Promehtues Rule](./image/prometheus-operator/05.png)
+
+
+
+
+
+
+
+## Prometheus Agent 
+
+Prometheus Agent 是一种针对所有收集的数据都转发（远程写）到长期存储解决方案（例如 Cortex、Thanos 或 Prometheus）的环境进行优化的部署模型。
+
+
+
+
+
+## ScrapeConfig CRD
+
+从 prometheus-operator v0.65.x 开始，可以使用CRD 来抓取 Kubernetes 集群外部的目标。
+
+> 先决条件
+>
+> * `prometheus-operator` `>v0.65.1`
+> * `ScrapeConfig`CRD 安装在集群中。确保在创建/更新 CRD 后（重新）启动Prometheus Operator
+
+
+
+
+
+### 配置 Prometheus 或 PrometheusAgent 选择 ScrapeConfigs
+
+Prometheus 和 PrometheusAgent CRD 都有一个`scrapeConfigSelector`字段。该字段需要设置为要匹配的标签列表`ScrapeConfigs`：
+
+```yaml
+spec:
+  scrapeConfigSelector:
+    prometheus: system-monitoring-prometheus
+```
+
+在此示例中，所有`ScrapeConfig`具有`prometheus`标签设置的内容`system-monitoring-prometheus`都将用于生成抓取配置。
+
+
+
+### 使用ScrapeConfig抓取外部目标
+
+`ScrapeConfig`目前支持一组有限的服务发现：
+
+- `static_config`
+- `file_sd`
+- `http_sd`
+- `kubernetes_sd`
+- `consul_sd`
+
+
+
+#### `static_config`
+
+例如，要抓取位于 的目标`http://prometheus.demo.do.prometheus.io:9090`，请使用以下命令：
+
+```yaml
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: static-config
+  namespace: my-namespace
+  labels:
+    prometheus: system-monitoring-prometheus
+spec:
+  staticConfigs:
+    - labels:
+        job: prometheus
+      targets:
+        - prometheus.demo.do.prometheus.io:9090
+```
+
+
+
+#### `file_sd` 
+
+要使用`file_sd`，必须将文件安装在 Prometheus 或 PrometheusAgent pod 中。以下configmap是一个服务发现文件：
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scrape-file-sd-targets
+  namespace: monitoring
+  labels:
+    prometheus: system-monitoring-prometheus
+data:
+  targets.yaml: |
+    - labels:
+        job: node-demo
+      targets:
+      - node.demo.do.prometheus.io:9100
+    - labels:
+        job: prometheus
+      targets:
+      - prometheus.demo.do.prometheus.io:9090    
+```
+
+`ConfigMap`然后需要将其安装在`Prometheus`规范中：
+
+```yaml
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  name: your-prometheus
+  namespace: my-namespace
+  labels:
+    prometheus: system-monitoring-prometheus
+spec:
+  scrapeConfigSelector:
+    prometheus: system-monitoring-prometheus
+  configMaps:
+    - scrape-file-sd-targets
+```
+
+然后，您可以使用 ScrapeConfig 引用该文件并抓取关联的目标：
+
+```yaml
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: file-sd
+  namespace: my-namespace
+  labels:
+    prometheus: system-monitoring-prometheus
+    app.kubernetes.io/name: scrape-config-example
+spec:
+  fileSDConfigs:
+    - files:
+        - /etc/prometheus/configmaps/scrape-file-sd-targets/targets.yaml
+```
+
+
+
+
+
+## `http_sd` 
+
+`http_sd`工作方式与`file_sd`相同，但需要一个端点提供该数据而不是文件。例如：
+
+```yaml
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: http-sd
+  namespace: my-namespace
+  labels:
+    prometheus: system-monitoring-prometheus
+    app.kubernetes.io/name: scrape-config-example
+spec:
+  httpSDConfigs:
+    - url: http://my-external-api/discovery
+      refreshInterval: 15s
+```
