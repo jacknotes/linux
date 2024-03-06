@@ -4192,7 +4192,10 @@ magedu-provider-deployment   2/2     2            2           3h15m
 [20:30:45] Hello world5525, response form provider: 172.20.217.110:20880
 ```
 
+
+
 #### k8s部署ingress-nginx
+
 ```
 6.4.6.8 ingress-nginx部署及使用
 root@k8s-master01:~/k8s/yaml/ingress# kubectl apply -f ingress-controller-deploy.yaml
