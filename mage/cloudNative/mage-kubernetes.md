@@ -12173,6 +12173,7 @@ ansible k8s -m shell -a 'systemctl restart kubelet'
 ```
 
 
+
 4. 运行测试pod进行DNS测试
 
 ```bash

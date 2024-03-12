@@ -1,11 +1,12 @@
-kubernetes v1.19.0
-<pre>
+# kubernetes v1.19.0
+
 截至目前，kubeadm可以支持在ubuntu 16.04+,debian 9+, centos7与rhel7,fedora 25+,hypriotOS v1.0.1和Container Linux系统上
 构建kubernetes集群 
 部署的基础环境要求：每个独立的主机应有2GB以上的内存及2个以上的CPU核心，有唯一的主机名、MAC、产品标识，禁用了SWAP且
 各主机彼止间具有完整意义上的网络连通性。
 
-kubenetes集群高可用：
+**kubenetes集群高可用：**
+
 1. 一般来说，高可用控制平面至少3个master节点来承受最多1个master节点的丢失，才能保证处于等待状态的master节点保持半数以上，以满足节点选举时的法定票数。
 2. apiserver利用etcd进行数据存储，它自身是无状态应用，支持多副本同时工作，多副本间能无差别地服务客户端请求。
 3. controller manager和scheduler都不支持多副本同时工作，它们各自需要选举出一个主节点作为活动实例，余下的实例在指定时间点监测不到主实例的“心跳”信息后，
@@ -21,28 +22,40 @@ kubenetes集群高可用：
 与任一apiserver实例进行通信。这样就实现了apiserver与etcd以及控制平面其他组件在本地节点上的解耦。
 这两种拓扑结构各有利弊：堆叠式etcd方案节点需求量较小，适合中小规模的生产类集群，独立etcd方案节点需求量大，有较好的承载力及故障隔离能力，较适合中大型规模的生产类集群。
 
-kubernetes集群可部署为3种运行模式：
-1. 独立组件模式（master各组件和node各组件直接以守护进程方式运行于节点之上，以二进制程序部署的集群隶属于此种类型）
-2. 静态pod模式（控制平面的各组件以静态pod对象形式运行在master主机之上，而node主机上的kubelet和docker运行为系统级守护进程，kube-proxy托管于集群上的daemonset控制器，
-kubeadm部署的就是此种类型。）
-3. 自托管模式，类似于静态pod模式，开启时可使用：kubeadm init --features-gates=selfHosting选项激活（类似于第二种模式，但控制平面的各组件运行pod对象{非静态}，并且这些pod
-同样托管运行在集群之上，且同样受控于daemonset类型的控制器，类似kube-proxy）
+**kubernetes集群可部署为3种运行模式：**
 
-kubernetes集群主机环境：
+1. 独立组件模式（master各组件和node各组件直接以守护进程方式运行于节点之上，以二进制程序部署的集群隶属于此种类型）
+2. 静态pod模式（控制平面的各组件以静态pod对象形式运行在master主机之上，而node主机上的kubelet和docker运行为系统级守护进程，kube-proxy托管于集群上的daemonset控制器，kubeadm部署的就是此种类型。）
+3. 自托管模式，类似于静态pod模式，开启时可使用：kubeadm init --features-gates=selfHosting选项激活（类似于第二种模式，但控制平面的各组件运行pod对象{非静态}，并且这些pod同样托管运行在集群之上，且同样受控于daemonset类型的控制器，类似kube-proxy）
+
+
+
+## 集群部署
+
+**kubernetes集群主机环境：**
+
 192.168.13.50	tengine					reverse	
-192.168.13.51	master01.k8s.hs.com  k8s-api.k8s.hs.com		master	XEN02  ok
-192.168.13.52	master02.k8s.hs.com				master	ESXI01  ok
-192.168.13.53	master03.k8s.hs.com				master	XEN08  ok
-192.168.13.56	node01.k8s.hs.com				node	XEN01  ok
-192.168.13.57	node02.k8s.hs.com				node	XEN06  ok
+192.168.13.51	master01.k8s.hs.com  k8s-api.k8s.hs.com		master01
+192.168.13.52	master02.k8s.hs.com				master02
+192.168.13.53	master03.k8s.hs.com				master03
+192.168.13.56	node01.k8s.hs.com				node01
+192.168.13.57	node02.k8s.hs.com				node02
 
 docker version: 20.10.5
 kubernetes version: v1.19
 kubeadm version: 1.18.8-0 
 
-1.1 在DNS Server中配置k8s主机记录
+
+
+### 1.1 配置DNS
+
 k8s-api.k8s.hs.com --> 192.168.13.50
-1.2 tengine 配置四层代理
+
+
+
+### 1.2 tengine 配置四层代理
+
+```BASH
 [root@tengine /usr/local/tengine/conf]# cat nginx.conf
     upstream k8s-api.k8s.hs.com {
         server 192.168.13.51:6443;
@@ -54,36 +67,49 @@ k8s-api.k8s.hs.com --> 192.168.13.50
         listen 6443;
         proxy_pass k8s-api.k8s.hs.com;
     }
+
 [root@tengine /usr/local/tengine/conf]# netstat -tnlp | grep 6443
 tcp        0      0 0.0.0.0:6443            0.0.0.0:*               LISTEN      2232/nginx: worker  
 
 
 2. salt-ssh deploy key
---salt-master:
-sudo rpm --import https://repo.saltproject.io/py3/redhat/7/x86_64/3002/SALTSTACK-GPG-KEY.pub
-curl -fsSL https://repo.saltproject.io/py3/redhat/7/x86_64/3002.repo | sudo tee /etc/yum.repos.d/salt.repo
---salt-minion:
-[root@salt ~/salt]# salt-ssh 'node*' -r 'curl http://mirrors.aliyun.com/repo/Centos-7.repo | tee /etc/yum.repos.d/Centos-7.repo'
-[root@salt ~/salt]# salt-ssh 'node*' -r 'yum install -y python3'
-[root@salt ~/salt]# salt-ssh '*' -i --key-deploy test.ping
-[root@salt /srv/salt/base/init]# salt-ssh '*' state.sls init.init-for-saltssh saltenv=base
+   --salt-master:
+   sudo rpm --import https://repo.saltproject.io/py3/redhat/7/x86_64/3002/SALTSTACK-GPG-KEY.pub
+   curl -fsSL https://repo.saltproject.io/py3/redhat/7/x86_64/3002.repo | sudo tee /etc/yum.repos.d/salt.repo
+   --salt-minion:
+   [root@salt ~/salt]# salt-ssh 'node*' -r 'curl http://mirrors.aliyun.com/repo/Centos-7.repo | tee /etc/yum.repos.d/Centos-7.repo'
+   [root@salt ~/salt]# salt-ssh 'node*' -r 'yum install -y python3'
+   [root@salt ~/salt]# salt-ssh '*' -i --key-deploy test.ping
+   [root@salt /srv/salt/base/init]# salt-ssh '*' state.sls init.init-for-saltssh saltenv=base
 
 3. salt deploy base env and install docker
-[root@salt /srv/salt/base]# salt '*k8s*' state.highstate
-[root@salt /srv/salt/base]# salt '*k8s*' cmd.run 'docker version | grep Version'
-master02.k8s.hs.com:
+   [root@salt /srv/salt/base]# salt '*k8s*' state.highstate
+   [root@salt /srv/salt/base]# salt '*k8s*' cmd.run 'docker version | grep Version'
+   master02.k8s.hs.com:
      Version:           20.10.5
 
 4. install k8s for kubelet kubeadm kubectl
-[root@master01 ~]# rpm --import https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
-[root@master01 ~]# cat /etc/yum.repos.d/kubernetes.repo 
-[kubernetes-repo]
-name=kubernetes repo for RHEL/CentOS 7
-baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64/
-enabled=1
-gpgcheck=0
-[root@salt /srv/salt/base/init]# salt '*k8s*' state.sls init.k8s-repo saltenv=base 
+   [root@master01 ~]# rpm --import https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
+   [root@master01 ~]# cat /etc/yum.repos.d/kubernetes.repo 
+   [kubernetes-repo]
+   name=kubernetes repo for RHEL/CentOS 7
+   baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64/
+   enabled=1
+   gpgcheck=0
+   [root@salt /srv/salt/base/init]# salt '*k8s*' state.sls init.k8s-repo saltenv=base 
+
 # [root@salt ~]# salt '*k8s*' cmd.run 'yum remove -y kubeadm kubelet kubectl'
+
+
+```
+
+
+
+### 1.3 部署k8s
+
+#### 1.3.1 安装集群
+
+```bash
 [root@salt ~]# salt '*k8s*' cmd.run 'yum install -y kubeadm-1.19.0-0 kubelet-1.19.0-0 kubectl-1.19.0-0'
 [root@salt /etc/salt]# salt '*k8s*' cmd.run 'yum list installed | grep kube'
 master02.k8s.hs.com:
@@ -94,27 +120,34 @@ master02.k8s.hs.com:
     kubernetes-cni.x86_64            0.8.7-0                        @kubernetes-repo
 
 5. remote to minion console. Example:
-[root@salt /srv/salt/base]# ssh -i /etc/salt/pki/master/ssh/salt-ssh.rsa 192.168.13.51
+   [root@salt /srv/salt/base]# ssh -i /etc/salt/pki/master/ssh/salt-ssh.rsa 192.168.13.51
 
 6. 初始化控制平面
-[root@master01 ~]# kubeadm  init \
+   [root@master01 ~]# kubeadm  init \
+
 > --image-repository registry.aliyuncs.com/google_containers \
 > --kubernetes-version v1.19.0 \
 > --control-plane-endpoint k8s-api.k8s.hs.com \
 > --apiserver-advertise-address 192.168.13.51 \
 > --pod-network-cidr 10.244.0.0/16 \
 > --token-ttl 0
-# kubeadm  init --image-repository registry.aliyuncs.com/google_containers --kubernetes-version v1.19.0 --control-plane-endpoint k8s-api.k8s.hs.com --apiserver-advertise-address 192.168.13.51 --pod-network-cidr 10.244.0.0/16 --token-ttl 0
+>
+> # kubeadm  init --image-repository registry.aliyuncs.com/google_containers --kubernetes-version v1.19.0 --control-plane-endpoint k8s-api.k8s.hs.com --apiserver-advertise-address 192.168.13.51 --pod-network-cidr 10.244.0.0/16 --token-ttl 0
 
-#初始化环境配置
+# 初始化环境配置
   mkdir -p $HOME/.kube
   sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
   sudo chown $(id -u):$(id -g) $HOME/.kube/config
 [root@master01 k8s]# kubectl get nodes
 NAME                  STATUS     ROLES    AGE   VERSION
 master01.k8s.hs.com   NotReady   master   62s   v1.19.0
+```
 
-#部署网络组件
+
+
+#### 1.3.1 部署网络组件
+
+```bash
 [root@master01 manifests]# kubectl apply -f addons/network/kube-flannel.yml 
 [root@master01 manifests]# kubectl get nodes 
 NAME                  STATUS   ROLES    AGE    VERSION
@@ -129,11 +162,17 @@ kube-controller-manager-master01.k8s.hs.com   1/1     Running   0          5m18s
 kube-flannel-ds-amd64-q789l                   1/1     Running   0          46s
 kube-proxy-2s8z7                              1/1     Running   0          5m11s
 kube-scheduler-master01.k8s.hs.com            1/1     Running   0          5m18s
+```
 
-# 工作节点加入集群 
+
+
+#### 1.3.2 工作节点加入集群 
+
+```bash
 [root@node01 ~]# kubeadm join k8s-api.k8s.hs.com:6443 --token fi0e8y.luxmfi3knk0x151d \
+
 >     --discovery-token-ca-cert-hash sha256:31851ba359ffec9d50fb3576908e37a69f5df60fcae6910304527b8438435387 
-[root@node02 ~]# kubeadm join k8s-api.k8s.hs.com:6443 --token fi0e8y.luxmfi3knk0x151d \
+>     [root@node02 ~]# kubeadm join k8s-api.k8s.hs.com:6443 --token fi0e8y.luxmfi3knk0x151d \
 >     --discovery-token-ca-cert-hash sha256:31851ba359ffec9d50fb3576908e37a69f5df60fcae6910304527b8438435387 
 
 [root@master01 yum.repos.d]# kubectl get pods -n kube-system
@@ -155,8 +194,12 @@ NAME                  STATUS   ROLES    AGE    VERSION
 master01.k8s.hs.com   Ready    master   10m    v1.19.0
 node01.k8s.hs.com     Ready    <none>   117s   v1.19.0
 node02.k8s.hs.com     Ready    <none>   42s    v1.19.0
+```
 
-#高可用控制平面
+
+
+### 1.4 部署高可用控制平面
+
 这里部署的是堆叠式etcd拓扑（另外是外部etcd拓扑，适合于中大型k8s集群），适合于中小型集群。
 高可用控制平面节点的拓扑中，我们需要为无状态的API Server实例配置外部的高可用负载均衡器，这些负载均衡器
 的VIP将作为各个客户端（包括kube-scheduler和kube-controller-manager组件）访问API Server时使用的目标地址，
@@ -167,24 +210,35 @@ node02.k8s.hs.com     Ready    <none>   42s    v1.19.0
 并将其临时解析到第一个控制平面节点的IP地址，等扩展控制平面完成且配置好负载均衡后，再将该DNS名称解析至
 负载均衡器，以接收访问API Server的VIP。
 
-#增加两个控制平面节点
-1. 同一高可用控制平面集群中的各节点需要共享CA和front-proxy的数字证书和密钥，以及专用的ServiceAccount帐户的公钥和私钥，我们可以采用手动或者自动方式，这里采用自动的方式，因而首先需要在k8s-master01节点上运行如下命令上传证书及密钥数据：
-[root@master01 ~]# kubeadm init phase upload-certs --upload-certs   --此命令可以多次执行
+
+
+#### 1.4.1 增加两个控制平面节点
+
+**获取上传证书及密钥数据**
+
+同一高可用控制平面集群中的各节点需要共享CA和front-proxy的数字证书和密钥，以及专用的ServiceAccount帐户的公钥和私钥，我们可以采用手动或者自动方式，这里采用自动的方式，因而首先需要在k8s-master01节点上运行如下命令：
+
+```bash
+# 此命令可以多次执行
+[root@master01 ~]# kubeadm init phase upload-certs --upload-certs
 I0411 19:24:28.467881   23419 version.go:252] remote version is much newer: v1.21.0; falling back to: stable-1.19
 W0411 19:24:29.109595   23419 configset.go:348] WARNING: kubeadm cannot validate component configs for API groups [kubelet.config.k8s.io kubeproxy.config.k8s.io]
 [upload-certs] Storing the certificates in Secret "kubeadm-certs" in the "kube-system" Namespace
 [upload-certs] Using certificate key:
 b33d9f79a32d1762aca0a16af0852ba07e75bd157418b2ed60d970c1c86c13bc
+```
 
-而后，在新的两个控制平面节点使用kubeadm join --control-plane 命令加入为master节点:
-----master02:
-#[root@master02 ~]# kubeadm join k8s-api.k8s.hs.com:6443 --token fi0e8y.luxmfi3knk0x151d     --discovery-token-ca-cert-hash sha256:31851ba359ffec9d50fb3576908e37a69f5df60fcae6910304527b8438435387     --control-plane     --certificate-key b33d9f79a32d1762aca0a16af0852ba07e75bd157418b2ed60d970c1c86c13bc
+**添加控制平台**
+
+在新的两个控制平面节点使用kubeadm join --control-plane 命令加入集群成为master节点
+
+```bash
+# master02
+# --certificate-key是自动上传数字证书和密钥、以及专用的ServiceAccount帐户的公钥和私钥产生的key，拿着这个key就可以加入控制平台了。
 [root@master02 ~]# kubeadm join k8s-api.k8s.hs.com:6443 --token fi0e8y.luxmfi3knk0x151d \
->     --discovery-token-ca-cert-hash sha256:31851ba359ffec9d50fb3576908e37a69f5df60fcae6910304527b8438435387 \
->     --control-plane \
->     --certificate-key b33d9f79a32d1762aca0a16af0852ba07e75bd157418b2ed60d970c1c86c13bc
-注：--certificate-key是自动上传数字证书和密钥、以及专用的ServiceAccount帐户的公钥和私钥产生的key，拿着
-这个key就可以加入控制平台了。
+--discovery-token-ca-cert-hash sha256:31851ba359ffec9d50fb3576908e37a69f5df60fcae6910304527b8438435387 \
+--control-plane \
+--certificate-key b33d9f79a32d1762aca0a16af0852ba07e75bd157418b2ed60d970c1c86c13bc
 [root@master02 ~]# mkdir -p $HOME/.kube
 [root@master02 ~]# sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 [root@master02 ~]# sudo chown $(id -u):$(id -g) $HOME/.kube/config
@@ -194,11 +248,12 @@ master01.k8s.hs.com   Ready    master   107m   v1.19.0
 master02.k8s.hs.com   Ready    master   40s    v1.19.0
 node01.k8s.hs.com     Ready    <none>   98m    v1.19.0
 node02.k8s.hs.com     Ready    <none>   97m    v1.19.0
-----master03:
+
+# master03
 [root@master03 ~]# kubeadm join k8s-api.k8s.hs.com:6443 --token fi0e8y.luxmfi3knk0x151d \
->     --discovery-token-ca-cert-hash sha256:31851ba359ffec9d50fb3576908e37a69f5df60fcae6910304527b8438435387 \
->     --control-plane \
->     --certificate-key b33d9f79a32d1762aca0a16af0852ba07e75bd157418b2ed60d970c1c86c13bc
+--discovery-token-ca-cert-hash sha256:31851ba359ffec9d50fb3576908e37a69f5df60fcae6910304527b8438435387 \
+--control-plane \
+--certificate-key b33d9f79a32d1762aca0a16af0852ba07e75bd157418b2ed60d970c1c86c13bc
 [root@master03 ~]# mkdir -p $HOME/.kube
 [root@master03 ~]# sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 [root@master03 ~]# sudo chown $(id -u):$(id -g) $HOME/.kube/config
@@ -235,14 +290,20 @@ kube-proxy-vdbtl                              1/1     Running   0          111m
 kube-scheduler-master01.k8s.hs.com            1/1     Running   1          119m
 kube-scheduler-master02.k8s.hs.com            1/1     Running   0          13m
 kube-scheduler-master03.k8s.hs.com            1/1     Running   0          10m
---部署完成后，获取集群状态时会出现这个，这时需要到每个master中将/etc/kubernetes/manifests/kube-controller-manager.yaml和/etc/kubernetes/manifests/kube-scheduler.yaml两个文件
-的端口--port=0注释掉，然后重启kubelet 服务（其实改完保存后自己会重建，此步骤需要一个一个来，不能并行来）即可：
+```
+
+
+
+部署完成后，获取集群状态时会出现如下信息，这时需要到每个master中将/etc/kubernetes/manifests/kube-controller-manager.yaml和/etc/kubernetes/manifests/kube-scheduler.yaml两个文件的端口--port=0注释掉，然后重启kubelet 服务（其实改完保存后自己会重建，此步骤需要一个一个来，不能并行来）
+
+```bash
 [root@master02 ~]# kubectl get cs 
 Warning: v1 ComponentStatus is deprecated in v1.19+
 NAME                 STATUS      MESSAGE                                                                                       ERROR
 scheduler            Unhealthy   Get "http://127.0.0.1:10251/healthz": dial tcp 127.0.0.1:10251: connect: connection refused   
 controller-manager   Unhealthy   Get "http://127.0.0.1:10252/healthz": dial tcp 127.0.0.1:10252: connect: connection refused   
-etcd-0               Healthy     {"health":"true"}                  
+etcd-0               Healthy     {"health":"true"}   
+
 [root@master02 ~]# vim /etc/kubernetes/manifests/kube-controller-manager.yaml
 #    - --port=0
 [root@master02 ~]# vim /etc/kubernetes/manifests/kube-scheduler.yaml
@@ -253,86 +314,131 @@ NAME                 STATUS    MESSAGE             ERROR
 scheduler            Healthy   ok                  
 controller-manager   Healthy   ok                  
 etcd-0               Healthy   {"health":"true"}   
+```
 
-#etcd集群相关知识
+
+
+### 1.5 etcd
+
+**etcd集群相关知识**
+
 1. lead选举：
-谁先感受到宕机的etcd节点，谁就是新的 leader，这个也和进程初始的启动时间有关。
+    谁先感受到宕机的etcd节点，谁就是新的 leader，这个也和进程初始的启动时间有关。
+
 2. 必须是奇数节点吗？
-etcd官方推荐3、5、7个节点，虽然raft算法也是半数以上投票才能有 leader，但奇数只是推荐，其实偶数也是可以的。如 2、4、8个节点。分情况说明：
-1 个节点：就是单实例，没有集群概念，不做讨论
-2 个节点：是集群，但没人会这么配，这里说点废话：双节点的etcd能启动，启动时也能有主，可以正常提供服务，但是一台挂掉之后，就选不出主了，因为他只能拿到1票，剩下的那台也无法提供服务，也就是双节点无容错能力，不要使用。
-你会发现偶数节点虽然多了一台机器，但是容错能力是一样的，也就是说，你可以设置偶数节点，但没增加什么能力，还浪费了一台机器。同时etcd 是通过复制数据给所有节点来达到一致性，因此偶数的多一台机器增加不了性能，反而会拉低写入速度。
+    etcd官方推荐3、5、7个节点，虽然raft算法也是半数以上投票才能有 leader，但奇数只是推荐，其实偶数也是可以的。如 2、4、8个节点。分情况说明：
+    1 个节点：就是单实例，没有集群概念，不做讨论
+    2 个节点：是集群，但没人会这么配，这里说点废话：双节点的etcd能启动，启动时也能有主，可以正常提供服务，但是一台挂掉之后，就选不出主了，因为他只能拿到1票，剩下的那台也无法提供服务，也就是双节点无容错能力，不要使用。
+    你会发现偶数节点虽然多了一台机器，但是容错能力是一样的，也就是说，你可以设置偶数节点，但没增加什么能力，还浪费了一台机器。同时etcd 是通过复制数据给所有节点来达到一致性，因此偶数的多一台机器增加不了性能，反而会拉低写入速度。
+
 3. etcd集群机器越多越好吗？
-etcd 集群是一个 Raft Group，没有 shared。所以它的极限有两部分，一是单机的容量限制，内存和磁盘；二是网络开销，每次 Raft 操作需要所有节点参与，每一次写操作需要集群中大多数节点将日志落盘成功后，Leader 节点才能修改内部状态机，并将结果返回给客户端。因此节点越多性能越低，所以扩展很多 etcd 节点是没有意义的，一般是 3、5、7， 5 个也足够了。
-在 k8s 中一般是3*master机器做高可用，也就是 3节点的 etcd。也有人将 etcd独立于 k8s集群之外，来更好地扩展 etcd 集群，或者根据 k8s 的资源来拆分 etcd，如 events 放在单独的 etcd 集群中。不同的副本数视业务规模而定，3，5，7 都可以。
-脑裂问题？
-集群化的软件总会提到脑裂问题，如ElasticSearch、Zookeeper集群，脑裂就是同一个集群中的不同节点，对于集群的状态有了不一样的理解。
+    etcd 集群是一个 Raft Group，没有 shared。所以它的极限有两部分，一是单机的容量限制，内存和磁盘；二是网络开销，每次 Raft 操作需要所有节点参与，每一次写操作需要集群中大多数节点将日志落盘成功后，Leader 节点才能修改内部状态机，并将结果返回给客户端。因此节点越多性能越低，所以扩展很多 etcd 节点是没有意义的，一般是 3、5、7， 5 个也足够了。
+    在 k8s 中一般是3*master机器做高可用，也就是 3节点的 etcd。也有人将 etcd独立于 k8s集群之外，来更好地扩展 etcd 集群，或者根据 k8s 的资源来拆分 etcd，如 events 放在单独的 etcd 集群中。不同的副本数视业务规模而定，3，5，7 都可以。
+    脑裂问题？
+    集群化的软件总会提到脑裂问题，如ElasticSearch、Zookeeper集群，脑裂就是同一个集群中的不同节点，对于集群的状态有了不一样的理解。
+
 4. etcd集群中有没有脑裂问题？答案是： 没有  （注：如果节点是偶数节点，那么还是有脑残的风险）
-以网络分区导致脑裂为例，一开始有5个节点, Node 5 为 Leader
-由于出现网络故障，124 成为一个分区，35 成为一个分区， Node 5的leader 任期还没结束的一段时间内，仍然认为自己是当前leader，但是此时另外一边的分区，因为124无法连接5，于是选出了新的leader 1，网络分区形成。
-35分区是否可用？如果写入了1而读取了5，是否会读取旧数据(stale read)?
-答：35分区属于少数派，被认为是异常节点，无法执行写操作。写入 1 的可以成功，并在网络分区恢复后，35 因为任期旧，会自动成为 follower，异常期间的新数据也会从 1 同步给 35。
-而 5 的读请求也会失败，etcd 通过ReadIndex、Lease read保证线性一致读，即节点5在处理读请求时，首先需要与集群多数节点确认自己依然是Leader并查询 commit index，5做不到多数节点确认，因此读失败。
-因此 etcd 不存在脑裂问题。
+    以网络分区导致脑裂为例，一开始有5个节点, Node 5 为 Leader
+    由于出现网络故障，124 成为一个分区，35 成为一个分区， Node 5的leader 任期还没结束的一段时间内，仍然认为自己是当前leader，但是此时另外一边的分区，因为124无法连接5，于是选出了新的leader 1，网络分区形成。
+    35分区是否可用？如果写入了1而读取了5，是否会读取旧数据(stale read)?
+    答：35分区属于少数派，被认为是异常节点，无法执行写操作。写入 1 的可以成功，并在网络分区恢复后，35 因为任期旧，会自动成为 follower，异常期间的新数据也会从 1 同步给 35。
+    而 5 的读请求也会失败，etcd 通过ReadIndex、Lease read保证线性一致读，即节点5在处理读请求时，首先需要与集群多数节点确认自己依然是Leader并查询 commit index，5做不到多数节点确认，因此读失败。
+    因此 etcd 不存在脑裂问题。
+
 5. etcd快照备份和查看
-[root@master01 ~]#  docker exec -it $(docker ps -f name=etcd_etcd -q) etcdctl --endpoints "https://192.168.13.51:2379"  --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key snapshot save backup.db001 --write-out="table"
-{"level":"info","ts":1619755055.642756,"caller":"snapshot/v3_snapshot.go:119","msg":"created temporary db file","path":"backup.db001.part"}
-{"level":"info","ts":"2021-04-30T03:57:35.666Z","caller":"clientv3/maintenance.go:200","msg":"opened snapshot stream; downloading"}
-{"level":"info","ts":1619755055.6663518,"caller":"snapshot/v3_snapshot.go:127","msg":"fetching snapshot","endpoint":"https://192.168.13.51:2379"}
-{"level":"info","ts":"2021-04-30T03:57:35.808Z","caller":"clientv3/maintenance.go:208","msg":"completed snapshot read; closing"}
-{"level":"info","ts":1619755055.881549,"caller":"snapshot/v3_snapshot.go:142","msg":"fetched snapshot","endpoint":"https://192.168.13.51:2379","size":"4.2 MB","took":0.238622176}
-{"level":"info","ts":1619755055.8817613,"caller":"snapshot/v3_snapshot.go:152","msg":"saved","path":"backup.db001"}
-Snapshot saved at backup.db001
-[root@master01 ~]#  docker exec -it $(docker ps -f name=etcd_etcd -q) etcdctl --endpoints "https://192.168.13.51:2379"  --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key snapshot status backup.db001 --write-out="table"
-+----------+----------+------------+------------+
-|   HASH   | REVISION | TOTAL KEYS | TOTAL SIZE |
-+----------+----------+------------+------------+
-| 7f59e2f5 |   151932 |       1503 |     4.2 MB |
-+----------+----------+------------+------------+
+
+  ```bash
+  [root@master01 ~]#  docker exec -it $(docker ps -f name=etcd_etcd -q) etcdctl --endpoints "https://192.168.13.51:2379"  --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key snapshot save backup.db001 --write-out="table"
+  {"level":"info","ts":1619755055.642756,"caller":"snapshot/v3_snapshot.go:119","msg":"created temporary db file","path":"backup.db001.part"}
+  {"level":"info","ts":"2021-04-30T03:57:35.666Z","caller":"clientv3/maintenance.go:200","msg":"opened snapshot stream; downloading"}
+  {"level":"info","ts":1619755055.6663518,"caller":"snapshot/v3_snapshot.go:127","msg":"fetching snapshot","endpoint":"https://192.168.13.51:2379"}
+  {"level":"info","ts":"2021-04-30T03:57:35.808Z","caller":"clientv3/maintenance.go:208","msg":"completed snapshot read; closing"}
+  {"level":"info","ts":1619755055.881549,"caller":"snapshot/v3_snapshot.go:142","msg":"fetched snapshot","endpoint":"https://192.168.13.51:2379","size":"4.2 MB","took":0.238622176}
+  {"level":"info","ts":1619755055.8817613,"caller":"snapshot/v3_snapshot.go:152","msg":"saved","path":"backup.db001"}
+  Snapshot saved at backup.db001
+  [root@master01 ~]#  docker exec -it $(docker ps -f name=etcd_etcd -q) etcdctl --endpoints "https://192.168.13.51:2379"  --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key snapshot status backup.db001 --write-out="table"
+  +----------+----------+------------+------------+
+  |   HASH   | REVISION | TOTAL KEYS | TOTAL SIZE |
+  +----------+----------+------------+------------+
+  | 7f59e2f5 |   151932 |       1503 |     4.2 MB |
+  +----------+----------+------------+------------+
+  ```
+
 6. learner 角色
-learner 是 etcd 3.4 版本中增加的新角色，类似于 zookeeper 的 observer, 不参与 raft 投票选举。通过这个新角色的引入，降低了加入新节点时给老集群的额外压力，增强了集群的稳定性。除此之外还可以使用它作为集群的热备或服务一些读请求。
-举例，如果 etcd集群需要加入一个新节点，新加入的 etcd 成员因为没有任何数据，因此需要从 leader 那里同步数据，直到赶上领导者的日志为止。这样就会导致 leader 的网络过载，导致 leader 和 member 之间的心跳可能阻塞。然后就开始了新的leader选举，也就是说，具有新成员的集群更容易受到领导人选举的影响。领导者的选举以及随后向新成员的更新都容易导致一段时间的群集不可用，这种是不符合预期，风险也是很大的。
-因此为了解决这个问题，raft 4.2.1 论文中介绍了一种新的节点角色：Learner。加入集群的节点不参与投票选举，只接收 leader 的 replication message，直到与 leader 保持同步为止。
+    learner 是 etcd 3.4 版本中增加的新角色，类似于 zookeeper 的 observer, 不参与 raft 投票选举。通过这个新角色的引入，降低了加入新节点时给老集群的额外压力，增强了集群的稳定性。除此之外还可以使用它作为集群的热备或服务一些读请求。
+    举例，如果 etcd集群需要加入一个新节点，新加入的 etcd 成员因为没有任何数据，因此需要从 leader 那里同步数据，直到赶上领导者的日志为止。这样就会导致 leader 的网络过载，导致 leader 和 member 之间的心跳可能阻塞。然后就开始了新的leader选举，也就是说，具有新成员的集群更容易受到领导人选举的影响。领导者的选举以及随后向新成员的更新都容易导致一段时间的群集不可用，这种是不符合预期，风险也是很大的。
+    因此为了解决这个问题，raft 4.2.1 论文中介绍了一种新的节点角色：Learner。加入集群的节点不参与投票选举，只接收 leader 的 replication message，直到与 leader 保持同步为止。
 
 
 
-#监控
+**etcd命令**
+证书太长就不写了，以下命令均为无证书版：
+version: 查看版本
+member list: 查看节点状态，learner 情况
+endpoint status: 节点状态，leader 情况
+endpoint health: 健康状态与耗时
+alarm list: 查看警告，如存储满时会切换为只读，产生 alarm
+alarm disarm：清除所有警告
+set app demo: 写入
+get app: 获取
+update app demo1:更新
+rm app: 删除
+mkdir demo 创建文件夹
+rmdir dir 删除文件夹
+backup 备份
+compaction： 压缩
+defrag：整理碎片
+watch key 监测 key 变化
+get / –prefix –keys-only: 查看所有 key
+–write-out= tables，可以用表格形式输出更清晰，注意有些输出并不支持tables
+在etcd中删除cluster信息
+
+
+
+
+
+### 1.6 k8s集群监控
+
 为避免重蹈hepster的覆辙，资源指标API和自定义指标API，他们作为聚合API集成到kubernetes集群中。
 heapster用于提供核心指标API的功能也被采用聚合方式的指标API服务器metrics server所取代。
 
-#新一代监控体系与指标系统
+**新一代监控体系与指标系统**
 我们知道，kubernetes通过API Aggregator（聚合器）为开发人员提供了轻松扩展API资源的能力，为集群添加
 指标数据API的自定义指标API、资源指标API（简称为指标API）和外部指标API都属于这种类型的扩展。
 总结起来：新一代的kubernetes监控系统架构主要同核心指标流水线和监控指标流水线共同组成。
 
 
-----核心指标与metrics server
+
+#### 1.6.1 核心指标与metrics server
+
+```bash
 [root@master01 ~/k8s/manifests/addons/monitor/metrics-server]# curl https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.3.7/components.yaml | tee metrics-server-deploy.yaml
 [root@master01 ~/k8s/manifests/addons/monitor/metrics-server]# vim metrics-server-deploy.yaml
-      containers:
-      - name: metrics-server
-        image: k8s.gcr.io/metrics-server/metrics-server:v0.3.7
-        imagePullPolicy: IfNotPresent
-        args:
-          - --cert-dir=/tmp
-          - --secure-port=4443
-          - --kubelet-preferred-address-types=InternalIP
-          - --kubelet-insecure-tls
-注：kubelet通常是在Bootstrap过程中生成自签证书，这类证书无法由Metrics server完成CA验证，因此需要使用--kubelet-insecure-tls选项来禁用这验证功能。另外 ，节点的DNS域（hs.com）与kubernetes集群使用的DNS域（cluster.local）不相同，则coreDNS通常无法解析各节点的主机名称，这类问题有两种，方案一是使用--kubelet-preferred-address-types=InternalIP来使用内部IP来与各节点通信。另外一种是为CoreDNS添加类似hosts解析的资源记录。推荐方案一。
------由于国内无法访问google镜像站，所以需要提前下载
+  containers:
+   - name: metrics-server
+     image: k8s.gcr.io/metrics-server/metrics-server:v0.3.7
+     imagePullPolicy: IfNotPresent
+     args:
+       - --cert-dir=/tmp
+       - --secure-port=4443
+       - --kubelet-preferred-address-types=InternalIP
+       - --kubelet-insecure-tls
+         注：kubelet通常是在Bootstrap过程中生成自签证书，这类证书无法由Metrics server完成CA验证，因此需要使用--kubelet-insecure-tls选项来禁用这验证功能。另外 ，节点的DNS域（hs.com）与kubernetes集群使用的DNS域（cluster.local）不相同，则coreDNS通常无法解析各节点的主机名称，这类问题有两种，方案一是使用--kubelet-preferred-address-types=InternalIP来使用内部IP来与各节点通信。另外一种是为CoreDNS添加类似hosts解析的资源记录。推荐方案一。
+# 由于国内无法访问google镜像站，所以需要提前下载
 [root@node02 ~]# docker pull bitnami/metrics-server:0.3.7
 [root@node02 ~]# docker tag bitnami/metrics-server:0.3.7 k8s.gcr.io/metrics-server/metrics-server:v0.3.7
 [root@master01 ~/k8s/manifests/addons/monitor/metrics-server/3.7]# kubectl apply -f metrics-server-deploy.yaml 
-[----测试metrics server是否收集到指标，如果收集到指标则表示metrics server工作正常了
-root@master01 ~/k8s/manifests]# yum install -y jq
+
+# 测试metrics server是否收集到指标，如果收集到指标则表示metrics server工作正常了
+[root@master01 ~/k8s/manifests]# yum install -y jq
 [root@master01 ~/k8s/manifests]# kubectl get --raw "/apis/metrics.k8s.io/v1beta1/nodes" | jq
 {
   "kind": "NodeMetricsList",
   "apiVersion": "metrics.k8s.io/v1beta1",
   "metadata": {
-    "selfLink": "/apis/metrics.k8s.io/v1beta1/nodes"
+"selfLink": "/apis/metrics.k8s.io/v1beta1/nodes"
   }
-.........
+
 [root@master01 ~/k8s/manifests]# kubectl top nodes
 NAME                  CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%   
 master01.k8s.hs.com   1006m        25%    1606Mi          20%       
@@ -340,22 +446,30 @@ master02.k8s.hs.com   76m          1%     1502Mi          40%
 master03.k8s.hs.com   297m         7%     1456Mi          39%       
 node01.k8s.hs.com     85m          2%     937Mi           25%       
 node02.k8s.hs.com     89m          2%     942Mi           29%   
-注：另外，kubernetes dashboard能够根据核心指标生成节点及相关pod资源的使用情况。
+```
 
-----自定义指标与prometheus
+
+
+#### 1.6.2 自定义指标与prometheus
 promQL --> k8s-prometheus-adapter -->custom-metrics.k8s.io <-- client get
 
-#kube-state-metrics
+
+
+**kube-state-metrics**
+
 已经有了cadvisor、heapster、metric-server，几乎容器运行的所有指标都能拿到，但是下面这种情况却无能为力：
 我调度了多少个replicas？现在可用的有几个？
 多少个Pod是running/stopped/terminated状态？
 Pod重启了多少次？
-我有多少job在运行中
+我有多少job在运行中?
 而这些则是kube-state-metrics提供的内容，它基于client-go开发，轮询Kubernetes API，并将Kubernetes的结构化信息转换为metrics。
 
 
-#HPA-V2
---基于CPU和内存进行压测--
+
+**HPA V2**
+
+基于CPU和内存进行压测
+```bash
 [root@master02 ~/manifests/hpa]# cat hpa-v2-deployment.yaml 
 apiVersion: v1
 kind: Service
@@ -436,10 +550,12 @@ spec:
       target:
         type: AverageValue
         averageValue: 30Mi
+```
 
---基于web请求数进行压测(自定义指标)--
-#运行metrics-app
--------
+基于web请求数进行压测(自定义指标)
+
+```bash
+# 运行metrics-app
 [root@master02 ~/manifests/hpa]# cat hpa-v2-web-deployment.yaml 
 apiVersion: v1
 kind: Service
@@ -495,8 +611,13 @@ spec:
           limits:
             memory: "256Mi"
             cpu: "50m"
--------
+```
 
+
+
+测试 
+
+```bash
 [root@master02 ~]# kubectl run client --image="ikubernetes/admin-toolbox:v1.0" -it --rm --command /bin/sh 
 [root@client /]# curl demonapp-web.fat.svc.cluster.local/metrics
 # HELP http_requests_total The amount of requests in total
@@ -527,10 +648,10 @@ spec:
       target:
         type: AverageValue
         averageValue: 5
-  behavior:
+    behavior:
     scaleDown:
       stabilizationWindowSeconds: 120
-[root@master02 ~/manifests/hpa]# kubectl apply -f hpa-v2-web.yaml
+    [root@master02 ~/manifests/hpa]# kubectl apply -f hpa-v2-web.yaml
 
 #在k8s-prometheus-adapter上配置自定义规则进行暴露http_requests_per_second指标，默认不会进行公开。
 [root@master02 ~/manifests/hpa]# wget https://raw.githubusercontent.com/iKubernetes/Kubernetes_Advanced_Practical_2rd/main/chapter15/prometheus/prometheus-adapter-values-with-custom-rules.yaml
@@ -548,13 +669,12 @@ daemonapp      ClusterIP   10.100.14.43    <none>        80/TCP    52m
 demonapp-web   ClusterIP   10.106.129.82   <none>        80/TCP    26m
 [root@master02 ~]# ab -c 100 -n 10000 http://10.106.129.82/
 
+```
 
 
 
+### 1.7 存储
 
-
-
-#存储
 1. 临时存储卷emptyDir和gitRepo的生命周期同pod，但gitRepo能够通过引用外部git仓库的数据实现数据持久化
 2. 节点存储卷hostPath和local提供了节点级别的数据持久能力。
 3. 网络存储卷NFS、GlusterFS和RBD等是企业内部较为常用的独立部署的持久存储系统。
@@ -573,7 +693,7 @@ kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/master/depl
 
 
 
-#service、endpoint、容器探针
+### 1.8 service、endpoint、容器探针
 1. 当创建service和pod时，service会通过标签选择器关联后端pod，其实在创建service时service还会创建跟自己同名的endpoint(端点)，
 此端点用于选择后端pod，从而完成service跟pod的关联。
 2. 容器探针：有存活性探测和就绪性控制，当pod未就绪时则会移到subnets.notReadyaddresses字段中，如果就绪则在subnets.addresses字段。
@@ -582,7 +702,8 @@ kubectl apply -f https://raw.githubusercontent.com/longhorn/longhorn/master/depl
 外部服务。
 
 
-#iptables和ipvs
+
+### 1.9 iptables和ipvs
 单个service对象的iptables数量与后端端点(pod)的数量正相关，对于拥有较多service对象和大规模pod对象的kubernetes集群，每个节点的内核上将充斥着大量的iptables规则。
 service对象的变动会导致所有节点刷新netfilter上的iptables规则，而且每次的service请求也都将经历多次的规则匹配检测和处理过程，这会占用节点上相当比例的系统资源。因此，
 iptables代理模型不适用于service和pod数量较多的集群。ipvs代理模型通过将流量匹配和分发功能配置为少量ipvs规则，有效降低了对系统资源的占用，从而是能够承载更大规模
@@ -595,7 +716,7 @@ mode: "ipvs"
 
 
 
-#服务发现
+### 1.10 服务发现
 1. 服务发现机制的基本实现：一般是事先部署好一个网络位置较为稳定的服务注册中心(也称为服务总线)，由服务代理者向注册中心“注册”自己的位置信息，并在变动后及时予以更新，
 相应地服务消费方周期性地从注册中心获取服务提供者的最新位置信息，从而“发现”要访问的目标服务资源。复杂的服务发现机制还会让服务提供者提供其描述信息，状态信息及
 资源使用信息等，以供消费者实现更为服务选择逻辑。
@@ -606,11 +727,13 @@ mode: "ipvs"
 3. 由此可见，服务注册中心是服务发现得以落地的核心组件。事实上DNS可以算得上是最为原始的服务发现系统之一，但DNS记录的传播速度可能跟不上服务的变更速度，因此不适用于
 微服务环境。
 4. pod的DNS解析策略与配置: 它们分别使用spec.dnsPolicy和spec.dnsConfi进行定义，并组件生效。
-spec.dnsPolicy: Default, ClusterFirst, ClusterFirstWithHostNet, None
-spec.dnsConfig: nameservers, searches, options   --这些选项都附加在dnsPolicy配置之后
-spec: 
-  dnsPolicy: None
-  dnsConfig: 
+```bash
+   spec.dnsPolicy: Default, ClusterFirst, ClusterFirstWithHostNet, None
+   spec.dnsConfig: nameservers, searches, options   --这些选项都附加在dnsPolicy配置之后
+# pod的/etc/resolve.conf中dns服务器的搜索域都会变为指定的信息。
+   spec: 
+    dnsPolicy: None
+    dnsConfig: 
     nameservers:
       - 10.96.0.10
       - 223.5.5.5
@@ -621,14 +744,16 @@ spec:
     options:
       - name: ndots
         values: "5"
-注：pod的/etc/resolve.conf中dns服务器手搜索域都会变为指定的信息。
+```
 5. externalName Service: 只要在service中定义externalName：redis.ik8s.io类似字段信息，则集群中的pod通过coreDNS解析service名称的地址信息为redis.ik8s.io，然后解析最终IP
 6. Headless Service: 只要在service中定义clusterIP: None即可定义无头service，当pod请求service名称时，coreDNS直接解析到后端的podIP，而不是clusterIP，从而避免iptables规则匹配。
 增加速度。
 
 
-#准入控制器
- 一个准入控制器可以是验证型、变异型或兼具此两项功能。
+
+### 1.11 准入控制器
+
+一个准入控制器可以是验证型、变异型或兼具此两项功能。
 LimitRange  --验证型
 1. LimitRange支持在Pod级别与容器级别分别设置CPU和内存两种计算资源的可用范围，它们对应的资源范围限制类型分类pod和container。一旦在名称空间上启用LimitRange，该名称空间中
 的Pod或容器的Requests和Limits的各大项属性值必须在对应的可用资源范围内，否则将会被描绘，这是验证型准备控制器的功能。
@@ -659,9 +784,13 @@ PosSecurityPolicy
 
 
 
-#k8s master节点移除和添加
-#预先准备：
-打印加入集群命令：
+### 1.12 k8s master节点移除和添加
+
+#### 1.12.1  master节点移除
+
+
+```bash
+# 打印加入集群命令
 [root@master02 ~/manifests/addons/network]# kubeadm token create --print-join-command
 W0430 09:26:33.276319   14024 configset.go:348] WARNING: kubeadm cannot validate component configs for API groups [kubelet.config.k8s.io kubeproxy.config.k8s.io]
 kubeadm join k8s-api.k8s.hs.com:6443 --token poz5y3.206amiyzawdzlueo     --discovery-token-ca-cert-hash sha256:437e89e657eca27c9d0311c4f76d7dd3f9d3fe9de7eb10016d626ac1133dd5bb 
@@ -671,7 +800,7 @@ W0430 09:26:43.442826   14118 configset.go:348] WARNING: kubeadm cannot validate
 [upload-certs] Storing the certificates in Secret "kubeadm-certs" in the "kube-system" Namespace
 [upload-certs] Using certificate key:
 be1fd45e9911967deef4cdbf35ee5a16671df886956270fd9a26591e190648ea
-因为加入集群为master命令组合为：
+# 因为加入集群为master命令组合为
 kubeadm join k8s-api.k8s.hs.com:6443 --token poz5y3.206amiyzawdzlueo     --discovery-token-ca-cert-hash sha256:437e89e657eca27c9d0311c4f76d7dd3f9d3fe9de7eb10016d626ac1133dd5bb  --control-plane --certificate-key be1fd45e9911967deef4cdbf35ee5a16671df886956270fd9a26591e190648ea
 
 --查看etcd集群节点的状态
@@ -694,7 +823,9 @@ node "master01.k8s.hs.com" deleted
 NAME                  STATUS   ROLES    AGE   VERSION
 master02.k8s.hs.com   Ready    master   20m   v1.19.0
 master03.k8s.hs.com   Ready    master   13m   v1.19.0
-查看etcd状态：
+
+
+# 查看etcd状态
 [root@master03 ~/.kube]# kubectl -n kube-system exec etcd-master02.k8s.hs.com -- etcdctl --endpoints=https://192.168.13.52:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key endpoint status
 https://192.168.13.52:2379, 30d66d597f2cc725, 3.4.9, 2.8 MB, false, false, 3, 6677, 6677, 
 [root@master03 ~/.kube]# kubectl -n kube-system exec etcd-master02.k8s.hs.com -- etcdctl --endpoints=https://192.168.13.51:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key endpoint status
@@ -707,31 +838,11 @@ https://192.168.13.52:2379 is healthy: successfully committed proposal: took = 9
 https://192.168.13.51:2379 is healthy: successfully committed proposal: took = 17.182973ms
 [root@master03 ~/.kube]# kubectl -n kube-system exec etcd-master02.k8s.hs.com -- etcdctl --endpoints=https://192.168.13.53:2379 --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key endpoint health
 https://192.168.13.53:2379 is healthy: successfully committed proposal: took = 20.595421ms
-重置集群节点:master01.k8s.hs.com:
+
+# 重置集群节点:master01.k8s.hs.com:
 kubeadm reset 
---------------
-etcd命令：
-证书太长就不写了，以下命令均为无证书版：
-version: 查看版本
-member list: 查看节点状态，learner 情况
-endpoint status: 节点状态，leader 情况
-endpoint health: 健康状态与耗时
-alarm list: 查看警告，如存储满时会切换为只读，产生 alarm
-alarm disarm：清除所有警告
-set app demo: 写入
-get app: 获取
-update app demo1:更新
-rm app: 删除
-mkdir demo 创建文件夹
-rmdir dir 删除文件夹
-backup 备份
-compaction： 压缩
-defrag：整理碎片
-watch key 监测 key 变化
-get / –prefix –keys-only: 查看所有 key
-–write-out= tables，可以用表格形式输出更清晰，注意有些输出并不支持tables
-在etcd中删除cluster信息
---------------
+
+
 [root@master02 ~]# docker exec -it $(docker ps -f name=etcd_etcd -q) /bin/sh
 sh-5.0# etcdctl --endpoints "https://127.0.0.1:2379"  --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key member list --write-out="table"
 +------------------+---------+---------------------+----------------------------+----------------------------+------------+
@@ -757,7 +868,8 @@ sh-5.0# etcdctl --endpoints "https://192.168.13.51:2379,https://192.168.13.52:23
 | https://192.168.13.52:2379 |  8715488046f0887 |   3.4.9 |  4.2 MB |     false |      false |         3 |       9546 |               9546 |        |
 | https://192.168.13.53:2379 | 676ef70c3ee42b24 |   3.4.9 |  4.1 MB |     false |      false |         3 |       9546 |               9546 |        |
 +----------------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
-----master01.k8s.hs.com模拟故障，此时已经关机，etcd状态如下：
+
+# master01.k8s.hs.com模拟故障，此时已经关机，etcd状态如下：
 [root@master02 /etc/kubernetes/manifests]# docker exec -it $(docker ps -f name=etcd_etcd -q) etcdctl --endpoints "https://192.168.13.51:2379,https://192.168.13.52:2379,https://192.168.13.53:2379"  --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key endpoint status --write-out="table"
 {"level":"warn","ts":"2021-04-29T12:34:21.772Z","caller":"clientv3/retry_interceptor.go:62","msg":"retrying of unary invoker failed","target":"passthrough:///https://192.168.13.51:2379","attempt":0,"error":"rpc error: code = DeadlineExceeded desc = context deadline exceeded"}
 Failed to get the status of endpoint https://192.168.13.51:2379 (context deadline exceeded)
@@ -777,7 +889,7 @@ Failed to get the status of endpoint https://192.168.13.51:2379 (context deadlin
 +------------------+---------+---------------------+----------------------------+----------------------------+------------+
 注：成员还有3个，确定此节点是故障节点需要member remove进行删除，否则不要轻易删除(节点关机，开机会回归集群时不能删除)，另外learner和leader很像，不要看错,learner是etcd3.0加入的对象机制。
 
-----配置tengine，移除192.168.13.51:6443，然后获取节点状态
+# 配置tengine，移除192.168.13.51:6443，然后获取节点状态
 [root@master03 /etc/kubernetes/manifests]# kubectl get nodes -o wide 
 NAME                  STATUS     ROLES    AGE   VERSION   INTERNAL-IP     EXTERNAL-IP   OS-IMAGE                KERNEL-VERSION          CONTAINER-RUNTIME
 master01.k8s.hs.com   NotReady   master   43m   v1.19.0   192.168.13.51   <none>        CentOS Linux 7 (Core)   3.10.0-957.el7.x86_64   docker://20.10.6
@@ -785,11 +897,12 @@ master02.k8s.hs.com   Ready      master   40m   v1.19.0   192.168.13.52   <none>
 master03.k8s.hs.com   Ready      master   38m   v1.19.0   192.168.13.53   <none>        CentOS Linux 7 (Core)   3.10.0-957.el7.x86_64   docker://20.10.5
 node01.k8s.hs.com     Ready      <none>   36m   v1.19.0   192.168.13.56   <none>        CentOS Linux 7 (Core)   3.10.0-957.el7.x86_64   docker://20.10.5
 node02.k8s.hs.com     Ready      <none>   36m   v1.19.0   192.168.13.57   <none>        CentOS Linux 7 (Core)   3.10.0-957.el7.x86_64   docker://20.10.5
-----移除节点：
+
+# 移除节点
 --驱逐节点master01.k8s.hs.com上的pod，并且忽略本地的daemonset控制器：
 [root@master02 ~]# kubectl drain master01.k8s.hs.com --delete-local-data --ignore-daemonsets --force   --一直卡住，使用ctrl+c结束
-----期间遇到小插曲，node上flannel接口存在，始终报cni接口已经存在，不能创建，需要在相关node上进行删除相关接口，等待集群重建：
------------
+
+# 期间遇到小插曲，node上flannel接口存在，始终报cni接口已经存在，不能创建，需要在相关node上进行删除相关接口，等待集群重建
 [root@salt /shell]# cat resetk8snet.sh 
 #!/bin/sh
 systemctl stop kubelet
@@ -806,7 +919,6 @@ brctl delbr cni0
 rm -rf /var/lib/cni/flannel/* && rm -rf /var/lib/cni/networks/cbr0/* && ip link delete cni0 && rm -rf /var/lib/cni/network/cni0/*
 systemctl start docker
 systemctl start kubelet
------------
 
 [root@master02 /etc/kubernetes/manifests]# kubectl get nodes -o wide
 NAME                  STATUS                        ROLES    AGE   VERSION   INTERNAL-IP     EXTERNAL-IP   OS-IMAGE                KERNEL-VERSION          CONTAINER-RUNTIME
@@ -817,7 +929,9 @@ node01.k8s.hs.com     Ready                         <none>   39m   v1.19.0   192
 node02.k8s.hs.com     Ready                         <none>   39m   v1.19.0   192.168.13.57   <none>        CentOS Linux 7 (Core)   3.10.0-957.el7.x86_64   docker://20.10.5
 [root@master02 ~]# kubectl delete nodes master01.k8s.hs.com    --删除此节点
 node "master01.k8s.hs.com" deleted
-[root@master02 ~]# kubectl get pods -n kube-system -o wide  --查看时始终还在master01.k8s.hs.com，过一会自动删除已经删除节点的相关信息Pod
+[root@master02 ~]# kubectl get pods -n kube-system -o wide  
+
+# 查看时始终还在master01.k8s.hs.com，过一会自动删除已经删除节点的相关信息Pod
 NAME                                          READY   STATUS        RESTARTS   AGE   IP              NODE                  NOMINATED NODE   READINESS GATES
 coredns-6d56c8448f-m8pjm                      1/1     Terminating   1          17d   10.244.0.5      master01.k8s.hs.com   <none>           <none>
 coredns-6d56c8448f-sdk7q                      1/1     Terminating   1          17d   10.244.0.4      master01.k8s.hs.com   <none>           <none>
@@ -845,7 +959,7 @@ kube-scheduler-master02.k8s.hs.com            1/1     Running       2          1
 kube-scheduler-master03.k8s.hs.com            1/1     Running       1          17d   192.168.13.53   master03.k8s.hs.com   <none>           <none>
 metrics-server-554df5cbcf-zt44l               1/1     Running       1          17d   10.244.2.3      node02.k8s.hs.com     <none>           <none>
 
---因为模拟节点故障，所以要删除etcd中的master01.k8s.hs.com信息：
+# 因为模拟节点故障，所以要删除etcd中的master01.k8s.hs.com信息
 [root@master02 ~/manifests/addons/network]# docker exec -it $(docker ps -f name=etcd_etcd -q) etcdctl --endpoints "https://192.168.13.51:2379,https://192.168.13.52:2379,https://192.168.13.53:2379"  --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key member remove a78dd15fd54968fb
 Member a78dd15fd54968fb removed from cluster 788c742b9ad97c82
 [root@master02 ~/manifests/addons/network]# docker exec -it $(docker ps -f name=etcd_etcd -q) etcdctl --endpoints "https://192.168.13.51:2379,https://192.168.13.52:2379,https://192.168.13.53:2379"  --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key member list --write-out="table"
@@ -856,8 +970,14 @@ Member a78dd15fd54968fb removed from cluster 788c742b9ad97c82
 | 676ef70c3ee42b24 | started | master03.k8s.hs.com | https://192.168.13.53:2380 | https://192.168.13.53:2379 |      false |
 +------------------+---------+---------------------+----------------------------+----------------------------+------------+
 注：已经在etcd中删除集群节点信息
+```
 
-在新节点上配置环境和安装命令行工具：
+
+
+#### 1.12.2 master节点添加
+
+```bash
+# 在新节点上配置环境和安装命令行工具
 [root@salt /srv/salt/base]# salt 'master01*' state.highstate 
 [root@salt /srv/salt/base/init]#  salt 'master01.k8s*' state.sls init.k8s-repo saltenv=base 
 [root@salt /srv/salt/base/init]#  salt 'master01.k8s*' cmd.run 'yum install -y kubeadm-1.19.0-0 kubelet-1.19.0-0 kubectl-1.19.0-0'
@@ -868,12 +988,14 @@ master01.k8s.hs.com:
     kubectl.x86_64                   1.19.0-0                       @kubernetes-repo
     kubelet.x86_64                   1.19.0-0                       @kubernetes-repo
     kubernetes-cni.x86_64            0.8.7-0                        @kubernetes-repo
-在新节点上加入到现有集群：
+
+# 在新节点上加入到现有集群：
 kubeadm join k8s-api.k8s.hs.com:6443 --token poz5y3.206amiyzawdzlueo     --discovery-token-ca-cert-hash sha256:437e89e657eca27c9d0311c4f76d7dd3f9d3fe9de7eb10016d626ac1133dd5bb  --control-plane --certificate-key be1fd45e9911967deef4cdbf35ee5a16671df886956270fd9a26591e190648ea
 [root@master01 ~]# mkdir -p $HOME/.kube
 [root@master01 ~]# sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 [root@master01 ~]# sudo chown $(id -u):$(id -g) $HOME/.kube/config
---加入集群成功，查看集群状态信息
+
+# 加入集群成功，查看集群状态信息
 [root@master01 ~]# kubectl get nodes -o wide 
 NAME                  STATUS   ROLES    AGE   VERSION   INTERNAL-IP     EXTERNAL-IP   OS-IMAGE                KERNEL-VERSION          CONTAINER-RUNTIME
 master01.k8s.hs.com   Ready    master   38s   v1.19.0   192.168.13.51   <none>        CentOS Linux 7 (Core)   3.10.0-957.el7.x86_64   docker://20.10.6
@@ -881,13 +1003,18 @@ master02.k8s.hs.com   Ready    master   13h   v1.19.0   192.168.13.52   <none>  
 master03.k8s.hs.com   Ready    master   13h   v1.19.0   192.168.13.53   <none>        CentOS Linux 7 (Core)   3.10.0-957.el7.x86_64   docker://20.10.5
 node01.k8s.hs.com     Ready    <none>   13h   v1.19.0   192.168.13.56   <none>        CentOS Linux 7 (Core)   3.10.0-957.el7.x86_64   docker://20.10.5
 node02.k8s.hs.com     Ready    <none>   13h   v1.19.0   192.168.13.57   <none>        CentOS Linux 7 (Core)   3.10.0-957.el7.x86_64   docker://20.10.5
---最后把192.168.13.51:6443加入到k8s-api-.k8s.hs.com后端服务端点
+# 最后把192.168.13.51:6443加入到k8s-api-.k8s.hs.com后端服务端点
+```
 
 
-#维护节点
-[root@master02 ~]# kubectl cordon master01.k8s.hs.com  --将节点master01.k8s.hs.com置为不可调度
+
+### 1.13 节点维护
+```bash
+# 将节点master01.k8s.hs.com置为不可调度
+[root@master02 ~]# kubectl cordon master01.k8s.hs.com
 node/master01.k8s.hs.com cordoned
-[root@master01 ~]# kubectl drain master01.k8s.hs.com --ignore-daemonsets   --驱逐节点上的pod到别的节点运行
+# 驱逐节点上的pod到别的节点运行
+[root@master01 ~]# kubectl drain master01.k8s.hs.com --ignore-daemonsets 
 node/master01.k8s.hs.com already cordoned
 WARNING: ignoring DaemonSet-managed Pods: kube-system/kube-flannel-ds-amd64-hrzj4, kube-system/kube-proxy-8jrgb
 node/master01.k8s.hs.com drained
@@ -898,7 +1025,8 @@ master02.k8s.hs.com   Ready                      master   15h   v1.19.0   192.16
 master03.k8s.hs.com   Ready                      master   15h   v1.19.0   192.168.13.53   <none>        CentOS Linux 7 (Core)   3.10.0-957.el7.x86_64   docker://20.10.5
 node01.k8s.hs.com     Ready                      <none>   15h   v1.19.0   192.168.13.56   <none>        CentOS Linux 7 (Core)   3.10.0-957.el7.x86_64   docker://20.10.5
 node02.k8s.hs.com     Ready                      <none>   15h   v1.19.0   192.168.13.57   <none>        CentOS Linux 7 (Core)   3.10.0-957.el7.x86_64   docker://20.10.5
-[root@master01 ~]# kubectl uncordon master01.k8s.hs.com      --恢复集群为可调度
+# 恢复集群为可调度
+[root@master01 ~]# kubectl uncordon master01.k8s.hs.com  
 node/master01.k8s.hs.com uncordoned
 [root@master01 ~]# kubectl get nodes 
 NAME                  STATUS   ROLES    AGE   VERSION
@@ -907,15 +1035,14 @@ master02.k8s.hs.com   Ready    master   15h   v1.19.0
 master03.k8s.hs.com   Ready    master   15h   v1.19.0
 node01.k8s.hs.com     Ready    <none>   15h   v1.19.0
 node02.k8s.hs.com     Ready    <none>   15h   v1.19.0
---查看scheduler的leader在哪个master上
+# 查看scheduler的leader在哪个master上
 [root@master01 ~]# kubectl get endpoints kube-scheduler -n kube-system -o yaml | grep holderIdentity
     control-plane.alpha.kubernetes.io/leader: '{"holderIdentity":"master02.k8s.hs.com_5dbd75ef-b62e-47ea-9b78-631d7fde8645","leaseDurationSeconds":15,"acquireTime":"2021-04-29T16:23:27Z","renewTime":"2021-04-30T05:52:44Z","leaderTransitions":5}'
---查看ontroller-manager的leader在哪个master上
+# 查看ontroller-manager的leader在哪个master上
 [root@master01 ~]# kubectl get endpoints kube-controller-manager -n kube-system -o yaml | grep holderIdentity
     control-plane.alpha.kubernetes.io/leader: '{"holderIdentity":"master03.k8s.hs.com_575ffaa6-ff7b-48a4-896b-014d2ab8c730","leaseDurationSeconds":15,"acquireTime":"2021-04-29T16:23:27Z","renewTime":"2021-04-30T05:52:54Z","leaderTransitions":4}'
---apiserver端口是6443，
-使用kubectl命令时会去请求master，所以不能返回时代理apiserver是故障的。apiserver是无状态的。
---查看etcd集群状态 
+# apiserver端口是6443，使用kubectl命令时会去请求master，所以不能返回时代理apiserver是故障的。apiserver是无状态的。
+# 查看etcd集群状态 
 [root@master01 ~]#  docker exec -it $(docker ps -f name=etcd_etcd -q) etcdctl --endpoints "https://192.168.13.51:2379,https://192.168.13.52:2379,https://192.168.13.53:2379"  --cacert=/etc/kubernetes/pki/etcd/ca.crt --cert=/etc/kubernetes/pki/etcd/server.crt --key=/etc/kubernetes/pki/etcd/server.key endpoint status --write-out="table"
 +----------------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
 |          ENDPOINT          |        ID        | VERSION | DB SIZE | IS LEADER | IS LEARNER | RAFT TERM | RAFT INDEX | RAFT APPLIED INDEX | ERRORS |
@@ -924,16 +1051,17 @@ node02.k8s.hs.com     Ready    <none>   15h   v1.19.0
 | https://192.168.13.52:2379 |  8715488046f0887 |   3.4.9 |  4.2 MB |      true |      false |         9 |     186012 |             186012 |        |
 | https://192.168.13.53:2379 | 676ef70c3ee42b24 |   3.4.9 |  4.1 MB |     false |      false |         9 |     186012 |             186012 |        |
 +----------------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
---查看集群状态
+# 查看集群状态
 [root@master02 ~]# kubectl get cs 
 Warning: v1 ComponentStatus is deprecated in v1.19+
 NAME                 STATUS    MESSAGE             ERROR
 scheduler            Healthy   ok                  
 controller-manager   Healthy   ok                  
 etcd-0               Healthy   {"health":"true"}   
+```
 
+### 1.14 集群升级
 
-----集群升级：
 一、给正在对外提供服务的 Kubernetes 集群升级，就好比是“给飞行中的飞机换引擎”。因为集群升级面临着众多难点，也使得众多的 Kubernetes 集群维护者对集群升级这件事情比较紧张。
 我们可以通过详细的升级预检，来消除集群升级的不确定性。对于上面列举的集群升级的难点，我们也可以分别进行详细的升级预检，对症下药，将难点逐一击破。升级预检主要可以分为三个方面：
 核心组件健康检查、节点配置检查、云资源检查
@@ -1004,7 +1132,8 @@ Dns 组件：根据社区的版本兼容矩阵，将 CoreDNS 的版本升级为�
 网络转发组件：Kube-proxy 的版本是跟随 Kubernetes 的版本进行演进的，所以我们需要将 kube-proxy 的版本升级到与 Kubernetes 版本相同的版本。
 
 
-#kubernetes v1.19.0证书更新
+#### 1.14.1 kubernetes v1.19.0证书更新
+```bash
 [root@master01 ~]# kubeadm alpha certs check-expiration
 CERTIFICATE                EXPIRES                  RESIDUAL TIME   CERTIFICATE AUTHORITY   EXTERNALLY MANAGED
 admin.conf                 Apr 30, 2022 01:46 UTC   364d                                    no      
@@ -1022,8 +1151,9 @@ CERTIFICATE AUTHORITY   EXPIRES                  RESIDUAL TIME   EXTERNALLY MANA
 ca                      Apr 27, 2031 11:51 UTC   9y              no      
 etcd-ca                 Apr 27, 2031 11:51 UTC   9y              no      
 front-proxy-ca          Apr 27, 2031 11:51 UTC   9y              no      
----
---自kubernentes v1.15以后，可以使用官方命令续订证书，每次续订将会是一年，命令如下：
+
+
+# 自kubernentes v1.15以后，可以使用官方命令续订证书，每次续订将会是一年，命令如下：
 [root@master01 ~]# kubeadm alpha certs check-expiration
 CERTIFICATE                EXPIRES                  RESIDUAL TIME   CERTIFICATE AUTHORITY   EXTERNALLY MANAGED
 admin.conf                 Apr 30, 2022 06:18 UTC   364d                                    no      
@@ -1041,22 +1171,27 @@ CERTIFICATE AUTHORITY   EXPIRES                  RESIDUAL TIME   EXTERNALLY MANA
 ca                      Apr 27, 2031 11:51 UTC   9y              no      
 etcd-ca                 Apr 27, 2031 11:51 UTC   9y              no      
 front-proxy-ca          Apr 27, 2031 11:51 UTC   9y              no      
----
-也可使用此链接更新master端的证书，node端的kubelet证书会自动更新，不用手动更新。
+
+# 也可使用此链接更新master端的证书，node端的kubelet证书会自动更新，不用手动更新。
 URL: https://github.com/jacknotes/update-kube-cert
 该脚本用于处理已过期或者即将过期的kubernetes集群证书
 kubeadm生成的证书有效期为为1年，该脚本可将kubeadm生成的证书有效期更新为10年
 该脚本只处理master节点上的证书：kubeadm默认配置了kubelet证书自动更新，node节点kubelet.conf所指向的证书会自动更新
 小于v1.17版本的master初始化节点(执行kubeadm init的节点) kubelet.conf里的证书并不会自动更新，这算是一个bug，该脚本会一并处理更新master节点的kubelet.conf所包含的证书
----
+```
 
 
-#实操升级集群
+
+#### 1.14.2 集群升级
+
 基于kubeadm部署的k8s集群从kubernetes v1.19.0升级到kubernetes v1.19.1，升级工作的基本流程如下：
 升级主控制平面节点
 升级其他控制平面节点
 升级工作节点
---查看当前集群状态：
+
+
+**查看当前集群状态**
+```bash
 [root@master01 ~]# kubectl get nodes -o wide 
 NAME                  STATUS   ROLES    AGE     VERSION   INTERNAL-IP     EXTERNAL-IP   OS-IMAGE                KERNEL-VERSION          CONTAINER-RUNTIME
 master01.k8s.hs.com   Ready    master   4h10m   v1.19.0   192.168.13.51   <none>        CentOS Linux 7 (Core)   3.10.0-957.el7.x86_64   docker://20.10.6
@@ -1082,7 +1217,10 @@ NAME                 STATUS    MESSAGE             ERROR
 controller-manager   Healthy   ok                  
 scheduler            Healthy   ok                  
 etcd-0               Healthy   {"health":"true"}  
+```
 
+**升级**
+```bash
 1. 查看最新版本
 [root@master01 ~]# yum list --showduplicates kubeadm 
 kubeadm.x86_64                                                                                     1.19.0-0                                                                                
@@ -1156,7 +1294,7 @@ _____________________________________________________________________
 [upgrade/versions] Cluster version: v1.19.0
 [upgrade/versions] kubeadm version: v1.19.10
 [upgrade/confirm] Are you sure you want to proceed with the upgrade? [y/N]: y
-结果：
+# 结果
 upgrade/successful] SUCCESS! Your cluster was upgraded to "v1.19.10". Enjoy!
 [upgrade/kubelet] Now that your control plane is upgraded, please proceed with upgrading your kubelets if you haven't already done so.
 2.1.5 取消对控制面节点的驱逐保护：
@@ -1210,7 +1348,8 @@ evicting pod default/myapp-deployment-b6bbc4f78-xsdwt
 pod/myapp-deployment-b6bbc4f78-xsdwt evicted
 pod/coredns-6d56c8448f-5557r evicted
 node/node01.k8s.hs.com evicted
-[root@master02 ~]# kubectl get pods -o wide -w   --在驱逐工作节点时我在另外的控制平面所查看到的。并且我的curl命令nginx服务也未断开，说明服务是可用的
+[root@master02 ~]# kubectl get pods -o wide -w   
+# 在驱逐工作节点时我在另外的控制平面所查看到的。并且我的curl命令nginx服务也未断开，说明服务是可用的
 NAME                               READY   STATUS    RESTARTS   AGE   IP           NODE                NOMINATED NODE   READINESS GATES
 myapp-deployment-b6bbc4f78-qxhnk   1/1     Running   0          78m   10.244.4.3   node02.k8s.hs.com   <none>           <none>
 myapp-deployment-b6bbc4f78-xsdwt   1/1     Running   0          78m   10.244.3.5   node01.k8s.hs.com   <none>           <none>
@@ -1241,7 +1380,8 @@ myapp-deployment-b6bbc4f78-qxhnk   1/1     Running   0          81m     10.244.4
 [root@node01 ~]#  yum install -y kubectl-1.19.10-0 kubelet-1.19.10-0
 [root@node01 ~]# systemctl daemon-reload 
 [root@node01 ~]# systemctl restart kubelet
-[root@master03 ~]# kubectl get nodes -o wide   --此时在控制平面上查看节点信息时，虽说还未被恢复为调度，但是控制平面从kubelete中获取信息node01已经升级为v1.19.10
+[root@master03 ~]# kubectl get nodes -o wide   
+# 此时在控制平面上查看节点信息时，虽说还未被恢复为调度，但是控制平面从kubelete中获取信息node01已经升级为v1.19.10
 NAME                  STATUS                     ROLES    AGE     VERSION    INTERNAL-IP     EXTERNAL-IP   OS-IMAGE                KERNEL-VERSION          CONTAINER-RUNTIME
 master01.k8s.hs.com   Ready                      master   5h17m   v1.19.10   192.168.13.51   <none>        CentOS Linux 7 (Core)   3.10.0-957.el7.x86_64   docker://20.10.6
 master02.k8s.hs.com   Ready                      master   19h     v1.19.10   192.168.13.52   <none>        CentOS Linux 7 (Core)   3.10.0-957.el7.x86_64   docker://20.10.5
@@ -1301,13 +1441,14 @@ NAME                 STATUS      MESSAGE                                        
 scheduler            Unhealthy   Get "http://127.0.0.1:10251/healthz": dial tcp 127.0.0.1:10251: connect: connection refused   
 controller-manager   Unhealthy   Get "http://127.0.0.1:10252/healthz": dial tcp 127.0.0.1:10252: connect: connection refused   
 etcd-0               Healthy     {"health":"true"}    
---最后步骤将/etc/kubernetes/manifests中的kube-controller-manager.yaml和kube-scheduler.yaml 中的-- port=0 注释掉：
+# 最后步骤将/etc/kubernetes/manifests中的kube-controller-manager.yaml和kube-scheduler.yaml 中的-- port=0 注释掉：
 [root@master03 /etc/kubernetes/manifests]# vim kube-controller-manager.yaml 
 [root@master03 /etc/kubernetes/manifests]# vim kube-scheduler.yaml 
+```
 
-集群升级工作原理：
+**集群升级工作原理：**
 kubeadm upgrade apply 做了以下工作：
-检查你的集群是否处于可升级状态:
+检查你的集群是否处于可升级状态
 API 服务器是可访问的
 所有节点处于 Ready 状态
 控制面是健康的
@@ -1329,7 +1470,8 @@ kubeadm upgrade node 在工作节点上完成以下工作：
 
 
 
-#Prometheus Operator
+
+### 1.15 Prometheus Operator
 一、什么是Prometheus Operator
 1. Prometheus Operator的工作原理
 Prometheus的本职就是一组用户自定义的CRD资源以及Controller的实现，Prometheus Operator负责监听这些自定义资源的变化，并且根据这些资源的定义自动化的完成如Prometheus Server自身以及配置的自动化管理工作。
@@ -1342,14 +1484,16 @@ PrometheusRule：负责声明式的管理告警配置；
 Alertmanager：声明式的创建和管理Alertmanager实例。
 简言之，Prometheus Operator能够帮助用户自动化的创建以及管理Prometheus Server以及其相应的配置。
 
+
 3. 在Kubernetes集群中部署Prometheus Operator
+```bash
 [root@master02 ~/manifests/addons/monitor/prometheus-operator]# curl -OL https://raw.githubusercontent.com/prometheus-operator/prometheus-operator/release-0.47/bundle.yaml
 [root@master02 ~/manifests/addons/monitor/prometheus-operator]# sed -i 's/namespace: default/namespace: prometheus/g' bundle.yaml 
 [root@master02 ~/manifests/addons/monitor/prometheus-operator]# grep 'namespace: prometheus' bundle.yaml
-  namespace: prometheus
-  namespace: prometheus
-  namespace: prometheus
-  namespace: prometheus
+    namespace: prometheus
+    namespace: prometheus
+    namespace: prometheus
+    namespace: prometheus
 [root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl create namespace prometheus
 namespace/prometheus created
 [root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f bundle.yaml 
@@ -1369,17 +1513,20 @@ service/prometheus-operator created
 [root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl get pods -n prometheus -o wide 
 NAME                                   READY   STATUS    RESTARTS   AGE   IP            NODE                NOMINATED NODE   READINESS GATES
 prometheus-operator-5f949c9f97-r75k8   1/1     Running   0          20s   10.244.3.25   node01.k8s.hs.com   <none>           <none>
+```
 
 二、使用Operator管理Prometheus
+
 1. 当集群中已经安装Prometheus Operator之后，对于部署Prometheus Server实例就变成了声明一个Prometheus资源，如下所示，我们在Monitoring命名空间下创建一个Prometheus实例：
+```bash
 [root@master02 ~/manifests/addons/monitor/prometheus-operator]# vim prometheus-inst.yaml
 apiVersion: monitoring.coreos.com/v1
 kind: Prometheus
 metadata:
-  name: inst
-  namespace: prometheus
+    name: inst
+    namespace: prometheus
 spec:
-  resources:
+    resources:
     requests:
       memory: 400Mi
 [root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f prometheus-inst.yaml
@@ -1391,29 +1538,29 @@ prometheus-inst   1/1     79s   prometheus,config-reloader   quay.io/prometheus/
 NAME                                   READY   STATUS    RESTARTS   AGE     IP            NODE                NOMINATED NODE   READINESS GATES
 prometheus-inst-0                      2/2     Running   1          23s     10.244.3.26   node01.k8s.hs.com   <none>           <none>
 prometheus-operator-5f949c9f97-r75k8   1/1     Running   0          2m57s   10.244.3.25   node01.k8s.hs.com   <none>           <none>
---通过端口转发进行查看
+# 通过端口转发进行查看
 [root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl port-forward -n prometheus statefulsets/prometheus-inst --address 0.0.0.0 9090:9090
 Forwarding from 0.0.0.0:9090 -> 9090    --此端口代理是暂时的，因为代理会定时或超时关闭
 --此时通过浏览器访问http://192.168.13.52:9090/config 可以看到配置信息：
 global:
-  scrape_interval: 1m
-  scrape_timeout: 10s
-  evaluation_interval: 1m
+    scrape_interval: 1m
+    scrape_timeout: 10s
+    evaluation_interval: 1m
 
 2. 使用ServiceMonitor管理监控配置
-修改监控配置项也是Prometheus下常用的运维操作之一，为了能够自动化的管理Prometheus的配置，Prometheus Operator使用了自定义资源类型ServiceMonitor来描述监控对象的信息。
-这里我们首先在集群中部署一个示例应用，将以下内容保存到example-app.yaml，并使用kubectl命令行工具创建：
-[root@master02 ~/manifests/addons/monitor/prometheus-operator]# cat example-app.yaml
-kind: Service
-apiVersion: v1
-metadata:
-  name: example-app
-  labels:
+    修改监控配置项也是Prometheus下常用的运维操作之一，为了能够自动化的管理Prometheus的配置，Prometheus Operator使用了自定义资源类型ServiceMonitor来描述监控对象的信息。
+    这里我们首先在集群中部署一个示例应用，将以下内容保存到example-app.yaml，并使用kubectl命令行工具创建：
+    [root@master02 ~/manifests/addons/monitor/prometheus-operator]# cat example-app.yaml
+    kind: Service
+    apiVersion: v1
+    metadata:
+    name: example-app
+    labels:
     app: example-app
-spec:
-  selector:
+    spec:
+    selector:
     app: example-app
-  ports:
+    ports:
   - name: web
     port: 8080
 ---
@@ -1445,11 +1592,12 @@ NAME                           READY   STATUS    RESTARTS   AGE     IP          
 example-app-7d95cbf666-5wsl6   1/1     Running   0          2m17s   10.244.3.27   node01.k8s.hs.com   <none>           <none>
 example-app-7d95cbf666-9rlbj   1/1     Running   0          2m17s   10.244.4.20   node02.k8s.hs.com   <none>           <none>
 example-app-7d95cbf666-jhtdj   1/1     Running   0          2m17s   10.244.4.19   node02.k8s.hs.com   <none>           <none>
+# 通过浏览器访问http://192.168.13.52:8080/metrics可以看到许多metric指标
 [root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl port-forward -n prometheus statefulsets/prometheus-inst --address 0.0.0.0 8080:8080
 Forwarding from 0.0.0.0:8080 -> 8080
--此时通过浏览器访问http://192.168.13.52:8080/metrics可以看到许多metric指标
 
-为了能够让Prometheus能够采集部署在Kubernetes下应用的监控数据，在原生的Prometheus配置方式中，我们在Prometheus配置文件中定义单独的Job，同时使用kubernetes_sd定义整个服务发现过程。而在Prometheus Operator中，则可以直接声明一个ServiceMonitor对象，如下所示：
+
+# 为了能够让Prometheus能够采集部署在Kubernetes下应用的监控数据，在原生的Prometheus配置方式中，我们在Prometheus配置文件中定义单独的Job，同时使用kubernetes_sd定义整个服务发现过程。而在Prometheus Operator中，则可以直接声明一个ServiceMonitor对象，如下所示：
 [root@master02 ~/manifests/addons/monitor/prometheus-operator]# cat example-app-service-monitor.yaml
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -1468,17 +1616,17 @@ spec:
   endpoints:
   - port: web     --此web表示service中名称是web是端口
 
-通过定义selector中的标签定义选择监控目标的Pod对象，同时在endpoints中指定port名称为web的端口。默认情况下ServiceMonitor和监控对象必须是在相同Namespace下的。在本示例中由于Prometheus是部署在prometheus命名空间下，因此为了能够关联default命名空间下的example对象，需要使用namespaceSelector定义让其可以跨命名空间关联ServiceMonitor资源。保存以上内容到example-app-service-monitor.yaml文件中，并通过kubectl创建：
+# 通过定义selector中的标签定义选择监控目标的Pod对象，同时在endpoints中指定port名称为web的端口。默认情况下ServiceMonitor和监控对象必须是在相同Namespace下的。在本示例中由于Prometheus是部署在prometheus命名空间下，因此为了能够关联default命名空间下的example对象，需要使用namespaceSelector定义让其可以跨命名空间关联ServiceMonitor资源。保存以上内容到example-app-service-monitor.yaml文件中，并通过kubectl创建：
 [root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f example-app-service-monitor.yaml 
 servicemonitor.monitoring.coreos.com/example-app created
 [root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl get ServiceMonitor -n prometheus
 NAME          AGE
 example-app   7s
---如果希望ServiceMonitor可以关联任意命名空间下的标签，则通过以下方式定义：
+# 如果希望ServiceMonitor可以关联任意命名空间下的标签，则通过以下方式定义：
 spec:
   namespaceSelector:
     any: true
---如果监控的Target对象启用了BasicAuth认证，那在定义ServiceMonitor对象时，可以使用endpoints配置中定义basicAuth如下所示：
+# 如果监控的Target对象启用了BasicAuth认证，那在定义ServiceMonitor对象时，可以使用endpoints配置中定义basicAuth如下所示：
   endpoints:
   - basicAuth:
       password:
@@ -1488,15 +1636,15 @@ spec:
         name: basic-auth
         key: user
     port: web
---其中basicAuth中关联了名为basic-auth的Secret对象，用户需要手动将认证信息保存到Secret中:
-apiVersion: v1
-kind: Secret
-metadata:
-  name: basic-auth
-data:
-  password: dG9vcg== # base64编码后的密码
-  user: YWRtaW4= # base64编码后的用户名
-type: Opaque
+# 其中basicAuth中关联了名为basic-auth的Secret对象，用户需要手动将认证信息保存到Secret中:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+    name: basic-auth
+      data:
+    password: dG9vcg== # base64编码后的密码
+    user: YWRtaW4= # base64编码后的用户名
+      type: Opaque
 
 3. 关联Promethues与ServiceMonitor
 Prometheus与ServiceMonitor之间的关联关系使用serviceMonitorSelector定义，在Prometheus中通过标签选择当前需要监控的ServiceMonitor对象。修改prometheus-inst.yaml中Prometheus的定义如下所示： 为了能够让Prometheus关联到ServiceMonitor，需要在Pormtheus定义中使用serviceMonitorSelector，我们可以通过标签选择当前Prometheus需要监控的ServiceMonitor对象。修改prometheus-inst.yaml中Prometheus的定义如下所示：
@@ -1504,13 +1652,13 @@ Prometheus与ServiceMonitor之间的关联关系使用serviceMonitorSelector定�
 apiVersion: monitoring.coreos.com/v1
 kind: Prometheus
 metadata:
-  name: inst
-  namespace: prometheus
+    name: inst
+    namespace: prometheus
 spec:
-  serviceMonitorSelector:
+    serviceMonitorSelector:
     matchLabels:
       team: frontend
-  resources:
+    resources:
     requests:
       memory: 400Mi
 [root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f prometheus-inst.yaml
@@ -1532,8 +1680,8 @@ prometheus-operator   1         32m
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: prometheus
-  namespace: prometheus
+name: prometheus
+namespace: prometheus
 ---
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
@@ -1566,20 +1714,20 @@ subjects:
 - kind: ServiceAccount
   name: prometheus
   namespace: prometheus
-[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f prometheus-rbac.yaml]
-serviceaccount/prometheus created
-Warning: rbac.authorization.k8s.io/v1beta1 ClusterRole is deprecated in v1.17+, unavailable in v1.22+; use rbac.authorization.k8s.io/v1 ClusterRole
-clusterrole.rbac.authorization.k8s.io/prometheus created
-Warning: rbac.authorization.k8s.io/v1beta1 ClusterRoleBinding is deprecated in v1.17+, unavailable in v1.22+; use rbac.authorization.k8s.io/v1 ClusterRoleBinding
-clusterrolebinding.rbac.authorization.k8s.io/prometheus created
-在完成ServiceAccount创建后，修改prometheus-inst.yaml，并添加ServiceAccount如下所示：
-[root@master02 ~/manifests/addons/monitor/prometheus-operator]# cat prometheus-inst.yaml 
-apiVersion: monitoring.coreos.com/v1
-kind: Prometheus
-metadata:
+  [root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f prometheus-rbac.yaml]
+  serviceaccount/prometheus created
+  Warning: rbac.authorization.k8s.io/v1beta1 ClusterRole is deprecated in v1.17+, unavailable in v1.22+; use rbac.authorization.k8s.io/v1 ClusterRole
+  clusterrole.rbac.authorization.k8s.io/prometheus created
+  Warning: rbac.authorization.k8s.io/v1beta1 ClusterRoleBinding is deprecated in v1.17+, unavailable in v1.22+; use rbac.authorization.k8s.io/v1 ClusterRoleBinding
+  clusterrolebinding.rbac.authorization.k8s.io/prometheus created
+  在完成ServiceAccount创建后，修改prometheus-inst.yaml，并添加ServiceAccount如下所示：
+  [root@master02 ~/manifests/addons/monitor/prometheus-operator]# cat prometheus-inst.yaml 
+  apiVersion: monitoring.coreos.com/v1
+  kind: Prometheus
+  metadata:
   name: inst
   namespace: prometheus
-spec:
+  spec:
   serviceAccountName: prometheus
   serviceMonitorSelector:
     matchLabels:
@@ -1587,64 +1735,64 @@ spec:
   resources:
     requests:
       memory: 400Mi
-[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f prometheus-inst.yaml
-prometheus.monitoring.coreos.com/inst configured
-[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl get pods -n prometheus 
-NAME                                   READY   STATUS    RESTARTS   AGE
-prometheus-inst-0                      2/2     Running   1          103s
-prometheus-operator-5f949c9f97-r75k8   1/1     Running   0          39m
-[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl logs prometheus-inst-0 prometheus -n prometheus| tail -n 2
-level=info ts=2021-05-07T08:45:26.151Z caller=kubernetes.go:266 component="discovery manager scrape" discovery=kubernetes msg="Using pod service account via in-cluster config"
-level=info ts=2021-05-07T08:45:26.154Z caller=main.go:975 msg="Completed loading of configuration file" filename=/etc/prometheus/config_out/prometheus.env.yaml totalDuration=5.666856ms remote_storage=6.136µs web_handler=2.884µs query_engine=3.729µs scrape=173.996µs scrape_sd=3.8158ms notify=0s notify_sd=0s rules=93.726µs
---此时日志已经正常
-等待Prometheus Operator完成相关配置变更后，此时查看Prometheus，我们就能看到当前Prometheus已经能够正常的采集实例应用的相关监控数据了。
+  [root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f prometheus-inst.yaml
+  prometheus.monitoring.coreos.com/inst configured
+  [root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl get pods -n prometheus 
+  NAME                                   READY   STATUS    RESTARTS   AGE
+  prometheus-inst-0                      2/2     Running   1          103s
+  prometheus-operator-5f949c9f97-r75k8   1/1     Running   0          39m
+  [root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl logs prometheus-inst-0 prometheus -n prometheus| tail -n 2
+  level=info ts=2021-05-07T08:45:26.151Z caller=kubernetes.go:266 component="discovery manager scrape" discovery=kubernetes msg="Using pod service account via in-cluster config"
+  level=info ts=2021-05-07T08:45:26.154Z caller=main.go:975 msg="Completed loading of configuration file" filename=/etc/prometheus/config_out/prometheus.env.yaml totalDuration=5.666856ms remote_storage=6.136µs web_handler=2.884µs query_engine=3.729µs scrape=173.996µs scrape_sd=3.8158ms notify=0s notify_sd=0s rules=93.726µs
+  --此时日志已经正常
+  等待Prometheus Operator完成相关配置变更后，此时查看Prometheus，我们就能看到当前Prometheus已经能够正常的采集实例应用的相关监控数据了。
 
 三、使用Operator管理告警
 1. 使用PrometheusRule定义告警规则
-对于Prometheus而言，在原生的管理方式上，我们需要手动创建Prometheus的告警文件，并且通过在Prometheus配置中声明式的加载。而在Prometheus Operator模式中，告警规则也编程一个通过Kubernetes API 声明式创建的一个资源，如下所示：
-[root@master02 ~/manifests/addons/monitor/prometheus-operator]# cat example-rule.yaml
-apiVersion: monitoring.coreos.com/v1
-kind: PrometheusRule
-metadata:
-  labels:
+    对于Prometheus而言，在原生的管理方式上，我们需要手动创建Prometheus的告警文件，并且通过在Prometheus配置中声明式的加载。而在Prometheus Operator模式中，告警规则也编程一个通过Kubernetes API 声明式创建的一个资源，如下所示：
+    [root@master02 ~/manifests/addons/monitor/prometheus-operator]# cat example-rule.yaml
+    apiVersion: monitoring.coreos.com/v1
+    kind: PrometheusRule
+    metadata:
+    labels:
     prometheus: example
     role: alert-rules
-  name: prometheus-example-rules
-  namespace: prometheus
-spec:
-  groups:
+    name: prometheus-example-rules
+    namespace: prometheus
+    spec:
+    groups:
   - name: ./example.rules
     rules:
     - alert: ExampleAlert
       expr: vector(1)
-[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f example-rule.yaml
-prometheusrule.monitoring.coreos.com/prometheus-example-rules created
-告警规则创建成功后，通过在Prometheus中使用ruleSelector通过选择需要关联的PrometheusRule即可：
-[root@master02 ~/manifests/addons/monitor/prometheus-operator]# cat prometheus-inst.yaml
-apiVersion: monitoring.coreos.com/v1
-kind: Prometheus
-metadata:
-  name: inst
-  namespace: prometheus
-spec:
-  serviceAccountName: prometheus
-  ruleSelector:
-    matchLabels:
+      [root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f example-rule.yaml
+      prometheusrule.monitoring.coreos.com/prometheus-example-rules created
+      告警规则创建成功后，通过在Prometheus中使用ruleSelector通过选择需要关联的PrometheusRule即可：
+      [root@master02 ~/manifests/addons/monitor/prometheus-operator]# cat prometheus-inst.yaml
+      apiVersion: monitoring.coreos.com/v1
+      kind: Prometheus
+      metadata:
+      name: inst
+      namespace: prometheus
+      spec:
+      serviceAccountName: prometheus
+      ruleSelector:
+      matchLabels:
       role: alert-rules
       prometheus: example
-  serviceMonitorSelector:
-    matchLabels:
+      serviceMonitorSelector:
+      matchLabels:
       team: frontend
-  resources:
-    requests:
+      resources:
+      requests:
       memory: 400Mi
-[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f prometheus-inst.yaml 
-prometheus.monitoring.coreos.com/inst configured
-[root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl get pods -n prometheus
-NAME                                   READY   STATUS    RESTARTS   AGE
-prometheus-inst-0                      2/2     Running   1          6m18s
-prometheus-operator-5f949c9f97-r75k8   1/1     Running   0          43m
-Prometheus重新加载配置后，从UI中我们可以查看到通过PrometheusRule自动创建的告警规则配置：
+      [root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f prometheus-inst.yaml 
+      prometheus.monitoring.coreos.com/inst configured
+      [root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl get pods -n prometheus
+      NAME                                   READY   STATUS    RESTARTS   AGE
+      prometheus-inst-0                      2/2     Running   1          6m18s
+      prometheus-operator-5f949c9f97-r75k8   1/1     Running   0          43m
+      Prometheus重新加载配置后，从UI中我们可以查看到通过PrometheusRule自动创建的告警规则配置：
 
 2. 使用Operator管理Alertmanager实例
 到目前为止，我们已经通过Prometheus Operator的自定义资源类型管理了Promtheus的实例，监控配置以及告警规则等资源。通过Prometheus Operator将原本手动管理的工作全部变成声明式的管理模式，大大简化了Kubernetes下的Prometheus运维管理的复杂度。 接下来，我们将继续使用Promtheus Operator定义和管理Alertmanager相关的内容。
@@ -1653,10 +1801,10 @@ Prometheus重新加载配置后，从UI中我们可以查看到通过PrometheusR
 apiVersion: monitoring.coreos.com/v1
 kind: Alertmanager
 metadata:
-  name: inst
-  namespace: prometheus
+    name: inst
+    namespace: prometheus
 spec:
-  replicas: 3
+    replicas: 3
 [root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl apply -f alertmanager-inst.yaml
 alertmanager.monitoring.coreos.com/inst created
 [root@master02 ~/manifests/addons/monitor/prometheus-operator]# kubectl get pods -n prometheus -o wide 
@@ -1678,20 +1826,20 @@ prometheus-operator-5f949c9f97-r75k8   1/1     Running   0          79m
 MountVolume.SetUp failed for volume "config-volume" : secrets "alertmanager-inst" not found
 这是由于Prometheus Operator通过Statefulset的方式创建的Alertmanager实例，在默认情况下，会通过alertmanager-{ALERTMANAGER_NAME}的命名规则去查找Secret配置并以文件挂载的方式，将Secret的内容作为配置文件挂载到Alertmanager实例当中。因此，这里还需要为Alertmanager创建相应的配置内容，如下所示，是Alertmanager的配置文件：
 global:
-  resolve_timeout: 5m
+    resolve_timeout: 5m
 route:
-  group_by: ['job']
-  group_wait: 30s
-  group_interval: 5m
-  repeat_interval: 12h
-  receiver: 'webhook'
+    group_by: ['job']
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 12h
+    receiver: 'webhook'
 receivers:
 - name: 'webhook'
   webhook_configs:
   - url: 'http://alertmanagerwh:30500/'
-将以上内容保存为文件alertmanager.yaml，并且通过以下命令创建名为alrtmanager-inst的Secret资源：
-$ kubectl -n prometheus create secret generic alertmanager-inst --from-file=alertmanager.yaml
-secret/alertmanager-inst created
+  将以上内容保存为文件alertmanager.yaml，并且通过以下命令创建名为alrtmanager-inst的Secret资源：
+  $ kubectl -n prometheus create secret generic alertmanager-inst --from-file=alertmanager.yaml
+  secret/alertmanager-inst created
 ------------------
 接下来，我们只需要修改我们的Prometheus资源定义，通过alerting指定使用的Alertmanager资源即可：
 [root@master02 ~/manifests/addons/monitor/prometheus-operator]# cat prometheus-inst.yaml 
@@ -1737,7 +1885,7 @@ prometheus.monitoring.coreos.com/inst configured
       regex: web
       replacement: $1
       action: keep
-    kubernetes_sd_configs:
+      kubernetes_sd_configs:
     - role: endpoints
       follow_redirects: true
       namespaces:
@@ -1747,26 +1895,29 @@ prometheus.monitoring.coreos.com/inst configured
 3. 在Prometheus Operator中使用自定义配置
 在Prometheus Operator我们通过声明式的创建如Prometheus, ServiceMonitor这些自定义的资源类型来自动化部署和管理Prometheus的相关组件以及配置。而在一些特殊的情况下，对于用户而言，可能还是希望能够手动管理Prometheus配置文件，而非通过Prometheus Operator自动完成。 为什么？ 实际上Prometheus Operator对于Job的配置只适用于在Kubernetes中部署和管理的应用程序。如果你希望使用Prometheus监控一些其他的资源，例如AWS或者其他平台中的基础设施或者应用，这些并不在Prometheus Operator的能力范围之内。
 为了能够在通过Prometheus Operator创建的Prometheus实例中使用自定义配置文件，我们只能创建一个不包含任何与配置文件内容相关的Prometheus实例
+```
 
 
 
 
 
+### 1.16 ingress controller
 
-#ingress controller
-#nginx ingress controller
+
+
+#### 1.6.1 nginx ingress controller
 1. 部署ingress Controller
---下载
-[root@master02 ~/k8s-manifests/ingress-controller-nginx]# 
-curl -OL https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.46.0/deploy/static/provider/baremetal/deploy.yaml
---更改镜像名称k8s.gcr.io/ingress-nginx/,并且容忍master上的污点controller:v0.46.0@sha256:52f0058bed0a17ab0fb35628ba97e8d52b5d32299fbc03cc0f6c7b9ff036b61a为k8s.gcr.io/ingress-nginx/controller:v0.46.0
+```bash
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# curl -OL https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v0.46.0/deploy/static/provider/baremetal/deploy.yaml
+# 更改镜像名称k8s.gcr.io/ingress-nginx/,并且容忍master上的污点controller:v0.46.0@sha256:52f0058bed0a17ab0fb35628ba97e8d52b5d32299fbc03cc0f6c7b9ff036b61a为k8s.gcr.io/ingress-nginx/controller:v0.46.0
 [root@master02 ~/k8s-manifests/ingress-controller-nginx]# vim deploy.yaml
 image: k8s.gcr.io/ingress-nginx/controller:v0.46.0
-      tolerations:
-      - key: node-role.kubernetes.io/master
-        operator: Exists
-        effect: NoSchedule
---部署
+   tolerations:
+   - key: node-role.kubernetes.io/master
+     operator: Exists
+     effect: NoSchedule
+
+# 部署
 [root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl apply -f deploy.yaml
 namespace/ingress-nginx created
 serviceaccount/ingress-nginx created
@@ -1786,16 +1937,16 @@ role.rbac.authorization.k8s.io/ingress-nginx-admission created
 rolebinding.rbac.authorization.k8s.io/ingress-nginx-admission created
 job.batch/ingress-nginx-admission-create created
 job.batch/ingress-nginx-admission-patch created
---镜像获取，由于防火墙原因：
+# 镜像获取，由于防火墙原因：
 [root@salt /git/kubernetes/ingress-nginx/v0.46.0]# docker pull willdockerhub/ingress-nginx-controller:v0.46.0
 [root@salt /git/kubernetes/ingress-nginx/v0.46.0]# docker tag willdockerhub/ingress-nginx-controller:v0.46.0 k8s.gcr.io/ingress-nginx/controller:v0.46.0
 [root@salt /git/kubernetes/ingress-nginx/v0.46.0]# docker tag k8s.gcr.io/ingress-nginx/controller:v0.46.0 192.168.13.235:8000/k8s/k8s.gcr.io/ingress-nginx/controller:v0.46.0
 [root@salt /git/kubernetes/ingress-nginx/v0.46.0]# docker push 192.168.13.235:8000/k8s/k8s.gcr.io/ingress-nginx/controller:v0.46.0
---从pod的描述信息中看到是被调试到node02了，此时需要在node02上获取镜像
+# 从pod的描述信息中看到是被调试到node02了，此时需要在node02上获取镜像
 [root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl describe pods ingress-nginx-controller-6748cc5bd5-r2rjg -n ingress-nginx
 [root@node02 ~]# docker pull 192.168.13.235:8000/k8s/k8s.gcr.io/ingress-nginx/controller:v0.46.0 
 [root@node02 ~]# docker tag 192.168.13.235:8000/k8s/k8s.gcr.io/ingress-nginx/controller:v0.46.0 k8s.gcr.io/ingress-nginx/controller:v0.46.0
---查看ingress-nginx运行状态：（测试ingress controller是否正常运行(通过ingress controller前端的service的NodePort端口进行访问，返回404说明ingresscontroller成功安装并运行)）
+# 查看ingress-nginx运行状态：（测试ingress controller是否正常运行(通过ingress controller前端的service的NodePort端口进行访问，返回404说明ingresscontroller成功安装并运行)）
 [root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl get pods -n ingress-nginx
 NAME                                        READY   STATUS      RESTARTS   AGE
 ingress-nginx-admission-create-tw2t9        0/1     Completed   0          10m
@@ -1813,7 +1964,7 @@ spec:
   selector:
     app: myapp
     release: canary
-  ports:
+    ports:
   - name: http
     port: 80
     targetPort: 80  
@@ -1863,9 +2014,8 @@ NAME         TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)   AGE
 kubernetes   ClusterIP   10.96.0.1        <none>        443/TCP   9d
 myapp        ClusterIP   10.107.161.244   <none>        80/TCP    22h
 3. 运行ingress进行关联ingress controller和后端pod
---先把证书和私钥做成secret
-----------------
---新建自签名证书
+# 先把证书和私钥做成secret
+# 新建自签名证书
 [root@master02 ~/k8s-manifests/ingress-controller-nginx]# (umask 0077;openssl genrsa -out hs.com 3650)
 [root@master02 ~/k8s-manifests/ingress-controller-nginx]# openssl req -new -x509 -key hs.com -out hs.com.crt -subj /C=CN/ST=Shanghai/L=Shanghai/O=DevOps/CN=*.hs.com -days 3650
 [root@master02 ~/k8s-manifests/ingress-controller-nginx]# ls
@@ -1878,7 +2028,7 @@ secret/tls-ingress-hs.com created
 NAME                  TYPE                                  DATA   AGE
 default-token-jxblm   kubernetes.io/service-account-token   3      9d
 tls-ingress-hs.com    kubernetes.io/tls                     2      4s
---生成ingress规则
+# 生成ingress规则
 [root@master02 ~/k8s-manifests/ingress-controller-nginx]# cat ingress-myapp.yaml
 apiVersion: extensions/v1beta1
 kind: Ingress
@@ -1896,7 +2046,7 @@ spec:
         backend:
           serviceName: myapp
           servicePort: 80
-  tls:
+        tls:
   - hosts: 
     - myapp.hs.com
     secretName: tls-ingress-hs.com
@@ -1907,7 +2057,8 @@ ingress.extensions/ingress-myapp created
 31470
 [root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl get svc/ingress-nginx-controller -n ingress-nginx -o jsonpath="{.spec.ports[?rt==443)].nodePort}"
 31174
-[root@master02 ~/k8s-manifests/ingress-controller-nginx]#  curl -H 'host: myapp.hs.com' http://192.168.13.51:31470/  --因为没有在ingress资源清单中设置资源注解：nginx.ingress.kubernetes.io/ssl-redirect: "false"，所以会重定向到https。
+# 因为没有在ingress资源清单中设置资源注解：nginx.ingress.kubernetes.io/ssl-redirect: "false"，所以会重定向到https。
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]#  curl -H 'host: myapp.hs.com' http://192.168.13.51:31470/  
 <html>
 <head><title>308 Permanent Redirect</title></head>
 <body>
@@ -1917,19 +2068,22 @@ ingress.extensions/ingress-myapp created
 </html>
 /etc/nginx $  curl -k -H 'host: myapp.hs.com' https://192.168.13.51:31174/
 Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
---这里为设置禁用重写向后的结果：
+# 这里为设置禁用重写向后的结果：
 [root@master02 ~/k8s-manifests/ingress-controller-nginx]# curl -H 'host: myapp.hs.com' http://192.168.13.51:31470/
 Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
 [root@master02 ~/k8s-manifests/ingress-controller-nginx]# curl -k -H 'host: myapp.hs.com' https://192.168.13.51:31174/
 Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
 注：当ingress中配置了tls,并且只标明多个主机中的一个主机使用https时，另外其它所有的主机也都可以使用https访问到，也就是说不受tls中的hosts限制。
+```
 
 
+#### 1.16.2 配置ingress nginx
 
-#配置ingress nginx
 除使用Ingress资源自定义流量路由相关的配置外，Ingress Nginx应用程序还存在许多其他配置需要，例如日志格式、CORS、URL重写、代理缓冲和SSL透传等。这类的配置通常有ConfigMap、Annotations和自定义模板3种实现方式。
 IngressNginx的ConfigMap和Annotations配置接口都支持使用大量的参数来定制所需要的功能，不同的是，前者通过在IngressNginx引用ConfigMap资源规范中data字段特定的键及可用取值进行定义，且多用于Nginx全局特性的定制，因而是集群级别的配置；而后者则于Ingress资源上使用资源注解配置，多用于虚拟主机级别，因而通常是服务级别的配置。
---服务级别的配置
+
+**服务级别的配置** 
+```bash
 1. 我们通过为虚拟主机myapp.hs.com添加Basic认证为例：
 [root@master02 ~/k8s-manifests/ingress-controller-nginx]# yum install -y httpd-tools
 [root@master02 ~/k8s-manifests/ingress-controller-nginx]# htpasswd  -c -b -m ./ngxpasswd ilinux ilinux
@@ -1944,19 +2098,19 @@ default-token-jxblm   kubernetes.io/service-account-token   3      9d
 ilinux-passwd         Opaque                                1      6s
 tls-ingress-hs-com    kubernetes.io/tls                     2      61m
 [root@master02 ~/k8s-manifests/ingress-controller-nginx]# cat ingress-myapp.yaml
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: ingress-myapp
-  namespace: default
-  annotations:
+    apiVersion: extensions/v1beta1
+    kind: Ingress
+    metadata:
+    name: ingress-myapp
+    namespace: default
+    annotations:
     kubernetes.io/ingress.class: "nginx"
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/auth-type: basic
     nginx.ingress.kubernetes.io/auth-secret: ilinux-passwd
     nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
-spec:
-  rules:
+    spec:
+    rules:
   - host: myapp.hs.com
     http:
       paths: 
@@ -1971,13 +2125,13 @@ spec:
         backend:
           serviceName: test
           servicePort: 80
-  tls:
+        tls:
   - secretName: tls-ingress-hs-com
     hosts: 
     - myapp.hs.com
 [root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl apply -f ingress-myapp.yaml
 [root@master02 ~/k8s-manifests/ingress-controller-nginx]# curl -k -H 'host: myapp.hs.com' https://192.168.13.51:31174/
-<html>
+    <html>
 <head><title>401 Authorization Required</title></head>
 <body>
 <center><h1>401 Authorization Required</h1></center>
@@ -1986,7 +2140,10 @@ spec:
 </html>
 [root@master02 ~/k8s-manifests/ingress-controller-nginx]# curl -u "mageedu:mageedu" -k -H 'host: myapp.hs.com' https://192.168.13.51:31174/
 Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
---全局级别的配置
+```
+
+**全局级别的配置**
+```bash
 2. Ningx全局级别的配置通常由ConfigMap资源进行定义，默认部署的IngressNginx会引用ingress-nginx名称空间中的ConfigMap/ingress-nginx-controller资源，
 [root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl get cm -n ingress-nginx
 NAME                              DATA   AGE
@@ -2046,23 +2203,24 @@ spec:
         backend:
           serviceName: kubernetes-dashboard
           servicePort: 443
-[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl apply -f ingress-kubernetes-dashboard.yaml
---此时可以通过https进行访问dashboard:
-[root@master02 ~/k8s-manifests/dashboard]# curl -kI -H 'Host: dashboard.k8s.hs.com' https://192.168.13.56
-HTTP/1.1 200 OK
-Date: Fri, 11 Jun 2021 01:35:22 GMT
-Content-Type: text/html; charset=utf-8
-Content-Length: 1250
-Connection: keep-alive
-Accept-Ranges: bytes
-Cache-Control: no-cache, no-store, must-revalidate
-Last-Modified: Thu, 18 Feb 2021 14:45:44 GMT
-Strict-Transport-Security: max-age=15724800; includeSubDomains
+        [root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl apply -f ingress-kubernetes-dashboard.yaml
+        --此时可以通过https进行访问dashboard:
+        [root@master02 ~/k8s-manifests/dashboard]# curl -kI -H 'Host: dashboard.k8s.hs.com' https://192.168.13.56
+        HTTP/1.1 200 OK
+        Date: Fri, 11 Jun 2021 01:35:22 GMT
+        Content-Type: text/html; charset=utf-8
+        Content-Length: 1250
+        Connection: keep-alive
+        Accept-Ranges: bytes
+        Cache-Control: no-cache, no-store, must-revalidate
+        Last-Modified: Thu, 18 Feb 2021 14:45:44 GMT
+        Strict-Transport-Security: max-age=15724800; includeSubDomains
 
 #dashboard高可用--也可类似于ingress-nginx实现高可用
 当dashboard为Delpoyment控制器时，将dashboard副本数设为2，当pod所在节点Down机时，endpoints会有一分钟的时效检测后端pod状态，一分钟后会判断后端pod是否正常，所以pod节点Down机时，会有1分钟的服务中断。
 当知道当pod所在节点Down机时，可以驱逐Down机的节点以快速使endpoint对后端pod做出表决，判定是否健康。pod服务中断时间取决于驱逐的速度。
-#问题
+
+# 问题
 --查看指定名称空间下有没有资源未结束,原因是pod节点未开机
 [root@master02 ~/k8s-manifests/dashboard]# kubectl api-resources -o name --verbs=list --namespaced | xargs -n 1 kubectl get --show-kind --ignore-not-found -n kubernetes-dashboard
 NAME                                        READY   STATUS        RESTARTS   AGE
@@ -2083,12 +2241,16 @@ kube-node-lease   Active   10d
 kube-public       Active   10d
 kube-system       Active   10d
 storage-nfs       Active   5d22h
+```
 
 
 
---认证、授权、准入控制
-#RBAC:
-集群自带角色：
+### 1.17 RBAC
+
+认证、授权、准入控制
+
+**集群自带角色**
+```bash
 [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl get clusterrole | egrep "^(cluster-admin|admin|edit|view)"
 admin                                                                  2021-04-29T11:52:18Z       --用于名称空间级别管理员
 cluster-admin                                                          2021-04-29T11:52:18Z		  --用于整个集群级别管理员
@@ -2163,15 +2325,15 @@ clusters:
     certificate-authority-data: DATA+OMITTED
     server: https://k8s-api.k8s.hs.com:6443
   name: kubernetes
-contexts:
+    contexts:
 - context:
     cluster: kubernetes
     user: kubernetes-admin
   name: kubernetes-admin@kubernetes
-current-context: kubernetes-admin@kubernetes
-kind: Config
-preferences: {}
-users:
+    current-context: kubernetes-admin@kubernetes
+    kind: Config
+    preferences: {}
+    users:
 - name: kubernetes-admin
   user:
     client-certificate-data: REDACTED
@@ -2184,33 +2346,33 @@ Error from server (Forbidden): pods is forbidden: User "homsom-admin" cannot lis
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  creationTimestamp: null
-  name: homsom-admin
+    creationTimestamp: null
+    name: homsom-admin
 roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: cluster-admin
+    apiGroup: rbac.authorization.k8s.io
+    kind: ClusterRole
+    name: cluster-admin
 subjects:
 - apiGroup: rbac.authorization.k8s.io
   kind: Group
   name: homsom
-[root@master02 ~/k8s-manifests/dashboard/rbac]# cat homsom-admin-clusterrolebinding.yaml
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
+  [root@master02 ~/k8s-manifests/dashboard/rbac]# cat homsom-admin-clusterrolebinding.yaml
+  apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRoleBinding
+  metadata:
   creationTimestamp: null
   name: homsom-admin
-roleRef:
+  roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
   name: cluster-admin
-subjects:
+  subjects:
 - apiGroup: rbac.authorization.k8s.io
   kind: Group
   name: homsom
-[root@master02 ~/k8s-manifests/dashboard/rbac]# kubectl apply -f homsom-admin-clusterrolebinding.yaml
-[root@master02 ~/k8s-manifests/dashboard/rbac]# kubectl get clusterrolebinding | grep homsom-admin
-homsom-admin                                           ClusterRole/cluster-admin                                                          11s
+  [root@master02 ~/k8s-manifests/dashboard/rbac]# kubectl apply -f homsom-admin-clusterrolebinding.yaml
+  [root@master02 ~/k8s-manifests/dashboard/rbac]# kubectl get clusterrolebinding | grep homsom-admin
+  homsom-admin                                           ClusterRole/cluster-admin                                                          11s
 8. 此时查看权限
 [root@master02 ~/k8s-manifests/dashboard/rbac]#  kubectl get pods --kubeconfig='/root/homsom-kubernetes.conf'
 NAME                                    READY   STATUS    RESTARTS   AGE
@@ -2252,12 +2414,12 @@ NAME                   SECRETS   AGE
 default                1         31d
 kubernetes-dashboard   1         31d
 1. 新建serviceaccount以及绑定集群角色cluster-admin
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# cat ui-admin.yaml 
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: ui-admin
-  namespace: kubernetes-dashboard
+    [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# cat ui-admin.yaml 
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+    name: ui-admin
+    namespace: kubernetes-dashboard
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -2271,17 +2433,17 @@ subjects:
 - kind: ServiceAccount
   name: ui-admin
   namespace: kubernetes-dashboard
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl apply -f ui-admin.yaml
-serviceaccount/ui-admin created
-clusterrolebinding.rbac.authorization.k8s.io/ui-admin created
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]#  kubectl describe sa/ui-admin -n kubernetes-dashboard | grep -i token
-Mountable secrets:   ui-admin-token-55z9q
-Tokens:              ui-admin-token-55z9q
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl describe secret/ui-admin-token-55z9q -n kubernetes-dashboard
-Name:         ui-admin-token-55z9q
-Namespace:    kubernetes-dashboard
-Labels:       <none>
-Annotations:  kubernetes.io/service-account.name: ui-admin
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl apply -f ui-admin.yaml
+  serviceaccount/ui-admin created
+  clusterrolebinding.rbac.authorization.k8s.io/ui-admin created
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]#  kubectl describe sa/ui-admin -n kubernetes-dashboard | grep -i token
+  Mountable secrets:   ui-admin-token-55z9q
+  Tokens:              ui-admin-token-55z9q
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl describe secret/ui-admin-token-55z9q -n kubernetes-dashboard
+  Name:         ui-admin-token-55z9q
+  Namespace:    kubernetes-dashboard
+  Labels:       <none>
+  Annotations:  kubernetes.io/service-account.name: ui-admin
               kubernetes.io/service-account.uid: a42e440d-0ffa-442f-8af0-3c08073fc77e
 
 Type:  kubernetes.io/service-account-token
@@ -2313,15 +2475,15 @@ clusters:
     certificate-authority-data: DATA+OMITTED
     server: https://k8s-api.k8s.hs.com:6443
   name: homsom-kubernetes
-contexts:
+    contexts:
 - context:
     cluster: homsom-kubernetes
     user: ui-admin
   name: ui-admin@homsom-kubernetes
-current-context: ui-admin@homsom-kubernetes
-kind: Config
-preferences: {}
-users:
+    current-context: ui-admin@homsom-kubernetes
+    kind: Config
+    preferences: {}
+    users:
 - name: ui-admin
   user:
     token: REDACTED
@@ -2372,48 +2534,48 @@ subjects:
 - kind: ServiceAccount
   name: namespace-monitoring-uiadmin
   namespace: kubernetes-dashboard
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl apply -f clusterrolebinding-namespace-monitoring-uiadmin.yaml
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl describe sa/namespace-monitoring-uiadmin -n kubernetes-dashboard | grep -i ^token
-Tokens:              namespace-monitoring-uiadmin-token-zj7fq
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config set-cluster homsom-kubernetes --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf" --server=https://k8s-api.k8s.hs.com:6443 --certificate-authority=/etc/kubernetes/pki/ca.crt --embed-certs=true
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config set-context monitoring-uiadmin@homsom-kubernetes --cluster=homsom-kubernetes --user=monitoring-uiadmin --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf"
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config set-credentials monitoring-uiadmin --token=`kubectl get secret/namespace-monitoring-uiadmin-token-zj7fq -n kubernetes-dashboard -o jsonpath='{.data.token}' | base64 -d` --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf"
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config use-context monitoring-uiadmin@homsom-kubernetes --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf"
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config view --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf"
-apiVersion: v1
-clusters:
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl apply -f clusterrolebinding-namespace-monitoring-uiadmin.yaml
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl describe sa/namespace-monitoring-uiadmin -n kubernetes-dashboard | grep -i ^token
+  Tokens:              namespace-monitoring-uiadmin-token-zj7fq
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config set-cluster homsom-kubernetes --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf" --server=https://k8s-api.k8s.hs.com:6443 --certificate-authority=/etc/kubernetes/pki/ca.crt --embed-certs=true
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config set-context monitoring-uiadmin@homsom-kubernetes --cluster=homsom-kubernetes --user=monitoring-uiadmin --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf"
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config set-credentials monitoring-uiadmin --token=`kubectl get secret/namespace-monitoring-uiadmin-token-zj7fq -n kubernetes-dashboard -o jsonpath='{.data.token}' | base64 -d` --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf"
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config use-context monitoring-uiadmin@homsom-kubernetes --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf"
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config view --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf"
+  apiVersion: v1
+  clusters:
 - cluster:
     certificate-authority-data: DATA+OMITTED
     server: https://k8s-api.k8s.hs.com:6443
   name: homsom-kubernetes
-contexts:
+    contexts:
 - context:
     cluster: homsom-kubernetes
     user: monitoring-uiadmin
   name: monitoring-uiadmin@homsom-kubernetes
-current-context: monitoring-uiadmin@homsom-kubernetes
-kind: Config
-preferences: {}
-users:
+    current-context: monitoring-uiadmin@homsom-kubernetes
+    kind: Config
+    preferences: {}
+    users:
 - name: monitoring-uiadmin
   user:
     token: REDACTED
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl get pod --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf"  --default名称空间无权限
-Error from server (Forbidden): pods is forbidden: User "system:serviceaccount:kubernetes-dashboard:namespace-monitoring-uiadmin" cannot list resource "pods" in API group "" in the namespace "default"
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl get pod -n monitoring --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf"   --monitoring名称空间有权限
-NAME                                           READY   STATUS    RESTARTS   AGE
-adapter-prometheus-adapter-7df9c4f77-wdfhg     1/1     Running   0          4d13h
-grafana-566fc59d75-d4hqz                       1/1     Running   0          43h
-prom-kube-state-metrics-649d77c759-zvwlv       1/1     Running   0          4d17h
-prom-prometheus-alertmanager-0                 2/2     Running   0          43h
-prom-prometheus-node-exporter-62mnz            1/1     Running   0          4d17h
-prom-prometheus-node-exporter-7mx4q            1/1     Running   0          4d17h
-prom-prometheus-node-exporter-b4z62            1/1     Running   0          4d17h
-prom-prometheus-node-exporter-bfnvr            1/1     Running   0          4d17h
-prom-prometheus-node-exporter-hvqm8            1/1     Running   0          4d17h
-prom-prometheus-pushgateway-79f585d544-4pg59   1/1     Running   0          43h
-prom-prometheus-server-0                       2/2     Running   0          42h
-注：最后可以将此文件发送给对应人员，进行dashboard认证，进入dashboard后需要手动输入dev名称空间进行，否则会报错
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl get pod --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf"  --default名称空间无权限
+  Error from server (Forbidden): pods is forbidden: User "system:serviceaccount:kubernetes-dashboard:namespace-monitoring-uiadmin" cannot list resource "pods" in API group "" in the namespace "default"
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl get pod -n monitoring --kubeconfig="./homsom-dashboard-monitoring-uiadmin.conf"   --monitoring名称空间有权限
+  NAME                                           READY   STATUS    RESTARTS   AGE
+  adapter-prometheus-adapter-7df9c4f77-wdfhg     1/1     Running   0          4d13h
+  grafana-566fc59d75-d4hqz                       1/1     Running   0          43h
+  prom-kube-state-metrics-649d77c759-zvwlv       1/1     Running   0          4d17h
+  prom-prometheus-alertmanager-0                 2/2     Running   0          43h
+  prom-prometheus-node-exporter-62mnz            1/1     Running   0          4d17h
+  prom-prometheus-node-exporter-7mx4q            1/1     Running   0          4d17h
+  prom-prometheus-node-exporter-b4z62            1/1     Running   0          4d17h
+  prom-prometheus-node-exporter-bfnvr            1/1     Running   0          4d17h
+  prom-prometheus-node-exporter-hvqm8            1/1     Running   0          4d17h
+  prom-prometheus-pushgateway-79f585d544-4pg59   1/1     Running   0          43h
+  prom-prometheus-server-0                       2/2     Running   0          42h
+  注：最后可以将此文件发送给对应人员，进行dashboard认证，进入dashboard后需要手动输入dev名称空间进行，否则会报错
 
 #--建立整个集群可读用户
 [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# cat clusterrolebinding-readonly-admin.yaml
@@ -2435,56 +2597,56 @@ subjects:
 - kind: ServiceAccount
   name: readonly-uiadmin
   namespace: kubernetes-dashboard
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl apply -f clusterrolebinding-readonly-admin.yaml
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl describe sa/readonly-uiadmin -n kubernetes-dashboard | grep -i ^token
-Tokens:              readonly-uiadmin-token-kvgjb
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config set-context readonly-uiadmin@homsom-kubernetes --cluster=homsom-kubernetes --user=readonly-uiadmin --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config set-credentials readonly-uiadmin --token=`kubectl get secret/readonly-uiadmin-token-kvgjb -n kubernetes-dashboard -o jsonpath='{.data.token}' | base64 -d` --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config use-context readonly-uiadmin@homsom-kubernetes --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config view --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"
-apiVersion: v1
-clusters:
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl apply -f clusterrolebinding-readonly-admin.yaml
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl describe sa/readonly-uiadmin -n kubernetes-dashboard | grep -i ^token
+  Tokens:              readonly-uiadmin-token-kvgjb
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config set-context readonly-uiadmin@homsom-kubernetes --cluster=homsom-kubernetes --user=readonly-uiadmin --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config set-credentials readonly-uiadmin --token=`kubectl get secret/readonly-uiadmin-token-kvgjb -n kubernetes-dashboard -o jsonpath='{.data.token}' | base64 -d` --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config use-context readonly-uiadmin@homsom-kubernetes --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]# kubectl config view --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"
+  apiVersion: v1
+  clusters:
 - cluster:
     certificate-authority-data: DATA+OMITTED
     server: https://k8s-api.k8s.hs.com:6443
   name: homsom-kubernetes
-contexts:
+    contexts:
 - context:
     cluster: homsom-kubernetes
     user: readonly-uiadmin
   name: readonly-uiadmin@homsom-kubernetes
-current-context: readonly-uiadmin@homsom-kubernetes
-kind: Config
-preferences: {}
-users:
+    current-context: readonly-uiadmin@homsom-kubernetes
+    kind: Config
+    preferences: {}
+    users:
 - name: readonly-uiadmin
   user:
     token: REDACTED
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]#  kubectl get pod --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"  --可读集群所有对象
-NAME                                    READY   STATUS    RESTARTS   AGE
-jack-base-795f8d97fc-xshwc              1/1     Running   0          21h
-jack-canary-weight-5d7d98c98b-bh5sw     1/1     Running   0          21h
-jack-canary-weight-5d7d98c98b-bk57p     1/1     Running   0          21h
-jack-canary-weight-5d7d98c98b-xqb7p     1/1     Running   0          21h
-jackli-base-5fddf784cd-xw28j            1/1     Running   0          21h
-jackli-canary-weight-6c47c6cd97-7md27   1/1     Running   0          21h
-jackli-canary-weight-6c47c6cd97-ghz5d   1/1     Running   0          21h
-jackli-canary-weight-6c47c6cd97-jz9p6   1/1     Running   0          21h
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]#  kubectl get svc -n monitoring --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"  --可读集群所有对象
-NAME                                    TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
-adapter-prometheus-adapter              ClusterIP   10.101.4.19      <none>        443/TCP    4d14h
-grafana                                 ClusterIP   10.106.137.45    <none>        80/TCP     4d17h
-prom-kube-state-metrics                 ClusterIP   10.105.48.195    <none>        8080/TCP   4d18h
-prom-prometheus-alertmanager            ClusterIP   10.106.173.231   <none>        80/TCP     4d18h
-prom-prometheus-alertmanager-headless   ClusterIP   None             <none>        80/TCP     4d18h
-prom-prometheus-node-exporter           ClusterIP   None             <none>        9100/TCP   4d18h
-prom-prometheus-pushgateway             ClusterIP   10.96.15.177     <none>        9091/TCP   4d18h
-prom-prometheus-server                  ClusterIP   10.109.107.120   <none>        80/TCP     4d18h
-prom-prometheus-server-headless         ClusterIP   None             <none>        80/TCP     4d18h
-[root@master02 ~/k8s-manifests/dashboard/rbac/sa]#  kubectl edit svc/grafana -n monitoring --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"   --不可编辑，没有写仅限
-error: services "grafana" could not be patched: services "grafana" is forbidden: User "system:serviceaccount:kubernetes-dashboard:readonly-uiadmin" cannot patch resource "services" in API group "" in the namespace "monitoring"
-You can run `kubectl replace -f /tmp/kubectl-edit-vl5kb.yaml` to try this update again.
-注：--edit角色如上，不做案例分享：
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]#  kubectl get pod --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"  --可读集群所有对象
+  NAME                                    READY   STATUS    RESTARTS   AGE
+  jack-base-795f8d97fc-xshwc              1/1     Running   0          21h
+  jack-canary-weight-5d7d98c98b-bh5sw     1/1     Running   0          21h
+  jack-canary-weight-5d7d98c98b-bk57p     1/1     Running   0          21h
+  jack-canary-weight-5d7d98c98b-xqb7p     1/1     Running   0          21h
+  jackli-base-5fddf784cd-xw28j            1/1     Running   0          21h
+  jackli-canary-weight-6c47c6cd97-7md27   1/1     Running   0          21h
+  jackli-canary-weight-6c47c6cd97-ghz5d   1/1     Running   0          21h
+  jackli-canary-weight-6c47c6cd97-jz9p6   1/1     Running   0          21h
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]#  kubectl get svc -n monitoring --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"  --可读集群所有对象
+  NAME                                    TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+  adapter-prometheus-adapter              ClusterIP   10.101.4.19      <none>        443/TCP    4d14h
+  grafana                                 ClusterIP   10.106.137.45    <none>        80/TCP     4d17h
+  prom-kube-state-metrics                 ClusterIP   10.105.48.195    <none>        8080/TCP   4d18h
+  prom-prometheus-alertmanager            ClusterIP   10.106.173.231   <none>        80/TCP     4d18h
+  prom-prometheus-alertmanager-headless   ClusterIP   None             <none>        80/TCP     4d18h
+  prom-prometheus-node-exporter           ClusterIP   None             <none>        9100/TCP   4d18h
+  prom-prometheus-pushgateway             ClusterIP   10.96.15.177     <none>        9091/TCP   4d18h
+  prom-prometheus-server                  ClusterIP   10.109.107.120   <none>        80/TCP     4d18h
+  prom-prometheus-server-headless         ClusterIP   None             <none>        80/TCP     4d18h
+  [root@master02 ~/k8s-manifests/dashboard/rbac/sa]#  kubectl edit svc/grafana -n monitoring --kubeconfig="./homsom-dashboard-readonly-uiadmin.conf"   --不可编辑，没有写仅限
+  error: services "grafana" could not be patched: services "grafana" is forbidden: User "system:serviceaccount:kubernetes-dashboard:readonly-uiadmin" cannot patch resource "services" in API group "" in the namespace "monitoring"
+  You can run `kubectl replace -f /tmp/kubectl-edit-vl5kb.yaml` to try this update again.
+  注：--edit角色如上，不做案例分享：
 
 #查看sa用户绑定的role权限
 [root@LocalServer ~]# kubectl describe sa/prometheus -n monitoring
@@ -2508,11 +2670,13 @@ No resources found in default namespace.
 ----查看clusterrolebinding，从下面可知是引用的哪个角色
 [root@LocalServer ~]# for i in `kubectl get clusterrolebinding | awk '{print $1}' | grep -v NAME`;do kubectl get clusterrolebinding/$i -o jsonpath='{.metadata.name}: {.subjects},{.roleRef}';echo;done | grep '"monitoring"' | grep '"prometheus"'
 prometheus: [{"kind":"ServiceAccount","name":"prometheus","namespace":"monitoring"}],{"apiGroup":"rbac.authorization.k8s.io","kind":"ClusterRole","name":"cluster-admin"}
+```
 
 
+### 1.18 helm
 
-#helm
-#部署helm-v3.5.3
+部署helm-v3.5.3
+```bash
 1. 安装helm:  注意：helm 客户端需要下载到安装了 kubectl 并且能执行能正常通过 kubectl 操作 kubernetes 的服务器上，否则 helm 将不可用。
 [root@master02 ~/k8s-manifests/helm]# axel -n 60 https://get.helm.sh/helm-v3.5.3-linux-amd64.tar.gz
 [root@master02 ~/k8s-manifests/helm]# tar xf helm-v3.5.3-linux-amd64.tar.gz
@@ -2670,26 +2834,29 @@ nginx   LoadBalancer   10.102.7.48   <pending>     80:32335/TCP   40s
 USER-SUPPLIED VALUES:
 service.nodePorts.http: 30002
 service.type: NodePort
+```
 
-#ingress高可用
+### 1.19 ingress高可用
+
+```bash
 1. 修改Deployment为DaemonSet，并注释掉副本数
-apiVersion: apps/v1
-#kind: Deployment
-kind: DaemonSet
-metadata:
-  labels:
+    apiVersion: apps/v1
+    #kind: Deployment
+    kind: DaemonSet
+    metadata:
+    labels:
     helm.sh/chart: ingress-nginx-3.30.0
     app.kubernetes.io/name: ingress-nginx
     app.kubernetes.io/instance: ingress-nginx
     app.kubernetes.io/version: 0.46.0
     app.kubernetes.io/managed-by: Helm
     app.kubernetes.io/component: controller
-  name: ingress-nginx-controller
-  namespace: ingress-nginx
-spec:
-  #replicas: 2
+    name: ingress-nginx-controller
+    namespace: ingress-nginx
+    spec:
+    #replicas: 2
 2. 启用hostNetwork网络
-spec:
+   spec:
     spec:
       hostNetwork: true
       nodeSelector:
@@ -2745,22 +2912,14 @@ ingress-nginx-controller-rm8gk         1/1     Running       0          6m44s   
 ingress-nginx-controller-z4hpx         1/1     Running       0          6m44s   192.168.13.56   node01.k8s.hs.com     <none>           <none>
 9. 此时在两个节点 node01.k8s.hs.com、node02.k8s.hs.com上有两个ingress controller pod，无论访问哪一个pod都可以访问后端的服务，实现了高可用，可以结合keepalived软件实现VIP
 
+```
 
+### 1.20 ingress 使用
 
+**ingress nginx灰度发布**
 
-
-
-
-
-
-
-
-
-
-
-#ingress 使用
-#ingress nginx灰度发布
----发布base容器
+```bash
+# 发布base容器
 [root@master02 ~/k8s-manifests/app]# cat hs-app-base.yaml
 apiVersion: v1
 kind: Service
@@ -2849,28 +3008,28 @@ spec:
         backend:
           serviceName: hotelresourcejinjiang-base
           servicePort: 80
-[root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-base.yaml
----测试hotelresourcejinjiang.hs.com是否为v1
-[root@salt ~]# while true;do date;curl -H 'host: hotelresourcejinjiang.hs.com' http://192.168.13.57;sleep 0.5;done
-2021年 05月 12日 星期三 17:39:13 CST
-Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
+        [root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-base.yaml
+        ---测试hotelresourcejinjiang.hs.com是否为v1
+        [root@salt ~]# while true;do date;curl -H 'host: hotelresourcejinjiang.hs.com' http://192.168.13.57;sleep 0.5;done
+        2021年 05月 12日 星期三 17:39:13 CST
+        Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
 
 ---升级v2版本，并且配置通过Header来判断访问后端Endpoints
 1. 先部署deployment
-[root@master02 ~/k8s-manifests/app]# cat hs-app-canary-header.yaml 
-apiVersion: v1
-kind: Service
-metadata:
-  name: hotelresourcejinjiang-canary-header
-  namespace: default
-spec:
-  selector:
+    [root@master02 ~/k8s-manifests/app]# cat hs-app-canary-header.yaml 
+    apiVersion: v1
+    kind: Service
+    metadata:
+    name: hotelresourcejinjiang-canary-header
+    namespace: default
+    spec:
+    selector:
     app: hotelresourcejinjiang.hs.com
     Language: netCore
     env: test
     team: ops
     tag: canary-header
-  ports:
+    ports:
   - name: http
     port: 80
     targetPort: 80  
@@ -2926,28 +3085,28 @@ spec:
             cpu: "500m"
 [root@master02 ~/k8s-manifests/app]# kubectl apply -f hs-app-canary-header.yaml
 2. 最后部署ingress
-[root@master02 ~/k8s-manifests/app]# cat ingress-hotelresourcejinjiang-canary-header.yaml 
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: hotelresourcejinjiang-canary-header
-  namespace: default
-  annotations:
+    [root@master02 ~/k8s-manifests/app]# cat ingress-hotelresourcejinjiang-canary-header.yaml 
+    apiVersion: extensions/v1beta1
+    kind: Ingress
+    metadata:
+    name: hotelresourcejinjiang-canary-header
+    namespace: default
+    annotations:
     kubernetes.io/ingress.class: "nginx"
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
     nginx.ingress.kubernetes.io/canary: "true"
     nginx.ingress.kubernetes.io/canary-by-header: "x-app-canary"
     nginx.ingress.kubernetes.io/canary-by-header-value: "true"
-spec:
-  rules:
+    spec:
+    rules:
   - host: hotelresourcejinjiang.hs.com
     http:
       paths: 
       - backend:
           serviceName: hotelresourcejinjiang-canary-header
           servicePort: 80
-[root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-canary-header.yaml
+          [root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-canary-header.yaml
 3. 测试通过指定头部获取的结果是否为v2
 [root@salt ~]# while true;do date;curl -H 'x-app-canary: true' http://hotelresourcejinjiang.hs.com;sleep 1;done
 2021年 05月 12日 星期三 21:01:23 CST
@@ -2957,22 +3116,22 @@ Hello MyApp | Version: v2 | <a href="hostname.html">Pod Name</a>
 2021年 05月 13日 星期四 09:05:15 CST
 Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
 
-#通过权重值和通过head来发布时，只能生效一种，虽然两个ingress清单可以配置，但是实际生效的是其中一个
+# 通过权重值和通过head来发布时，只能生效一种，虽然两个ingress清单可以配置，但是实际生效的是其中一个
 1. 通过权重值进行灰度发布，先发布后端pod
-[root@master02 ~/k8s-manifests/app]# cat hs-app-canary-weight.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: hotelresourcejinjiang-canary-weight
-  namespace: default
-spec:
-  selector:
+    [root@master02 ~/k8s-manifests/app]# cat hs-app-canary-weight.yaml
+    apiVersion: v1
+    kind: Service
+    metadata:
+    name: hotelresourcejinjiang-canary-weight
+    namespace: default
+    spec:
+    selector:
     app: hotelresourcejinjiang.hs.com
     Language: netCore
     env: test
     team: ops
     tag: canary-weight
-  ports:
+    ports:
   - name: http
     port: 80
     targetPort: 80  
@@ -3041,19 +3200,19 @@ hotelresourcejinjiang-base            <none>   hotelresourcejinjiang.hs.com   19
 hotelresourcejinjiang-canary-header   <none>   hotelresourcejinjiang.hs.com   192.168.13.56,192.168.13.57   80      2m4s
 2. 部署基于weight的ingress
 [root@master02 ~/k8s-manifests/app]# cat ingress-hotelresourcejinjiang-canary-weight.yaml
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: hotelresourcejinjiang-canary-weight
-  namespace: default
-  annotations:
+    apiVersion: extensions/v1beta1
+    kind: Ingress
+    metadata:
+    name: hotelresourcejinjiang-canary-weight
+    namespace: default
+    annotations:
     kubernetes.io/ingress.class: "nginx"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/canary: "true"
     nginx.ingress.kubernetes.io/canary-weight: "100"
-spec:
-  rules:
+    spec:
+    rules:
   - host: hotelresourcejinjiang.hs.com
     http:
       paths: 
@@ -3061,20 +3220,20 @@ spec:
         backend:
           serviceName: hotelresourcejinjiang-canary-weight
           servicePort: 80
-[root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-canary-weight.yaml
-[root@master02 ~/k8s-manifests/app]# kubectl get ingress -o wide
-NAME                                  CLASS    HOSTS                          ADDRESS                       PORTS   AGE
-hotelresourcejinjiang-base            <none>   hotelresourcejinjiang.hs.com   192.168.13.56,192.168.13.57   80      6m16s
-hotelresourcejinjiang-canary-header   <none>   hotelresourcejinjiang.hs.com   192.168.13.56,192.168.13.57   80      4m21s
-hotelresourcejinjiang-canary-weight   <none>   hotelresourcejinjiang.hs.com   192.168.13.56,192.168.13.57   80      79s
-----此时，生效的还是v1和v2，而hotelresourcejinjiang-canary-weight没有生效，因为此域名基于权重值和header都已经发布ingress,所以只能生效其一
-[root@salt ~]# while true;do date;curl -H 'x-app-canary: true' http://hotelresourcejinjiang.hs.com;sleep 1;done
-2021年 05月 12日 星期三 21:01:23 CST
-Hello MyApp | Version: v2 | <a href="hostname.html">Pod Name</a>
-----通过主机名访问依旧为v1
-[root@salt ~]# while true;do date;curl -H 'host: hotelresourcejinjiang.hs.com' http://192.168.13.57;sleep 1;done
-2021年 05月 13日 星期四 09:05:15 CST
-Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
+        [root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-canary-weight.yaml
+        [root@master02 ~/k8s-manifests/app]# kubectl get ingress -o wide
+        NAME                                  CLASS    HOSTS                          ADDRESS                       PORTS   AGE
+        hotelresourcejinjiang-base            <none>   hotelresourcejinjiang.hs.com   192.168.13.56,192.168.13.57   80      6m16s
+        hotelresourcejinjiang-canary-header   <none>   hotelresourcejinjiang.hs.com   192.168.13.56,192.168.13.57   80      4m21s
+        hotelresourcejinjiang-canary-weight   <none>   hotelresourcejinjiang.hs.com   192.168.13.56,192.168.13.57   80      79s
+        ----此时，生效的还是v1和v2，而hotelresourcejinjiang-canary-weight没有生效，因为此域名基于权重值和header都已经发布ingress,所以只能生效其一
+        [root@salt ~]# while true;do date;curl -H 'x-app-canary: true' http://hotelresourcejinjiang.hs.com;sleep 1;done
+        2021年 05月 12日 星期三 21:01:23 CST
+        Hello MyApp | Version: v2 | <a href="hostname.html">Pod Name</a>
+        ----通过主机名访问依旧为v1
+        [root@salt ~]# while true;do date;curl -H 'host: hotelresourcejinjiang.hs.com' http://192.168.13.57;sleep 1;done
+        2021年 05月 13日 星期四 09:05:15 CST
+        Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
 3. 移除基于header的ingress、deployment及service，并且使基于权重值的canary生效，因为权重值是50，所以是灰度发布
 [root@master02 ~/k8s-manifests/app]# kubectl delete -f ingress-hotelresourcejinjiang-canary-header.yaml 
 [root@master02 ~/k8s-manifests/app]# kubectl delete -f hs-app-canary-header.yaml
@@ -3092,22 +3251,22 @@ Hello MyApp | Version: v3 | <a href="hostname.html">Pod Name</a>
 
 #进行真正的灰度发布
 1. 假如v3新版本没有问题，那么将权重值设为100，使所有请求都到新发布的pod上来，实现了滚动更新灰度发布新版本
-[root@master02 ~/k8s-manifests/app]# \cp -a ingress-hotelresourcejinjiang-canary-weight.yaml ingress-hotelresourcejinjiang-canary-weight.yaml.backup
-[root@master02 ~/k8s-manifests/app]# sed -i 's/canary-weight: "50"/canary-weight: "100"/g' ingress-hotelresourcejinjiang-canary-weight.yaml
-[root@master02 ~/k8s-manifests/app]# cat ingress-hotelresourcejinjiang-canary-weight.yaml 
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: hotelresourcejinjiang-canary-weight
-  namespace: default
-  annotations:
+    [root@master02 ~/k8s-manifests/app]# \cp -a ingress-hotelresourcejinjiang-canary-weight.yaml ingress-hotelresourcejinjiang-canary-weight.yaml.backup
+    [root@master02 ~/k8s-manifests/app]# sed -i 's/canary-weight: "50"/canary-weight: "100"/g' ingress-hotelresourcejinjiang-canary-weight.yaml
+    [root@master02 ~/k8s-manifests/app]# cat ingress-hotelresourcejinjiang-canary-weight.yaml 
+    apiVersion: extensions/v1beta1
+    kind: Ingress
+    metadata:
+    name: hotelresourcejinjiang-canary-weight
+    namespace: default
+    annotations:
     kubernetes.io/ingress.class: "nginx"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/canary: "true"
     nginx.ingress.kubernetes.io/canary-weight: "100"
-spec:
-  rules:
+    spec:
+    rules:
   - host: hotelresourcejinjiang.hs.com
     http:
       paths: 
@@ -3115,24 +3274,24 @@ spec:
         backend:
           serviceName: hotelresourcejinjiang-canary-weight
           servicePort: 80
-[root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-canary-weight.yaml
+        [root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-canary-weight.yaml
 2. 假如又发布了一个新版本为v4，此时需要进行直接蓝绿发布,需要在hotelresourcejinjiang-base的配置清单中更改service和deployment关联的后端pod版本
-[root@master02 ~/k8s-manifests/app]# \cp -a hs-app-base.yaml hs-app-base.yaml.backup
-[root@master02 ~/k8s-manifests/app]# sed -i 's#ikubernetes/myapp:v1#ikubernetes/myapp:v4#g' hs-app-base.yaml
-[root@master02 ~/k8s-manifests/app]# cat hs-app-base.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: hotelresourcejinjiang-base
-  namespace: default
-spec:
-  selector:
+    [root@master02 ~/k8s-manifests/app]# \cp -a hs-app-base.yaml hs-app-base.yaml.backup
+    [root@master02 ~/k8s-manifests/app]# sed -i 's#ikubernetes/myapp:v1#ikubernetes/myapp:v4#g' hs-app-base.yaml
+    [root@master02 ~/k8s-manifests/app]# cat hs-app-base.yaml
+    apiVersion: v1
+    kind: Service
+    metadata:
+    name: hotelresourcejinjiang-base
+    namespace: default
+    spec:
+    selector:
     app: hotelresourcejinjiang.hs.com
     Language: netCore
     env: test
     team: ops
     tag: base
-  ports:
+    ports:
   - name: http
     port: 80
     targetPort: 80  
@@ -3188,22 +3347,22 @@ spec:
             cpu: "500m"
 [root@master02 ~/k8s-manifests/app]# kubectl apply -f hs-app-base.yaml
 3. 更改canary权重值从100为0，实行蓝绿部署
-[root@master02 ~/k8s-manifests/app]# \cp -a ingress-hotelresourcejinjiang-canary-weight.yaml ingress-hotelresourcejinjiang-canary-weight.yaml.backup
-[root@master02 ~/k8s-manifests/app]# sed -i 's/canary-weight: "100"/canary-weight: "0"/g' ingress-hotelresourcejinjiang-canary-weight.yaml 
-[root@master02 ~/k8s-manifests/app]# cat ingress-hotelresourcejinjiang-canary-weight.yaml  
-apiVersion: extensions/v1beta1
-kind: Ingress
-metadata:
-  name: hotelresourcejinjiang-canary-weight
-  namespace: default
-  annotations:
+    [root@master02 ~/k8s-manifests/app]# \cp -a ingress-hotelresourcejinjiang-canary-weight.yaml ingress-hotelresourcejinjiang-canary-weight.yaml.backup
+    [root@master02 ~/k8s-manifests/app]# sed -i 's/canary-weight: "100"/canary-weight: "0"/g' ingress-hotelresourcejinjiang-canary-weight.yaml 
+    [root@master02 ~/k8s-manifests/app]# cat ingress-hotelresourcejinjiang-canary-weight.yaml  
+    apiVersion: extensions/v1beta1
+    kind: Ingress
+    metadata:
+    name: hotelresourcejinjiang-canary-weight
+    namespace: default
+    annotations:
     kubernetes.io/ingress.class: "nginx"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/canary: "true"
     nginx.ingress.kubernetes.io/canary-weight: "0"
-spec:
-  rules:
+    spec:
+    rules:
   - host: hotelresourcejinjiang.hs.com
     http:
       paths: 
@@ -3211,7 +3370,7 @@ spec:
         backend:
           serviceName: hotelresourcejinjiang-canary-weight
           servicePort: 80
-[root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-canary-weight.yaml
+        [root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-canary-weight.yaml
 4. 测试，已经到v4版本了
 [root@salt ~]# while true;do date;curl -H 'x-app-canary: true' http://hotelresourcejinjiang.hs.com;sleep 1;done   
 2021年 05月 13日 星期四 11:02:28 CST
@@ -3246,12 +3405,14 @@ POD_RESULT=`kubectl get pods | grep hotelresourcejinjiang-base* | awk '{print $1
 POD_COUNT=`kubectl get pods | grep hotelresourcejinjiang-base* | wc -l`
 tmp_count=0
 while [ ! ${tmp_count} == ${POD_COUNT} ]; do for i in ${POD_RESULT};do kubectl get pods -n default | grep $i; [ $? == 0 ] && echo 'pod is live' || ((tmp_count++)) ;done ;sleep 1;done
+```
 
 
 
+### 1.21 promehteus 监控Ingress
 
-
-#prometheus serviceaccount定义
+**prometheus serviceaccount定义**
+```bash
 [root@master02 ~/k8s-manifests/prometheus/prometheus-legecy]# cat prometheus-rbac-setup-monitoring.yml
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -3285,12 +3446,12 @@ subjects:
   name: prometheus
   namespace: monitoring
 ---
+```
 
 
-
-#promehteus 监控Ingress
+**promehteus 监控Ingress**
 在部署ingerss清单中，对service名为ingress-nginx-controller的配置段进行添加资源注解，并且重新应用配置即可，此后就可在prometheus上的target中找到名为kubernetes-service-endpoints的job，就可看到ingress的endpoints:
----
+```bash
 apiVersion: v1
 kind: Service
 metadata:
@@ -3312,7 +3473,7 @@ spec:
 注：主要是在资源注解中注明prometheus抓取metric的端口以及开关。
 
 
-#prometheus rules定义：
+# prometheus rules定义：
 [root@LocalServer /shell]# kubectl edit cm/prom-prometheus-server -n monitoring
 -------------------
     rule_files:
@@ -3578,10 +3739,9 @@ data:
         annotations:
           summary: "Host Network[5m] Established Connection High"
           description: "job: {{ $labels.job }}, instance: {{$labels.instance}} Network Established Connection above 1500 (current value: {{ $value }})"  
--------------------
-#alertmanager告警定义
+
+# alertmanager告警定义
 1. [root@LocalServer ~]# kubectl edit cm/prom-prometheus-alertmanager -n monitoring
--------------------
 data:
   alertmanager.yml: |
     global:
@@ -3644,12 +3804,13 @@ data:
     {{ end }}
     {{ end }}
 -------------------
+```
 
 
 
+### 1.22 IngressController for Ingress规则
 
-#IngressController for Ingress规则
-##Canary
+**Canary**
 在某些情况下，您可能希望通过向与生产服务不同的服务发送少量请求来“金丝雀”一组新的更改。金丝雀注解使 Ingress 规范能够根据应用的规则充当路由请求的替代服务。nginx.ingress.kubernetes.io/canary: "true"设置后可以启用以下用于配置金丝雀的注释：
 
 nginx.ingress.kubernetes.io/canary-by-header：用于通知 Ingress 将请求路由到 Canary Ingress 中指定的服务的标头。当请求头设置为 时always，它将被路由到金丝雀。当标头设置为 时never，它永远不会被路由到金丝雀。对于任何其他值，标头将被忽略，并按优先级将请求与其他金丝雀规则进行比较。
@@ -3667,10 +3828,13 @@ Canary 规则按优先顺序进行评估。优先级如下：canary-by-header ->
 请注意： 当您将入口标记为 Canary 时，除nginx.ingress.kubernetes.io/load-balance and nginx.ingress.kubernetes.io/upstream-hash-by之外的所有其他非 Canary 注释都将被忽略（从相应的主入口继承）
 已知限制： 目前，每个 Ingress 规则最多可以应用一个 Canary Ingress。
 
-##Rewrite
-###Rewrite Target
+**Rewrite**
+
+Rewrite Target
+
 在某些情况下，后端服务中暴露的 URL 与 Ingress 规则中指定的路径不同。如果没有重写，任何请求都将返回 404。将注释设置nginx.ingress.kubernetes.io/rewrite-target为服务预期的路径。
 创建带有重写注释的 Ingress 规则：
+```bash
 $ echo '
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -3688,15 +3852,14 @@ spec:
           serviceName: http-svc
           servicePort: 80
         path: /something(/|$)(.*)
-' | kubectl create -f -
-在这个入口定义中，捕获的任何字符(.*)都将分配给占位符$2，然后将其用作rewrite-target注释中的参数。例如，上面的入口定义将导致以下重写：
-rewrite.bar.com/something 改写为 rewrite.bar.com/
-rewrite.bar.com/something/ 改写为 rewrite.bar.com/
-rewrite.bar.com/something/new 改写为 rewrite.bar.com/new
-注：此目的是将重定向的URL路径/something去掉，多余的URL参数将重写到后端的service中，例如：rewrite.bar.com/something/test  -->  rewrite.bar.com/test
+          ' | kubectl create -f -
+          在这个入口定义中，捕获的任何字符(.*)都将分配给占位符$2，然后将其用作rewrite-target注释中的参数。例如，上面的入口定义将导致以下重写：
+          rewrite.bar.com/something 改写为 rewrite.bar.com/
+          rewrite.bar.com/something/ 改写为 rewrite.bar.com/
+          rewrite.bar.com/something/new 改写为 rewrite.bar.com/new
+          注：此目的是将重定向的URL路径/something去掉，多余的URL参数将重写到后端的service中，例如：rewrite.bar.com/something/test  -->  rewrite.bar.com/test
 
-###App Root
-创建带有 app-root 注释的 Ingress 规则：
+# 创建带有 app-root 注释的 Ingress 规则：
 $ echo "
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -3714,19 +3877,19 @@ spec:
           serviceName: http-svc
           servicePort: 80
         path: /
-" | kubectl create -f -
-检查重写是否有效
-$ curl -I -k http://approot.bar.com/
-HTTP/1.1 302 Moved Temporarily
-Server: nginx/1.11.10
-Date: Mon, 13 Mar 2017 14:57:15 GMT
-Content-Type: text/html
-Content-Length: 162
-Location: http://stickyingress.example.com/app1
-Connection: keep-alive
-注：此目的是将URL路径/app1作为根加入到访问的url路径中，前提访问的URL需要匹配到ingress路径，例如：approot.bar.com/  -->  approot.bar.com/app1
+          " | kubectl create -f -
+          检查重写是否有效
+          $ curl -I -k http://approot.bar.com/
+          HTTP/1.1 302 Moved Temporarily
+          Server: nginx/1.11.10
+          Date: Mon, 13 Mar 2017 14:57:15 GMT
+          Content-Type: text/html
+          Content-Length: 162
+          Location: http://stickyingress.example.com/app1
+          Connection: keep-alive
+          注：此目的是将URL路径/app1作为根加入到访问的url路径中，前提访问的URL需要匹配到ingress路径，例如：approot.bar.com/  -->  approot.bar.com/app1
 
-####简写ingress规则 ，使用&符号进行变量设置，用*号引用变量
+# 简写ingress规则 ，使用&符号进行变量设置，用*号引用变量
 spec:
   rules:
   - host: alertmanager.k8s.hs.com
@@ -3739,23 +3902,23 @@ spec:
         pathType: ImplementationSpecific
   - host: alert.k8s.hs.com
     http: *http_rules
-注：当ingress(ingress-nginx)使用canary时,其它ingress再引用canary ingress所在的service时，将不会起作用，而引用base ingress所在的service时会起作用,并且canary ingress的weight权重值将影响其它ingress的引用，例如当weight=100，则引用base ingress所在的service不会生效。当weight=0，则引用base ingress所在的service会生效。
+    注：当ingress(ingress-nginx)使用canary时,其它ingress再引用canary ingress所在的service时，将不会起作用，而引用base ingress所在的service时会起作用,并且canary ingress的weight权重值将影响其它ingress的引用，例如当weight=100，则引用base ingress所在的service不会生效。当weight=0，则引用base ingress所在的service会生效。
 
-###基本认证
+# 基本认证
 此示例说明如何使用身份验证htpasswd在 Ingress 规则中添加。重要的是生成的文件被命名auth（实际上 - 秘密有一个密钥data.auth），否则入口控制器返回 503。
 htpasswd -c auth foo
 kubectl create secret generic basic-auth --from-file=auth
 kubectl get secret basic-auth -o yaml
 curl -v http://10.2.29.4/ -H 'Host: foo.bar.com' -u 'foo:bar'
 
-###客户端证书认证
+# 客户端证书认证
 如果它们是二进制 DER 格式，您可以按如下方式转换它们：
 openssl x509 -in certificate.der -inform der -out certificate.crt -outform pem
 然后，您可以将它们全部连接到一个名为“ca.crt”的文件中，如下所示：
 cat certificate1.crt certificate2.crt certificate3.crt >> ca.crt
 注意：对于生成的每个证书，请确保密钥大小大于 1024 并且哈希算法（摘要）比 md5 更好。否则，您将收到错误消息。
 
-###使用位于的外部服务（基本身份验证） https://httpbin.org
+# 使用位于的外部服务（基本身份验证） https://httpbin.org
 $ kubectl get ing external-auth -o yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -3774,7 +3937,7 @@ spec:
           servicePort: 80
         path: /
 
-###向 Nginx 配置添加了一个自定义标头，该标头仅适用于该特定 Ingress
+# 向 Nginx 配置添加了一个自定义标头，该标头仅适用于该特定 Ingress
 apiVersion: networking.k8s.io/v1beta1
 kind: Ingress
 metadata:
@@ -3791,9 +3954,9 @@ spec:
           serviceName: http-svc
           servicePort: 80
         path: /
---测试：使用以下命令检查 nginx.conf 文件中是否存在注释的内容： kubectl exec ingress-nginx-controller-873061567-4n3k2 -n kube-system -- cat /etc/nginx/nginx.conf
+          --测试：使用以下命令检查 nginx.conf 文件中是否存在注释的内容： kubectl exec ingress-nginx-controller-873061567-4n3k2 -n kube-system -- cat /etc/nginx/nginx.conf
 
-#自定义配置
+# 自定义配置
 使用ConfigMap可以自定义 NGINX 配置，例如，如果我们想更改超时，我们需要创建一个 ConfigMap：
 $ cat configmap.yaml
 apiVersion: v1
@@ -3806,7 +3969,7 @@ metadata:
   name: ingress-nginx-controller
 --如果 Configmap 更新，NGINX 将使用新配置重新加载。
 
-###自定义错误
+# 自定义错误
 1. 首先，创建自定义default-backend. 稍后将被 Ingress 控制器使用。
 $ kubectl create -f custom-default-backend.yaml
 service "nginx-errors" created
@@ -3814,9 +3977,7 @@ deployment.apps "nginx-errors" created
 2. 入口控制器配置
 编辑ingress-nginx-controller deployment 并将--default-backend-service标志的值设置为新创建的错误后端的名称,例如：
 - --default-backend-service=fat/hsapp-errorpage
-编辑ingress-nginx-controllerConfigMap 并创建custom-http-errors值为的键404,503
-data: 
+  编辑ingress-nginx-controllerConfigMap 并创建custom-http-errors值为的键404,503
+  data: 
   custom-http-errors: '404,503'
-
-
-</pre>
+```
