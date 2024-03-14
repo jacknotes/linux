@@ -70,46 +70,45 @@ k8s-api.k8s.hs.com --> 192.168.13.50
 
 [root@tengine /usr/local/tengine/conf]# netstat -tnlp | grep 6443
 tcp        0      0 0.0.0.0:6443            0.0.0.0:*               LISTEN      2232/nginx: worker  
-
-
-2. salt-ssh deploy key
-   --salt-master:
-   sudo rpm --import https://repo.saltproject.io/py3/redhat/7/x86_64/3002/SALTSTACK-GPG-KEY.pub
-   curl -fsSL https://repo.saltproject.io/py3/redhat/7/x86_64/3002.repo | sudo tee /etc/yum.repos.d/salt.repo
-   --salt-minion:
-   [root@salt ~/salt]# salt-ssh 'node*' -r 'curl http://mirrors.aliyun.com/repo/Centos-7.repo | tee /etc/yum.repos.d/Centos-7.repo'
-   [root@salt ~/salt]# salt-ssh 'node*' -r 'yum install -y python3'
-   [root@salt ~/salt]# salt-ssh '*' -i --key-deploy test.ping
-   [root@salt /srv/salt/base/init]# salt-ssh '*' state.sls init.init-for-saltssh saltenv=base
-
-3. salt deploy base env and install docker
-   [root@salt /srv/salt/base]# salt '*k8s*' state.highstate
-   [root@salt /srv/salt/base]# salt '*k8s*' cmd.run 'docker version | grep Version'
-   master02.k8s.hs.com:
-     Version:           20.10.5
-
-4. install k8s for kubelet kubeadm kubectl
-   [root@master01 ~]# rpm --import https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
-   [root@master01 ~]# cat /etc/yum.repos.d/kubernetes.repo 
-   [kubernetes-repo]
-   name=kubernetes repo for RHEL/CentOS 7
-   baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64/
-   enabled=1
-   gpgcheck=0
-   [root@salt /srv/salt/base/init]# salt '*k8s*' state.sls init.k8s-repo saltenv=base 
-
-# [root@salt ~]# salt '*k8s*' cmd.run 'yum remove -y kubeadm kubelet kubectl'
-
-
 ```
 
 
 
 ### 1.3 部署k8s
 
+
+
 #### 1.3.1 安装集群
 
 ```bash
+# salt-ssh deploy key
+
+# salt-master:
+sudo rpm --import https://repo.saltproject.io/py3/redhat/7/x86_64/3002/SALTSTACK-GPG-KEY.pub
+curl -fsSL https://repo.saltproject.io/py3/redhat/7/x86_64/3002.repo | sudo tee /etc/yum.repos.d/salt.repo
+
+# salt-minion:
+[root@salt ~/salt]# salt-ssh 'node*' -r 'curl http://mirrors.aliyun.com/repo/Centos-7.repo | tee /etc/yum.repos.d/Centos-7.repo'
+[root@salt ~/salt]# salt-ssh 'node*' -r 'yum install -y python3'
+[root@salt ~/salt]# salt-ssh '*' -i --key-deploy test.ping
+[root@salt /srv/salt/base/init]# salt-ssh '*' state.sls init.init-for-saltssh saltenv=base
+
+# 安装docker
+[root@salt /srv/salt/base]# salt '*k8s*' state.highstate
+[root@salt /srv/salt/base]# salt '*k8s*' cmd.run 'docker version | grep Version'
+master02.k8s.hs.com:
+  Version:           20.10.5
+
+[root@master01 ~]# rpm --import https://mirrors.aliyun.com/kubernetes/yum/doc/yum-key.gpg
+[root@master01 ~]# cat /etc/yum.repos.d/kubernetes.repo 
+[kubernetes-repo]
+name=kubernetes repo for RHEL/CentOS 7
+baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64/
+enabled=1
+gpgcheck=0
+[root@salt /srv/salt/base/init]# salt '*k8s*' state.sls init.k8s-repo saltenv=base 
+
+# [root@salt ~]# salt '*k8s*' cmd.run 'yum remove -y kubeadm kubelet kubectl'
 [root@salt ~]# salt '*k8s*' cmd.run 'yum install -y kubeadm-1.19.0-0 kubelet-1.19.0-0 kubectl-1.19.0-0'
 [root@salt /etc/salt]# salt '*k8s*' cmd.run 'yum list installed | grep kube'
 master02.k8s.hs.com:
@@ -119,20 +118,19 @@ master02.k8s.hs.com:
     kubelet.x86_64                   1.19.0-0                       @kubernetes-repo
     kubernetes-cni.x86_64            0.8.7-0                        @kubernetes-repo
 
-5. remote to minion console. Example:
-   [root@salt /srv/salt/base]# ssh -i /etc/salt/pki/master/ssh/salt-ssh.rsa 192.168.13.51
+[root@salt /srv/salt/base]# ssh -i /etc/salt/pki/master/ssh/salt-ssh.rsa 192.168.13.51
 
-6. 初始化控制平面
-   [root@master01 ~]# kubeadm  init \
+# 初始化控制平面
+[root@master01 ~]# kubeadm  init \
+--image-repository registry.aliyuncs.com/google_containers \
+--kubernetes-version v1.19.0 \
+--control-plane-endpoint k8s-api.k8s.hs.com \
+--apiserver-advertise-address 192.168.13.51 \
+--pod-network-cidr 10.244.0.0/16 \
+--token-ttl 0 \
+| tee kubeadm-init.txt
 
-> --image-repository registry.aliyuncs.com/google_containers \
-> --kubernetes-version v1.19.0 \
-> --control-plane-endpoint k8s-api.k8s.hs.com \
-> --apiserver-advertise-address 192.168.13.51 \
-> --pod-network-cidr 10.244.0.0/16 \
-> --token-ttl 0
->
-> # kubeadm  init --image-repository registry.aliyuncs.com/google_containers --kubernetes-version v1.19.0 --control-plane-endpoint k8s-api.k8s.hs.com --apiserver-advertise-address 192.168.13.51 --pod-network-cidr 10.244.0.0/16 --token-ttl 0
+# kubeadm  init --image-repository registry.aliyuncs.com/google_containers --kubernetes-version v1.19.0 --control-plane-endpoint k8s-api.k8s.hs.com --apiserver-advertise-address 192.168.13.51 --pod-network-cidr 10.244.0.0/16 --token-ttl 0
 
 # 初始化环境配置
   mkdir -p $HOME/.kube
