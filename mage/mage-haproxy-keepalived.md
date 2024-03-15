@@ -1,5 +1,7 @@
-#harpoxy
-<pre>
+# harpoxy
+
+**对比**
+
 nginx优势之一，代理至后端服务器是异步的，可以减少后端服务器的压力
 haproxy:工作在四层和七层的反向代理服务器，可以对http和tcp进行反向代理
 lvs：工作在内核空间的，而nginx和haproxy是工作在用户空间的
@@ -9,16 +11,20 @@ haproxy可以基于url来调度至缓存服务器，提高缓存命中率，这�
 haproxy1.4版本是基于1.2而来的，haproxy1.3也是基于1.2而来的，现在企业用得最多的是haproxy1.4版本。
 O(1)：是从运行任意挑出一个进程来检测运行时间是否和其他进程运行时间一样的。如果为一样说明可以达到O(1)标准。O(log(N))是仅次于O(1)标准
 HAproxy优点：
+
 	1. 单进程、事件驱动模型显示降低了上下文切换的开销及内存占用。
 	2. O(1)事件检查器（event check）允许其在高并发连接中对任何连接的任何事件实现即时探测。
 	3. 在任何可用的情况下，单缓冲机制能以不复制 任何数据的方式完成读写操作。这会节约大量的CPU时钟周期及内存带宽。
 	4. 借用于Linux2.6
-三个因素来评估负载均衡器的性能：
+	三个因素来评估负载均衡器的性能：
 	1. 会话率
 	2. 会话并发能力
 	3. 数据率
 
-#haproxy支持ACL规则
+
+
+**haproxy支持ACL规则**
+
 用于定义四层到七层的规则来匹配一些特殊的请求，实现基于请求报文首部、相应报文内容或者是一些其他状态信息，从而根据需求进行不同的策略转发响应。
 可以通过ACL规则完成以下两种主要功能：
 1、通过设置ACL规则来检查客户端请求是否符合规则，将不符合规则要求的请求直接中断；
@@ -99,7 +105,8 @@ backend default
 
 
 
-#配置HAproxy
+## 配置HAproxy
+
 1. 配置文件格式：
 	HAproxy的配置处理3类主要参数来源：
 		1. 最优先处理的命令行参数
@@ -126,7 +133,7 @@ backend default
 		default_backend servers #默认后端服务器为哪台
 	backend servers
 		server server1 127.0.0.1:8080 maxconn 1000  #设定后端服务器server1的地址及最大连接数
-#注：listen和frontend、backend只能选择其一。
+	#注：listen和frontend、backend只能选择其一。
 
 blance:只能用于defaults,listen,backend段，不能用于frontend段，定义负载均衡
 bind:只能用于frontend和listen当中，用于定义一个或几个监听的套接字上
@@ -145,8 +152,9 @@ stats admin#用户在GUI断开后端服务器的，但必须满足某些条件�
 option forwardfor #用户转发客户端远程地址到后端服务器的
 error-file 400 /etc/haproxy/errorpages/400badreq.http#用于定义错误文件返回
 
+## 安装haproxy
 
-##配置安装haproxy
+```bash
 [root@lamp-zabbix ~]# yum install haproxy -y
 [root@lamp-zabbix ~]# rpm -ql haproxy
 /etc/haproxy
@@ -247,7 +255,9 @@ error-file 400 /etc/haproxy/errorpages/400badreq.http#用于定义错误文件�
 /var/lib/haproxy
 [root@lamp-zabbix ~]# cp /etc/haproxy/haproxy.cfg /etc/haproxy/haproxy.cfg.bak
 [root@lamp-zabbix ~]# vim /etc/haproxy/haproxy.cfg 
+
 # to have these messages end up in /var/log/haproxy.log you will
+
     # need to:
     #
     # 1) configure syslog to accept network log events.  This is done
@@ -260,6 +270,7 @@ error-file 400 /etc/haproxy/errorpages/400badreq.http#用于定义错误文件�
     #
     #    local2.*                       /var/log/haproxy.log
     #
+
 #从配置文件看出，如果需要设置日志，需要做上面两步
 [root@lamp-zabbix ~]# vim /etc/sysconfig/rsyslog 
 SYSLOGD_OPTIONS="-c 2 -r -m 0" #增加-r选项
@@ -336,8 +347,12 @@ tcp6       0      0 :::443                  :::*                    LISTEN      
 tcp6       0      0 :::10050                :::*                    LISTEN      15655/zabbix_agentd 
 tcp6       0      0 :::10051                :::*                    LISTEN      15557/zabbix_server 
 #http://192.168.1.239:1080/haproxyadmin?stats #访问GUI查看haproxy的状态
+```
 
-#使用haproxy负载均衡mysql
+
+
+## 使用haproxy负载均衡mysql
+```bash
 [root@lamp-zabbix ~]# egrep -v '#|^$' /etc/haproxy/haproxy.cfg
 global
     log         127.0.0.1 local2
@@ -395,14 +410,15 @@ backend mysqlservers
 6> rl_param，表示根据请求的 URl 参数’balance url_param’ requires an URLparameter name；
 7> hdr(name)，表示根据 HTTP 请求头来锁定每一次 HTTP 请求；
 8> rdp-cookie(name)，表示根据据 cookie(name)来锁定并哈希每一次 TCP 请求。
+```
 
 
 
 
 
-#作业：使用keepalive跟haproxy进行整合使用
+# haproxy+keepalived实现高可用集群
 
-##CentOS7 haproxy+keepalived实现高可用集群搭建
+```bash
 CentOS7 64位
 Keepalived1.3.5和Haproxy1.5.18：192.168.1.239、192.168.1.233两台主机上安装
 后端负载主机：192.168.1.31、192.168.1.37两台节点上安装mysql服务
@@ -410,6 +426,7 @@ Keepalived1.3.5和Haproxy1.5.18：192.168.1.239、192.168.1.233两台主机上�
 keepalived是一个免费开源的，用C编写的类似于layer3, 4 & 7交换机制软件，具备我们平时说的第3层、第4层和第7层交换机的功能。主要提供loadbalancing（负载均衡）和 high-availability（高可用）功能，负载均衡实现需要依赖Linux的虚拟服务内核模块（ipvs），而高可用是通过VRRP协议实现多台机器之间的故障转移服务。
 keepalived是一个基于VRRP协议来实现的WEB 服务高可用方案，可以利用其来避免单点故障。一个WEB服务至少会有2台服务器运行Keepalived，一台为主服务器（MASTER），一台为备份服务器（BACKUP），但是对外表现为一个虚拟IP，主服务器会发送特定的消息给备份服务器，当备份服务器收不到这个消息的时候，即主服务器宕机的时候，备份服务器就会接管虚拟IP，继续提供服务，从而保证了高可用性。keepalived是VRRP的完美实现！
 #注haproxy192.168.1.239(lamp-zabbix.jack.com)已经安装好，只需要在192.168.1.233(lnmp.jack.com)上再安装haproxy即可
+
 [root@lnmp ~]# cat /etc/haproxy/haproxy.cfg #跟192.168.1.239配置一样
 global
     log         127.0.0.1 local2 
@@ -517,9 +534,16 @@ backend rabbitmq_webui
 	balance source #指定负载均衡算法,roundrobin基于权重进行轮叫调度的算法,static-rr基于权重进行轮叫调度的算法，不过此算法为静态算法，在运行时调整其服务器权重不会生效,source基于请求源IP的算法,leastconn此算法会将新的连接请求转发到具有最少连接数目的后端服务器。uri此算法会对部分或整个URI进行HASH运算，再经过与服务器的总权重相除，最后转发到某台匹配的后端服务器上,uri_param此算法会根据URL路径中的参数进行转发，这样可保证在后端真实服务器数据不变时，同一个用户的请求始终分发到同一台机器上,hdr此算法根据HTTP头进行转发，如果指定的HTTP头名称不存在，则使用roundrobin算法 进行策略转发,cookie SERVERID表示允许向cookie插入SERVERID，每台服务器的SERVERID可在下面的server关键字中使用cookie关键字定义
 	server rabbitmq-node1 192.168.15.201:15672 check port 15672 inter 2000 rise 2 fall 3
 	server rabbitmq-node2 192.168.15.202:15672 check port 15672 inter 2000 rise 2 fall 3
+
 	#server <name> <address>:[port] [param*],param*参数:check 表示启用对此后端服务器执行健康状态检查,inter 设置健康状态检查的时间间隔，单位是毫秒,rise 检查多少次认为服务器可用,fall 检查多少次认为服务器不可用,weight 设置服务器的权重，默认为1，最大为256。设置为0表示不参与负载均衡,backup 设置备份服务器，用于所有后端服务器全部不可用时,kie 为指定的后端服务器设置cookie值，此处指定的值将在请求入站时被检查，第一次为此值挑选的后端服务器将在后续的请求中一直被选中，其目的在于实现持久连接的功能
 -------------------------------------
+```
 
+
+
+# 部署keepalived
+
+```bash
 #192.168.1.233和192.168.1.239这两台haproxy上都要安装keepalived
 [root@lamp-zabbix haproxy]# yum install -y keepalived 
 [root@lnmp ~]# yum install -y keepalived
@@ -531,19 +555,19 @@ global_defs {
   notification_email {
     root@localhost
     }
-  
+
   notification_email_from keepalived@localhost
   smtp_server 127.0.0.1
   smtp_connect_timeout 30
   router_id HAproxy237
 }
-  
+
 vrrp_script chk_haproxy {                           
   script "/etc/keepalived/check_haproxy.sh"
   interval 2
   weight 2
 }
-  
+
 vrrp_instance VI_1 {
   state MASTER
   interface eth0
@@ -584,19 +608,19 @@ global_defs {
   notification_email {
     root@localhost
     }
-  
+
   notification_email_from keepalived@localhost
   smtp_server 127.0.0.1
   smtp_connect_timeout 30
   router_id HAproxy236
 }
-  
+
 vrrp_script chk_haproxy {                           
   script "/etc/keepalived/check_haproxy.sh"
   interval 2
   weight 2
 }
-  
+
 vrrp_instance VI_1 {
   state BACKUP
   interface eth0
@@ -705,13 +729,22 @@ owners.
 Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
 
 mysql> 
+```
 
 
-####基于nginx做主备或主主模式
+
+
+
+
+
+# 基于nginx做主备或主主模式
+
+```bash
 #keepalived配置详解：
 -------------
+
 ! Configuration File for keepalived  
-  
+
 global_defs {  
    notification_email {  
          linuxedu@foxmail.com
@@ -757,14 +790,17 @@ vrrp_instance VI_1 {
         chk_haproxy  
         chk_mantaince_down
     }  
-  
+
  
+
     notify_master "/etc/keepalived/notify.sh master"  
     notify_backup "/etc/keepalived/notify.sh backup"  
     notify_fault "/etc/keepalived/notify.sh fault"  
-	smtp alter
+    smtp alter
+
 } 
 -------------
+
 全局配置解析
 global_defs全局配置标识，表面这个区域{}是全局配置
 notification_email {  
@@ -822,8 +858,10 @@ track_script {
 notify_master "/etc/keepalived/notify.sh master"  表示当切换到master状态时，要执行的脚本
 notify_backup "/etc/keepalived/notify.sh backup"  表示当切换到backup状态时，要执行的脚本
 notify_fault "/etc/keepalived/notify.sh fault" 表示当故障时，要执行的脚本
+
 smtp alter	表示切换时给global defs中定义的邮件地址发送右键通知
 -------------
+
 #源码keepalived安装---CentOS-7
 [root@node2 download]# wget https://www.keepalived.org/software/keepalived-2.0.19.tar.gz
 [root@node2 download]# tar xf keepalived-2.0.19.tar.gz 
@@ -857,12 +895,13 @@ vrrp_instance nginx_ha {
 
 	authentication {
 		auth_type PASS
-       		auth_pass 8486c8cdb3 
+	   		auth_pass 8486c8cdb3 
 	}
-
+	
 	virtual_ipaddress {
 		192.168.15.50
 	}
+
 }
 -----BACKUP-------
 ! Configuration File for keepalived
@@ -885,14 +924,16 @@ vrrp_instance nginx_ha {
 
 	authentication {
 		auth_type PASS
-       		auth_pass 8486c8cdb3 
+	   		auth_pass 8486c8cdb3 
 	}
-
+	
 	virtual_ipaddress {
 		192.168.15.50
 	}
+
 }
 ------------------
+
 [root@node2 keepalived]# cat chk_nginx.sh 
 #!/bin/bash
 d=`date --date today +%Y%m%d_%H:%M:%S`
@@ -908,8 +949,10 @@ if [ $n1 -ne "0" ]; then
                 echo "$d nginx down,keepalived will stop" >> /var/log/chk_nginx.log
                 systemctl stop keepalived
         fi
+
 fi
 ------------------
+
 [root@node2 /usr/local/nginx/html]# systemctl start keepalived.service 
 [root@node3 /usr/local/nginx/html]# systemctl start keepalived.service 
 #keepalived主主模式
@@ -941,16 +984,17 @@ vrrp_instance nginx_ha1 {
 
 	authentication {
 		auth_type PASS
-       		auth_pass 8486c8cdb3 
+	   		auth_pass 8486c8cdb3 
 	}
-
+	
 	virtual_ipaddress {
 		192.168.15.50
 	}
-
+	
 	track_script {
-        	chk_nginx
-    	}
+	    	chk_nginx
+		}
+
 }
 
 vrrp_instance nginx_ha2 {
@@ -962,16 +1006,17 @@ vrrp_instance nginx_ha2 {
 
 	authentication {
 		auth_type PASS
-       		auth_pass ecc539f348
+	   		auth_pass ecc539f348
 	}
-
+	
 	virtual_ipaddress {
 		192.168.15.51
 	}
-
+	
 	track_script {
-        	chk_nginx
-    	}
+	    	chk_nginx
+		}
+
 }
 
 -----------node3-----------
@@ -1001,16 +1046,17 @@ vrrp_instance nginx_ha1 {
 
 	authentication {
 		auth_type PASS
-       		auth_pass 8486c8cdb3 
+	   		auth_pass 8486c8cdb3 
 	}
-
+	
 	virtual_ipaddress {
 		192.168.15.50
 	}
-
+	
 	track_script {
-        	chk_nginx
-    	}
+	    	chk_nginx
+		}
+
 }
 
 vrrp_instance nginx_ha2 {
@@ -1022,16 +1068,17 @@ vrrp_instance nginx_ha2 {
 
 	authentication {
 		auth_type PASS
-       		auth_pass ecc539f348
+	   		auth_pass ecc539f348
 	}
-
+	
 	virtual_ipaddress {
 		192.168.15.51
 	}
-
+	
 	track_script {
-        	chk_nginx
-    	}
+	    	chk_nginx
+		}
+
 }
 -----------node2--------------
 [root@node2 keepalived]# cat /etc/keepalived/chk_nginx.sh 
@@ -1058,6 +1105,7 @@ if [ $? -ne '0' ];then
                 echo "$d nginx down,keepalived will stop" >> /var/log/chk_nginx.log
                 systemctl stop keepalived
         fi
+
 fi
 ------------------------------
 
@@ -1076,7 +1124,7 @@ fi
         fall 2       # require 2 failures for KO
         rise 2       # require 2 successes for OK
     }   
-
+    
     vrrp_instance lb-vips {
         state BACKUP
         interface eth0
@@ -1095,28 +1143,32 @@ fi
             192.168.15.50/24 dev eth0
         }
     }
+
 -----------------------------------------------------------
+
 注：
 版本：Keepalived v1.3.9 (11/11,2017)
 使用了vrrp_version 2版本，制定了脚本，当fall 2（失败两次停掉相关联的实例）
 当 rise 2（成功两次则再次启动相关联的实例），interval 1（每一秒执行一次检查）
 timeout 1（当达到1秒时为失败一次），此配置开启了多播，多播在多个Keepalived节点上，
+
 有时随机有两个虚拟IP在线
 -----------------------------------------------------------
 
 
 #keepalived配置邮件告警
+
 1. 邮件脚本
-[root@reverse02 /etc/keepalived]# cat notify.sh
-#!/bin/bash
-#
-contact='test@baidu.com'
-notify() {
-local mailsubject="$(hostname) to be $1, vip floating"
-local mailbody="$(date +'%F %T'): vrrp transition, $(hostname) changed to be $1"
-echo "$mailbody" | mail -s "$mailsubject" $contact
-}
-  
+   [root@reverse02 /etc/keepalived]# cat notify.sh
+   #!/bin/bash
+   #
+   contact='test@baidu.com'
+   notify() {
+   local mailsubject="$(hostname) to be $1, vip floating"
+   local mailbody="$(date +'%F %T'): vrrp transition, $(hostname) changed to be $1"
+   echo "$mailbody" | mail -s "$mailsubject" $contact
+   }
+
 case $1 in
 master)
         notify master
@@ -1134,20 +1186,25 @@ fault)
 esac
 
 2. 服务器上配置邮件通知帐户及邮件服务器配置
-2.1 yum install mailx	--安装包
-2.2 vim /etc/mail.rc	--配置互联网邮件信息
+   2.1 yum install mailx	--安装包
+   2.2 vim /etc/mail.rc	--配置互联网邮件信息
+
 --------------
+
 set from=email@domaim.com
 set smtp=smtp.qiye.163.com
 set smtp-auth=login
 set smtp-auth-user=user@domain.com
 set smtp-auth-password=password
+
 set ssl-verify=ignore
 --------------
 
 3. 配置keepalived
-[root@reverse02 /etc/keepalived]# cat keepalived.conf
+   [root@reverse02 /etc/keepalived]# cat keepalived.conf
+
 ----------------------
+
 ! Configuration File for keepalived
 ! 这里面的邮箱配置只对本机用户有效
 global_defs {
@@ -1169,45 +1226,65 @@ vrrp_instance nginx_ha {
 
 	authentication {
 		auth_type PASS
-       		auth_pass 1111
+	   		auth_pass 1111
 	}
-
+	
 	virtual_ipaddress {
 		192.168.13.207
 	}
-
+	
 	notify_master "/etc/keepalived/notify.sh master"  
 	notify_backup "/etc/keepalived/notify.sh backup"  
 	notify_fault "/etc/keepalived/notify.sh fault"  
 	smtp alter
+
 }
 ----------------------
 
 附keepalived启动脚本
+
 [root@reverse02 /etc/keepalived]# cat /etc/init.d/keepalived 
 -------------------------
+
 #!/bin/sh
 #
+
 # keepalived   High Availability monitor built upon LVS and VRRP
+
 #
+
 # chkconfig:   - 86 14
+
 # description: Robust keepalive facility to the Linux Virtual Server project \
+
 #              with multilayer TCP/IP stack checks.
 
 ### BEGIN INIT INFO
+
 # Provides: keepalived
+
 # Required-Start: $local_fs $network $named $syslog
+
 # Required-Stop: $local_fs $network $named $syslog
+
 # Should-Start: smtpdaemon httpd
+
 # Should-Stop: smtpdaemon httpd
+
 # Default-Start: 
+
 # Default-Stop: 0 1 2 3 4 5 6
+
 # Short-Description: High Availability monitor built upon LVS and VRRP
+
 # Description:       Robust keepalive facility to the Linux Virtual Server
+
 #                    project with multilayer TCP/IP stack checks.
+
 ### END INIT INFO
 
 # Source function library.
+
 . /etc/rc.d/init.d/functions
 
 exec="/usr/local/keepalived/sbin/keepalived"
@@ -1294,6 +1371,7 @@ case "$1" in
         echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force-reload}"
         exit 2
 esac
+
 exit $?
 -------------------------
 
@@ -1302,12 +1380,14 @@ exit $?
 #问题：两台机器上面都有VIP的情况
 排查：
 1.检查防火墙，发现已经是关闭状态。
+
 2. keepalived.conf配置问题。
-3.可能是上联交换机禁用了arp的广播限制，造成keepalive无法通过广播通信，两台服务器抢占vip，出现同时都有vip的情况。
-  tcpdump -i eth0 vrrp -n   检查发现160和163都在对224.0.0.18发送消息。但是在正常情况下，备节点如果收到主节点的心跳消息时，优先级高于自己，就不会主动对外发送消息。
+   3.可能是上联交换机禁用了arp的广播限制，造成keepalive无法通过广播通信，两台服务器抢占vip，出现同时都有vip的情况。
+     tcpdump -i eth0 vrrp -n   检查发现160和163都在对224.0.0.18发送消息。但是在正常情况下，备节点如果收到主节点的心跳消息时，优先级高于自己，就不会主动对外发送消息。
 
 #keepalived两台机器同时出现vip问题，使用单播进行解决
 -----------------------------
+
 [root@linux04 keepalived]# cat /etc/keepalived/keepalived.conf   --node163
 ! Configuration File for keepalived
 global_defs {
@@ -1340,23 +1420,25 @@ vrrp_instance mysql_ha {
 
 	authentication {
 		auth_type PASS
-       		auth_pass 8486c8cdb3 
+	   		auth_pass 8486c8cdb3 
 	}
-
+	
 	virtual_ipaddress {
 		192.168.13.117
 	}
-
+	
 	track_script {
-        	chk_mysql
-    	}
+	    	chk_mysql
+		}
 	
 	notify_master "/etc/keepalived/notify.sh master"  
 	notify_backup "/etc/keepalived/notify.sh backup"  
 	notify_fault "/etc/keepalived/notify.sh fault"  
 	smtp alter
+
 }
 -----------------------------
+
 [root@linux01 keepalived]# cat /etc/keepalived/keepalived.conf   --node160
 ! Configuration File for keepalived
 global_defs {
@@ -1383,32 +1465,28 @@ vrrp_instance mysql_ha {
 	advert_int 1
 
    	unicast_src_ip  192.168.13.160
-	unicast_peer {              
-        	192.168.13.163
-    	}
+   	unicast_peer {              
+   	    	192.168.13.163
+   		}
+   	
+   	authentication {
+   		auth_type PASS
+   	   		auth_pass 8486c8cdb3 
+   	}
+   	
+   	virtual_ipaddress {
+   		192.168.13.117
+   	}
+   	
+   	track_script {
+   	    	chk_mysql
+   		}
+   	
+   	notify_master "/etc/keepalived/notify.sh master"  
+   	notify_backup "/etc/keepalived/notify.sh backup"  
+   	notify_fault "/etc/keepalived/notify.sh fault"  
+   	smtp alter
 
-	authentication {
-		auth_type PASS
-       		auth_pass 8486c8cdb3 
-	}
-
-	virtual_ipaddress {
-		192.168.13.117
-	}
-
-	track_script {
-        	chk_mysql
-    	}
-
-	notify_master "/etc/keepalived/notify.sh master"  
-	notify_backup "/etc/keepalived/notify.sh backup"  
-	notify_fault "/etc/keepalived/notify.sh fault"  
-	smtp alter
 }
 -----------------------------
-
-
-
-
-
-</pre>
+```

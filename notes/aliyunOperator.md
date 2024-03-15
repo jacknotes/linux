@@ -3556,9 +3556,406 @@ spec:
 ---
 ```
 
-
-
 **阿里云测试未成功**
+
+
+
+
+
+
+
+## 高可用虚拟IP（HaVip）
+
+借助VPC提供的高可用虚拟IP HaVip（High-Availability Virtual IP Address）功能，您可在云上基于ARP协议，通过Keepalived或Heartbeat软件来搭建服务高可用架构，以确保主备切换过程中服务IP不变（即IP漂移）。
+
+
+
+
+
+###  1. 什么是高可用虚拟IP（HaVip）
+
+**定义**
+
+HaVip是一种可以独立创建和释放的私网IP资源，具备与ECS实例主私网IP地址一样的网络接入能力，可以与高可用软件，例如[Keepalived](https://keepalived.readthedocs.io/en/latest/introduction.html)配合使用，搭建高可用主备服务，提高业务的可用性。
+
+HaVip支持绑定一个弹性公网IP（EIP）、多个ECS实例或多个ECS实例的主网卡或辅助网卡，以实现同可用区、多服务器高可用架构下的IP漂移，确保对外提供服务的私网IP始终不变。此外，该架构下的多个ECS实例还可以利用部署集能力进一步提升业务的可靠性
+
+
+
+**Keepalived就可以支持实现虚拟IP高可用，为什么要配合HaVip来实现呢？**
+
+在传统数据中心里，服务器可以通过地址解析协议ARP（Address Resolution Protocol）声明自己的IP地址并对外提供服务，很多应用场景或常用软件需要主机具备此能力。例如，使用Keepalived、Heartbeat等软件实现容灾恢复过程中服务IP不变的高可用方案。
+
+然而，大部分云厂商采用SDN架构后，在VPC环境下不支持免费ARP广播功能。因为云上网络环境需使用虚拟化技术构建，虚拟服务器IP地址由云平台底层的虚拟化平台分配和管理。您的应用无法像传统方式一样修改主机IP地址，且整个虚拟网络是基于3层的隧道技术，ARP被终结在发送端，主机无法声明IP地址。为此，阿里云推出HaVip功能，解决此问题。
+
+
+
+### 2. 使用场景
+
+**场景一：面向公网的高可用服务**
+
+* ECS1和ECS2实例通过Keepalived实现主备高可用，并与HaVip成功绑定；
+* 其中，ECS1实例通过ARP宣告该HaVip。宣告成功后，ECS1作为主实例通过与HaVip绑定的EIP对外提供服务，ECS2作为备用ECS实例。
+* 当ECS1发生故障时，ECS2会自动调用自身的接管程序，接管ECS1的服务，实现业务高可用。
+
+
+
+**场景二：面向私网的高可用服务**
+
+* ECS1和ECS2实例基于HaVip，使用Keepalived组合成一个高可用的私网服务。
+* VPC内的其他实例ECS3可以通过私网访问该服务，服务地址为HaVip的地址。
+* 当ECS1发生故障时，ECS2会自动调用自身的接管程序，接管ECS1的服务，实现业务高可用。
+
+
+
+**配额和费用**
+
+HaVip功能正在公测，您可以登录阿里云[配额中心控制台](https://quotas.console.aliyun.com/products/vpc/quotas?query=vpc_privilege_allow_buy_havip_instance)进行自助申请。
+
+> **重要**  公测期间，HaVip免费使用，且不承诺任何服务等级协议（SLA）相关的保障条款。
+
+
+
+**使用限制与配额**
+
+* 支持创建高可用虚拟IP（HaVip）的网络类型: VPC类型
+
+* 单个ECS实例支持同时绑定的HaVip数量: 5个
+
+* 单个HaVip支持同时绑定的EIP数量: 1个
+
+* 单个HaVip支持同时绑定的ECS实例或弹性网卡的数量: 10个
+
+* HaVip是否支持广播和组播通信: 不支持
+
+  > HaVip只支持单播，如果您使用Keepalived等第三方软件实现高可用，需要修改配置文件中的通信方式为单播通信。
+
+* 单个账号支持创建的HaVip的数量、单个VPC支持创建的HaVip的数量: 50个
+
+
+
+
+
+### 3. HaVip使用
+
+![](../image/aliyun/HaVip/01.png)
+
+
+
+#### 3.1 创建HaVip
+
+
+
+### 3.2 安装nginx
+
+```bash
+# server01
+[root@server01 ~]# yum install -y nginx
+[root@server01 ~]# curl localhost
+my is keepalived server01-172.16.0.1
+
+# server02
+[root@server02 ~]# yum install -y nginx
+[root@server02 ~]# curl localhost
+my is keepalived server02-172.16.0.2
+```
+
+
+
+
+
+### 3.3 在主备ECS实例部署keepalived
+
+
+
+**环境**
+
+| 服务器名称 | IP地址     | 角色                     | HaVip        |
+| ---------- | ---------- | ------------------------ | ------------ |
+| server01   | 172.16.0.1 | keepalived master、nginx | 172.16.0.100 |
+| server02   | 172.16.0.2 | keepalived backup、nginx | 172.16.0.100 |
+| server03   | 172.16.0.3 | client                   |              |
+
+
+
+**安装keepalived**
+
+172.16.0.1和172.16.0.2安装keepalived
+
+```bash
+[root@server01 ~]# yum install -y keepalived
+[root@server01 ~]# cp /etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf.bak
+[root@server02 ~]# yum install -y keepalived
+[root@server02 ~]# cp /etc/keepalived/keepalived.conf /etc/keepalived/keepalived.conf.bak
+```
+
+**配置keepalived**
+
+master
+
+```bash
+[root@server01 ~]# vim /etc/keepalived/keepalived.conf
+! Configuration File for keepalived
+global_defs {
+	notification_email {
+     		root@localhost
+   	}
+   	notification_email_from root@localhost
+   	smtp_server 127.0.0.1
+   	smtp_connect_timeout 30
+   	router_id nginx_ha01
+}
+
+vrrp_script chk_nginx {              
+    	script "/etc/keepalived/chk_nginx.sh"
+    	interval 1
+    	weight 10 
+}
+
+vrrp_instance nginx_ha {
+	state MASTER
+	interface eth0
+	virtual_router_id 80
+	priority 120
+	advert_int 1
+   	unicast_src_ip 172.16.0.1
+	unicast_peer {              
+    	172.16.0.2
+    }
+
+	authentication {
+		auth_type PASS
+       	auth_pass 8486c8cdb3 
+	}
+
+	virtual_ipaddress {
+		172.16.0.100
+	}
+
+	track_script {
+    	chk_nginx
+    }
+	
+	notify_master "/etc/keepalived/notify.sh master"  
+	notify_backup "/etc/keepalived/notify.sh backup"  
+	notify_fault "/etc/keepalived/notify.sh fault"  
+	smtp alter
+}
+---
+# chk_nginx.sh
+#!/bin/bash
+d=`date --date today +%Y%m%d_%H:%M:%S`
+/usr/bin/netstat -tnlp | /usr/bin/grep :80 >& /dev/null
+if [ $? -ne '0' ];then
+    /usr/bin/systemctl stop nginx
+	/usr/bin/systemctl start nginx
+	/usr/bin/netstat -tnlp | /usr/bin/grep :80 >& /dev/null
+    if [ $? -ne "0"  ]; then
+    	echo "$d: nginx is down,keepalived will stop" >> /var/log/keepalived_chk_nginx.log
+        /usr/bin/systemctl stop keepalived
+     fi
+fi
+---
+# notify.sh
+#!/bin/bash
+#
+contact='notify@test.com'
+INTERFACE_NAME=`grep interface /etc/keepalived/keepalived.conf | awk '{print $2}'`
+INTERFACE_NAME_IPADDR=`ip a s ${INTERFACE_NAME} | grep 172.16.0.255 | awk -F '/' '{print $1}' | awk '{print $2}'`
+notify() {
+local mailsubject="$(hostname) to be $1, vip floating"
+local mailbody="$(date +'%F %T'): vrrp transition, $(hostname)-${INTERFACE_NAME_IPADDR} changed to be $1"
+echo "$mailbody" | mail -s "$mailsubject" $contact
+}
+  
+case $1 in
+master)
+        notify master
+        ;;
+backup)
+        notify backup
+        ;;
+fault)
+        notify fault
+        ;;
+*)
+        echo "Usage: $(basename $0) {master|backup|fault}"
+        exit 1
+        ;;
+esac
+```
+
+backup
+
+```bash
+[root@server02 ~]# vim /etc/keepalived/keepalived.conf
+! Configuration File for keepalived
+global_defs {
+	notification_email {
+     		root@localhost
+   	}
+   	notification_email_from root@localhost
+   	smtp_server 127.0.0.1
+   	smtp_connect_timeout 30
+   	router_id nginx_ha02
+}
+
+vrrp_script chk_nginx {              
+    	script "/etc/keepalived/chk_nginx.sh"
+    	interval 1
+    	weight 10 
+}
+
+vrrp_instance nginx_ha {
+	state MASTER
+	interface eth0
+	virtual_router_id 80
+	priority 100
+	advert_int 1
+   	unicast_src_ip 172.16.0.2
+	unicast_peer {              
+    	172.16.0.1
+    }
+
+	authentication {
+		auth_type PASS
+       	auth_pass 8486c8cdb3 
+	}
+
+	virtual_ipaddress {
+		172.16.0.100
+	}
+
+	track_script {
+    	chk_nginx
+    }
+	
+	notify_master "/etc/keepalived/notify.sh master"  
+	notify_backup "/etc/keepalived/notify.sh backup"  
+	notify_fault "/etc/keepalived/notify.sh fault"  
+	smtp alter
+}
+---
+# chk_nginx.sh
+#!/bin/bash
+d=`date --date today +%Y%m%d_%H:%M:%S`
+/usr/bin/netstat -tnlp | /usr/bin/grep :80 >& /dev/null
+if [ $? -ne '0' ];then
+    /usr/bin/systemctl stop nginx
+	/usr/bin/systemctl start nginx
+	/usr/bin/netstat -tnlp | /usr/bin/grep :80 >& /dev/null
+    if [ $? -ne "0"  ]; then
+    	echo "$d: nginx is down,keepalived will stop" >> /var/log/keepalived_chk_nginx.log
+        /usr/bin/systemctl stop keepalived
+     fi
+fi
+---
+# notify.sh
+#!/bin/bash
+#
+contact='notify@test.com'
+INTERFACE_NAME=`grep interface /etc/keepalived/keepalived.conf | awk '{print $2}'`
+INTERFACE_NAME_IPADDR=`ip a s ${INTERFACE_NAME} | grep 172.16.0.255 | awk -F '/' '{print $1}' | awk '{print $2}'`
+notify() {
+local mailsubject="$(hostname) to be $1, vip floating"
+local mailbody="$(date +'%F %T'): vrrp transition, $(hostname)-${INTERFACE_NAME_IPADDR} changed to be $1"
+echo "$mailbody" | mail -s "$mailsubject" $contact
+}
+  
+case $1 in
+master)
+        notify master
+        ;;
+backup)
+        notify backup
+        ;;
+fault)
+        notify fault
+        ;;
+*)
+        echo "Usage: $(basename $0) {master|backup|fault}"
+        exit 1
+        ;;
+esac
+```
+
+
+
+**启动keepalived**
+
+```bash
+[root@server01 ~]# systemctl enable keepalived
+[root@server01 ~]# systemctl start keepalived
+[root@server02 ~]# systemctl enable keepalived
+[root@server02 ~]# systemctl start keepalived
+```
+
+
+
+**keepalived ECS绑定HaVip**
+
+将HaVip分别与主备ECS实例绑定。
+
+1. 登录[专有网络管理控制台](https://vpcnext.console.aliyun.com/vpc)。
+2. 在左侧导航栏，单击**高可用虚拟IP**。
+3. 在顶部菜单栏处，选择HaVip的地域。
+4. 找到[步骤一：创建HaVip](https://help.aliyun.com/zh/vpc/implement-high-availability-by-using-havips-and-keepalived#section-poa-9bp-9lt)创建的HaVip实例，单击HaVip实例的ID。
+5. 在**绑定资源**区域**ECS实例**处，单击**立即绑定**。
+
+
+
+**测试**
+
+```bash
+[root@server01 ~]# ip a s 
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
+    link/ether 1a:12:ea:20:97:ec brd ff:ff:ff:ff:ff:ff
+    inet 172.16.0.1/24 brd 172.16.0.255 scope global eth0
+       valid_lft forever preferred_lft forever
+    inet 172.16.0.100/32 scope global eth0
+       valid_lft forever preferred_lft forever
+
+[root@server02 ~]# ip a s 
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN group default qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host 
+       valid_lft forever preferred_lft forever
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq state UP group default qlen 1000
+    link/ether 1a:12:ea:20:97:ec brd ff:ff:ff:ff:ff:ff
+    inet 172.16.0.2/24 brd 172.16.0.255 scope global eth0
+       valid_lft forever preferred_lft forever
+       
+# server03测试服务
+[root@server03 ~]# curl localhost
+my is keepalived server01-172.16.0.1
+
+# 停止server01的keepalived
+[root@server01 ~]# systemctl stop keepalived
+
+# 再次测试
+[root@server03 ~]# curl localhost
+my is keepalived server02-172.16.0.2
+```
+
+> 经过测试，跟本地keepalived功能一样，只是HaVip在公测阶段，不太稳定，慎用
+>
+> 在HaVip控制台中删除绑定ECS的server02，此时VIP还是绑定在此机器 ，只有当VIP经过飘移到其它机器时后，此VIP绑定ECS才失效。
+
+
+
+
+
+
+
+
 
 
 
