@@ -24,6 +24,27 @@ using module mode; GOMOD=D:\share\study\day01\first\go.mod
 
 
 
+#### 安装go插件
+
+```bash
+1. 安装go
+2. 安装protoc
+3. 基于protoc安装protoc-gen-go
+$ go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+$ protoc-gen-go --version
+protoc-gen-go.exe v1.33.0
+4. 安装grpc插件
+$ go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+$ protoc-gen-go-grpc --version
+protoc-gen-go-grpc 1.3.0
+```
+
+
+
+
+
+
+
 ##  day02
 
 
