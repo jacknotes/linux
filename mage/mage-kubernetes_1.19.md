@@ -2096,19 +2096,19 @@ default-token-jxblm   kubernetes.io/service-account-token   3      9d
 ilinux-passwd         Opaque                                1      6s
 tls-ingress-hs-com    kubernetes.io/tls                     2      61m
 [root@master02 ~/k8s-manifests/ingress-controller-nginx]# cat ingress-myapp.yaml
-    apiVersion: extensions/v1beta1
-    kind: Ingress
-    metadata:
-    name: ingress-myapp
-    namespace: default
-    annotations:
-    kubernetes.io/ingress.class: "nginx"
-    nginx.ingress.kubernetes.io/ssl-redirect: "false"
-    nginx.ingress.kubernetes.io/auth-type: basic
-    nginx.ingress.kubernetes.io/auth-secret: ilinux-passwd
-    nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
-    spec:
-    rules:
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-myapp
+  namespace: default
+annotations:
+  kubernetes.io/ingress.class: "nginx"
+  nginx.ingress.kubernetes.io/ssl-redirect: "false"
+  nginx.ingress.kubernetes.io/auth-type: basic
+  nginx.ingress.kubernetes.io/auth-secret: ilinux-passwd
+  nginx.ingress.kubernetes.io/auth-realm: "Authentication Required"
+spec:
+  rules:
   - host: myapp.hs.com
     http:
       paths: 
@@ -2123,7 +2123,7 @@ tls-ingress-hs-com    kubernetes.io/tls                     2      61m
         backend:
           serviceName: test
           servicePort: 80
-        tls:
+  tls:
   - secretName: tls-ingress-hs-com
     hosts: 
     - myapp.hs.com
