@@ -2201,9 +2201,9 @@ spec:
         backend:
           serviceName: kubernetes-dashboard
           servicePort: 443
-        [root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl apply -f ingress-kubernetes-dashboard.yaml
-        --此时可以通过https进行访问dashboard:
-        [root@master02 ~/k8s-manifests/dashboard]# curl -kI -H 'Host: dashboard.k8s.hs.com' https://192.168.13.56
+[root@master02 ~/k8s-manifests/ingress-controller-nginx]# kubectl apply -f ingress-kubernetes-dashboard.yaml
+# 此时可以通过https进行访问dashboard:
+[root@master02 ~/k8s-manifests/dashboard]# curl -kI -H 'Host: dashboard.k8s.hs.com' https://192.168.13.56
         HTTP/1.1 200 OK
         Date: Fri, 11 Jun 2021 01:35:22 GMT
         Content-Type: text/html; charset=utf-8
@@ -3006,28 +3006,28 @@ spec:
         backend:
           serviceName: hotelresourcejinjiang-base
           servicePort: 80
-        [root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-base.yaml
-        ---测试hotelresourcejinjiang.hs.com是否为v1
-        [root@salt ~]# while true;do date;curl -H 'host: hotelresourcejinjiang.hs.com' http://192.168.13.57;sleep 0.5;done
-        2021年 05月 12日 星期三 17:39:13 CST
-        Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
+[root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-base.yaml
+# 测试hotelresourcejinjiang.hs.com是否为v1
+[root@salt ~]# while true;do date;curl -H 'host: hotelresourcejinjiang.hs.com' http://192.168.13.57;sleep 0.5;done
+2021年 05月 12日 星期三 17:39:13 CST
+Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
 
----升级v2版本，并且配置通过Header来判断访问后端Endpoints
+# 升级v2版本，并且配置通过Header来判断访问后端Endpoints
 1. 先部署deployment
-    [root@master02 ~/k8s-manifests/app]# cat hs-app-canary-header.yaml 
-    apiVersion: v1
-    kind: Service
-    metadata:
-    name: hotelresourcejinjiang-canary-header
-    namespace: default
-    spec:
-    selector:
+[root@master02 ~/k8s-manifests/app]# cat hs-app-canary-header.yaml 
+apiVersion: v1
+kind: Service
+metadata:
+  name: hotelresourcejinjiang-canary-header
+  namespace: default
+spec:
+  selector:
     app: hotelresourcejinjiang.hs.com
     Language: netCore
     env: test
     team: ops
     tag: canary-header
-    ports:
+  ports:
   - name: http
     port: 80
     targetPort: 80  
@@ -3083,28 +3083,28 @@ spec:
             cpu: "500m"
 [root@master02 ~/k8s-manifests/app]# kubectl apply -f hs-app-canary-header.yaml
 2. 最后部署ingress
-    [root@master02 ~/k8s-manifests/app]# cat ingress-hotelresourcejinjiang-canary-header.yaml 
-    apiVersion: extensions/v1beta1
-    kind: Ingress
-    metadata:
-    name: hotelresourcejinjiang-canary-header
-    namespace: default
-    annotations:
+[root@master02 ~/k8s-manifests/app]# cat ingress-hotelresourcejinjiang-canary-header.yaml 
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: hotelresourcejinjiang-canary-header
+  namespace: default
+  annotations:
     kubernetes.io/ingress.class: "nginx"
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
     nginx.ingress.kubernetes.io/canary: "true"
     nginx.ingress.kubernetes.io/canary-by-header: "x-app-canary"
     nginx.ingress.kubernetes.io/canary-by-header-value: "true"
-    spec:
-    rules:
+spec:
+  rules:
   - host: hotelresourcejinjiang.hs.com
     http:
       paths: 
       - backend:
           serviceName: hotelresourcejinjiang-canary-header
           servicePort: 80
-          [root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-canary-header.yaml
+[root@master02 ~/k8s-manifests/app]# kubectl apply -f ingress-hotelresourcejinjiang-canary-header.yaml
 3. 测试通过指定头部获取的结果是否为v2
 [root@salt ~]# while true;do date;curl -H 'x-app-canary: true' http://hotelresourcejinjiang.hs.com;sleep 1;done
 2021年 05月 12日 星期三 21:01:23 CST

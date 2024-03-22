@@ -1371,3 +1371,104 @@ status:
 >   2. 执行类似命令`kubectl rollout undo deployment myapp-deploy`，将deployment(rollout)回滚到老版本的pod
 >   3. 此时并`不会修改server-stable`的标签选择器了。
 >   4. 最终的资源流程是这样的：ingress-stable -> service-stable(指向老RS) -> Rollout(指向老RS) -> ReplicaSet(老RS) -> pod(老pod)
+
+
+
+
+
+## 8. ingress-nginx其它配置
+
+
+
+### 8.1 日志配置
+
+```bash
+# 配置日志格式，$proxy_add_x_forwarded_for会保留多及客户端的IP地址，是个列表，但前提必须是ingress-nginx前面还有多个代理
+log-format-upstream: '{"time": "$time_iso8601", "remote_addr": "$remote_addr", "x-forward-for":
+    "$proxy_add_x_forwarded_for", "request_id": "$req_id", "remote_user": "$remote_user",
+    "bytes_sent": $bytes_sent, "request_time": $request_time, "status":$status, "vhost":
+    "$host", "request_proto": "$server_protocol", "path": "$uri", "request_query":
+    "$args", "request_length": $request_length, "duration": $request_time,"method":
+    "$request_method", "http_referrer": "$http_referer", "http_user_agent": "$http_user_agent"}'
+   
+```
+
+```bash
+root@ansible:~# kubectl get cm -n ingress-nginx ingress-nginx-controller -o yaml
+apiVersion: v1
+data:
+  allow-snippet-annotations: "false"
+  compute-full-forwarded-for: "true"
+  log-format-upstream: '{"time": "$time_iso8601", "remote_addr": "$remote_addr", "x-forward-for":
+    "$proxy_add_x_forwarded_for", "request_id": "$req_id", "remote_user": "$remote_user",
+    "bytes_sent": $bytes_sent, "request_time": $request_time, "status":$status, "vhost":
+    "$host", "request_proto": "$server_protocol", "path": "$uri", "request_query":
+    "$args", "request_length": $request_length, "duration": $request_time,"method":
+    "$request_method", "http_referrer": "$http_referer", "http_user_agent": "$http_user_agent"}'
+kind: ConfigMap
+metadata:
+  annotations:
+    kubectl.kubernetes.io/last-applied-configuration: |
+      {"apiVersion":"v1","data":{"allow-snippet-annotations":"false"},"kind":"ConfigMap","metadata":{"annotations":{},"labels":{"app.kubernetes.io/component":"controller","app.kubernetes.io/instance":"ingress-nginx","app.kubernetes.io/name":"ingress-nginx","app.kubernetes.io/part-of":"ingress-nginx","app.kubernetes.io/version":"1.10.0"},"name":"ingress-nginx-controller","namespace":"ingress-nginx"}}
+  creationTimestamp: "2024-03-19T07:06:41Z"
+  labels:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/name: ingress-nginx
+    app.kubernetes.io/part-of: ingress-nginx
+    app.kubernetes.io/version: 1.10.0
+  name: ingress-nginx-controller
+  namespace: ingress-nginx
+  resourceVersion: "64273892"
+  uid: 98ccfd2c-eea0-44d2-91a0-03bfc0cd88ef
+```
+
+**配置代理到ingress-nginx**
+
+```bash
+    server {
+        listen       80;
+        server_name  nginx02.hs.com;
+
+        location / {
+                proxy_next_upstream  error timeout http_502 http_503 http_504;
+                proxy_redirect off;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Real-Port $remote_port;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_http_version 1.1;
+                proxy_pass  http://192.168.13.63:47255;
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   html;
+        }
+    }
+
+```
+
+**测试**
+
+```bash
+# 客户端模拟测试
+[root@prometheus tmp]# while true;do date;curl -H 'Host: nginx02.hs.com' http://172.168.2.12;sleep 1;done
+Fri Mar 22 11:39:58 CST 2024
+this is version v39.
+Fri Mar 22 11:39:59 CST 2024
+this is version v39.
+Fri Mar 22 11:40:00 CST 2024
+this is version v39.
+
+# 查看ingress-nginx日志
+root@ansible:~# kubectl logs -f -l pod-template-hash=64674dc5d6 -n ingress-nginx
+{"time": "2024-03-22T03:41:02+00:00", "remote_addr": "172.20.217.64", "x-forward-for": "192.168.13.236, 172.20.217.64", "request_id": "f127d086445b137135ce5514a656be84", "remote_user": "-", "bytes_sent": 230, "request_time": 0.001, "status":200, "vhost": "nginx02.hs.com", "request_proto": "HTTP/1.1", "path": "/", "request_query": "-", "request_length": 177, "duration": 0.001,"method": "GET", "http_referrer": "-", "http_user_agent": "curl/7.29.0"}
+{"time": "2024-03-22T03:41:03+00:00", "remote_addr": "192.168.13.63", "x-forward-for": "192.168.13.236, 192.168.13.63", "request_id": "ff4703f2e82825968823244339f8ab0c", "remote_user": "-", "bytes_sent": 230, "request_time": 0.001, "status":200, "vhost": "nginx02.hs.com", "request_proto": "HTTP/1.1", "path": "/", "request_query": "-", "request_length": 177, "duration": 0.001,"method": "GET", "http_referrer": "-", "http_user_agent": "curl/7.29.0"}
+{"time": "2024-03-22T03:41:04+00:00", "remote_addr": "172.20.217.64", "x-forward-for": "192.168.13.236, 172.20.217.64", "request_id": "7f86935fcfabecac640ef56acf5bc660", "remote_user": "-", "bytes_sent": 230, "request_time": 0.002, "status":200, "vhost": "nginx02.hs.com", "request_proto": "HTTP/1.1", "path": "/", "request_query": "-", "request_length": 177, "duration": 0.002,"method": "GET", "http_referrer": "-", "http_user_agent": "curl/7.29.0"}
+{"time": "2024-03-22T03:41:05+00:00", "remote_addr": "192.168.13.63", "x-forward-for": "192.168.13.236, 192.168.13.63", "request_id": "b93984e4268afef29d86d9019c7978f3", "remote_user": "-", "bytes_sent": 230, "request_time": 0.043, "status":200, "vhost": "nginx02.hs.com", "request_proto": "HTTP/1.1", "path": "/", "request_query": "-", "request_length": 177, "duration": 0.043,"method": "GET", "http_referrer": "-", "http_user_agent": "curl/7.29.0"}
+
+# 可见客户端地址为"x-forward-for": "192.168.13.236, 172.20.217.64" 和 "x-forward-for": "192.168.13.236, 192.168.13.63"，原始客户端IP为192.168.13.236，第二级客户端为172.20.217.64/192.168.13.63
+# 172.20.217.64是192.168.13.63(node)的calico网络地址
+```
+
