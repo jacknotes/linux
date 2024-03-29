@@ -796,6 +796,18 @@ rules:
 
 
 ```bash
+root@ansible:~/k8s/addons/kuboard# kubectl label node 192.168.13.63 app=kuboard
+root@ansible:~/k8s/addons/kuboard# kubectl get nodes -l app=kuboard
+NAME            STATUS   ROLES   AGE    VERSION
+192.168.13.63   Ready    node    667d   v1.23.7
+
+```
+
+
+
+
+
+```bash
 root@ansible:~/k8s/addons/kuboard# cat kuboard.yaml
 ---
 apiVersion: v1
@@ -941,6 +953,8 @@ spec:
       labels:
         app: kuboard-v3
     spec:
+      nodeSelector:
+        app: kuboard
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -950,6 +964,7 @@ spec:
                     operator: In
                     values:
                     - master
+                    - node
       containers:
         - env:
           - name: KUBOARD_ETCD_ENDPOINTS
@@ -993,6 +1008,9 @@ spec:
             periodSeconds: 10
             successThreshold: 1
             timeoutSeconds: 1
+          volumeMounts:
+          - name: kuboard-data
+            mountPath: /data
           resources: {}
       dnsPolicy: ClusterFirst
       restartPolicy: Always
@@ -1001,6 +1019,11 @@ spec:
       tolerations:
         - key: node.kubernetes.io/unschedulable
           operator: Exists
+      volumes:
+      - name: kuboard-data
+        hostPath:
+          path: /data/kuboard-data
+          type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: Service
@@ -1034,11 +1057,12 @@ spec:
 
 ```bash
 root@ansible:~/k8s/addons/kuboard# kubectl get pods -o wide -n kuboard
-NAME                          READY   STATUS    RESTARTS      AGE     IP               NODE           NOMINATED NODE   READINESS GATES
-kuboard-etcd-0                1/1     Running   0             2m50s   172.20.195.4     172.168.2.23   <none>           <none>
-kuboard-etcd-1                1/1     Running   0             2m41s   172.20.32.129    172.168.2.21   <none>           <none>
-kuboard-etcd-2                1/1     Running   0             2m30s   172.20.122.129   172.168.2.22   <none>           <none>
-kuboard-v3-74c5d8779b-6l8cd   1/1     Running   1 (75s ago)   2m46s   172.20.195.5     172.168.2.23   <none>           <none>
+NAME                         READY   STATUS    RESTARTS      AGE     IP               NODE            NOMINATED NODE   READINESS GATES
+kuboard-etcd-0               1/1     Running   2 (23m ago)   60d     172.20.0.2       172.168.2.23    <none>           <none>
+kuboard-etcd-1               1/1     Running   0             138d    172.20.122.153   172.168.2.22    <none>           <none>
+kuboard-etcd-2               1/1     Running   1 (28m ago)   138d    172.20.32.143    172.168.2.21    <none>           <none>
+kuboard-v3-c7f6cb9b6-4qdrh   1/1     Running   0             2m19s   172.20.217.93    192.168.13.63   <none>           <none>
+
 
 
 root@ansible:~/k8s/addons/kuboard# kubectl get svc -n kuboard
