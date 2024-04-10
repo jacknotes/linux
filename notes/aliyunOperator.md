@@ -307,12 +307,14 @@ example: xfs_growfs /
 
 ## Openvpn
 
+### 1. 部署
+
 ```bash
 [root@iptables download]# yum install -y openvpn
 [root@iptables download]# wget https://github.com/OpenVPN/easy-rsa/releases/download/v3.0.8/EasyRSA-3.0.8.tgz
 --配置服务端证书
 [root@iptables /download]# tar xf EasyRSA-3.0.8.tgz
-[root@iptables /download]# cp EasyRSA-3.0.8 /etc/openvpn/server
+[root@iptables /download]# cp -a EasyRSA-3.0.8 /etc/openvpn/server
 [root@iptables /download]# cd /etc/openvpn/server/EasyRSA-3.0.8/
 [root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# cp vars.example vars
 [root@iptables /etc/openvpn/server/EasyRSA-3.0.8]# vim vars
@@ -416,7 +418,7 @@ drwxrwx--- 5 root openvpn  225 Mar 18 10:59 EasyRSA-3.0.8
 [root@iptables /etc/openvpn]# chmod -R 770 /var/log/openvpn/
 [root@iptables /etc/openvpn]# vim /etc/openvpn/server.conf 
 [root@iptables /etc/openvpn]# grep '^[^#|;]' /etc/openvpn/server.conf   
---------此配置是证书认证---------
+--------此配置是客户端证书认证---------
 local 0.0.0.0
 port 1194
 proto tcp
@@ -443,7 +445,7 @@ log         /var/log/openvpn/openvpn.log
 verb 3
 -----------------------------
 
--------此配置是密码认证-------
+-------此配置是客户端密码认证，建议使用这个-------
 local 0.0.0.0
 port 1194
 proto tcp
@@ -473,7 +475,7 @@ client-cert-not-required
 script-security 3 
 -----------------------------
 
-----------or-证书和密码认证------------
+----------or-客户端证书和密码认证------------
 local 0.0.0.0
 port 1194
 proto tcp
@@ -503,6 +505,7 @@ username-as-common-name
 script-security 3
 -------------------------------
 
+[root@iptables /etc/openvpn]# chmod 777 checkpsw.sh
 [root@iptables /etc/openvpn]# cat checkpsw.sh
 #!/bin/bash 
 ########################################################### 
@@ -581,6 +584,8 @@ WantedBy=multi-user.target
 
 
 #客户端配置
+
+[root@iptables /etc/openvpn]# vim client.ovpn
 ------客户端证书认证，如果证书未设密码则用户不用密码即可连接------
 client
 dev tun
@@ -596,7 +601,7 @@ key client.key
 cipher AES-256-CBC
 comp-lzo
 verb 3
-----客户端密码认证，不需要客户端公私钥------
+----客户端密码认证，不需要客户端公私钥，建议使用这个------
 client
 dev tun
 proto tcp
@@ -633,6 +638,107 @@ verb 3
 route add 192.168.13.0 mask 255.255.255.0 172.168.2.254
 route add 192.168.10.0 mask 255.255.255.0 172.168.2.254
 ```
+
+
+
+### 2. 通过公网地址端口映射
+
+1. 通过防火墙 `公网IP：Port`  -> `私网IP：Port` 
+2. OpenVPN Client 配置文件更改为`公网IP：Port`
+3. 客户端连接时，跟连接`私网IP：Port` 一样成功连接
+
+```bash
+Wed Apr 10 17:42:40 2024 OpenVPN 2.4.7 x86_64-w64-mingw32 [SSL (OpenSSL)] [LZO] [LZ4] [PKCS11] [AEAD] built on Feb 21 2019
+Wed Apr 10 17:42:40 2024 Windows version 6.2 (Windows 8 or greater) 64bit
+Wed Apr 10 17:42:40 2024 library versions: OpenSSL 1.1.0j  20 Nov 2018, LZO 2.10
+Enter Management Password:
+Wed Apr 10 17:42:40 2024 MANAGEMENT: TCP Socket listening on [AF_INET]127.0.0.1:25340
+Wed Apr 10 17:42:40 2024 Need hold release from management interface, waiting...
+Wed Apr 10 17:42:41 2024 MANAGEMENT: Client connected from [AF_INET]127.0.0.1:25340
+Wed Apr 10 17:42:41 2024 MANAGEMENT: CMD 'state on'
+Wed Apr 10 17:42:41 2024 MANAGEMENT: CMD 'log all on'
+Wed Apr 10 17:42:41 2024 MANAGEMENT: CMD 'echo all on'
+Wed Apr 10 17:42:41 2024 MANAGEMENT: CMD 'bytecount 5'
+Wed Apr 10 17:42:41 2024 MANAGEMENT: CMD 'hold off'
+Wed Apr 10 17:42:41 2024 MANAGEMENT: CMD 'hold release'
+Wed Apr 10 17:42:42 2024 MANAGEMENT: CMD 'username "Auth" "test123"'
+Wed Apr 10 17:42:42 2024 MANAGEMENT: CMD 'password [...]'
+Wed Apr 10 17:42:42 2024 WARNING: No server certificate verification method has been enabled.  See http://openvpn.net/howto.html#mitm for more info.
+Wed Apr 10 17:42:42 2024 TCP/UDP: Preserving recently used remote address: [AF_INET]58.246.78.150:2094
+Wed Apr 10 17:42:42 2024 Socket Buffers: R=[65536->65536] S=[65536->65536]
+Wed Apr 10 17:42:42 2024 Attempting to establish TCP connection with [AF_INET]58.246.78.150:2094 [nonblock]
+Wed Apr 10 17:42:42 2024 MANAGEMENT: >STATE:1712742162,TCP_CONNECT,,,,,,
+Wed Apr 10 17:42:43 2024 TCP connection established with [AF_INET]58.246.78.150:2094
+Wed Apr 10 17:42:43 2024 TCP_CLIENT link local: (not bound)
+Wed Apr 10 17:42:43 2024 TCP_CLIENT link remote: [AF_INET]58.246.78.150:2094
+Wed Apr 10 17:42:43 2024 MANAGEMENT: >STATE:1712742163,WAIT,,,,,,
+Wed Apr 10 17:42:43 2024 MANAGEMENT: >STATE:1712742163,AUTH,,,,,,
+Wed Apr 10 17:42:43 2024 TLS: Initial packet from [AF_INET]58.246.78.150:2094, sid=37b85cf0 377d91af
+Wed Apr 10 17:42:43 2024 WARNING: this configuration may cache passwords in memory -- use the auth-nocache option to prevent this
+Wed Apr 10 17:42:43 2024 VERIFY OK: depth=1, CN=markli.cn
+Wed Apr 10 17:42:43 2024 VERIFY OK: depth=0, CN=openvpn.markli.cn
+Wed Apr 10 17:42:43 2024 WARNING: 'link-mtu' is used inconsistently, local='link-mtu 1560', remote='link-mtu 1544'
+Wed Apr 10 17:42:43 2024 WARNING: 'cipher' is used inconsistently, local='cipher AES-256-CBC', remote='cipher BF-CBC'
+Wed Apr 10 17:42:43 2024 WARNING: 'keysize' is used inconsistently, local='keysize 256', remote='keysize 128'
+Wed Apr 10 17:42:43 2024 Control Channel: TLSv1.2, cipher TLSv1.2 ECDHE-RSA-AES256-GCM-SHA384, 2048 bit RSA
+Wed Apr 10 17:42:43 2024 [openvpn.markli.cn] Peer Connection Initiated with [AF_INET]58.246.78.150:2094
+Wed Apr 10 17:42:45 2024 MANAGEMENT: >STATE:1712742165,GET_CONFIG,,,,,,
+Wed Apr 10 17:42:45 2024 SENT CONTROL [openvpn.markli.cn]: 'PUSH_REQUEST' (status=1)
+Wed Apr 10 17:42:45 2024 PUSH: Received control message: 'PUSH_REPLY,redirect-gateway def1 bypass-dhcp,dhcp-option DNS 223.6.6.6,route 192.168.179.0 255.255.255.0,topology net30,ping 10,ping-restart 120,ifconfig 192.168.179.10 192.168.179.9,peer-id 0,cipher AES-256-GCM'
+Wed Apr 10 17:42:45 2024 OPTIONS IMPORT: timers and/or timeouts modified
+Wed Apr 10 17:42:45 2024 OPTIONS IMPORT: --ifconfig/up options modified
+Wed Apr 10 17:42:45 2024 OPTIONS IMPORT: route options modified
+Wed Apr 10 17:42:45 2024 OPTIONS IMPORT: --ip-win32 and/or --dhcp-option options modified
+Wed Apr 10 17:42:45 2024 OPTIONS IMPORT: peer-id set
+Wed Apr 10 17:42:45 2024 OPTIONS IMPORT: adjusting link_mtu to 1627
+Wed Apr 10 17:42:45 2024 OPTIONS IMPORT: data channel crypto options modified
+Wed Apr 10 17:42:45 2024 Data Channel: using negotiated cipher 'AES-256-GCM'
+Wed Apr 10 17:42:45 2024 Outgoing Data Channel: Cipher 'AES-256-GCM' initialized with 256 bit key
+Wed Apr 10 17:42:45 2024 Incoming Data Channel: Cipher 'AES-256-GCM' initialized with 256 bit key
+Wed Apr 10 17:42:45 2024 interactive service msg_channel=0
+Wed Apr 10 17:42:45 2024 ROUTE_GATEWAY 172.168.2.254/255.255.255.0 I=14 HWADDR=b8:ca:3a:ba:66:ba
+Wed Apr 10 17:42:45 2024 open_tun
+Wed Apr 10 17:42:45 2024 TAP-WIN32 device [以太网 2] opened: \\.\Global\{1596C74F-B5B8-415C-B0CF-88AB4A480FAE}.tap
+Wed Apr 10 17:42:45 2024 TAP-Windows Driver Version 9.21 
+Wed Apr 10 17:42:45 2024 Notified TAP-Windows driver to set a DHCP IP/netmask of 192.168.179.10/255.255.255.252 on interface {1596C74F-B5B8-415C-B0CF-88AB4A480FAE} [DHCP-serv: 192.168.179.9, lease-time: 31536000]
+Wed Apr 10 17:42:45 2024 Successful ARP Flush on interface [40] {1596C74F-B5B8-415C-B0CF-88AB4A480FAE}
+Wed Apr 10 17:42:45 2024 MANAGEMENT: >STATE:1712742165,ASSIGN_IP,,192.168.179.10,,,,
+Wed Apr 10 17:42:50 2024 TEST ROUTES: 2/2 succeeded len=1 ret=1 a=0 u/d=up
+Wed Apr 10 17:42:50 2024 C:\Windows\system32\route.exe ADD 58.246.78.150 MASK 255.255.255.255 172.168.2.254
+Wed Apr 10 17:42:50 2024 ROUTE: CreateIpForwardEntry succeeded with dwForwardMetric1=35 and dwForwardType=4
+Wed Apr 10 17:42:50 2024 Route addition via IPAPI succeeded [adaptive]
+Wed Apr 10 17:42:50 2024 C:\Windows\system32\route.exe ADD 0.0.0.0 MASK 128.0.0.0 192.168.179.9
+Wed Apr 10 17:42:50 2024 ROUTE: CreateIpForwardEntry succeeded with dwForwardMetric1=35 and dwForwardType=4
+Wed Apr 10 17:42:50 2024 Route addition via IPAPI succeeded [adaptive]
+Wed Apr 10 17:42:50 2024 C:\Windows\system32\route.exe ADD 128.0.0.0 MASK 128.0.0.0 192.168.179.9
+Wed Apr 10 17:42:50 2024 ROUTE: CreateIpForwardEntry succeeded with dwForwardMetric1=35 and dwForwardType=4
+Wed Apr 10 17:42:50 2024 Route addition via IPAPI succeeded [adaptive]
+Wed Apr 10 17:42:50 2024 MANAGEMENT: >STATE:1712742170,ADD_ROUTES,,,,,,
+Wed Apr 10 17:42:50 2024 C:\Windows\system32\route.exe ADD 192.168.179.0 MASK 255.255.255.0 192.168.179.9
+Wed Apr 10 17:42:50 2024 ROUTE: CreateIpForwardEntry succeeded with dwForwardMetric1=35 and dwForwardType=4
+Wed Apr 10 17:42:50 2024 Route addition via IPAPI succeeded [adaptive]
+Wed Apr 10 17:42:50 2024 Initialization Sequence Completed
+Wed Apr 10 17:42:50 2024 MANAGEMENT: >STATE:1712742170,CONNECTED,SUCCESS,192.168.179.10,58.246.78.150,2094,172.168.2.122,50493
+
+```
+
+
+
+### 3. 回来路由不通
+
+但是获取到的OpenVPN 地址是无法访问公网的，因为上联设备{交换机、路由器、防火墙没有配置回来的路由}，应在`相关设备配置192.168.179.0/24 -> 172.168.2.13的回向路由`
+
+```
+[root@sslvpn openvpn]# ping 39.156.66.10 -I tun0
+PING 39.156.66.10 (39.156.66.10) from 192.168.179.1 tun0: 56(84) bytes of data.
+^C
+--- 39.156.66.10 ping statistics ---
+48 packets transmitted, 0 received, 100% packet loss, time 47062ms
+
+
+```
+
+
 
 
 

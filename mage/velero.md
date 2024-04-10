@@ -157,6 +157,12 @@ Restic 是一款 GO 语言开发的开源免费且快速、高效和安全的跨
 
 
 
+## 数据一致性
+
+对象存储的数据是唯一的数据源，也就是说 `Kubernetes` 集群内的控制器会检查远程的 `OSS` 存储，恢复时发现有备份就会在集群内创建相关 `CRD` ，如果发现远端存储没有当前集群内的 `CRD` 所关联的存储数据，那么就会删除当前集群内的 `CRD`。
+
+
+
 
 
 
@@ -540,6 +546,104 @@ Server:
 kubectl delete clusterrolebinding/velero
 kubectl delete crds -l component=velero
 ```
+
+
+
+
+
+#### 3.4 Velero CRD
+
+```bash
+root@ansible:~# kubectl -n velero get crds -l component=velero
+NAME                                CREATED AT
+backups.velero.io                   2024-03-28T11:40:53Z
+backupstoragelocations.velero.io    2024-03-28T11:40:53Z
+deletebackuprequests.velero.io      2024-03-28T11:40:53Z
+downloadrequests.velero.io          2024-03-28T11:40:53Z
+podvolumebackups.velero.io          2024-03-28T11:40:53Z
+podvolumerestores.velero.io         2024-03-28T11:40:54Z
+resticrepositories.velero.io        2024-03-28T11:40:54Z
+restores.velero.io                  2024-03-28T11:40:55Z
+schedules.velero.io                 2024-03-28T11:40:55Z
+serverstatusrequests.velero.io      2024-03-28T11:40:56Z
+volumesnapshotlocations.velero.io   2024-03-28T11:40:57Z
+```
+
+
+
+##### 3.4.1 BackupStorageLocation
+
+`BackupStorageLocation` 主要用来定义 `Kubernetes` 集群资源的数据存放位置，也就是集群对象数据，不是 `PVC` 的数据。主要支持的后端存储是 `S3` 兼容的存储，比如：`Mino` 和阿里云 `OSS` 等。
+
+```bash
+# Minio
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  name: default
+  namespace: velero
+spec:
+# 只有 aws gcp azure
+  provider: aws
+  # 存储主要配置
+  objectStorage:
+  # bucket 的名称
+    bucket: myBucket
+    # bucket内的
+    prefix: backup
+# 不同的 provider 不同的配置
+  config:
+    #bucket地区
+    region: us-west-2
+    # s3认证信息
+    profile: "default"
+    # 使用 Minio 的时候加上，默认为 false
+    # AWS 的 S3 可以支持两种 Url Bucket URL
+    # 1 Path style URL： http://s3endpoint/BUCKET
+    # 2 Virtual-hosted style URL： http://oss-cn-beijing.s3endpoint 将 Bucker Name 放到了 Host Header中
+    # 3 阿里云仅仅支持 Virtual hosted 如果下面写上 true, 阿里云 OSS 会报错 403
+    s3ForcePathStyle: "false"
+    # s3的地址，格式为 http://minio:9000
+    s3Url: http://minio:9000
+```
+
+```yaml
+# 阿里OSS
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  labels:
+    component: velero
+  name: default
+  namespace: velero
+spec:
+  config:
+    region: oss-cn-beijing
+    s3Url: http://oss-cn-beijing.aliyuncs.com
+    s3ForcePathStyle: "false"
+  objectStorage:
+    bucket: build-jenkins
+    prefix: ""
+  provider: aws
+```
+
+
+
+##### 3.4.2 VolumeSnapshotLocation
+
+VolumeSnapshotLocation 主要用来给 PV 做快照，需要云提供商提供插件，阿里云已经提供了插件，这个需要使用 CSI 等存储机制。
+
+你也可以使用专门的备份工具 `Restic`，把 PV 数据备份到阿里云 OSS 中去(安装时需要自定义选项)。
+
+```
+# 安装时需要自定义选项
+--use-restic
+
+# 这里我们存储PV使用的是OSS，也就是BackupStorageLocation，因此不用创建VolumeSnapshotLocation对象
+--use-volume-snapshots=false
+```
+
+`Restic` 是一款 GO 语言开发的数据加密备份工具，顾名思义，可以将本地数据加密后传输到指定的仓库。支持的仓库有 Local、SFTP、Aws S3、Minio、OpenStack Swift、Backblaze B2、Azure BS、Google Cloud storage、Rest Server。
 
 
 
@@ -1018,6 +1122,13 @@ rm -rf /var/local/clusterpedia/internalstorage/<storage type>
 
 #### 5.1 备份
 
+**注意事项**
+
+> - 在velero备份的时候，备份过程中创建的对象是不会被备份的。
+> - `velero restore` 恢复不会覆盖`已有的资源`，只恢复当前集群中`不存在的资源`。已有的资源不会回滚到之前的版本，如需要回滚，需在restore之前提前删除现有的资源。
+> - 后期可以让velero作为一个crontjob来运行，定期备份数据。
+> - 在高版本1.16.x中，报错`error: unable to recognize "filebeat.yml": no matches for kind "DaemonSet" in version "extensions/v1beta1"` ,将yml配置文件内的api接口修改为 apps/v1 ，导致原因为之间使用的kubernetes 版本是1.14.x版本，1.16.x 版本放弃部分API支持！
+
 ```bash
 # 创建一个新的备份，名称为：mybackup-001，只备份的名称空间：clusterpedia-system，备份所有 pod 卷的方式：restic（不写默认为这）,此命令在名称空间velero下操作(默认是velero)
 root@ansible:~# velero backup create mybackup-001 --include-namespaces clusterpedia-system --default-volumes-to-restic -n velero
@@ -1088,6 +1199,27 @@ Restic Backups (specify --details for more information):
 ![](../image/k8s/velero/05.png)
 
 
+
+**定期备份**
+
+```bash
+# 定期备份
+root@ansible:~# velero schedule create everyday-backup --schedule="0 1 */1 * *"
+Schedule "everyday-backup" created successfully.
+
+root@ansible:~# velero schedule get
+NAME              STATUS    CREATED                         SCHEDULE      BACKUP TTL   LAST BACKUP   SELECTOR
+everyday-backup   Enabled   2024-04-01 16:07:18 +0800 CST   0 1 */1 * *   0s           n/a           <none>
+
+root@ansible:~# velero backup create --from-schedule everyday-backup
+INFO[0000] No Schedule.template.metadata.labels set - using Schedule.labels for backup object  backup=velero/everyday-backup-20240401080757 labels="map[]"
+Creating backup from schedule, all other filters are ignored.
+Backup request "everyday-backup-20240401080757" submitted successfully.
+Run `velero backup describe everyday-backup-20240401080757` or `velero backup logs everyday-backup-20240401080757` for more details.
+root@ansible:~# velero backup get | grep everyday-backup
+everyday-backup-20240401080757   InProgress   0        0          2024-04-01 16:07:58 +0800 CST   29d       default            <none>
+
+```
 
 
 
@@ -1483,10 +1615,13 @@ $ velero restore get
 
 # 使用cron表达式备份
 $ velero schedule create nginx-daily --schedule="0 1 */1 * *" --include-namespaces nginx-example
+$ velero create schedule NAME --schedule="0 */6 * * *"
+$ velero create schedule NAME --schedule="@every 6h"
 # 使用一些非标准的速记 cron 表达式
 $ velero schedule create nginx-daily --schedule="@daily" --include-namespaces nginx-example
 # 手动触发定时任务
 $ velero backup create --from-schedule nginx-daily
+
 
 ```
 
