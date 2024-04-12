@@ -313,6 +313,141 @@ openssl ca -gencrl -out /etc/pki/CA/crl/06.pem.crl
 
 
 
+#**手动添加CA证书到根证书颁发机构**
+
+```bash
+# ubuntu
+root@ansible:~/mkcert# cp /root/.local/share/mkcert/rootCA.pem /usr/local/share/ca-certificates/mkcert_development_CA.crt
+root@ansible:~/mkcert# update-ca-certificates
+Updating certificates in /etc/ssl/certs...
+rehash: warning: skipping ca-certificates.crt,it does not contain exactly one certificate or CRL
+1 added, 0 removed; done.
+Running hooks in /etc/ca-certificates/update.d...
+done.
+root@ansible:~/mkcert# ll /etc/ssl/certs/ | grep mkcert
+lrwxrwxrwx 1 root root     25 Apr 12 18:39 a9f8c356.0 -> mkcert_development_CA.pem
+lrwxrwxrwx 1 root root     58 Apr 12 18:39 mkcert_development_CA.pem -> /usr/local/share/ca-certificates/mkcert_development_CA.crt
+
+
+# centos
+# 未信任证书所以访问https报错
+[root@prometheus a]# curl -Iv https://mkcert.example.com
+* About to connect() to mkcert.example.com port 443 (#0)
+*   Trying 172.168.2.12...
+* Connected to mkcert.example.com (172.168.2.12) port 443 (#0)
+* Initializing NSS with certpath: sql:/etc/pki/nssdb
+*   CAfile: /etc/pki/tls/certs/ca-bundle.crt
+  CApath: none
+* Server certificate:
+* 	subject: OU=root@ansible,O=mkcert development certificate
+* 	start date: Apr 12 08:58:36 2024 GMT
+* 	expire date: Jul 12 08:58:36 2026 GMT
+* 	common name: (nil)
+* 	issuer: CN=mkcert root@ansible,OU=root@ansible,O=mkcert development CA
+* NSS error -8179 (SEC_ERROR_UNKNOWN_ISSUER)
+* Peer's Certificate issuer is not recognized.
+* Closing connection 0
+curl: (60) Peer's Certificate issuer is not recognized.
+More details here: http://curl.haxx.se/docs/sslcerts.html
+
+curl performs SSL certificate verification by default, using a "bundle"
+ of Certificate Authority (CA) public keys (CA certs). If the default
+ bundle file isn't adequate, you can specify an alternate file
+ using the --cacert option.
+If this HTTPS server uses a certificate signed by a CA represented in
+ the bundle, the certificate verification probably failed due to a
+ problem with the certificate (it might be expired, or the name might
+ not match the domain name in the URL).
+If you'd like to turn off curl's verification of the certificate, use
+ the -k (or --insecure) option.
+# 复制证书到/etc/pki/ca-trust/source/anchors目录下，证书是crt格式，并更新证书
+[root@prometheus a]# cp rootCA.pem /etc/pki/ca-trust/source/anchors/mkcert_development_CA.crt 
+[root@prometheus a]# update-ca-trust 
+[root@prometheus a]# curl -Iv https://mkcert.example.com
+* About to connect() to mkcert.example.com port 443 (#0)
+*   Trying 172.168.2.12...
+* Connected to mkcert.example.com (172.168.2.12) port 443 (#0)
+* Initializing NSS with certpath: sql:/etc/pki/nssdb
+*   CAfile: /etc/pki/tls/certs/ca-bundle.crt
+  CApath: none
+* SSL connection using TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+* Server certificate:
+* 	subject: OU=root@ansible,O=mkcert development certificate
+* 	start date: Apr 12 08:58:36 2024 GMT
+* 	expire date: Jul 12 08:58:36 2026 GMT
+* 	common name: (nil)
+* 	issuer: CN=mkcert root@ansible,OU=root@ansible,O=mkcert development CA
+> HEAD / HTTP/1.1
+> User-Agent: curl/7.29.0
+> Host: mkcert.example.com
+> Accept: */*
+> 
+< HTTP/1.1 200 OK
+HTTP/1.1 200 OK
+< Server: Tengine
+Server: Tengine
+< Date: Fri, 12 Apr 2024 10:44:25 GMT
+Date: Fri, 12 Apr 2024 10:44:25 GMT
+< Content-Type: text/html
+Content-Type: text/html
+< Content-Length: 14
+Content-Length: 14
+< Last-Modified: Fri, 12 Apr 2024 09:00:23 GMT
+Last-Modified: Fri, 12 Apr 2024 09:00:23 GMT
+< Connection: keep-alive
+Connection: keep-alive
+< ETag: "6618f827-e"
+ETag: "6618f827-e"
+< Accept-Ranges: bytes
+Accept-Ranges: bytes
+
+< 
+* Connection #0 to host mkcert.example.com left intact
+
+
+# 查看根证书添加的位置
+[root@prometheus a]# nl /etc/pki/tls/certs/ca-bundle.crt | grep -A 30 mkcert
+    34	# mkcert root@ansible
+    35	-----BEGIN CERTIFICATE-----
+    36	MIIEeTCCAuGgAwIBAgIQGJRFB5hnxBkbCxVGneXp8zANBgkqhkiG9w0BAQsFADBV
+    37	MR4wHAYDVQQKExVta2NlcnQgZGV2ZWxvcG1lbnQgQ0ExFTATBgNVBAsMDHJvb3RA
+    38	YW5zaWJsZTEcMBoGA1UEAwwTbWtjZXJ0IHJvb3RAYW5zaWJsZTAeFw0yNDA0MTIw
+    39	ODU4MzZaFw0zNDA0MTIwODU4MzZaMFUxHjAcBgNVBAoTFW1rY2VydCBkZXZlbG9w
+    40	bWVudCBDQTEVMBMGA1UECwwMcm9vdEBhbnNpYmxlMRwwGgYDVQQDDBNta2NlcnQg
+    41	cm9vdEBhbnNpYmxlMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEArJ9K
+    42	UIZvxJhq7RGpkMw9rBtYCCHEi2R5qktf/OLJqq26dSYkuB7FuE8J9xG3y33FYVTD
+    43	iV53A0GVRxspsVNd1grP7p6W7xjqRF/l9X0nDJ4l0o9e2XHJE51qe+jjHNCFML4I
+    44	efzbNYCQfOFDMuhqcq2vcC1C9OxMQJ42RYjJ6V/8oqIG42RCivR1zRp1RpqxVZJW
+    45	hzzSPSQbOGZ/kXFv2P7YpqvLBffXRy4FVS8BeHjLY3WzDuX228O0UDJL2c/tq7Jz
+    46	fAbcc/fy8HYTde62Lxzxv/dMS50TJZLQiJlxlA/DxLQww1BYJ9gugjZZnfFpEXCO
+    47	+eSoesXJwufCJKJtmBUhFlPZOcSUqpnZsa+zypT6xvfVpPCpi/jZf0t+droX/7o0
+    48	nft4U/vR9Y3CmmQQWOQpJ5X5E0GnYb5lOQzvooYhjxkzNQpLi4MG6JvKFKVjkmRZ
+    49	3D7NSYsW5wOdxywe8PbnGV/Ax2m6nj8PdtuaVaukJnaCMaT7kcJ0ozcTR2qbAgMB
+    50	AAGjRTBDMA4GA1UdDwEB/wQEAwICBDASBgNVHRMBAf8ECDAGAQH/AgEAMB0GA1Ud
+    51	DgQWBBS1M8UhCF4q0nwnOK+xENz4LqdGgTANBgkqhkiG9w0BAQsFAAOCAYEAQ1/L
+    52	6LYZ/p5lBwLcKPFQqwEcYiElrG+VrYpC9lDEz0a8pOFBNq2phj4f44y3I+U8YH93
+    53	do1pvm6Sy2f1P7AvNST/LCvvsmHYjkvWME1L25bQ90Fayl+UHHqNaBt/6YjgFpQ+
+    54	9mHt9IcZ6xK7iMmD4FWRvZtuz9CNPzZSI5n3MrhUTjSGIgg02m3o1tY5mLPJWpWq
+    55	WI3pREcL7/UZ027+yJc3iTIOcwYl0U0SP4RjnK4n7XN5AZ43WHOxjnHi38/q/8dc
+    56	d6S9Sjq01ASERLzSGhvEWbUpb9tXHIg1YE37A030drfp7Brw9+5wWaEOzFS9mOxo
+    57	cqBH/6Dxzi+UwQky+6fHjNDv7Q0dwQ9bUec1sCTnP950IegSFSE3UOYtBv5QYSqN
+    58	CnWJ0XqCADKbhm0Q9e/koh0MSY0lH1roTwKJAm7FHPhc264NT+etfnd1BdcUHfeQ
+    59	tQhkEKrugrgjhmMKobUAjRgW6y+/QOTWNkQ7pzS1ayEJ3zm8mxc9NUgZK77u
+    60	-----END CERTIFICATE-----
+       
+    61	# ACCVRAIZ1
+    62	-----BEGIN CERTIFICATE-----
+    63	MIIH0zCCBbugAwIBAgIIXsO3pkN/pOAwDQYJKoZIhvcNAQEFBQAwQjESMBAGA1UE
+
+
+```
+
+
+
+
+
+
+
 ![](./image/openssl/02.png)
 
 
@@ -1069,3 +1204,166 @@ Strict-Transport-Security: max-age=31536000
 ![](./image/openssl/03.png)
 
 ![](./image/openssl/04.png)
+
+
+
+
+
+
+
+
+
+# mkcert
+
+[mkcert](https://github.com/FiloSottile/mkcert) 是一个零配置、快速生成本地自签HTTPS|SSL证书的工具
+
+请千万记住 mkcert 是用于开发目的的，**不建议用于生产**，所以它不应该被用到用户终端上，并且你不应该导出或者共享 rootCA-key.pem 。
+
+
+
+## 安装
+
+```bash
+# 安装mkcert
+curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
+chmod +x mkcert-v*-linux-amd64
+cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
+
+# 查看命令帮助
+root@ansible:~/mkcert# mkcert --help
+Usage of mkcert:
+
+        $ mkcert -install
+        Install the local CA in the system trust store.
+
+        $ mkcert example.org
+        Generate "example.org.pem" and "example.org-key.pem".
+
+        $ mkcert example.com myapp.dev localhost 127.0.0.1 ::1
+        Generate "example.com+4.pem" and "example.com+4-key.pem".
+
+        $ mkcert "*.example.it"
+        Generate "_wildcard.example.it.pem" and "_wildcard.example.it-key.pem".
+
+        $ mkcert -uninstall
+        Uninstall the local CA (but do not delete it).
+
+Advanced options:
+
+        -cert-file FILE, -key-file FILE, -p12-file FILE
+            Customize the output paths.
+
+        -client
+            Generate a certificate for client authentication.
+
+        -ecdsa
+            Generate a certificate with an ECDSA key.
+
+        -pkcs12
+            Generate a ".p12" PKCS #12 file, also know as a ".pfx" file,
+            containing certificate and key for legacy applications.
+
+        -csr CSR
+            Generate a certificate based on the supplied CSR. Conflicts with
+            all other flags and arguments except -install and -cert-file.
+
+        -CAROOT
+            Print the CA certificate and key storage location.
+
+        $CAROOT (environment variable)
+            Set the CA certificate and key storage location. (This allows
+            maintaining multiple local CAs in parallel.)
+
+        $TRUST_STORES (environment variable)
+            A comma-separated list of trust stores to install the local
+            root CA into. Options are: "system", "java" and "nss" (includes
+            Firefox). Autodetected by default.
+```
+
+
+
+## 常用证书命令
+
+```bash
+# 生成example.com证书，证书格式默认为rsa
+mkcert -key-file key.pem -cert-file cert.pem example.com *.example.com
+
+# 打印mkcert CAROOT的文件位置，默认在/root/.local/share/mkcert/
+mkcert --CAROOT
+# 查看证书信息
+openssl x509 -noout -text -in /root/.local/share/mkcert/rootCA.pem
+
+# 使用证书签署请求进行签署证书
+(umask 0077; openssl genrsa -out goaccess.key 1024)
+openssl req -new -key goaccess.key -out goaccess.csr -subj "/C=CN/ST=Shanghai/O=markli/OU=Tech/CN=*.markli.cn"
+# 使用mkcert进行证书签署
+root@ansible:~/mkcert/tmp# mkcert -csr goaccess.csr
+Created a new certificate valid for the following names 📜
+ - "*.hs.com"
+Reminder: X.509 wildcards only go one level deep, so this won't match a.b.hs.com ℹ️
+The certificate is at "./_wildcard.hs.com.pem" ✅
+It will expire on 12 July 2026 🗓
+
+# 验证证书跟CA的信任关系
+[root@prometheus a]# openssl verify -CAfile rootCA.pem _wildcard.hs.com.pem
+_wildcard.hs.com.pem: OK
+
+# 自动将CAROOT安装到本机的根证书颁发机构
+# 默认在/etc/ssl/certs/ca-bundle.crt，可通过命令curl -Iv https://mkcert.example.com查看
+mkcert -install
+
+# 卸载mkcert的CAROOT证书
+mkcert -uninstall
+
+# 生成pfx格式的证书，用于iis，密码为changeit
+mkcert -pkcs12 atest.com
+# 生成ecdsa格式的证书
+mkcert -ecdsa btest.com
+
+```
+
+
+
+## 配置nginx
+
+```bash
+root@ansible:~/mkcert# cat /usr/local/nginx/conf/conf.d/mkcert.conf
+server {
+        listen       80;
+        server_name mkcert.example.com;
+
+        location / {
+                root   /usr/local/nginx/html;
+                index  mkcert.html index.html index.htm;
+
+                error_page   500 502 503 504  /50x.html;
+                location = /50x.html {
+                        root   /usr/share/nginx/html;
+                }
+        }
+}
+
+server {
+        listen 443 ssl;
+        server_name mkcert.example.com;
+        ssl_certificate   mkcert/cert.pem;
+        ssl_certificate_key  mkcert/key.pem;
+        ssl_session_timeout 5m;
+        ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4;
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+        ssl_prefer_server_ciphers on;
+
+        location / {
+                root   /usr/local/nginx/html;
+                index  mkcert.html index.html index.htm;
+
+                error_page   500 502 503 504  /50x.html;
+                location = /50x.html {
+                        root   /usr/share/nginx/html;
+                }
+        }
+}
+
+
+```
+
