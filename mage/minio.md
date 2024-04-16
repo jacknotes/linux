@@ -560,17 +560,14 @@ tcp6       0      0 172.168.2.30:9000       172.168.2.28:40388      ESTABLISHED 
 
 #### 2.3 客户端工具mc
 
+##### 2.3.1 配置mc
+
 ```bash
+# 安装mc工具
 root@ansible:/tmp/minio# curl -OL https://dl.min.io/client/mc/release/linux-amd64/mc
 root@ansible:/tmp/minio# chmod +x mc
 root@ansible:/tmp/minio# mv mc /usr/local/bin/
-```
 
-
-
-**使用**
-
-```bash
 root@ansible:/download/minio-dir# mc alias set local http://172.168.2.27:9000 test aaa@1234
 Added `local` successfully.
 # 可以使用Nginx反向代理的地址minio.hs.com进行访问
@@ -588,13 +585,8 @@ root@ansible:/download/minio-dir# mc mb local/test
 Bucket created successfully `local/test`.
 root@ansible:/download/minio-dir# mc ls local
 [2024-04-03 14:32:00 CST]     0B test/
-```
 
-
-
-**minio磁盘目录**
-
-```bash
+# minio磁盘目录
 root@minio-01:~# ls -al /data/disk*
 /data/disk1:
 total 0
@@ -609,12 +601,11 @@ drwxr-xr-x 4 minio-user minio-user  36 Apr  2 17:53 .
 drwxr-xr-x 4 root       root        32 Apr  2 16:36 ..
 drwxr-xr-x 8 minio-user minio-user 113 Apr  2 17:50 .minio.sys
 drwxr-xr-x 2 minio-user minio-user   6 Apr  2 17:53 test
-
 ```
 
 
 
-**常用命令**
+##### 2.3.2 常用命令
 
 ```
 ls 列出文件和文件夹。
@@ -635,12 +626,6 @@ config 管理mc配置文件。
 update 检查软件更新。
 version 输出版本信息。
 ```
-
-
-
-
-
-
 
 
 
@@ -691,6 +676,7 @@ scrape_configs:
 
 
 # 监控Resources
+root@ansible:/download/minio-dir# mc admin prometheus generate local resource
 scrape_configs:
 - job_name: minio-job-resource
   bearer_token: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwcm9tZXRoZXVzIiwic3ViIjoidGVzdCIsImV4cCI6NDg2NTcyNjU0N30.jyJxbsJslelG7nohP5_-KLZDET4EV73SDn61L9lTRHMxB6Eqbf_mbOsxuV-UMQLcoE_Xtk8r1XLT7QEATtiHDQ
@@ -812,15 +798,506 @@ root@ansible:/download/minio-dir# ansible minio -m shell -a 'systemctl restart m
 
 
 
+### 3 Minio单节点多硬盘部署
+
+
+
+#### 3.1 环境
+
+部署规划：一共1台服务器。MinIO集群部署在4块硬盘上。
+
+| 系统               | 节点           | 目录                     | 角色      |
+| ------------------ | -------------- | ------------------------ | --------- |
+| Ubuntu 18.04.6 LTS | 192.168.13.202 | /data/disk1，/data/disk2 | minio节点 |
+
+
+
+ #### 3.2 部署步骤
+
+##### 3.2.1 配置磁盘
+
+```bash
+# /data目录较大，并且跟根目录分离的，这里偷赖使用4个目录代表4块磁盘
+root@repo:/download# df -TH | grep data
+/dev/mapper/repo_vg-repo        xfs       1.1T   79G  1.1T   8% /data
+root@repo:/download# mkdir -p /data/minio/disk{1..4}
+root@repo:/download# tree /data/minio/
+/data/minio/
+|-- disk1
+|-- disk2
+|-- disk3
+`-- disk4
+
+# 配置目录权限 
+root@repo:/download# groupadd -r minio-user && useradd -r -M -g minio-user minio-user
+root@repo:/download# chown minio-user:minio-user /data/minio/disk*
+root@repo:/download# ll -d /data/minio/disk*
+drwxr-xr-x 2 minio-user minio-user 6 Apr 16 14:06 /data/minio/disk1/
+drwxr-xr-x 2 minio-user minio-user 6 Apr 16 14:06 /data/minio/disk2/
+drwxr-xr-x 2 minio-user minio-user 6 Apr 16 14:06 /data/minio/disk3/
+drwxr-xr-x 2 minio-user minio-user 6 Apr 16 14:06 /data/minio/disk4/
+```
+
+
+
+##### 3.2.2 安装minio
+
+```bash
+root@repo:/download# wget https://dl.min.io/server/minio/release/linux-amd64/minio
+root@repo:/download# cp minio /usr/local/bin/  
+root@repo:/download# chmod 755 /usr/local/bin/minio 
+root@repo:/download# /usr/local/bin/minio --version
+minio version RELEASE.2024-03-30T09-41-56Z (commit-id=cb577835d945dbe47f873be96d25caa5a8a858f8)
+Runtime: go1.21.8 linux/amd64
+License: GNU AGPLv3 <https://www.gnu.org/licenses/agpl-3.0.html>
+Copyright: 2015-2024 MinIO, Inc.
+```
+
+
+
+##### 3.2.3 配置minio
+
+```bash
+# minio API会使用MINIO_SERVER_URL的值做签名，例如监控等会使用此地址，如果未配置，则只能使用IP:API_PORT进行配置监控。另外console可以使用反向代理域名进行访问。
+# 如果配置了域名，则可以使用域名做监控。例如：MINIO_SERVER_URL="http://minio.hs.com"
+# 在分布式集群时必须使用FQDN的域名地址，不可使用IP:PORT地址，且此值不可为空
+root@repo:/download# cat /etc/default/minio
+MINIO_VOLUMES="/data/minio/disk{1...4}"
+MINIO_OPTS="--address :9000 --console-address :9001"
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=PASSWORD
+
+root@repo:/download# cat /lib/systemd/system/minio.service
+[Unit]
+Description=MinIO
+Documentation=https://min.io/docs/minio/linux/index.html
+Wants=network-online.target
+After=network-online.target
+AssertFileIsExecutable=/usr/local/bin/minio
+
+[Service]
+Type=simple
+User=minio-user
+Group=minio-user
+ProtectProc=invisible
+EnvironmentFile=-/etc/default/minio
+ExecStartPre=/bin/bash -c "if [ -z \"${MINIO_VOLUMES}\" ]; then echo \"Variable MINIO_VOLUMES not set in /etc/default/minio\"; exit 1; fi"
+ExecStart=/usr/local/bin/minio server $MINIO_OPTS $MINIO_VOLUMES
+Restart=always
+LimitNOFILE=655360
+TasksMax=infinity
+TimeoutStopSec=infinity
+SendSIGKILL=no
+
+[Install]
+WantedBy=multi-user.target
+root@repo:/download# systemctl daemon-reload 
+root@repo:/download# systemctl enable minio.service 
+```
+
+
+
+##### 3.2.4 启动服务
+
+```bash
+root@repo:/download# systemctl start minio.service
+root@repo:/download# systemctl status minio.service
+* minio.service - MinIO
+   Loaded: loaded (/lib/systemd/system/minio.service; enabled; vendor preset: enabled)
+   Active: active (running) since Tue 2024-04-16 14:15:46 CST; 2s ago
+     Docs: https://min.io/docs/minio/linux/index.html
+  Process: 15653 ExecStartPre=/bin/bash -c if [ -z "${MINIO_VOLUMES}" ]; then echo "Variable MINIO_VOLUMES not set in /etc/default/minio"; exit 1; fi (code=exited, status=0/SUCCESS)
+ Main PID: 15654 (minio)
+    Tasks: 13
+   CGroup: /system.slice/minio.service
+           `-15654 /usr/local/bin/minio server --address :9000 --console-address :9001 /data/minio/disk{1...4}
+           
+root@repo:/download# ss -tnlp | grep ":90"
+LISTEN   0         128               127.0.0.1:9000             0.0.0.0:*        users:(("minio",pid=15654,fd=9))                                               
+LISTEN   0         128                       *:9000                   *:*        users:(("minio",pid=15654,fd=10))                                              
+LISTEN   0         128                       *:9001                   *:*        users:(("minio",pid=15654,fd=11))
+```
+
+![MinIO Arch](../image/minio/06.png)
+
+
+
+#### 3.3 安装客户端工具
+
+```bash
+root@repo:/download# curl -OL https://dl.min.io/client/mc/release/linux-amd64/mc
+root@repo:/download# chmod +x mc
+root@repo:/download# mv mc /usr/local/bin/
+root@repo:/download# mc --version
+mc version RELEASE.2024-03-30T15-29-52Z (commit-id=9f8147bf0e037730077a1b3baef25e53181099b0)
+Runtime: go1.21.8 linux/amd64
+Copyright (c) 2015-2024 MinIO, Inc.
+License GNU AGPLv3 <https://www.gnu.org/licenses/agpl-3.0.html>
+
+# 创建alias
+root@repo:/download# mc alias set local http://localhost:9000 minioadmin PASSWORD
+mc: Configuration written to `/root/.mc/config.json`. Please update your access credentials.
+mc: Successfully created `/root/.mc/share`.
+mc: Initialized share uploads `/root/.mc/share/uploads.json` file.
+mc: Initialized share downloads `/root/.mc/share/downloads.json` file.
+Added `local` successfully.
+# 创建bucket
+root@repo:/download# mc alias list local
+local
+  URL       : http://localhost:9000
+  AccessKey : minioadmin
+  SecretKey : PASSWORD
+  API       : s3v4
+  Path      : auto
+
+root@repo:/download# mc mb local/k8s
+Bucket created successfully `local/k8s`.
+root@repo:/download# mc ls local
+[2024-04-16 14:30:02 CST]     0B k8s/
+
+```
+
+
+
+#### 3.4 升级minio
+
+MinIO采用更新后重启的方法来升级部署到新版本：
+
+1. 使用更高版本的MinIO二进制文件进行更新。
+2. 使用 [`mc admin service restart`](https://www.minio.org.cn/docs/minio/linux/reference/minio-mc-admin/mc-admin-service.html#mc.admin.service.restart) 重新启动部署。
+
+这个过程不需要停机，并且对正在进行的操作没有任何影响。
+
+
+
+##### 3.4.1 升级前准备
+
+```bash
+# 查看当前集群状态
+root@repo:/download# mc admin info local/
+●  localhost:9000
+   Uptime: 11 minutes 
+   Version: 2024-03-30T09:41:56Z
+   Network: 1/1 OK 
+   Drives: 4/4 OK 
+   Pool: 1
+
+Pools:
+   1st, Erasure sets: 1, Drives per erasure set: 4
+
+0 B Used, 1 Bucket, 0 Objects
+4 drives online, 0 drives offline
+
+# 备份集群配置
+root@repo:/download# mc admin cluster bucket export local 
+mc: Bucket metadata successfully downloaded as local-bucket-metadata.zip
+root@repo:/download# mc admin cluster iam export local
+mc: IAM info successfully downloaded as local-iam-info.zip
+# 查看备份的配置文件
+root@repo:/download# ll
+drwxr-xr-x  2 root root        95 Apr 16 14:55 ./
+drwxr-xr-x 24 root root      4096 Apr 16 14:03 ../
+-rw-r--r--  1 root root       663 Apr 16 14:55 local-bucket-metadata.zip
+-rw-r--r--  1 root root      1657 Apr 16 14:55 local-iam-info.zip
+-rwxr-xr-x  1 root root 101683200 Apr 16 14:03 minio-old*
+
+```
+
+
+
+##### 3.4.2 使用 `mc admin update` 进行更新
+
+[`mc admin update`](https://www.minio.org.cn/docs/minio/linux/reference/minio-mc-admin/mc-admin-update.html#command-mc.admin.update) 命令会在重新启动所有节点之前，更新目标MinIO部署中的所有MinIO服务器二进制文件。 重新启动过程通常在几秒钟内完成，并且对正在进行的操作是 *非破坏性的* 。
+
+如果运行 `minio` 服务器进程的用户对二进制文件本身的路径没有读写权限，则该命令可能会失败。
+
+```bash
+# 以下命令将使用指定的ALIAS local 更新MinIO部署到最新的稳定版本
+root@repo:/download# mc admin update local
+You are about to upgrade *MinIO Server*, please confirm [y/N]: y
+Server update request sent successfully `local`
+┌────────────────┬─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ HOST           │ STATUS                                                                                                              │
+├────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 127.0.0.1:9000 │ server update failed with: open /usr/local/bin/.minio.check-perm: permission denied, do not restart the servers yet │
+└────────────────┴─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+# 升级失败
+# 原因是运行 `minio` 服务器进程的用户(minio-user)对二进制文件本身的路径没有读写权限，因此需要`手动进行更新`
+```
+
+
+
+##### 3.4.3 手动进行更新
+
+```bash
+# 下载最新的二进制minio
+root@repo:/download# ll
+total 99304
+drwxr-xr-x  2 root root        23 Apr 16 14:48 ./
+drwxr-xr-x 24 root root      4096 Apr 16 14:03 ../
+-rwxr-xr-x  1 root root 101683200 Apr 16 14:03 minio-old*
+root@repo:/download# wget https://dl.min.io/server/minio/release/linux-amd64/minio
+root@repo:/download# chmod 755 minio
+root@repo:/download# ./minio --version
+minio version RELEASE.2024-04-06T05-26-02Z (commit-id=9d63bb1b418f6c1bbcc8434fff5d8aba810ee5d7)
+Runtime: go1.21.9 linux/amd64
+License: GNU AGPLv3 <https://www.gnu.org/licenses/agpl-3.0.html>
+Copyright: 2015-2024 MinIO, Inc.
+
+# 替换minio二进制
+root@repo:/download# mv -f ./minio /usr/local/bin/
+root@repo:/download# /usr/local/bin/minio --version
+minio version RELEASE.2024-04-06T05-26-02Z (commit-id=9d63bb1b418f6c1bbcc8434fff5d8aba810ee5d7)
+Runtime: go1.21.9 linux/amd64
+License: GNU AGPLv3 <https://www.gnu.org/licenses/agpl-3.0.html>
+Copyright: 2015-2024 MinIO, Inc.
+
+# 重启特定集群的所有节点服务，必须同时执行，多节点可使用ansible，不影响服务运行
+# 总共花了512毫秒
+root@repo:/download# mc admin service restart local/
+Restart command successfully sent to `local/`. Type Ctrl-C to quit or wait to follow the status of the restart process.
+┌────────────────┬────────┐
+│ HOST           │ STATUS │
+├────────────────┼────────┤
+│ 127.0.0.1:9000 │ ✔      │
+└────────────────┴────────┘
+
+....
+Restarted `local/` successfully in 512 milliseconds
+
+# 查看升级后的集群信息，版本为2024-04-06T05:26:02Z了
+root@repo:/download# mc admin info local/
+●  localhost:9000
+   Uptime: 13 seconds 
+   Version: 2024-04-06T05:26:02Z
+   Network: 1/1 OK 
+   Drives: 4/4 OK 
+   Pool: 1
+
+Pools:
+   1st, Erasure sets: 1, Drives per erasure set: 4
+
+0 B Used, 1 Bucket, 0 Objects
+4 drives online, 0 drives offline
+```
+
+
+
+##### 3.4.3 升级mc以匹配minio的版本
+
+```bash
+root@repo:/download# mc update 
+You are already running the most recent version of ‘mc’.
+```
+
+
+
+##### 3.4.4 systemctl管理minio方式升级
+
+```bash
+wget https://dl.min.io/server/minio/release/linux-amd64/archive/minio_20240315010719.0.0_amd64.deb -O minio.deb
+sudo dpkg -i minio.deb
+mc admin service restart ALIAS
+mc update
+```
+
+
+
+
+
+#### 3.5 偷懒问题
+
+上面偷懒为了无需新建磁盘，创建磁盘时使用的是目录代替，结果是部署完成后，在minio console界面访问时，4块磁盘的总空间为4T，而不是总空间1T，所以部署minio时必须是以磁盘为单位，否则会有异常事情发生。
+
+![MinIO Arch](../image/minio/07.png)
+
+
+
+**建议：将映射的目录{/data/minio/disk{1..4}}更改成真实的磁盘挂载即可。**
+
+
+
+#### 3.6 问题整改
+
+```bash
+# 添加配置硬盘
+root@repo:/shell# mkfs.xfs /dev/sdc -L DISK1 && mkfs.xfs /dev/sdd -L DISK2 && mkfs.xfs /dev/sde -L DISK3 && mkfs.xfs /dev/sdf -L DISK4
+root@repo:/shell# mkdir -p /minio/disk1 /minio/disk2 /minio/disk3 /minio/disk4
+root@repo:/shell# cat >> /etc/fstab << EOF
+LABEL=DISK1      /minio/disk1         xfs     defaults,noatime  0       2
+LABEL=DISK2      /minio/disk2         xfs     defaults,noatime  0       2
+LABEL=DISK3      /minio/disk3         xfs     defaults,noatime  0       2
+LABEL=DISK4      /minio/disk4         xfs     defaults,noatime  0       2
+EOF
+# 测试开机自动挂载
+root@repo:/shell# mount -a
+root@repo:/shell# df -TH | grep '/minio'
+/dev/sdc                        xfs       108G  141M  108G   1% /minio/disk1
+/dev/sdd                        xfs       108G  141M  108G   1% /minio/disk2
+/dev/sde                        xfs       108G  141M  108G   1% /minio/disk3
+/dev/sdf                        xfs       108G  141M  108G   1% /minio/disk4
+
+# 配置磁盘权限
+root@repo:~# chown minio-user:minio-user /minio/disk*
+root@repo:~# ll -d /minio/disk*
+drwxr-xr-x 2 minio-user minio-user 6 Apr 16 15:51 /minio/disk1/
+drwxr-xr-x 2 minio-user minio-user 6 Apr 16 15:51 /minio/disk2/
+drwxr-xr-x 2 minio-user minio-user 6 Apr 16 15:51 /minio/disk3/
+drwxr-xr-x 2 minio-user minio-user 6 Apr 16 15:51 /minio/disk4/
+
+
+# 更改配置文件
+root@repo:/shell# cat /etc/default/minio
+MINIO_VOLUMES="/minio/disk{1...4}"
+MINIO_OPTS="--address :9000 --console-address :9001"
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=PASSWORD
+MINIO_SERVER_URL="http://minio.hs.com"
+MINIO_PROMETHEUS_URL="http://192.168.13.236:9090"
+MINIO_PROMETHEUS_JOB_ID="minio-job"
+
+# nginx配置
+server {
+    listen 80;
+    server_name minio-api.hs.com;
+
+    location / {
+        proxy_buffering  off;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_pass http://192.168.13.202:9000;
+    }
+}
+
+server {
+    listen 80;
+    server_name minio.hs.com;
+
+    location / {
+        proxy_buffering  off;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_pass http://192.168.13.202:9001;
+    }
+}
+
+# 重新启动服务
+root@repo:~# systemctl restart minio
+root@repo:~# systemctl status minio
+* minio.service - MinIO
+   Loaded: loaded (/lib/systemd/system/minio.service; enabled; vendor preset: enabled)
+   Active: active (running) since Tue 2024-04-16 16:39:21 CST; 1s ago
+     Docs: https://min.io/docs/minio/linux/index.html
+  Process: 17247 ExecStartPre=/bin/bash -c if [ -z "${MINIO_VOLUMES}" ]; then echo "Variable MINIO_VOLUMES not set in /etc/default/minio"; exit 1; fi (code=exited, status=0/SUCCESS)
+ Main PID: 17252 (minio)
+    Tasks: 13
+   CGroup: /system.slice/minio.service
+           `-17252 /usr/local/bin/minio server --address :9000 --console-address :9001 /minio/disk{1...4}
+
+
+# 生成prometheus监控
+root@repo:~# for i in "local" "local node" "local bucket" "local resource";do mc admin prometheus generate $i ;done
+scrape_configs:
+- job_name: minio-job
+  bearer_token: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwcm9tZXRoZXVzIiwic3ViIjoibWluaW9hZG1pbiIsImV4cCI6NDg2Njg1NzQ0NX0.Jzgi6zc6YJU0bJlu3rc6WZdfxVz8jBxApmetg5gOnhldYVHrbbgKhNvpl766lWvV8hT3-k0W6o6rw2-iA3JKiw
+  metrics_path: /minio/v2/metrics/cluster
+  scheme: http
+  static_configs:
+  - targets: ['localhost:9000']
+
+scrape_configs:
+- job_name: minio-job-node
+  bearer_token: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwcm9tZXRoZXVzIiwic3ViIjoibWluaW9hZG1pbiIsImV4cCI6NDg2Njg1NzQ0NX0.Jzgi6zc6YJU0bJlu3rc6WZdfxVz8jBxApmetg5gOnhldYVHrbbgKhNvpl766lWvV8hT3-k0W6o6rw2-iA3JKiw
+  metrics_path: /minio/v2/metrics/node
+  scheme: http
+  static_configs:
+  - targets: ['localhost:9000']
+
+scrape_configs:
+- job_name: minio-job-bucket
+  bearer_token: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwcm9tZXRoZXVzIiwic3ViIjoibWluaW9hZG1pbiIsImV4cCI6NDg2Njg1NzQ0Nn0.AwXi5T1jD2-a8ZcXgChFriLVCslg1hbuZ1vg3SU-qGvwQzhUZPaZn23u5LaCpNwjFHoD5FiY4STQazYKhKY3Uw
+  metrics_path: /minio/v2/metrics/bucket
+  scheme: http
+  static_configs:
+  - targets: ['localhost:9000']
+
+scrape_configs:
+- job_name: minio-job-resource
+  bearer_token: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwcm9tZXRoZXVzIiwic3ViIjoibWluaW9hZG1pbiIsImV4cCI6NDg2Njg1NzQ0Nn0.AwXi5T1jD2-a8ZcXgChFriLVCslg1hbuZ1vg3SU-qGvwQzhUZPaZn23u5LaCpNwjFHoD5FiY4STQazYKhKY3Uw
+  metrics_path: /minio/v2/metrics/resource
+  scheme: http
+  static_configs:
+  - targets: ['localhost:9000']
+
+# 配置prometheus，这里可以用MINIO_SERVER_URL的地址
+  - job_name: minio-job
+    bearer_token: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwcm9tZXRoZXVzIiwic3ViIjoibWluaW9hZG1pbiIsImV4cCI6NDg2Njg1NzQ0NX0.Jzgi6zc6YJU0bJlu3rc6WZdfxVz8jBxApmetg5gOnhldYVHrbbgKhNvpl766lWvV8hT3-k0W6o6rw2-iA3JKiw
+    metrics_path: /minio/v2/metrics/cluster
+    scheme: http
+    static_configs:
+    - targets: [minio-api.hs.com]
+  - job_name: minio-job-node
+    bearer_token: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwcm9tZXRoZXVzIiwic3ViIjoibWluaW9hZG1pbiIsImV4cCI6NDg2Njg1NzQ0NX0.Jzgi6zc6YJU0bJlu3rc6WZdfxVz8jBxApmetg5gOnhldYVHrbbgKhNvpl766lWvV8hT3-k0W6o6rw2-iA3JKiw
+    metrics_path: /minio/v2/metrics/node
+    scheme: http
+    static_configs:
+    - targets: [minio-api.hs.com]
+  - job_name: minio-job-bucket
+    bearer_token: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwcm9tZXRoZXVzIiwic3ViIjoibWluaW9hZG1pbiIsImV4cCI6NDg2Njg1NzQ0Nn0.AwXi5T1jD2-a8ZcXgChFriLVCslg1hbuZ1vg3SU-qGvwQzhUZPaZn23u5LaCpNwjFHoD5FiY4STQazYKhKY3Uw
+    metrics_path: /minio/v2/metrics/bucket
+    scheme: http
+    static_configs:
+    - targets: [minio-api.hs.com]
+  - job_name: minio-job-resource
+    bearer_token: eyJhbGciOiJIUzUxMiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJwcm9tZXRoZXVzIiwic3ViIjoibWluaW9hZG1pbiIsImV4cCI6NDg2Njg1NzQ0Nn0.AwXi5T1jD2-a8ZcXgChFriLVCslg1hbuZ1vg3SU-qGvwQzhUZPaZn23u5LaCpNwjFHoD5FiY4STQazYKhKY3Uw
+    metrics_path: /minio/v2/metrics/resource
+    scheme: http
+    static_configs:
+    - targets: [minio-api.hs.com] 
+```
+
+**此时上面偷懒的问题才解决，共400G**
+
+![MinIO Arch](../image/minio/08.png)
+
+
+
+##### 3.7 恢复数据 
+
+```bash
+root@repo:/download# ls
+local-bucket-metadata.zip  local-iam-info.zip  minio-old
+
+# 导入之前备份的bucket和iam备份，前面是对整个集群进行备份的，所以这里也是对整个集群恢复的。另外也可以对单个bucket进行备份的
+root@repo:/download# mc admin cluster bucket import local/ local-bucket-metadata.zip 
+1/1 buckets were imported successfully.
+root@repo:/download# mc admin cluster iam import local/ local-iam-info.zip
+mc: IAM info imported to local from local-iam-info.zip
+```
+
+![MinIO Arch](../image/minio/09.png)
+
+
+
+
+
+
+
 ## 三、Minio备份和恢复
 
 
 
-### 3.1 备份
+### 1 备份
 
-
-
-#### 3.1 配置alias服务
+#### 1.1 配置alias服务
 
 ```bash
 # 添加Minio服务
@@ -848,7 +1325,7 @@ local
 
 
 
-#### 3.2 备份数据
+#### 1.2 备份数据
 
 备份alias为k8s的数据 
 
@@ -872,7 +1349,7 @@ root@ansible:/download/minio-dir# tree /mnt/minio/custom/backup-k8s/
 
 
 
-#### 3.3 恢复数据
+#### 1.3 恢复数据
 
 恢复 alias为k8s的数据 -> 到alias为local中
 
@@ -898,7 +1375,7 @@ root@ansible:/download/minio-dir# mc cp --recursive /mnt/minio/custom/backup-k8s
 
 
 
-#### 3.4 镜像数据
+#### 1.4 镜像数据
 
 先决条件：`配置alias服务`
 
@@ -914,5 +1391,280 @@ root@ansible:~# mc mirror --overwrite local k8s
 
 # 只迁移某个bucket，以test为例，迁移的目标bucket需要提前创建，--overwrite覆盖重名文件
 root@ansible:~# mc mirror --overwrite local/test k8s/test
+```
+
+
+
+
+
+
+
+## 四、 权限管理
+
+
+
+### 1. minio的访问策略描述
+
+minio的访问策略由policy文件进行描述，一个新的policy文件的模板如下：
+
+```json
+{
+   "Version" : "2012-10-17",
+   "Statement" : [
+      {
+         "Effect" : "Allow",
+         "Action" : [ "s3:<ActionName>", ... ],
+         "Resource" : "arn:aws:s3:::*",
+         "Condition" : { ... }
+      },
+      {
+         "Effect" : "Deny",
+         "Action" : [ "s3:<ActionName>", ... ],
+         "Resource" : "arn:aws:s3:::*",
+         "Condition" : { ... }
+      }
+   ]
+}
+```
+
+以下是对上述每个字段的描述
+
+**Version字段**
+
+Version字段代表的是policy描述文件遵守的版本，有2008-10-17和2012-10-17两个可选值，我们用2012-10-17即可。
+
+**Statement字段**
+
+描述该policy的详细规则，他是一个数组的形式，支持多种规则的灵活组合
+
+**Effect字段**
+
+描述该规则的类型，有两个可选项：Allow 和 Deny，Allow代表该规则是放行规则，Deny代表该规则是拦截规则
+
+**Action字段**
+
+数组类型，描述操作，其中，可以使用s3:* 通配所有权限。
+
+目前常用的操作摘录如下：
+
+- s3:CreateBucket  
+     ------- 创建bucket
+- s3:DeleteBucket
+     -------删除bucket
+- s3:ForceDeleteBucket
+     -------强制删除非空bucket
+- s3:GetBucketLocation
+     -------获取bucket Location
+- s3:ListBucket
+     -------获取所有bucket
+- s3:ListAllMyBuckets
+     -------获取所有有权限的bucket
+- s3:DeleteObject
+     -------删除对象
+- s3:GetObject
+     ------- 获取/下载文件
+- s3:PutObject
+     ------- 上传文件/生成文件上传链接
+
+[其他更详细的操作类型](https://min.io/docs/minio/linux/administration/identity-access-management/policy-based-access-control.html)
+
+
+
+**Resource字段**
+
+resource用于描述这个策略控制的资源，均以arn:aws:s3:::开头，以下是几个例子：
+
+- arn:aws:s3:::*  
+     -------所有资源池
+- arn:aws:s3:::testbucket/*  
+     -------testbucket这个bucket下的资源
+- arn:aws:s3:::testbucket/abc*  
+     -------testbucket这个bucket下所有abc前缀的资源
+- arn:aws:s3:::testbucket/abcd/abc.txt  
+     -------testbucket这个bucket下的/abcd/abc.txt这个资源
+
+
+
+**Condition字段**
+
+condation字段用于描述该策略的生效条件，一般不作配置，具体可设置的生效条件，可参见以下链接：
+
+https://docs.aws.amazon.com/zh_cn/IAM/latest/UserGuide/reference_policies_elements_condition.html
+
+
+
+**policy 文件示例**
+
+以下是一个policy文件的实例
+
+```json
+{
+   "Version" : "2012-10-17",
+   "Statement" : [
+      {
+         "Effect" : "Allow",
+         "Action" : [ "s3:ListBucket","s3:ListAllMyBuckets"],
+         "Resource" : "arn:aws:s3:::*"
+      },
+      {
+         "Effect" : "Allow",
+         "Action" : [ "s3:GetObject","s3:GetBucketLocation"],
+         "Resource" : "arn:aws:s3:::testbucket/*"
+      },
+	  {
+         "Effect" : "Deny",
+         "Action" : [ "s3:GetObject","s3:GetBucketLocation"],
+         "Resource" : "arn:aws:s3:::testbucket/20230504*"
+      }
+   ]
+}
+```
+
+上述的policy文件依次表示：
+
+- 能够（或在程序里使用minioClient.listBuckets）查看所有bucket的名称及基础属性（不包括对应bucket的文件访问权限）
+- 能够获取及下载testbucket这个bucket下的文件
+- 拒绝获取或下载testbucket这个bucket下的以20230504开头的所有文件
+
+
+
+### 2. 创建全新用户
+
+我们需要创建一个用户，并给这个用户授权，以让这个用户能访问特定的资源，以下操作我们使用minio的官方客户端mc
+
+>  由于minio的admin接口分为/v1，/v2，/v3等多个版本，所以必须使用和服务端配套的mc客户端使用，不能用高版本的mc客户端访问低版本的minioserver，否则可能无法正确处理admin指令，下文的演示以使用admin v1接口的版本举例，其他版本的使用命令也是类似的，只是内部真正发起的请求地址不一样。
+>
+> 最新版本的minioserver使用的是/v3的admin接口
+
+
+
+```bash
+root@repo:/download# mc mb local/testbucket
+Bucket created successfully `local/testbucket`.
+root@repo:/download# mc ls local/
+[2024-04-16 17:01:45 CST]     0B k8s/
+[2024-04-16 17:32:29 CST]     0B testbucket/
+
+```
+
+
+
+**新建访问策略**
+
+```bash
+root@repo:/download# cat testuser-policy.json 
+{
+   "Version" : "2012-10-17",
+   "Statement" : [
+      {
+         "Effect" : "Allow",
+         "Action" : [ "s3:ListBucket","s3:ListAllMyBuckets"],
+         "Resource" : "arn:aws:s3:::*"
+      },
+      {
+         "Effect" : "Allow",
+         "Action" : [ "s3:GetObject","s3:GetBucketLocation"],
+         "Resource" : "arn:aws:s3:::testbucket/*"
+      },
+	  {
+         "Effect" : "Deny",
+         "Action" : [ "s3:GetObject","s3:GetBucketLocation"],
+         "Resource" : "arn:aws:s3:::testbucket/20230504*"
+      }
+   ]
+}
+# 下面命令的local是mc客户端里设置的minio别名，testuser-policy是新建的访问策略名称，最后的路径是配置好的策略规则所在的文件全路径
+root@repo:/download# mc admin policy create local testuser-policy "/download/testuser-policy.json"
+Created policy `testuser-policy` successfully.
+```
+
+
+
+**创建用户**
+
+```bash
+# 创建用户testuser,密码为password
+root@repo:/download# mc admin user add local testuser password                
+Added user `testuser` successfully.
+
+# 附加策略testuser-policy到local集群中的用户testuser
+root@repo:/download# mc admin policy attach local testuser-policy --user testuser
+Attached Policies: [testuser-policy]
+To User: testuser
+```
+
+
+
+**修改用户的访问策略**
+
+```bash
+# 显示用户策略
+root@repo:/download# mc admin user policy local testuser          
+{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:ListAllMyBuckets","s3:ListBucket"],"Resource":["arn:aws:s3:::*"]},{"Effect":"Allow","Action":["s3:GetBucketLocation","s3:GetObject"],"Resource":["arn:aws:s3:::testbucket/*"]},{"Effect":"Deny","Action":["s3:GetObject","s3:GetBucketLocation"],"Resource":["arn:aws:s3:::testbucket/20230504*"]}]}
+
+# 附加和分离策略
+root@repo:/download# mc admin policy attach local readonly --user testuser
+Attached Policies: [readonly]
+To User: testuser
+root@repo:/download# mc admin policy detach local testuser-policy --user testuser
+Detached Policies: [testuser-policy]
+From User: testuser
+root@repo:/download# mc admin user policy local testuser
+{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:GetObject","s3:GetBucketLocation"],"Resource":["arn:aws:s3:::*"]}]}
+
+```
+
+
+
+**删除旧的访问策略**
+
+```bash
+root@repo:/download# mc admin policy list local/
+consoleAdmin
+diagnostics
+readonly
+readwrite
+testuser-policy
+writeonly
+# 删除policy
+root@repo:/download# mc admin policy remove local/ testuser-policy
+Removed policy `testuser-policy` successfully.
+root@repo:/download# mc admin policy list local/
+readwrite
+writeonly
+consoleAdmin
+diagnostics
+readonly
+```
+
+
+
+
+
+**创建用户的AK、SK**
+
+```bash
+root@repo:/download# mc admin user svcacct add local testuser --access-key "myaccesskey" --secret-key "mysecretkey"
+Access Key: myaccesskey
+Secret Key: mysecretkey
+Expiration: no-expiry
+
+root@repo:/download# mc admin user svcacct add local testuser --access-key "myaccesskey" --secret-key "mysecretkey" --expiry 2023-06-24T10:00:00-07:00
+```
+
+
+
+**使用AK、SK访问minio**
+
+```bash
+[root@prometheus ~]# mc alias set local http://minio-api.hs.com myaccesskey mysecretkey
+Added `local` successfully.
+
+[root@prometheus ~]# mc ls local/
+[2024-04-16 17:01:45 CST]     0B k8s/
+[2024-04-16 17:32:29 CST]     0B testbucket/
+[root@prometheus ~]# mc ls local/testbucket
+mc: <ERROR> Unable to list folder. Access Denied.
+
 ```
 
