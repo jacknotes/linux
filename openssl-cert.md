@@ -14,10 +14,10 @@ openssl req -new -x509 -key newca.key -out newca.pem -days 36500 -subj "/C=CN/ST
 ## 服务端证书申请
 ```
 (umask 0077; openssl genrsa -out goaccess.key 1024)
-openssl req -new -key goaccess.key -out goaccess.csr -days 365 -subj "/C=CN/ST=Shanghai/O=HOMSOM Inc/OU=www.homsom.com/CN=*.hs.com"
+openssl req -new -key goaccess.key -out goaccess.csr -subj "/C=CN/ST=Shanghai/O=HOMSOM Inc/OU=www.homsom.com/CN=*.hs.com"
 
 用自己rsa key生成自签名证书
-#openssl x509 -req -in goaccess.csr -signkey goaccess.key -out goaccess.pem -days 18250
+# openssl x509 -req -in goaccess.csr -signkey goaccess.key -out goaccess.pem -days 18250
 ```
 
 
@@ -108,8 +108,6 @@ Certificate:
 
 
 windows客户端安装newca.pem证书到`受信息的根证书颁发机构`
-
-
 
 ![](./image/openssl/01.png)
 
@@ -311,135 +309,208 @@ openssl ca -gencrl -out /etc/pki/CA/crl/06.pem.crl
 02.crl  03.crl  jumpserver.crl 06.pem.crl
 ```
 
+![](./image/openssl/02.png)
 
 
-#**手动添加CA证书到根证书颁发机构**
+
+
+
+
+
+
+
+# 生产CA签署证书
+
+
+
+## 1. 生成CA密钥对
 
 ```bash
-# ubuntu
-root@ansible:~/mkcert# cp /root/.local/share/mkcert/rootCA.pem /usr/local/share/ca-certificates/mkcert_development_CA.crt
-root@ansible:~/mkcert# update-ca-certificates
-Updating certificates in /etc/ssl/certs...
-rehash: warning: skipping ca-certificates.crt,it does not contain exactly one certificate or CRL
-1 added, 0 removed; done.
-Running hooks in /etc/ca-certificates/update.d...
-done.
-root@ansible:~/mkcert# ll /etc/ssl/certs/ | grep mkcert
-lrwxrwxrwx 1 root root     25 Apr 12 18:39 a9f8c356.0 -> mkcert_development_CA.pem
-lrwxrwxrwx 1 root root     58 Apr 12 18:39 mkcert_development_CA.pem -> /usr/local/share/ca-certificates/mkcert_development_CA.crt
+[root@prometheus linux]# (umask 0077; openssl genrsa -out ca.key 2048)
+[root@prometheus linux]# openssl req -new -x509 -key ca.key -out ca.pem -days 365000 -subj "/C=CN/ST=Shanghai/O=HOMSOM Inc/OU=Tech/CN=LinuxCA"
+[root@prometheus ca]# cd ..
+[root@prometheus linux]# ll ca
+total 8
+-rw------- 1 root root 1679 Apr 18 16:54 ca.key
+-rw-r--r-- 1 root root 1294 Apr 18 16:56 ca.pem
+
+[root@prometheus ca]# openssl x509 -in ca.pem -noout -text
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            01:42:ee:82:50:77:07:d8:4b:18:c8:c0:48:88:05:4d:69:51:3c:27
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: C = CN, ST = Shanghai, O = HOMSOM Inc, OU = Tech, CN = LinuxCA
+        Validity
+            Not Before: Apr 18 08:56:39 2024 GMT
+            Not After : Aug 20 08:56:39 3023 GMT
+        Subject: C = CN, ST = Shanghai, O = HOMSOM Inc, OU = Tech, CN = LinuxCA
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                RSA Public-Key: (2048 bit)
+.......
+```
 
 
-# centos
-# 未信任证书所以访问https报错
-[root@prometheus a]# curl -Iv https://mkcert.example.com
-* About to connect() to mkcert.example.com port 443 (#0)
-*   Trying 172.168.2.12...
-* Connected to mkcert.example.com (172.168.2.12) port 443 (#0)
-* Initializing NSS with certpath: sql:/etc/pki/nssdb
-*   CAfile: /etc/pki/tls/certs/ca-bundle.crt
-  CApath: none
-* Server certificate:
-* 	subject: OU=root@ansible,O=mkcert development certificate
-* 	start date: Apr 12 08:58:36 2024 GMT
-* 	expire date: Jul 12 08:58:36 2026 GMT
-* 	common name: (nil)
-* 	issuer: CN=mkcert root@ansible,OU=root@ansible,O=mkcert development CA
-* NSS error -8179 (SEC_ERROR_UNKNOWN_ISSUER)
-* Peer's Certificate issuer is not recognized.
-* Closing connection 0
-curl: (60) Peer's Certificate issuer is not recognized.
-More details here: http://curl.haxx.se/docs/sslcerts.html
 
-curl performs SSL certificate verification by default, using a "bundle"
- of Certificate Authority (CA) public keys (CA certs). If the default
- bundle file isn't adequate, you can specify an alternate file
- using the --cacert option.
-If this HTTPS server uses a certificate signed by a CA represented in
- the bundle, the certificate verification probably failed due to a
- problem with the certificate (it might be expired, or the name might
- not match the domain name in the URL).
-If you'd like to turn off curl's verification of the certificate, use
- the -k (or --insecure) option.
-# 复制证书到/etc/pki/ca-trust/source/anchors目录下，证书是crt格式，并更新证书
-[root@prometheus a]# cp rootCA.pem /etc/pki/ca-trust/source/anchors/mkcert_development_CA.crt 
-[root@prometheus a]# update-ca-trust 
-[root@prometheus a]# curl -Iv https://mkcert.example.com
-* About to connect() to mkcert.example.com port 443 (#0)
-*   Trying 172.168.2.12...
-* Connected to mkcert.example.com (172.168.2.12) port 443 (#0)
-* Initializing NSS with certpath: sql:/etc/pki/nssdb
-*   CAfile: /etc/pki/tls/certs/ca-bundle.crt
-  CApath: none
-* SSL connection using TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
-* Server certificate:
-* 	subject: OU=root@ansible,O=mkcert development certificate
-* 	start date: Apr 12 08:58:36 2024 GMT
-* 	expire date: Jul 12 08:58:36 2026 GMT
-* 	common name: (nil)
-* 	issuer: CN=mkcert root@ansible,OU=root@ansible,O=mkcert development CA
-> HEAD / HTTP/1.1
-> User-Agent: curl/7.29.0
-> Host: mkcert.example.com
-> Accept: */*
-> 
-< HTTP/1.1 200 OK
-HTTP/1.1 200 OK
-< Server: Tengine
-Server: Tengine
-< Date: Fri, 12 Apr 2024 10:44:25 GMT
-Date: Fri, 12 Apr 2024 10:44:25 GMT
-< Content-Type: text/html
-Content-Type: text/html
-< Content-Length: 14
-Content-Length: 14
-< Last-Modified: Fri, 12 Apr 2024 09:00:23 GMT
-Last-Modified: Fri, 12 Apr 2024 09:00:23 GMT
-< Connection: keep-alive
-Connection: keep-alive
-< ETag: "6618f827-e"
-ETag: "6618f827-e"
-< Accept-Ranges: bytes
-Accept-Ranges: bytes
+## 2. 生成server key
 
-< 
-* Connection #0 to host mkcert.example.com left intact
+```bash
+[root@prometheus ca_signed_server]# (umask 0077; openssl genrsa -out server.key 1024)
+Generating RSA private key, 1024 bit long modulus (2 primes)
+...............................................+++++
+.....+++++
+e is 65537 (0x010001)
+[root@prometheus ca_signed_server]# ll
+-rw------- 1 root root  887 Apr 18 17:35 server.key
+```
 
 
-# 查看根证书添加的位置
-[root@prometheus a]# nl /etc/pki/tls/certs/ca-bundle.crt | grep -A 30 mkcert
-    34	# mkcert root@ansible
-    35	-----BEGIN CERTIFICATE-----
-    36	MIIEeTCCAuGgAwIBAgIQGJRFB5hnxBkbCxVGneXp8zANBgkqhkiG9w0BAQsFADBV
-    37	MR4wHAYDVQQKExVta2NlcnQgZGV2ZWxvcG1lbnQgQ0ExFTATBgNVBAsMDHJvb3RA
-    38	YW5zaWJsZTEcMBoGA1UEAwwTbWtjZXJ0IHJvb3RAYW5zaWJsZTAeFw0yNDA0MTIw
-    39	ODU4MzZaFw0zNDA0MTIwODU4MzZaMFUxHjAcBgNVBAoTFW1rY2VydCBkZXZlbG9w
-    40	bWVudCBDQTEVMBMGA1UECwwMcm9vdEBhbnNpYmxlMRwwGgYDVQQDDBNta2NlcnQg
-    41	cm9vdEBhbnNpYmxlMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEArJ9K
-    42	UIZvxJhq7RGpkMw9rBtYCCHEi2R5qktf/OLJqq26dSYkuB7FuE8J9xG3y33FYVTD
-    43	iV53A0GVRxspsVNd1grP7p6W7xjqRF/l9X0nDJ4l0o9e2XHJE51qe+jjHNCFML4I
-    44	efzbNYCQfOFDMuhqcq2vcC1C9OxMQJ42RYjJ6V/8oqIG42RCivR1zRp1RpqxVZJW
-    45	hzzSPSQbOGZ/kXFv2P7YpqvLBffXRy4FVS8BeHjLY3WzDuX228O0UDJL2c/tq7Jz
-    46	fAbcc/fy8HYTde62Lxzxv/dMS50TJZLQiJlxlA/DxLQww1BYJ9gugjZZnfFpEXCO
-    47	+eSoesXJwufCJKJtmBUhFlPZOcSUqpnZsa+zypT6xvfVpPCpi/jZf0t+droX/7o0
-    48	nft4U/vR9Y3CmmQQWOQpJ5X5E0GnYb5lOQzvooYhjxkzNQpLi4MG6JvKFKVjkmRZ
-    49	3D7NSYsW5wOdxywe8PbnGV/Ax2m6nj8PdtuaVaukJnaCMaT7kcJ0ozcTR2qbAgMB
-    50	AAGjRTBDMA4GA1UdDwEB/wQEAwICBDASBgNVHRMBAf8ECDAGAQH/AgEAMB0GA1Ud
-    51	DgQWBBS1M8UhCF4q0nwnOK+xENz4LqdGgTANBgkqhkiG9w0BAQsFAAOCAYEAQ1/L
-    52	6LYZ/p5lBwLcKPFQqwEcYiElrG+VrYpC9lDEz0a8pOFBNq2phj4f44y3I+U8YH93
-    53	do1pvm6Sy2f1P7AvNST/LCvvsmHYjkvWME1L25bQ90Fayl+UHHqNaBt/6YjgFpQ+
-    54	9mHt9IcZ6xK7iMmD4FWRvZtuz9CNPzZSI5n3MrhUTjSGIgg02m3o1tY5mLPJWpWq
-    55	WI3pREcL7/UZ027+yJc3iTIOcwYl0U0SP4RjnK4n7XN5AZ43WHOxjnHi38/q/8dc
-    56	d6S9Sjq01ASERLzSGhvEWbUpb9tXHIg1YE37A030drfp7Brw9+5wWaEOzFS9mOxo
-    57	cqBH/6Dxzi+UwQky+6fHjNDv7Q0dwQ9bUec1sCTnP950IegSFSE3UOYtBv5QYSqN
-    58	CnWJ0XqCADKbhm0Q9e/koh0MSY0lH1roTwKJAm7FHPhc264NT+etfnd1BdcUHfeQ
-    59	tQhkEKrugrgjhmMKobUAjRgW6y+/QOTWNkQ7pzS1ayEJ3zm8mxc9NUgZK77u
-    60	-----END CERTIFICATE-----
-       
-    61	# ACCVRAIZ1
-    62	-----BEGIN CERTIFICATE-----
-    63	MIIH0zCCBbugAwIBAgIIXsO3pkN/pOAwDQYJKoZIhvcNAQEFBQAwQjESMBAGA1UE
+
+## 3. 制作配置文件
+
+```bash
+[root@prometheus server]# cat myssl.conf
+[ req ]
+default_bits       = 4096
+distinguished_name = req_distinguished_name
+req_extensions     = req_ext
+
+[ req_distinguished_name ]
+countryName                 = Country Name (2 letter code)
+countryName_default         = CN
+stateOrProvinceName         = State or Province Name (full name)
+stateOrProvinceName_default = Shanghai
+localityName                = Locality Name (eg, city)
+localityName_default        = Shanghai
+organizationName            = Organization Name (eg, company)
+organizationName_default    = Homsom
+organizationalUnitName            = Organizational Unit Name (eg, section)
+organizationalUnitName_default    = Tech
+commonName                  = Common Name (e.g. server FQDN or YOUR name)
+commonName_max              = 64
+commonName_default          = hs.com
+
+[ req_ext ]
+subjectAltName = @alt_names
+
+# 此段落标题的方括号两边【没有空格】，只有同时配有IP和域名，才能在IP和域名访问时都成功识别。
+[alt_names]
+IP.1    = 192.168.13.207
+IP.2    = 192.168.13.208
+DNS.1 = *.hs.com
+DNS.2 = *.hscorp.com
+DNS.3 = *.fat.qa.hs.com
+DNS.4 = *.uat.qa.hs.com
+DNS.5 = *.service.hs.com
+DNS.6 = *.api.hs.com
+DNS.7 = *.service.fat.qa.hs.com
+DNS.8 = *.api.fat.qa.hs.com
+DNS.9 = *.service.uat.qa.hs.com
+DNS.10 = *.api.uat.qa.hs.com
+DNS.11 = *.k8s.hs.com
+DNS.12 = *.k8s.fat.qa.hs.com
+DNS.13 = *.k8s.uat.qa.hs.com
+```
 
 
+
+## 4. 生成证书签署请求
+
+```bash
+[root@prometheus ca_signed_server]# ll
+total 8
+-rw-r--r-- 1 root root 1358 Apr 18 17:33 myssl.conf
+-rw------- 1 root root  887 Apr 18 17:35 server.key
+
+# 生成证书签署请求，直接Enter完成，使用配置好的默认值
+[root@prometheus server]# openssl req -new -key server.key -out server.csr -config myssl.conf
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [CN]:
+State or Province Name (full name) [Shanghai]:
+Locality Name (eg, city) [Shanghai]:
+Organization Name (eg, company) [Homsom]:
+Organizational Unit Name (eg, section) [Tech]:
+Common Name (e.g. server FQDN or YOUR name) [hs.com]:
+
+[root@prometheus ca_signed_server]# ll
+total 12
+-rw-r--r-- 1 root root 1358 Apr 18 17:33 myssl.conf
+-rw-r--r-- 1 root root 1037 Apr 18 17:37 server.csr
+-rw------- 1 root root  887 Apr 18 17:35 server.key
+```
+
+
+
+## 5. 使用CA签署证书
+
+```bash
+[root@prometheus ca_signed_server]# openssl x509 -req -in server.csr -CAkey ../ca/ca.key -CA ../ca/ca.pem -CAcreateserial -out server.pem -days 36500 -extensions req_ext -extfile myssl.confSignature ok
+subject=C = CN, ST = Shanghai, L = Shanghai, O = Homsom, OU = Tech, CN = hs.com
+Getting CA Private Key
+
+# 查看生成的证书
+[root@prometheus ca_signed_server]#  openssl x509 -noout -text -in server.pem 
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            21:b5:6f:ca:93:44:6f:ef:f9:df:3c:54:71:02:c9:a9:8f:41:c4:fb
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: C = CN, ST = Shanghai, O = HOMSOM Inc, OU = Tech, CN = LinuxCA
+        Validity
+            Not Before: Apr 18 09:47:28 2024 GMT
+            Not After : Mar 25 09:47:28 2124 GMT
+        Subject: C = CN, ST = Shanghai, L = Shanghai, O = Homsom, OU = Tech, CN = hs.com
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                RSA Public-Key: (1024 bit)
+                Modulus:
+                    00:ad:ce:ea:72:09:64:6b:bf:58:61:f4:e1:67:92:
+                    1b:5f:5d:f6:5d:c9:a9:99:52:f1:3a:1d:13:3d:34:
+                    5f:93:f6:58:fc:e4:2e:08:41:2f:e5:23:8f:3f:db:
+                    46:13:54:77:a0:13:68:ad:05:74:56:3f:71:42:bc:
+                    5d:f8:6f:b5:ff:a8:d1:1f:29:e0:ac:b1:0a:63:4b:
+                    99:98:09:c7:c2:5e:8c:d4:29:23:82:66:63:bd:6e:
+                    5e:15:60:49:47:dc:08:9a:1c:e6:f5:f1:99:4d:ef:
+                    48:18:ba:1f:37:bc:17:5f:7b:22:0d:bb:22:81:8a:
+                    fb:c1:c6:5a:3c:05:c3:c6:5f
+                Exponent: 65537 (0x10001)
+        X509v3 extensions:
+            X509v3 Subject Alternative Name: 
+                IP Address:192.168.13.207, IP Address:192.168.13.208, DNS:*.hs.com, DNS:*.hscorp.com, DNS:*.fat.qa.hs.com, DNS:*.uat.qa.hs.com, DNS:*.service.hs.com, DNS:*.api.hs.com, DNS:*.service.fat.qa.hs.com, DNS:*.api.fat.qa.hs.com, DNS:*.service.uat.qa.hs.com, DNS:*.api.uat.qa.hs.com, DNS:*.k8s.hs.com, DNS:*.k8s.fat.qa.hs.com, DNS:*.k8s.uat.qa.hs.com
+    Signature Algorithm: sha256WithRSAEncryption
+         71:85:4b:e0:76:91:c8:96:0a:6d:26:86:fc:4d:37:e2:e6:d1:
+         b0:47:d8:4a:1e:7e:aa:38:ab:fe:13:97:62:66:a1:5f:76:2c:
+         96:86:5a:fa:23:9b:91:41:44:7c:cb:f8:8f:7f:cd:a8:a0:2e:
+         9f:39:00:79:8f:e4:af:d2:46:46:e6:52:b8:61:5b:55:99:93:
+         89:77:07:1a:23:63:88:24:dc:27:76:cd:ee:c6:e3:8e:a6:ac:
+         93:7f:63:cf:f0:2f:9f:ba:20:54:2f:ea:96:0a:0a:37:f1:e3:
+         e0:a0:16:ab:d6:c5:be:af:84:95:61:b1:01:63:18:de:a1:7f:
+         7d:78:1a:ee:40:bf:29:28:c8:c4:1b:a5:4c:7c:ae:1b:22:f1:
+         70:59:fd:13:5b:ff:d0:c2:4c:27:cc:ca:75:9f:03:19:da:11:
+         6a:16:c8:75:7f:9c:c9:37:7a:2f:23:b8:af:96:22:f8:85:12:
+         3c:9b:35:eb:b2:d3:e8:97:39:6a:99:2f:2b:49:9b:29:c3:f4:
+         3c:4d:04:7f:86:80:88:0e:39:65:fc:e4:65:a8:3c:87:e2:1b:
+         1f:e4:cd:0e:33:5d:e5:29:e9:7f:8f:ba:ae:2a:27:0a:35:b7:
+         e9:38:82:eb:0f:ea:1d:30:bd:69:ae:03:fd:93:c3:9b:cd:53:
+         2b:af:24:64
+```
+
+
+
+## 6. 验证证书和CA关系
+
+```bash
+[root@prometheus ca_signed_server]# openssl verify -CAfile ../ca/ca.pem server.pem 
+server.pem: OK
 ```
 
 
@@ -448,7 +519,176 @@ Accept-Ranges: bytes
 
 
 
-![](./image/openssl/02.png)
+
+
+# 自签名证书
+
+
+
+## 1. 生成服务器key
+
+```bash
+# 生成服务器key
+[root@prometheus server]# (umask 0077; openssl genrsa -out server.key 1024)
+```
+
+
+
+## 2. 制作配置文件
+
+```bash
+# 制作配置文件
+[root@prometheus server]# cat myssl.conf
+[ req ]
+default_bits       = 4096
+distinguished_name = req_distinguished_name
+req_extensions     = req_ext
+
+[ req_distinguished_name ]
+countryName                 = Country Name (2 letter code)
+countryName_default         = CN
+stateOrProvinceName         = State or Province Name (full name)
+stateOrProvinceName_default = Shanghai
+localityName                = Locality Name (eg, city)
+localityName_default        = Shanghai
+organizationName            = Organization Name (eg, company)
+organizationName_default    = Homsom
+organizationalUnitName            = Organizational Unit Name (eg, section)
+organizationalUnitName_default    = Tech
+commonName                  = Common Name (e.g. server FQDN or YOUR name)
+commonName_max              = 64
+commonName_default          = hs.com
+
+[ req_ext ]
+subjectAltName = @alt_names
+
+# 此段落标题的方括号两边【没有空格】，只有同时配有IP和域名，才能在IP和域名访问时都成功识别。
+[alt_names]
+IP.1    = 192.168.13.207
+IP.2    = 192.168.13.208
+DNS.1 = *.hs.com
+DNS.2 = *.hscorp.com
+DNS.3 = *.fat.qa.hs.com
+DNS.4 = *.uat.qa.hs.com
+DNS.5 = *.service.hs.com
+DNS.6 = *.api.hs.com
+DNS.7 = *.service.fat.qa.hs.com
+DNS.8 = *.api.fat.qa.hs.com
+DNS.9 = *.service.uat.qa.hs.com
+DNS.10 = *.api.uat.qa.hs.com
+DNS.11 = *.k8s.hs.com
+DNS.12 = *.k8s.fat.qa.hs.com
+DNS.13 = *.k8s.uat.qa.hs.com
+```
+
+
+
+## 3. 生成证书签署请求
+
+```bash
+# 生成证书签署请求，直接Enter完成，使用配置好的默认值
+[root@prometheus server]# openssl req -new -key server.key -out server.csr -config myssl.conf
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [CN]:
+State or Province Name (full name) [Shanghai]:
+Locality Name (eg, city) [Shanghai]:
+Organization Name (eg, company) [Homsom]:
+Organizational Unit Name (eg, section) [Tech]:
+Common Name (e.g. server FQDN or YOUR name) [hs.com]:
+
+[root@prometheus server]# ll
+-rw-r--r-- 1 root root 1358 Apr 18 17:06 myssl.conf
+-rw-r--r-- 1 root root 1037 Apr 18 17:11 server.csr
+-rw------- 1 root root  887 Apr 18 16:58 server.key
+```
+
+
+
+## 4. 使用自己的key签署自己的csr
+
+```bash
+[root@prometheus server]# openssl x509 -req -days 365000 -in server.csr -signkey server.key -out server.crt -extensions req_ext -extfile myssl.conf
+Signature ok
+subject=C = CN, ST = Shanghai, L = Shanghai, O = Homsom, OU = Tech, CN = hs.com
+Getting Private key
+```
+
+
+
+## 5. 查看证书信息
+
+```bash
+[root@prometheus server]# ll
+-rw-r--r-- 1 root root 1358 Apr 18 17:06 myssl.conf
+-rw-r--r-- 1 root root 1233 Apr 18 17:17 server.crt
+-rw-r--r-- 1 root root 1037 Apr 18 17:11 server.csr
+-rw------- 1 root root  887 Apr 18 16:58 server.key
+[root@prometheus server]# openssl req -in server.crt -noout -text
+unable to load X509 request
+139637541758784:error:0909006C:PEM routines:get_name:no start line:crypto/pem/pem_lib.c:745:Expecting: CERTIFICATE REQUEST
+[root@prometheus server]# openssl x509 -in server.crt -noout -text
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            7a:ae:85:f9:01:2c:5b:3b:ef:86:7e:92:b3:5a:70:ed:a3:f6:a5:63
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: C = CN, ST = Shanghai, L = Shanghai, O = Homsom, OU = Tech, CN = hs.com
+        Validity
+            Not Before: Apr 18 09:17:17 2024 GMT
+            Not After : Aug 20 09:17:17 3023 GMT
+        Subject: C = CN, ST = Shanghai, L = Shanghai, O = Homsom, OU = Tech, CN = hs.com
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                RSA Public-Key: (1024 bit)
+                Modulus:
+                    00:b1:b0:82:75:ab:a2:47:2c:bf:27:8a:82:b7:72:
+                    96:88:fd:59:d6:49:ad:cc:ae:cc:23:a6:fc:b8:53:
+                    52:63:d6:15:c8:d3:6e:d4:b2:08:b3:f4:1e:78:ad:
+                    a4:7f:0d:be:54:64:1f:ba:8d:3d:fa:5f:87:9c:35:
+                    66:1c:fd:66:b1:95:31:1f:eb:1b:d9:f4:70:47:cc:
+                    5e:64:29:69:a0:0b:09:ec:4d:4e:a7:10:48:16:46:
+                    5a:80:0e:1d:bb:d6:64:bf:8d:40:ae:57:5d:75:46:
+                    cf:bc:40:52:f8:2e:32:6d:20:0c:e3:73:42:38:56:
+                    16:42:36:83:3a:a2:22:7e:87
+                Exponent: 65537 (0x10001)
+        X509v3 extensions:
+            X509v3 Subject Alternative Name: 
+                IP Address:192.168.13.207, IP Address:192.168.13.208, DNS:*.hs.com, DNS:*.hscorp.com, DNS:*.fat.qa.hs.com, DNS:*.uat.qa.hs.com, DNS:*.service.hs.com, DNS:*.api.hs.com, DNS:*.service.fat.qa.hs.com, DNS:*.api.fat.qa.hs.com, DNS:*.service.uat.qa.hs.com, DNS:*.api.uat.qa.hs.com, DNS:*.k8s.hs.com, DNS:*.k8s.fat.qa.hs.com, DNS:*.k8s.uat.qa.hs.com
+    Signature Algorithm: sha256WithRSAEncryption
+         a0:73:26:99:87:1e:e7:35:b6:7b:d4:11:e7:e7:a0:f5:91:a8:
+         bd:7a:90:a3:b8:7e:4c:c0:79:6f:af:84:f6:82:c5:6e:c8:ed:
+         7a:53:ae:32:e1:5b:7a:08:8d:61:3c:b1:c4:83:ab:9c:f4:cd:
+         83:06:21:33:25:bb:c3:b8:16:09:bb:48:c4:71:20:96:6d:28:
+         8d:70:70:99:d0:51:af:39:47:29:6a:78:4a:f0:68:e5:2c:7f:
+         78:fe:ca:a7:08:84:96:6f:4f:28:2c:b6:f6:e1:e6:43:8c:54:
+         0f:93:6f:69:a4:3e:eb:47:3e:fb:a1:41:ac:69:e5:de:39:8e:
+         c4:e8
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1363,6 +1603,226 @@ server {
                 }
         }
 }
+
+
+```
+
+
+
+
+
+# 其它
+
+
+
+## 从windows导出CA并导入到linux
+
+
+
+**原因**
+
+```bash
+# 访问自签名证书的https服务不被信任
+[root@prometheus windows]# curl -I https://jenkins.hs.com
+curl: (60) Peer's Certificate issuer is not recognized.
+More details here: http://curl.haxx.se/docs/sslcerts.html
+
+curl performs SSL certificate verification by default, using a "bundle"
+ of Certificate Authority (CA) public keys (CA certs). If the default
+ bundle file isn't adequate, you can specify an alternate file
+ using the --cacert option.
+If this HTTPS server uses a certificate signed by a CA represented in
+ the bundle, the certificate verification probably failed due to a
+ problem with the certificate (it might be expired, or the name might
+ not match the domain name in the URL).
+If you'd like to turn off curl's verification of the certificate, use
+ the -k (or --insecure) option.
+```
+
+
+
+**导出**
+
+![](./image/openssl/cert/01.png)
+
+![](./image/openssl/cert/02.png)
+
+
+
+**导入**
+
+```bash
+[root@prometheus windows]# realpath homsom-ca.cer 
+/root/openssl-cert/windows/homsom-ca.cer
+# 转换证书格式为linux
+[root@prometheus windows]# openssl x509 -inform der -in homsom-ca.cer -out homsom-ca-linux.cer 
+[root@prometheus windows]# cp homsom-ca-linux.cer /etc/pki/ca-trust/source/anchors/
+[root@prometheus windows]# ls -l /etc/pki/ca-trust/source/anchors/
+total 12
+-rw-r--r-- 1 root root 2000 Dec 30  2021 harbor_ca.cer
+-rw-r--r-- 1 root root 1025 Apr 18 15:56 homsom-ca-linux.cer
+-rw-r--r-- 1 root root 1610 Apr 12 18:44 mkcert_development_CA.crt
+# 自动导入证书到根证书颁发机构文件中
+[root@prometheus windows]# update-ca-trust 
+```
+
+
+
+**再次访问**
+
+```bash
+[root@prometheus windows]# curl -I https://jenkins.hs.com/login
+HTTP/1.1 200 OK
+Server: Tengine
+Date: Thu, 18 Apr 2024 08:01:16 GMT
+Content-Type: text/html;charset=utf-8
+Content-Length: 1872
+Connection: keep-alive
+Vary: Accept-Encoding
+X-Content-Type-Options: nosniff
+Expires: Thu, 01 Jan 1970 00:00:00 GMT
+Cache-Control: no-cache,no-store,must-revalidate
+X-Hudson: 1.395
+X-Jenkins: 2.155
+X-Jenkins-Session: 819e054e
+X-Hudson-CLI-Port: 49211
+X-Jenkins-CLI-Port: 49211
+X-Jenkins-CLI2-Port: 49211
+X-Frame-Options: sameorigin
+X-Instance-Identity: MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjmCEkqhq81xE7IMXL40sIqoY1xT8eHDn0/0g35cPVXox3xWakx6M6942cJ3t1fQD4MTmNg5V+7QyEl902imEcgZcH/rfEXYz1rT3pd1BMdZCQr70/M8N849K+hOiQ7Cy7iBan5VpD+sLUCCLRYDS5rcmkJKFhoT6j4nwm4oc8lEy0bLtgA/0BEQrAsQNvjM/U40CJg916O+YU53PQ+hdKKmWFgeA2XihMXTrhinp1s4AMaHw5JqCQenNJr/nqo5L774IHWFse14khXEzH3Jk3V/9mcFhQ118RHQ4mu2gKQ6/lompRgcCVlk8QCwCSneS2e+aAJNcljaRrQfH6za92QIDAQAB
+Set-Cookie: JSESSIONID.091f6099=node0mft5t1tiany51uxav5oh9l39a11802324.node0;Path=/;HttpOnly
+
+```
+
+
+
+
+
+## 手动添加CA证书到根证书颁发机构
+
+```bash
+# ubuntu
+root@ansible:~/mkcert# cp /root/.local/share/mkcert/rootCA.pem /usr/local/share/ca-certificates/mkcert_development_CA.crt
+root@ansible:~/mkcert# update-ca-certificates
+Updating certificates in /etc/ssl/certs...
+rehash: warning: skipping ca-certificates.crt,it does not contain exactly one certificate or CRL
+1 added, 0 removed; done.
+Running hooks in /etc/ca-certificates/update.d...
+done.
+root@ansible:~/mkcert# ll /etc/ssl/certs/ | grep mkcert
+lrwxrwxrwx 1 root root     25 Apr 12 18:39 a9f8c356.0 -> mkcert_development_CA.pem
+lrwxrwxrwx 1 root root     58 Apr 12 18:39 mkcert_development_CA.pem -> /usr/local/share/ca-certificates/mkcert_development_CA.crt
+
+
+# centos
+# 未信任证书所以访问https报错
+[root@prometheus a]# curl -Iv https://mkcert.example.com
+* About to connect() to mkcert.example.com port 443 (#0)
+*   Trying 172.168.2.12...
+* Connected to mkcert.example.com (172.168.2.12) port 443 (#0)
+* Initializing NSS with certpath: sql:/etc/pki/nssdb
+*   CAfile: /etc/pki/tls/certs/ca-bundle.crt
+  CApath: none
+* Server certificate:
+* 	subject: OU=root@ansible,O=mkcert development certificate
+* 	start date: Apr 12 08:58:36 2024 GMT
+* 	expire date: Jul 12 08:58:36 2026 GMT
+* 	common name: (nil)
+* 	issuer: CN=mkcert root@ansible,OU=root@ansible,O=mkcert development CA
+* NSS error -8179 (SEC_ERROR_UNKNOWN_ISSUER)
+* Peer's Certificate issuer is not recognized.
+* Closing connection 0
+curl: (60) Peer's Certificate issuer is not recognized.
+More details here: http://curl.haxx.se/docs/sslcerts.html
+
+curl performs SSL certificate verification by default, using a "bundle"
+ of Certificate Authority (CA) public keys (CA certs). If the default
+ bundle file isn't adequate, you can specify an alternate file
+ using the --cacert option.
+If this HTTPS server uses a certificate signed by a CA represented in
+ the bundle, the certificate verification probably failed due to a
+ problem with the certificate (it might be expired, or the name might
+ not match the domain name in the URL).
+If you'd like to turn off curl's verification of the certificate, use
+ the -k (or --insecure) option.
+# 复制证书到/etc/pki/ca-trust/source/anchors目录下，证书是crt格式，并更新证书
+[root@prometheus a]# cp rootCA.pem /etc/pki/ca-trust/source/anchors/mkcert_development_CA.crt 
+[root@prometheus a]# update-ca-trust 
+[root@prometheus a]# curl -Iv https://mkcert.example.com
+* About to connect() to mkcert.example.com port 443 (#0)
+*   Trying 172.168.2.12...
+* Connected to mkcert.example.com (172.168.2.12) port 443 (#0)
+* Initializing NSS with certpath: sql:/etc/pki/nssdb
+*   CAfile: /etc/pki/tls/certs/ca-bundle.crt
+  CApath: none
+* SSL connection using TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256
+* Server certificate:
+* 	subject: OU=root@ansible,O=mkcert development certificate
+* 	start date: Apr 12 08:58:36 2024 GMT
+* 	expire date: Jul 12 08:58:36 2026 GMT
+* 	common name: (nil)
+* 	issuer: CN=mkcert root@ansible,OU=root@ansible,O=mkcert development CA
+> HEAD / HTTP/1.1
+> User-Agent: curl/7.29.0
+> Host: mkcert.example.com
+> Accept: */*
+> 
+< HTTP/1.1 200 OK
+HTTP/1.1 200 OK
+< Server: Tengine
+Server: Tengine
+< Date: Fri, 12 Apr 2024 10:44:25 GMT
+Date: Fri, 12 Apr 2024 10:44:25 GMT
+< Content-Type: text/html
+Content-Type: text/html
+< Content-Length: 14
+Content-Length: 14
+< Last-Modified: Fri, 12 Apr 2024 09:00:23 GMT
+Last-Modified: Fri, 12 Apr 2024 09:00:23 GMT
+< Connection: keep-alive
+Connection: keep-alive
+< ETag: "6618f827-e"
+ETag: "6618f827-e"
+< Accept-Ranges: bytes
+Accept-Ranges: bytes
+
+< 
+* Connection #0 to host mkcert.example.com left intact
+
+
+# 查看根证书添加的位置
+[root@prometheus a]# nl /etc/pki/tls/certs/ca-bundle.crt | grep -A 30 mkcert
+    34	# mkcert root@ansible
+    35	-----BEGIN CERTIFICATE-----
+    36	MIIEeTCCAuGgAwIBAgIQGJRFB5hnxBkbCxVGneXp8zANBgkqhkiG9w0BAQsFADBV
+    37	MR4wHAYDVQQKExVta2NlcnQgZGV2ZWxvcG1lbnQgQ0ExFTATBgNVBAsMDHJvb3RA
+    38	YW5zaWJsZTEcMBoGA1UEAwwTbWtjZXJ0IHJvb3RAYW5zaWJsZTAeFw0yNDA0MTIw
+    39	ODU4MzZaFw0zNDA0MTIwODU4MzZaMFUxHjAcBgNVBAoTFW1rY2VydCBkZXZlbG9w
+    40	bWVudCBDQTEVMBMGA1UECwwMcm9vdEBhbnNpYmxlMRwwGgYDVQQDDBNta2NlcnQg
+    41	cm9vdEBhbnNpYmxlMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEArJ9K
+    42	UIZvxJhq7RGpkMw9rBtYCCHEi2R5qktf/OLJqq26dSYkuB7FuE8J9xG3y33FYVTD
+    43	iV53A0GVRxspsVNd1grP7p6W7xjqRF/l9X0nDJ4l0o9e2XHJE51qe+jjHNCFML4I
+    44	efzbNYCQfOFDMuhqcq2vcC1C9OxMQJ42RYjJ6V/8oqIG42RCivR1zRp1RpqxVZJW
+    45	hzzSPSQbOGZ/kXFv2P7YpqvLBffXRy4FVS8BeHjLY3WzDuX228O0UDJL2c/tq7Jz
+    46	fAbcc/fy8HYTde62Lxzxv/dMS50TJZLQiJlxlA/DxLQww1BYJ9gugjZZnfFpEXCO
+    47	+eSoesXJwufCJKJtmBUhFlPZOcSUqpnZsa+zypT6xvfVpPCpi/jZf0t+droX/7o0
+    48	nft4U/vR9Y3CmmQQWOQpJ5X5E0GnYb5lOQzvooYhjxkzNQpLi4MG6JvKFKVjkmRZ
+    49	3D7NSYsW5wOdxywe8PbnGV/Ax2m6nj8PdtuaVaukJnaCMaT7kcJ0ozcTR2qbAgMB
+    50	AAGjRTBDMA4GA1UdDwEB/wQEAwICBDASBgNVHRMBAf8ECDAGAQH/AgEAMB0GA1Ud
+    51	DgQWBBS1M8UhCF4q0nwnOK+xENz4LqdGgTANBgkqhkiG9w0BAQsFAAOCAYEAQ1/L
+    52	6LYZ/p5lBwLcKPFQqwEcYiElrG+VrYpC9lDEz0a8pOFBNq2phj4f44y3I+U8YH93
+    53	do1pvm6Sy2f1P7AvNST/LCvvsmHYjkvWME1L25bQ90Fayl+UHHqNaBt/6YjgFpQ+
+    54	9mHt9IcZ6xK7iMmD4FWRvZtuz9CNPzZSI5n3MrhUTjSGIgg02m3o1tY5mLPJWpWq
+    55	WI3pREcL7/UZ027+yJc3iTIOcwYl0U0SP4RjnK4n7XN5AZ43WHOxjnHi38/q/8dc
+    56	d6S9Sjq01ASERLzSGhvEWbUpb9tXHIg1YE37A030drfp7Brw9+5wWaEOzFS9mOxo
+    57	cqBH/6Dxzi+UwQky+6fHjNDv7Q0dwQ9bUec1sCTnP950IegSFSE3UOYtBv5QYSqN
+    58	CnWJ0XqCADKbhm0Q9e/koh0MSY0lH1roTwKJAm7FHPhc264NT+etfnd1BdcUHfeQ
+    59	tQhkEKrugrgjhmMKobUAjRgW6y+/QOTWNkQ7pzS1ayEJ3zm8mxc9NUgZK77u
+    60	-----END CERTIFICATE-----
+       
+    61	# ACCVRAIZ1
+    62	-----BEGIN CERTIFICATE-----
+    63	MIIH0zCCBbugAwIBAgIIXsO3pkN/pOAwDQYJKoZIhvcNAQEFBQAwQjESMBAGA1UE
 
 
 ```

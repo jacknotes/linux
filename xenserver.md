@@ -388,5 +388,14 @@ uuid ( RO)           : 436c3d59-e53d-5862-ad2f-3f6a26d7a430
 
 
 
+## 增加控制域内存
 
+
+[xenserver7手册](https://docs.xenserver.com/zh-cn/xenserver/7-0/downloads/administrators-guide.pdf)
+
+```bash
+# 通过root用户连接到xenserver主机，使用此命令配置xenserver控制域内存，需要重启xenserver生效
+# 其中 <nn> 代表分配给 dom0 的内存量（以 MB 为单位）。
+/opt/xensource/libexec/xen-cmdline --set-xen dom0_mem=<nn>M,max:<nn>M
+```
 
