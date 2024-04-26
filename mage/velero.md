@@ -431,7 +431,7 @@ velero install \
 --backup-location-config region=minio,s3ForcePathStyle="true",s3Url=http://192.168.13.63:30100
 
 
-# 安装
+# 安装，可执行多次./velero-install.sh
 root@ansible:~/k8s/addons/velero# ./velero-server-install.sh
 CustomResourceDefinition/backups.velero.io: attempting to create resource
 CustomResourceDefinition/backups.velero.io: attempting to create resource client
@@ -540,11 +540,18 @@ Server:
 
 #### 3.3 velero卸载
 
-如果有需要可按照如下命令拆除velero部署，
+如果有需要可按照如下命令拆除velero部署
+
+```bash
+velero uninstall
+```
+
+以下分步骤删除
 
 ```bash
 kubectl delete clusterrolebinding/velero
 kubectl delete crds -l component=velero
+kubectl delete ns velero 
 ```
 
 

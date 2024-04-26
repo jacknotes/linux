@@ -1643,6 +1643,8 @@ readonly
 
 **创建用户的AK、SK**
 
+> 只有先对用户附加`策略`后，才可创建用户的AK、SK
+
 ```bash
 root@repo:/download# mc admin user svcacct add local testuser --access-key "myaccesskey" --secret-key "mysecretkey"
 Access Key: myaccesskey
