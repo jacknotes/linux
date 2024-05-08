@@ -478,7 +478,7 @@ k8s-test     Available     46s              41m   false
 
 
 
-### 10.1 NFS持久化
+### 10.1 NFS持久化备份
 
 
 
@@ -818,7 +818,7 @@ total 8
 
 
 
-### 10.2 PV持久化
+### 10.2 PV持久化备份
 
 
 
@@ -1228,3 +1228,57 @@ total 8
 ```
 
 > 经过备份及恢复有PV数据的服务，完美的恢复了服务及PV中的数据，经过测试，PV中的数据无丢失。
+
+
+
+
+
+
+
+## 11. k8s-opstest集群备份
+
+
+
+### 11.1 集群备份
+
+```bash
+# 查看备份位置
+root@ansible:~# velero get backup-locations
+NAME         PROVIDER   BUCKET/PREFIX   PHASE       LAST VALIDATED                  ACCESS MODE   DEFAULT
+default      aws        k8s-opstest     Available   2024-04-26 15:42:10 +0800 CST   ReadWrite     true
+k8s-prepro   aws        k8s-prepro      Available   2024-04-26 15:42:50 +0800 CST   ReadWrite
+k8s-pro      aws        k8s-pro         Available   2024-04-26 15:43:00 +0800 CST   ReadWrite
+k8s-test     aws        k8s-test        Available   2024-04-26 15:43:00 +0800 CST   ReadWrite
+
+# 备份整个k8s集群
+root@ansible:~# velero backup create cluster-backup --default-volumes-to-restic
+Backup request "cluster-backup" submitted successfully.
+Run `velero backup describe cluster-backup` or `velero backup logs cluster-backup` for more details.
+root@ansible:~# velero backup get
+NAME             STATUS       ERRORS   WARNINGS   CREATED                         EXPIRES   STORAGE LOCATION   SELECTOR
+cluster-backup   InProgress   0        0          2024-04-26 15:43:13 +0800 CST   29d       default            <none>
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
