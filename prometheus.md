@@ -1973,6 +1973,7 @@ WantedBy=multi-user.target
           transport_protocol: 'udp'
           query_type: 'ANY'
  注：icmp这个功能需要调整linux内核参数，否则除root外的普通用户无法ping，应在/etc/sysctl.conf设为：net.ipv4.ping_group_range = 0 9090，表示0到9090的组ID范围，运行blackbox_exporter的用户组ID必须在这范围内才有效
+ 否则报错：Unable to do unprivileged listen on socket, will attempt privileged" err="socket: permission denied
  
  [root@node3 /download]# cat /usr/lib/systemd/system/blackbox_exporter.service
  --------

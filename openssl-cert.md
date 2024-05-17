@@ -1701,7 +1701,7 @@ Set-Cookie: JSESSIONID.091f6099=node0mft5t1tiany51uxav5oh9l39a11802324.node0;Pat
 ## 手动添加CA证书到根证书颁发机构
 
 ```bash
-# ubuntu
+# ubuntu，detian， Alpine Linux ubuntu
 root@ansible:~/mkcert# cp /root/.local/share/mkcert/rootCA.pem /usr/local/share/ca-certificates/mkcert_development_CA.crt
 root@ansible:~/mkcert# update-ca-certificates
 Updating certificates in /etc/ssl/certs...

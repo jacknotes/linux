@@ -1,6 +1,22 @@
 # frp
 
-## frp安装 
+frp就是一个反向代理软件，它体积轻量但功能很强大，可以使处于内网或防火墙后的设备对外界提供服务，它支持HTTP、TCP、UDP等众多协议。我们今天仅讨论TCP和UDP相关的内容。
+
+
+
+**为什么需要内网穿透功能**
+
+*从公网中访问自己的私有设备向来是一件难事儿* 自己的主力台式机、NAS等等设备，它们可能处于路由器后，或者运营商因为IP地址短缺不给你分配公网IP地址。如果我们想直接访问到这些设备（远程桌面，远程文件，SSH等等），一般来说要通过一些转发或者P2P组网软件的帮助。 我有一台计算机位于一个很复杂的局域网中，我想要实现远程桌面和文件访问，目前来看其所处的网络环境很难通过简单的端口映射将其暴露在公网之中，我试过这么几种方法：
+
+1. 远程桌面使用TeamViewer。可用，但需要访问端也拥有TeamViewer软件，不是很方便，希望能使用Windows自带的远程桌面。且TeamViewer不易实现远程文件访问。
+2. 使用蒲公英VPN软件进行组网，可用，但免费版本网络速度极慢，体验不佳，几乎无法正常使用。
+3. 使用花生壳软件进行DDNS解析，可用，但同第二点所述，免费版本有带宽限制，无法实际使用。
+4. 搭建frp服务器进行内网穿透，可用且推荐，可以达到不错的速度，且理论上可以开放任何想要的端口，可以实现的功能远不止远程桌面或者文件共享。
+
+
+
+## 1. frp安装 
+
 ```
 curl -OL https://github.com/fatedier/frp/releases/download/v0.44.0/frp_0.44.0_linux_amd64.tar.gz
 tar xf frp_0.44.0_linux_amd64.tar.gz -C /usr/local/
@@ -10,9 +26,14 @@ cd frp
 vim frps.ini 
 ```
 
-## frp配置
 
-### frp服务端配置
+
+## 2. frp配置
+
+
+
+### 2.1 frp服务端配置
+
 ```
 [root@prometheus frp]# cat frps.ini 
 [common]
@@ -50,7 +71,9 @@ LISTEN     0      1024      [::]:7123                  [::]:*
 ```
 
 
-### frp客户端配置
+
+### 2.2 frp客户端配置
+
 ```
 root@gitlab:/usr/local/frp# cat frpc.ini	#客户端配置
 [common]
@@ -109,7 +132,10 @@ root@gitlab:/usr/local/frp# systemctl start frpc.service
 
 ```
 
-#### frp客户端启动后服务端自动监听端口
+
+
+**frp客户端启动后服务端自动监听端口**
+
 例如上方8033、7001，另外frpc中配置的域名也会自动在frps中体现，只要token认证通过就可实现
 ```
 [root@prometheus frp]# ss -tnl | grep -E ':(8033|7001)'
@@ -122,7 +148,10 @@ Chain INPUT (policy DROP 61 packets, 3164 bytes)
 
 ```
 
-### 通过frp上nginx进行反射代理frp http/https服务
+
+
+### 2.3 通过frp上nginx进行反射代理frp http/https服务
+
 ```
     server {
         listen       80;

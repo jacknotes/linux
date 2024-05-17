@@ -2354,6 +2354,375 @@ POST /_snapshot/restore_repo/snapshot_1/_restore
 
 
 
+## Harbor
+
+
+
+环境：
+
+docker 20.10.10-ce+ and docker-compose 1.18.0+ 
+
+[harbor-offline-installer-v2.9.4.tgz](https://github.com/goharbor/harbor/releases/download/v2.9.4/harbor-offline-installer-v2.9.4.tgz)
+
+
+
+### 1. 安装docker
+
+```bash
+[user@harbor ~]$ sudo yum install -y yum-utils device-mapper-persistent-data lvm2
+[user@harbor ~]$ sudo yum-config-manager --add-repo https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
+[user@harbor ~]$ sudo sed -i 's+download.docker.com+mirrors.aliyun.com/docker-ce+' /etc/yum.repos.d/docker-ce.repo
+[user@harbor ~]$ sudo yum makecache fast
+[user@harbor ~]$ sudo yum -y install docker-ce
+[user@harbor ~]$ sudo systemctl enable docker.service
+[user@harbor ~]$ sudo systemctl start docker.service
+[user@harbor ~]$ sudo docker version
+Client: Docker Engine - Community
+ Version:           26.1.2
+ API version:       1.45
+ Go version:        go1.21.10
+ Git commit:        211e74b
+ Built:             Wed May  8 14:01:02 2024
+ OS/Arch:           linux/amd64
+ Context:           default
+
+Server: Docker Engine - Community
+ Engine:
+  Version:          26.1.2
+  API version:      1.45 (minimum version 1.24)
+  Go version:       go1.21.10
+  Git commit:       ef1912d
+  Built:            Wed May  8 13:59:55 2024
+  OS/Arch:          linux/amd64
+  Experimental:     false
+ containerd:
+  Version:          1.6.31
+  GitCommit:        e377cd56a71523140ca6ae87e30244719194a521
+ runc:
+  Version:          1.1.12
+  GitCommit:        v1.1.12-0-g51d5e94
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0
+```
+
+
+
+### 2. 安装docker-compose
+
+```bash
+[user@harbor /download]$ curl -OL https://github.com/docker/compose/releases/download/v2.27.0/docker-compose-linux-x86_64
+[user@harbor /download]$ ls | grep docker-compose
+docker-compose-linux-x86_64
+[user@harbor /download]$ sudo cp docker-compose-linux-x86_64 /usr/local/bin/docker-compose
+[user@harbor /download]$ sudo chmod o+x /usr/local/bin/docker-compose
+[user@harbor /download]$ docker-compose version
+Docker Compose version v2.27.0
+```
+
+
+
+### 3. 下载安装程序
+
+```bash
+[user@harbor ~]$ sudo mkdir -p /download
+[user@harbor ~]$ cd /download/
+# 在线安装包
+[user@harbor /download]$ sudo curl -OL https://github.com/goharbor/harbor/releases/download/v2.9.4/harbor-online-installer-v2.9.4.tgz
+[user@harbor /download]$ cd harbor/
+[user@harbor /download]$ sudo tar xf harbor-online-installer-v2.9.4.tgz
+[user@harbor /download/harbor]$ ls
+common.sh  harbor.yml.tmpl  install.sh  LICENSE  prepare
+
+```
+
+
+
+### 4. 配置harbor
+
+```bash
+[user@harbor /download]$ sudo mv harbor /usr/local/
+[user@harbor /download]$ sudo cd /usr/local/harbor
+[user@harbor /usr/local/harbor]$ sudo mkdir -p /data/harbor
+[user@harbor /usr/local/harbor]$ sudo mkdir -p /data/harbor/log
+[user@harbor /usr/local/harbor]$ sudo cp harbor.yml.tmpl harbor.yml
+[user@harbor /usr/local/harbor]$ sudo vim harbor.yml
+[user@harbor /usr/local/harbor]$ grep -Ev '#|^$' harbor.yml
+hostname: harbor.homsom.com
+http:
+  port: 80
+https:
+  port: 443
+  certificate: /usr/local/harbor/cert/homsom.com.pem
+  private_key: /usr/local/harbor/cert/homsom.com.key
+harbor_admin_password: NoJ3bCFIA1gEQDFT
+database:
+  password: elctUegX
+  max_idle_conns: 100
+  max_open_conns: 900
+  conn_max_lifetime: 5m
+  conn_max_idle_time: 0
+data_volume: /data/harbor
+trivy:
+  ignore_unfixed: false
+  skip_update: false
+  skip_java_db_update: false
+  offline_scan: false
+  security_check: vuln
+  insecure: false
+jobservice:
+  max_job_workers: 20
+  job_loggers:
+    - STD_OUTPUT
+    - FILE
+notification:
+  webhook_job_max_retry: 3
+log:
+  level: info
+  local:
+    rotate_count: 50
+    rotate_size: 200M
+    location: /data/harbor/log/harbor
+_version: 2.9.0
+proxy:
+  http_proxy:
+  https_proxy:
+  no_proxy:
+  components:
+    - core
+    - jobservice
+    - trivy
+upload_purging:
+  enabled: true
+  age: 168h
+  interval: 24h
+  dryrun: false
+cache:
+  enabled: false
+  expire_hours: 24
+```
+
+
+
+### 5. 安装harbor
+
+```bash
+# trivy 默认是关闭的，如需要开启，请更改with_trivy=$true
+with_trivy=$false
+
+# 安装
+[user@harbor /usr/local/harbor]$ sudo ./install.sh
+[user@harbor /usr/local/harbor]$ sudo ./install.sh
+
+[Step 0]: checking if docker is installed ...
+
+Note: docker version: 26.1.2
+
+[Step 1]: checking docker-compose is installed ...
+
+Note: Docker Compose version v2.27.0
+
+
+[Step 2]: preparing environment ...
+
+[Step 3]: preparing harbor configs ...
+prepare base dir is set to /usr/local/harbor
+Unable to find image 'goharbor/prepare:v2.9.4' locally
+v2.9.4: Pulling from goharbor/prepare
+5c70ea440659: Pull complete
+97b717f3829c: Pull complete
+8e3e2393f1f5: Pull complete
+922fd4ce5cf9: Pull complete
+6d5dc2e2a2f6: Pull complete
+2e06411d314c: Pull complete
+b129f0ef1377: Pull complete
+4dcbfb4c87cd: Pull complete
+792e707a745f: Pull complete
+c25b0082aebd: Pull complete
+Digest: sha256:8525fb155c3471a624b9e736a1ab26298e574450f045a96efd85862e8a873711
+Status: Downloaded newer image for goharbor/prepare:v2.9.4
+Generated configuration file: /config/portal/nginx.conf
+Generated configuration file: /config/log/logrotate.conf
+Generated configuration file: /config/log/rsyslog_docker.conf
+Generated configuration file: /config/nginx/nginx.conf
+Generated configuration file: /config/core/env
+Generated configuration file: /config/core/app.conf
+Generated configuration file: /config/registry/config.yml
+Generated configuration file: /config/registryctl/env
+Generated configuration file: /config/registryctl/config.yml
+Generated configuration file: /config/db/env
+Generated configuration file: /config/jobservice/env
+Generated configuration file: /config/jobservice/config.yml
+Generated and saved secret to file: /data/secret/keys/secretkey
+Successfully called func: create_root_cert
+Generated configuration file: /compose_location/docker-compose.yml
+Clean up the input dir
+
+
+Note: stopping existing Harbor instance ...
+WARN[0000] /usr/local/harbor/docker-compose.yml: `version` is obsolete
+
+
+[Step 4]: starting Harbor ...
+WARN[0000] /usr/local/harbor/docker-compose.yml: `version` is obsolete
+[+] Running 62/31
+ ✔ redis Pulled                                                                                                                                                                                                104.7s
+ ✔ jobservice Pulled                                                                                                                                                                                            57.6s
+ ✔ proxy Pulled                                                                                                                                                                                                 44.1s
+ ✔ log Pulled                                                                                                                                                                                                  110.2s
+ ✔ portal Pulled                                                                                                                                                                                                65.7s
+ ✔ core Pulled                                                                                                                                                                                                  18.0s
+ ✔ registryctl Pulled                                                                                                                                                                                           28.9s
+ ✔ registry Pulled                                                                                                                                                                                              40.0s
+ ✔ postgresql Pulled                                                                                                                                                                                           106.6s
+ 
+[+] Running 10/10
+ ✔ Network harbor_harbor        Created                                                                                                                                                                          0.0s
+ ✔ Container harbor-log         Started                                                                                                                                                                          5.7s
+ ✔ Container redis              Started                                                                                                                                                                          0.8s
+ ✔ Container registryctl        Started                                                                                                                                                                          0.8s
+ ✔ Container harbor-db          Started                                                                                                                                                                          0.7s
+ ✔ Container harbor-portal      Started                                                                                                                                                                          0.7s
+ ✔ Container registry           Started                                                                                                                                                                          0.8s
+ ✔ Container harbor-core        Started                                                                                                                                                                          0.8s
+ ✔ Container nginx              Started                                                                                                                                                                          1.0s
+ ✔ Container harbor-jobservice  Started                                                                                                                                                                          1.0s
+✔ ----Harbor has been installed and started successfully.---- 
+
+# 查看运行状态
+[user@harbor /usr/local/harbor]$ sudo docker ps -a
+CONTAINER ID   IMAGE                                COMMAND                  CREATED          STATUS                    PORTS                                         NAMES
+77d2cdc3b5c4   goharbor/harbor-jobservice:v2.9.4    "/harbor/entrypoint.…"   43 seconds ago   Up 37 seconds (healthy)                                                 harbor-jobservice
+ace876fb24a0   goharbor/nginx-photon:v2.9.4         "nginx -g 'daemon of…"   43 seconds ago   Up 42 seconds (healthy)   0.0.0.0:80->8080/tcp, 0.0.0.0:443->8443/tcp   nginx
+ed47076f235d   goharbor/harbor-core:v2.9.4          "/harbor/entrypoint.…"   43 seconds ago   Up 42 seconds (healthy)                                                 harbor-core
+ff003eb4d605   goharbor/harbor-portal:v2.9.4        "nginx -g 'daemon of…"   43 seconds ago   Up 42 seconds (healthy)                                                 harbor-portal
+5296708c8af4   goharbor/harbor-db:v2.9.4            "/docker-entrypoint.…"   43 seconds ago   Up 42 seconds (healthy)                                                 harbor-db
+eca62bfcd0ab   goharbor/registry-photon:v2.9.4      "/home/harbor/entryp…"   43 seconds ago   Up 42 seconds (healthy)                                                 registry
+8fc7fbd03b1a   goharbor/redis-photon:v2.9.4         "redis-server /etc/r…"   43 seconds ago   Up 42 seconds (healthy)                                                 redis
+c58ff7465eda   goharbor/harbor-registryctl:v2.9.4   "/home/harbor/start.…"   43 seconds ago   Up 42 seconds (healthy)                                                 registryctl
+884b393c5702   goharbor/harbor-log:v2.9.4           "/bin/sh -c /usr/loc…"   48 seconds ago   Up 42 seconds (healthy)   127.0.0.1:1514->10514/tcp                     harbor-log
+```
+
+
+
+### 6. 配置harbor自动启动
+
+```bash
+[user@harbor /usr/local/harbor]$ sudo vim /usr/lib/systemd/system/harbor.service
+[user@harbor /usr/local/harbor]$ sudo systemctl cat harbor.service
+# /usr/lib/systemd/system/harbor.service
+[Unit]
+Description=Harbor
+After=docker.service systemd-networkd.service systemd-resolved.service
+Requires=docker.service
+Documentation=http://github.com/vmware/harbor
+
+[Service]
+Type=simple
+Restart=on-failure
+RestartSec=5
+ExecStart=/usr/local/bin/docker-compose -f /usr/local/harbor/docker-compose.yml up
+ExecStop=/usr/local/bin/docker-compose -f /usr/local/harbor/docker-compose.yml down
+
+[Install]
+WantedBy=multi-user.target
+
+# 启动
+[user@harbor /usr/local/harbor]$ sudo systemctl daemon-reload
+[user@harbor /usr/local/harbor]$ sudo systemctl enable harbor.service
+[user@harbor /usr/local/harbor]$ sudo systemctl start harbor.service
+[user@harbor /usr/local/harbor]$ sudo systemctl status harbor.service
+● harbor.service - Harbor
+   Loaded: loaded (/usr/lib/systemd/system/harbor.service; disabled; vendor preset: disabled)
+   Active: active (running) since Fri 2024-05-10 17:37:25 CST; 1s ago
+     Docs: http://github.com/vmware/harbor
+ Main PID: 16798 (docker-compose)
+    Tasks: 13
+   Memory: 14.8M
+   CGroup: /system.slice/harbor.service
+           └─16798 /usr/local/bin/docker-compose -f /usr/local/harbor/docker-compose.yml up
+
+# 停止
+[user@harbor /usr/local/harbor]$ sudo systemctl stop harbor.service
+[user@harbor /usr/local/harbor]$ sudo systemctl status harbor.service
+● harbor.service - Harbor
+   Loaded: loaded (/usr/lib/systemd/system/harbor.service; disabled; vendor preset: disabled)
+   Active: inactive (dead)
+     Docs: http://github.com/vmware/harbor
+
+May 10 17:37:41 harbor.ops.hs.com docker-compose[16798]: [27B blob data]
+May 10 17:37:41 harbor.ops.hs.com docker-compose[17681]: Container redis  Removed
+May 10 17:37:41 harbor.ops.hs.com docker-compose[17681]: Container harbor-log  Stopping
+May 10 17:37:51 harbor.ops.hs.com docker-compose[17681]: Container harbor-log  Stopped
+May 10 17:37:51 harbor.ops.hs.com docker-compose[17681]: Container harbor-log  Removing
+May 10 17:37:51 harbor.ops.hs.com docker-compose[16798]: [34B blob data]
+May 10 17:37:51 harbor.ops.hs.com docker-compose[17681]: Container harbor-log  Removed
+May 10 17:37:51 harbor.ops.hs.com docker-compose[17681]: Network harbor_harbor  Removing
+May 10 17:37:51 harbor.ops.hs.com docker-compose[17681]: Network harbor_harbor  Removed
+May 10 17:37:51 harbor.ops.hs.com systemd[1]: Stopped Harbor.
+           
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ## 阿里云自建K8S
@@ -4054,6 +4423,14 @@ my is keepalived server02-172.16.0.2
 > 经过测试，跟本地keepalived功能一样，只是HaVip在公测阶段，不太稳定，慎用
 >
 > 在HaVip控制台中删除绑定ECS的server02，此时VIP还是绑定在此机器 ，只有当VIP经过飘移到其它机器时后，此VIP绑定ECS才失效。
+
+
+
+
+
+
+
+
 
 
 

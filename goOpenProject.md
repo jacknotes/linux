@@ -671,3 +671,211 @@ posh init pwsh --config C:\Users\0799\AppData\Local\Programs\oh-my-posh\themes\g
 
 
 ![](./image/go-open-project/oh-my-posh/01.png)
+
+
+
+
+
+
+
+# yearning项目
+
+[yearning](https://next.yearning.io/guide/get/order.html)开箱即用的MYSQL SQL审核工具
+
+go+vue为Yearning带来了流畅且美观的用户界面与强大的性能。
+
+Yearning 根据Mysql语法树解析自动审查Mysql语句语法规范并根据Yearning自身实现的审核规则进行功能性审核。
+
+
+
+## 1. 运行
+
+```bash
+root@ansible:/download/Yearning/docker# cat docker-compose.yml
+version: '3'
+
+services:
+    yearning:
+        image: chaiyd/yearning:latest
+        environment:
+           MYSQL_USER: yearning
+           MYSQL_PASSWORD: ukC2ZkcG_ZTeb
+           MYSQL_ADDR: mysql
+           MYSQL_DB: yearning
+           SECRET_KEY: dbcjqheupqjsuwsm
+           IS_DOCKER: is_docker
+        ports:
+           - 8000:8000
+        # 首次使用请先初始化
+        command: /bin/bash -c "./Yearning install && ./Yearning run"
+        depends_on:
+           - mysql
+        restart: always
+
+    mysql:
+        image: mysql:5.7
+        environment:
+           MYSQL_ROOT_PASSWORD: ukC2ZkcG_ZTeb
+           MYSQL_DATABASE: yearning
+           MYSQL_USER: yearning
+           MYSQL_PASSWORD: ukC2ZkcG_ZTeb
+        command:
+           - --character-set-server=utf8mb4
+           - --collation-server=utf8mb4_general_ci
+        volumes:
+           - ./data/mysql:/var/lib/mysql
+
+# 默认账号：admin，默认密码：Yearning_admin
+
+root@ansible:/download/Yearning/docker# docker ps -a
+CONTAINER ID        IMAGE                    COMMAND                  CREATED             STATUS              PORTS                    NAMES
+5d314f318d40        chaiyd/yearning:latest   "/usr/bin/dumb-init …"   45 hours ago        Up 45 hours         0.0.0.0:8000->8000/tcp   docker_yearning_1
+cf1c93e201c2        mysql:5.7                "docker-entrypoint.s…"   45 hours ago        Up 45 hours         3306/tcp, 33060/tcp      docker_mysql_1
+
+```
+
+
+
+## 2. 使用
+
+![](./image/go-open-project/yearning/01.png)
+
+
+
+
+
+
+
+
+
+# syncthing
+
+[syncthing](https://github.com/syncthing/syncthing)开源的持续文件同步软件
+
+
+
+## 1. 安装
+
+```bash
+[ops0799@hs-backup /download]$ sudo curl -OL https://github.com/syncthing/syncthing/releases/download/v1.27.7/syncthing-linux-amd64-v1.27.7.tar.gz
+[ops0799@hs-backup /download]$ ls
+syncthing-linux-amd64-v1.27.7.tar.gz
+[ops0799@hs-backup /download]$ sudo tar -xf syncthing-linux-amd64-v1.27.7.tar.gz -C /usr/local/
+[ops0799@hs-backup /download]$ sudo ln -sv /usr/local/syncthing-linux-amd64-v1.27.7/ /usr/local/syncthing
+‘/usr/local/syncthing’ -> ‘/usr/local/syncthing-linux-amd64-v1.27.7/’
+[ops0799@hs-backup /usr/local/syncthing]$ ls
+AUTHORS.txt  etc  LICENSE.txt  README.txt  syncthing
+```
+
+
+
+## 2. 配置
+
+```bash
+# 配置用户
+[ops0799@syncthing /usr/local/syncthing]$ sudo groupadd -r syncthing
+[ops0799@syncthing /usr/local/syncthing]$ sudo useradd -r -g syncthing -d /data/syncthing syncthing
+[ops0799@syncthing /usr/local/syncthing]$ id syncthing
+uid=996(syncthing) gid=994(syncthing) groups=994(syncthing)
+
+# 配置目录
+[ops0799@syncthing /usr/local]$ sudo chown -R root.syncthing syncthing-linux-amd64-v1.27.7/
+[ops0799@syncthing /usr/local]$ sudo chmod -R 775 syncthing-linux-amd64-v1.27.7/
+[ops0799@syncthing /usr/local]$ sudo ls -ld syncthing-linux-amd64-v1.27.7/
+drwxrwxr-- 4 root syncthing 4096 May 11 14:22 syncthing-linux-amd64-v1.27.7/
+
+[ops0799@syncthing /usr/local]$ sudo chown -R root.syncthing /data/syncthing/
+[ops0799@syncthing /usr/local]$ sudo chmod -R 775 /data/syncthing/
+[ops0799@syncthing /usr/local]$ sudo ls -ld /data/syncthing/
+drwxrwxr-- 3 root syncthing 30 May 11 13:53 /data/syncthing/
+
+# 配置服务
+[ops0799@hs-backup /usr/local/syncthing]$ sudo vim /usr/lib/systemd/system/syncthing.service
+# 配置用户syncthing启动，此时源目录和目标目录中syncthing需要写入权限，如不好更改，建议使用root启动
+[ops0799@hs-backup /usr/local/syncthing]$ cat /usr/lib/systemd/system/syncthing.service
+[Unit]
+Description=Syncthing - Open Source Continuous File Synchronization
+After=network.target
+
+[Service]
+User=syncthing
+ExecStart=/usr/local/syncthing/syncthing serve --no-browser --no-restart --logflags=0 --data=/data/syncthing --config=/usr/local/syncthing --gui-address=http://0.0.0.0:8384
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+[ops0799@hs-backup /usr/local/syncthing]$ sudo mkdir -p /data/syncthing
+[ops0799@hs-backup /usr/local/syncthing]$ sudo systemctl daemon-reload
+[ops0799@hs-backup /usr/local/syncthing]$ sudo systemctl enable syncthing.service
+[ops0799@hs-backup /usr/local/syncthing]$ sudo systemctl start syncthing.service
+[ops0799@hs-backup /usr/local/syncthing]$ sudo ss -tnlp | grep 8384
+LISTEN     0      128       [::]:8384                  [::]:*                   users:(("syncthing",pid=2563,fd=30))
+
+# 更改GUI主机名
+[ops0799@hs-backup /usr/local/syncthing]$ vim /usr/local/syncthing/config.xml
+<device id="HA253YQ-ULFJC5A-JBO5XLZ-24PCWGC-GHE52BY-O2XMNT3-C7YNSBG-PPSNMA4" name="syncthing.ops.hs.com"
+[ops0799@hs-backup /usr/local/syncthing]$ sudo systemctl restart syncthing.service
+```
+
+
+
+## 3. 添加认证
+
+```bash
+# 添加htpasswd用户
+[ops0799@nginx /usr/local/nginx/conf/conf.d]$ sudo htpasswd -c /usr/local/nginx/conf/password.sycnthing 0799
+New password:
+Re-type new password:
+Adding password for user 0799
+
+[ops0799@nginx /usr/local/nginx/conf/conf.d]$ cat syncthing.homsom.com.conf
+server {
+        listen       443 ssl;
+        server_name     syncthing.homsom.com;
+        ssl_certificate      cert/homsom.com.pem;
+        ssl_certificate_key  cert/homsom.com.key;
+        ssl_session_cache    shared:SSL:1m;
+        ssl_session_timeout  5m;
+        ssl_ciphers  HIGH:!aNULL:!MD5;
+        ssl_prefer_server_ciphers  on;
+
+        location / {
+                proxy_next_upstream  error timeout http_502 http_503 http_504;
+                proxy_redirect off;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Real-Port $remote_port;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_pass https://10.10.10.202:8384;
+                auth_basic_user_file /usr/local/nginx/conf/password.sycnthing;
+                auth_basic      "syncthing" ;
+                allow 222.66.21.210;
+                allow 58.246.78.150;
+                allow 47.103.112.73;
+                allow 47.100.73.115;
+                deny all;
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+                root   html;
+        }
+}
+```
+
+> 添加htpasswd认证后，打开syncthing.homsom.com时需要使用htpasswd添加的用户访问
+
+
+
+## 4. 用户访问
+
+**使用htpasswd认证**
+
+![](./image/go-open-project/syncthing/01.png)
+
+
+
+**添加syncthing的GUI用户认证信息，实现双重认证**
+
+![](./image/go-open-project/syncthing/02.png)
+
