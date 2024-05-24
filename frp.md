@@ -150,6 +150,30 @@ Chain INPUT (policy DROP 61 packets, 3164 bytes)
 
 
 
+**使用远程桌面客户端连接**
+
+RDP: 114.114.114.114:7001
+
+> 如果远程连接不上，请检查远程服务是否打开、防火墙是否关闭
+>
+> 另外的一个原因就是目标主机被本机组策略阻止，不允许不安全的凭据登录，会报错：`无法连接到远程PC。请确保该PC已打开并连接到网络，且已启用远程访问。错误代码：0X204`
+
+**解决0X204方法**
+
+运行：`gpedit.msc`打开本地组策略
+
+将`加密数据库修正`配置为：`已启用`，并将等级设置为`减轻`
+
+最后强制刷新组策略`gpupdate /force`
+
+![](./image/frp/01.png)
+
+
+
+
+
+
+
 ### 2.3 通过frp上nginx进行反射代理frp http/https服务
 
 ```
@@ -171,7 +195,7 @@ Chain INPUT (policy DROP 61 packets, 3164 bytes)
     server {
         listen       80;
         server_name  prometheus.mark.cn;
-        server_name  grafana.markli.cn;
+        server_name  grafana.mark.cn;
 
         location / {
 		proxy_pass http://127.0.0.1:8088;
