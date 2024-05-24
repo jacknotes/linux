@@ -4,7 +4,7 @@
 
 
 
-## RPM包方式部署
+## 1. RPM包方式部署
 
 
 
@@ -66,7 +66,7 @@ backups       gitaly        gitlab-ci  gitlab-rails     gitlab-workhorse  logrot
 
 
 
-### 备份和恢复
+### 1.1 备份和恢复
 
 
 
@@ -151,7 +151,7 @@ nginx['status']['options'] = {
 
 
 
-#### 备份
+#### 1.1.1 备份
 
 GitLab 12.2 或更高版本：sudo gitlab-backup create
 
@@ -244,7 +244,7 @@ total 5.9G
 
 
 
-#### 恢复
+#### 1.1.2 恢复
 
 您只能将备份还原到您在其上创建它的 GitLab的完全相同版本和类型 (CE/EE)
 
@@ -429,7 +429,7 @@ I, [2024-01-25T07:48:54.686976 #1762]  INFO -- : Done!
 
 
 
-## 源码部署
+## 2. 源码部署
 
 
 
@@ -841,11 +841,11 @@ sudo -u git -H bundle exec rake gitlab:check RAILS_ENV=production
 
 
 
-### 备份和恢复
+### 2.1 备份和恢复
 
 
 
-#### 备份
+#### 2.1.1 备份
 
 ```bash
 # 参数链接：https://blog.51cto.com/u_15127626/3294565
@@ -942,7 +942,7 @@ echo '' >> ${logFile}
 
 
 
-#### 恢复
+#### 2.1.2 恢复
 
 ```bash
 # 恢复
@@ -1019,13 +1019,11 @@ redis /var/run/redis/redis.sock> keys *rack::attack*
 
 
 
-## docker部署
+## 3. docker部署
 
 
 
-**docker-compose部署gitlab15.11.13**
-
-
+### 3.1 deploy method 01
 
 **配置文件**
 
@@ -1086,7 +1084,13 @@ nginx['status']['options'] = {
 
 
 
-**deploy method 01**
+
+
+**docker-compose部署gitlab15.11.13，mode二选一**
+
+
+
+**host mode**
 
 ```bash
 # 网络模式为host
@@ -1108,9 +1112,7 @@ services:
     network_mode: host
 ```
 
-
-
-**deploy method 02**
+**bridge mode**
 
 ```bash
 # 网络模式为bridge
@@ -1230,6 +1232,114 @@ Checking for an omnibus managed postgresql: OK
 Checking if postgresql['version'] is set: OK
 Checking if we already upgraded: OK
 The latest version 13.11 is already running, nothing to do
+
+# gitlab重置root密码
+root@git:/# gitlab-rake "gitlab:password:reset[root]" 
+Enter password: 
+Confirm password: 
+Password successfully updated for user with username root.
+```
+
+
+
+> 备份和恢复见`RPM包方式部署`下的`备份和恢复`
+
+
+
+### 3.2 deploy method 02
+
+```bash
+root@git:/data/gitlab# cat config/gitlab.rb 
+###### email
+gitlab_rails['smtp_enable'] = true
+gitlab_rails['smtp_address'] = "smtp.qiye.163.com"
+gitlab_rails['smtp_port'] = 465
+gitlab_rails['smtp_user_name'] = "prometheus@test.com"
+gitlab_rails['smtp_password'] = "password"
+gitlab_rails['smtp_domain'] = "163.com"
+gitlab_rails['smtp_authentication'] = "login"
+gitlab_rails['smtp_tls'] = true
+gitlab_rails['smtp_openssl_verify_mode'] = 'peer'
+gitlab_rails['gitlab_email_enabled'] = true
+gitlab_rails['gitlab_email_from'] = 'prometheus@test.com'
+gitlab_rails['gitlab_email_reply_to'] = 'jack@test.com'
+#gitlab_rails['smtp_ca_file'] = '/path/to/your/cacert.pem'
+gitlab_rails['smtp_pool'] = true
+gitlab_rails['time_zone'] = 'Asia/Shanghai'
+######
+
+
+###### base config
+external_url 'http://git.hs.com'
+gitlab_rails['gitlab_shell_ssh_port'] = 22
+
+
+###### backup config
+gitlab_rails['manage_backup_path'] = true
+gitlab_rails['backup_path'] = "/var/opt/gitlab/backups"
+gitlab_rails['backup_archive_permissions'] = 0644
+gitlab_rails['backup_keep_time']= 2592000
+
+
+
+####### use external prometheus
+prometheus['enable'] = false
+#gitlab_rails['monitoring_whitelist'] = ['127.0.0.0/8', '192.168.13.0/24']
+#gitlab_rails['prometheus_address'] = '192.168.13.236:9090'
+#
+## Workhorse
+#gitlab_workhorse['prometheus_listen_addr'] = "0.0.0.0:9229"
+#
+## Rails nodes
+#gitlab_exporter['listen_address'] = '0.0.0.0'
+#gitlab_exporter['listen_port'] = '9168'
+#
+## Sidekiq nodes
+#sidekiq['listen_address'] = '0.0.0.0'
+#
+## Redis nodes
+#redis_exporter['listen_address'] = '0.0.0.0:9121'
+#
+## PostgreSQL nodes
+#postgres_exporter['listen_address'] = '0.0.0.0:9187'
+#
+## Gitaly nodes
+#gitaly['prometheus_listen_addr'] = "0.0.0.0:9236"
+#
+## Nginx
+#nginx['status']['options'] = {
+#      "server_tokens" => "off",
+#      "access_log" => "off",
+#      "allow" => "192.168.13.236",
+#      "deny" => "all",
+#}
+#######
+
+root@git:/data/gitlab# ll
+total 8
+drwxr-xr-x  5 root root   71 Jan 31 15:08 ./
+drwxr-xr-x  3 root root   20 Jan 31 15:02 ../
+drwxrwxr-x  3 root root  268 Jan 31 15:08 config/
+drwxr-xr-x 20 root root 4096 Feb  1 10:12 data/
+-rw-r--r--  1 root root  327 Jan 31 15:04 docker-compose.yaml
+drwxr-xr-x 20 root root  329 Jan 31 15:10 logs/
+root@git:/data/gitlab# cat docker-compose.yaml 
+version: '3.6'
+services:
+  gitlab:
+    image: 'harborrepo.hs.com/ops/gitlab-ce:16.6.6-ce.0'
+    restart: always
+    hostname: 'git.hs.com'
+    volumes:
+      - '/data/gitlab/config:/etc/gitlab'
+      - '/data/gitlab/logs:/var/log/gitlab'
+      - '/data/gitlab/data:/var/opt/gitlab'
+    shm_size: '256m'
+    network_mode: host
+
+root@git:/data/gitlab# docker ps -a  
+CONTAINER ID   IMAGE                                         COMMAND             CREATED        STATUS                  PORTS     NAMES
+c9e92e5476e0   harborrepo.hs.com/ops/gitlab-ce:16.6.6-ce.0   "/assets/wrapper"   3 months ago   Up 3 months (healthy)             gitlab-gitlab-1
 ```
 
 
@@ -1238,7 +1348,13 @@ The latest version 13.11 is already running, nothing to do
 
 
 
-## gitlab迁移
+
+
+
+
+
+
+## 4. gitlab迁移
 
 
 
@@ -1258,7 +1374,7 @@ git push --porcelain --all git@192.168.13.211:k8s-deploy/frontend-hotelnew-hs-co
 
 
 
-### python脚本迁移
+## 5. python脚本迁移
 
 此脚本用于从gitlab版本迁移到新版本，如gitlab 8.9.11  --->  gitlab 15.11.13
 
@@ -1266,7 +1382,7 @@ git push --porcelain --all git@192.168.13.211:k8s-deploy/frontend-hotelnew-hs-co
 
 
 
-#### config.py
+### config.py
 
 ```python
 # -*- coding: utf-8 -*-
@@ -1291,7 +1407,7 @@ TARGET = {
 
 
 
-#### main.py
+### main.py
 
 ```python
 # -*- coding: utf-8 -*-
@@ -1350,7 +1466,7 @@ if __name__ == '__main__':
 
 
 
-#### base.py
+### base.py
 
 ```python
 # -*- coding: utf-8 -*-
@@ -1370,7 +1486,7 @@ def read_from_storage(name):
 
 
 
-#### users.py
+### users.py
 
 ```python
 # -*- coding: utf-8 -*-
@@ -1443,7 +1559,7 @@ class Users(object):
 
 
 
-#### groups.py
+### groups.py
 
 ```python
 # -*- coding: utf-8 -*-
@@ -1507,7 +1623,7 @@ class Groups(object):
 
 
 
-#### groups_members.py
+### groups_members.py
 
 ```python
 # -*- coding: utf-8 -*-
@@ -1582,7 +1698,7 @@ class GroupsMembers(object):
 
 
 
-#### projects.py
+### projects.py
 
 ```python
 # -*- coding: utf-8 -*-
@@ -1713,7 +1829,7 @@ class Projects(object):
 
 
 
-#### repositories.py
+### repositories.py
 
 ```python
 # -*- coding: utf-8 -*-
@@ -1764,7 +1880,10 @@ class Repositories(object):
 
 	def push(self, uri, to_path):
 		# 因为老版本gitlab有Public的群组，而新版本gitlab不支持创建名为Public的群组，所以做了 'Public' + 'New'特殊处理
-		source_url = self.api % ('%s' % self.source['address'], str(uri).replace('New',''))
+		if str(uri) == 'PublicNew':
+			source_url = self.api % ('%s' % self.source['address'], str(uri).replace('New',''))
+		else:
+			source_url = self.api % ('%s' % self.source['address'], uri)
 		target_url = self.api % (self.target['address'], uri)
 		print('[INFO] Clone:', source_url)
 		repo = Repo.clone_from(url = source_url, to_path = to_path, bare = True)
@@ -1793,7 +1912,7 @@ class Repositories(object):
 
 
 
-#### clean.py
+### clean.py
 
 ```python
 # -*- coding: utf-8 -*-
@@ -1864,7 +1983,7 @@ if __name__ == '__main__':
 
 
 
-#### README.md
+### README.md
 
 ````
 # GitLab Community Edition数据迁移
@@ -1911,11 +2030,11 @@ $ python3 src/clean.py
 
 
 
-### webhook批量添加
+## 6. webhook批量添加
 
 
 
-#### bash命令
+### bash命令
 
 ```bash
 ## 列出名称空间k8s-deploy下所有项目的webhook
@@ -1931,9 +2050,7 @@ gitlab-rake gitlab:web_hook:add RAILS_ENV=production NAMESPACE=k8s-deploy URL="h
 
 
 
-#### python脚本
-
-
+### python脚本
 
 **webhook.py**
 
@@ -2104,7 +2221,7 @@ if __name__ == '__main__':
 
 
 
-#### 添加后效果
+### 添加后效果
 
 ```bash
 root@git:/# gitlab-rake gitlab:web_hook:list 

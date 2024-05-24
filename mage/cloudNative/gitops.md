@@ -6925,8 +6925,8 @@ kubectl -n argocd patch secret argocd-secret \
 
 
 问题4：
-git迁移后，argocd如何配置跟新git仓库连接
-**1 配置known hosts**
+git迁移后，argocd如何配置更新git仓库连接
+**1 配置known hosts，是ssh客户端配置，不是sshd服务端配置**
 root@ansible:~/k8s/application/test-k8s-application/frontend-testf-k8s-hs-com# vim /etc/ssh/ssh_config
 Host *
 	HashKnownHosts no	# 增加或修改此行为no
@@ -6997,4 +6997,65 @@ git迁移后，jenkins如何配置跟新git仓库连接（代码仓库），并�
 `/shell/cicd.sh-192.168.13.211 vue`
 GIT_K8S_ADDRESS_PREFIX='git@192.168.13.211:k8s-deploy'	# 更改脚本中的变量地址
 
+
+
+# 问题6：
+报错：rpc error: code = Unknown desc = ssh: handshake failed: ssh: unable to authenticate, attempted methods [none publickey], no supported methods remain
+
+原因：gitlab v8.9.2迁移到gitlab v16.6.6后，新gitlab由OpenSSH 7.8及其以后的版本生成的新格式私钥`BEGIN OPENSSH PRIVATE KEY`，在新git服务器上clone时生成的known_hosts，可以得知服务器使用的公钥类型为ed25519，猜测私钥最好使用此跟服务器一样的类型，此服务器的known_host跟客户端不一样，不用能于argocd 
+root@git:/# cat /root/.ssh/known_hosts
+git.hs.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJkmmcXzBgOp7Nl9PYzYM97pmLwR02xlLTq29FyXHm6R
+
+解决：
+1. 客户端生产ed25519类型的密钥对
+root@git:/tmp# ssh-keygen -t ed25519 -C "argocd" -f argocd 
+Generating public/private ed25519 key pair.
+Enter passphrase (empty for no passphrase): 
+Enter same passphrase again: 
+Your identification has been saved in argocd.
+Your public key has been saved in argocd.pub.
+The key fingerprint is:
+SHA256:/Q4nCabSJQU5PEhFTemvWUu6X5u3S4hhys/Mto4t59k argocd
+The key's randomart image is:
++--[ED25519 256]--+
+|   ..=++..       |
+|    . =.o        |
+|       +.        |
+|       ...       |
+|      . S.+      |
+|     . * ++= .   |
+|    . o o*=.= .  |
+|     .  =B+O +.  |
+|        oO%.E.oo |
++----[SHA256]-----+
+root@git:/tmp# ll argocd*
+-rw------- 1 root root 399 May 24 11:53 argocd
+-rw-r--r-- 1 root root  88 May 24 11:53 argocd.pub
+2. 客户端使用特定私钥clone
+GIT_SSH_COMMAND='ssh -i /tmp/argocd' git clone git@git.hs.com:k8s-deploy/frontend-nginx-hs-com.git
+3. 客户端clone生成的known_hosts
+root@git:/tmp# cat /root/.ssh/known_hosts 
+git.hs.com,192.168.13.206 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBKxX5NzvK6Ye2QIJcw/nivjUAg48z5TGWkZEotv8H7D4ZgRdfHOOA8znEU8vsDauVFswhH9QPAlpGT5oBN9Qcgg=
+4. 在argoCD中Certificates -> ADD SSH KNOWN HOSTS -> 添加客户端生成的Known host
+5. 将argocd.pub的内容添加到gitlab用户的SSH密钥中，
+6. 将argocd私钥 添加到argocd中
+apiVersion: v1
+kind: Secret
+metadata:
+  name: private-repo-creds-192.168.13.206
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repo-creds
+stringData:
+  type: git
+  url: git@git.hs.com:k8s-deploy
+  sshPrivateKey: |
+    -----BEGIN OPENSSH PRIVATE KEY-----
+    b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+    QyNTUxOQAAACCQNlDlDLIIU9xdiECDX9aAeitE67C6MtGFo3QEjfyi+QAAAJDkmM4r5JjO
+    KwAAAAtzc2gtZWQyNTUxlDlDLIIU9xdiECDX9aAeitE67C6MtGFo3QEjfyi+Q
+    AAAECJZs70bI5FHsAmb9Rct+hYgQSD6vPL7oyvjKrio0aV+pA2UOUMsghT3F2IQINf1oB6
+    K0TrsLoy0YWjdASN/KL5AAAABmFyZ29jZAECAwQFBgc=
+    -----END OPENSSH PRIVATE KEY-----
+7. argoCD中刷新application即可，状态变为正常可用。
 ```
