@@ -452,7 +452,8 @@ total 12
 ## 5. 使用CA签署证书
 
 ```bash
-[root@prometheus ca_signed_server]# openssl x509 -req -in server.csr -CAkey ../ca/ca.key -CA ../ca/ca.pem -CAcreateserial -out server.pem -days 36500 -extensions req_ext -extfile myssl.confSignature ok
+[root@prometheus ca_signed_server]# openssl x509 -req -in server.csr -CAkey ../ca/ca.key -CA ../ca/ca.pem -CAcreateserial -out server.pem -days 36500 -extensions req_ext -extfile myssl.conf
+Signature ok
 subject=C = CN, ST = Shanghai, L = Shanghai, O = Homsom, OU = Tech, CN = hs.com
 Getting CA Private Key
 
@@ -1615,7 +1616,7 @@ server {
 
 
 
-## 从windows导出CA并导入到linux
+## 1. 从windows导出CA并导入到linux
 
 
 
@@ -1698,7 +1699,7 @@ Set-Cookie: JSESSIONID.091f6099=node0mft5t1tiany51uxav5oh9l39a11802324.node0;Pat
 
 
 
-## 手动添加CA证书到根证书颁发机构
+## 2. 手动添加CA证书到根证书颁发机构
 
 ```bash
 # ubuntu，detian， Alpine Linux ubuntu
@@ -1826,4 +1827,96 @@ Accept-Ranges: bytes
 
 
 ```
+
+
+
+## 3. 私有证书无法经过私有CA验证
+
+经过：在docker中(linux环境)，将私有CA打包进去并更新后，在/etc/ssl/certs生成了私有CA，也验证过私有CA和私有证书的关系为OK的，但就是使用curl命令却无法访问https服务，Centos7可以正常访问，而Debian系却无法访问
+
+```bash
+# 报错
+root@4f3c0fffa6a0:~# curl https://prometheus.hs.com
+curl: (60) SSL certificate problem: EE certificate key too weak
+More details here: https://curl.haxx.se/docs/sslcerts.html
+
+curl failed to verify the legitimacy of the server and therefore could not
+establish a secure connection to it. To learn more about this situation and
+how to fix it, please visit the web page mentioned above.
+
+# 原因
+# 1. 默认情况下，Debian 将 OpenSSL 配置为安全级别 2，提供 112 位安全性。这意味着，如果 TLS 连接中涉及的密钥之一（在本例中为服务器的密钥（最终实体证书））提供的安全级别低于 112 位（通常是因为证书是小于 2048 位的 RSA 密钥），则它将被拒绝。
+# 2. 由于 112 位安全级别如今甚至低于建议的 128 位最低级别，而此服务器甚至低于该级别，因此最好的办法是联系服务器管理员并要求他们生成新的 TLS 证书。有了这种不安全的证书，大型公司或政府可能只需付出一些努力就能破解密钥，从而欺骗连接。
+# 3. 如果您无法做到这一点，您可以使用 降低安全级别curl --ciphers DEFAULT@SECLEVEL=1。请注意，这样做意味着您实际上接受了您的连接并不完全安全，并且容易受到篡改。
+# 临时解决
+root@4f3c0fffa6a0:~# curl --ciphers DEFAULT@SECLEVEL=1 https://prometheus.hs.com
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html>
+<head><title>401 Authorization Required</title></head>
+<body>
+<center><h1>401 Authorization Required</h1></center>
+ Sorry for the inconvenience.<br/>
+Please report this message and include the following information to us.<br/>
+Thank you very much!</p>
+<table>
+<tr>
+<td>URL:</td>
+<td>https://prometheus.hs.com/</td>
+</tr>
+<tr>
+<td>Server:</td>
+<td>pro-nginx01</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2024/05/27 16:24:15</td>
+</tr>
+</table>
+<hr/>Powered by Tengine<hr><center>tengine</center>
+</body>
+</html>
+
+
+# 永久解决
+# 重新生成大于2048位的证书(密钥对)
+(umask 0077; openssl genrsa -out server-new.key 4096)
+openssl req -new -key server-new.key -out server-new.csr -config ../extention/myssl.conf 
+openssl x509 -req -in server-new.csr -CAkey ../ca/ca.key -CA ../ca/ca.pem -CAcreateserial -out server-new.pem -days 36500 -extensions req_ext -extfile ../extention/myssl.conf  
+# 公钥长度取决于生成的私钥长度，上面为4096
+[root@prometheus ca_signed_server]# openssl x509 -noout -text -in server-new.pem | grep Public-Key 
+                RSA Public-Key: (4096 bit)
+
+# 再次访问，测试都通过
+root@4f3c0fffa6a0:~# curl https://prometheus.hs.com
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html>
+<head><title>401 Authorization Required</title></head>
+<body>
+<center><h1>401 Authorization Required</h1></center>
+ Sorry for the inconvenience.<br/>
+Please report this message and include the following information to us.<br/>
+Thank you very much!</p>
+<table>
+<tr>
+<td>URL:</td>
+<td>https://prometheus.hs.com/</td>
+</tr>
+<tr>
+<td>Server:</td>
+<td>pro-nginx01</td>
+</tr>
+<tr>
+<td>Date:</td>
+<td>2024/05/27 16:42:53</td>
+</tr>
+</table>
+<hr/>Powered by Tengine<hr><center>tengine</center>
+</body>
+</html>
+
+root@4f3c0fffa6a0:~# curl https://kuboard.k8s.hs.com
+<a href="/login?state=%2F">See Other</a>.
+```
+
+
 
