@@ -13,6 +13,7 @@ scsisum=`ll /sys/class/scsi_host/host*|wc -l`
 for ((i=0;i<${scsisum};i++))
 do
     echo "- - -" > /sys/class/scsi_host/host${i}/scan
+
 done
 -------------------
 
@@ -93,9 +94,9 @@ done
   Allocation             inherit
   Read ahead sectors     auto
   - currently set to     8192
-  Block device           253:0
-8.查看新添加的逻辑卷
-[root@salt-server /sys/class/scsi_host]# fdisk -l
+    Block device           253:0
+    8.查看新添加的逻辑卷
+    [root@salt-server /sys/class/scsi_host]# fdisk -l
 
 Disk /dev/sda: 107.4 GB, 107374182400 bytes, 209715200 sectors
 Units = sectors of 1 * 512 = 512 bytes
@@ -1544,6 +1545,5 @@ windows客户端提示格式化硬盘方可使用，此时千万不能格式化�
   /dev/xvdc1 wsus02_disk lvm2 a--  <1000.00g     0  <1000.00g
   /dev/xvde1 wsus01_disk lvm2 a--  <1000.00g     0  <1000.00g
   /dev/xvdf1 iis_13_72   lvm2 a--   <100.00g  4.00m    99.99g
-
 
 </pre>

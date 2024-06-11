@@ -144,4 +144,40 @@ esac
 
 
 
+#### 常用命令
+
+```bash
+## 获取所有rollout项目名称
+TMP_FILE='/tmp/test.txt'
+kubectl get rollout -A | awk '{print $2}' | awk -F'-rollout' '{print $1}' | sed -e 's/pro-//g' -e 's|-|.|g' | grep -v NAME | tee ${TMP_FILE}
+## 过滤特定名称空间特定镜像，查看是否发过项目，并从项目文件列表中删除从未发布的项目
+NS='pro-frontend'
+IMAGE_FILTER='helloworld'
+ FILTER_PROJECT=$(for i in `kubectl get rollout -n $NS | grep -v NAME | awk '{print $1}'`;do kubectl get rollout -n $NS $i -o jsonpath="{.spec.template.spec.containers[0].image}" | grep $IMAGE_FILTER > /dev/null && echo $i | sed -e "s/pro-//g" -e "s|-rollout||" -e "s|-|.|g" ;done); for i in $FILTER_PROJECT;do echo $i;sed -i "/$i/d" $TMP_FILE;done 
+ 
+ 
+ 
+## 查看 指定名称空间 所有pod的 延迟时间 存活探测
+for i in `kubectl get rollout -n pro-java | grep -v NAME | awk '{print $1}'`;do echo $i; kubectl get rollout -n pro-java $i -o jsonpath="{.spec.template.spec.containers[0].livenessProbe.initialDelaySeconds}";echo;done
+
+
+
+
+## 1. 批量查看 指定名称空间 deployment requests.cpu 值，并过滤值为100m的项目名称进行格式处理后打印
+NS='uat-frontend'
+OUT_FILE="/tmp/$NS-resources_requests_cpu.txt"
+for i in `kubectl get deploy -n $NS | grep -v NAME | awk '{print $1}'`;do V=`kubectl get deploy $i -n $NS -o jsonpath="{.spec.template.spec.containers[0].resources.requests.cpu}"`; echo $V | grep '100' >& /dev/null && echo $i | sed 's/-deployment//';done > $OUT_FILE
+
+## 2. 批量修改test分支请求资源值，从/cpu: 100m/cpu: 10m/，/memory: 100Mi/memory: 50Mi/
+for i in `cat $OUT_FILE`;do cd $i; git checkout test && pulltest && sed -i -e 's/cpu: 100m/cpu: 10m/g' -e 's/memory: 100Mi/memory: 50Mi/g' kustomize/base/deployment.yaml && pushtest; cd ..;done
+
+
+
+## 批量强制删除指定状态下指定名称空间的pod
+for i in `kubectl  get pods -o wide -A | grep 'Terminating' | grep 'fat-dotnet' | awk '{print $2}'`;do kubectl delete pods --force=true --grace-period=0 $i -n fat-dotnet ;done
+```
+
+
+
+
 

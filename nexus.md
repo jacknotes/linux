@@ -332,3 +332,101 @@ trusted-host = 192.168.222.4
 6. 安装指定django版本包，这里只是在处理问题过程中的测试，**不能以此种方式来使python2.7支持Django**
 [root@controller ~]# pip2 install django==1.8.18
 ```
+
+
+
+
+
+# nexus docker私有仓库
+
+
+
+## 1. 运行
+
+```bash
+#!/bin/bash
+
+# root@repo:/data# ll | grep nexus
+# drwxrwx---  15 root        200  254 Jun 11 11:39 nexus-repo/
+# drwxrwx---   4 root        200  209 Jun 11 11:33 nexus-repo-data/
+
+docker run --name=nexus-repo --volume=/data/nexus-repo:/nexus-data --volume=/data/nexus-repo-data:/nexus-repo-data -p 8081-8088:8081-8088 --restart=always --log-opt max-file=3 --log-opt max-size=500m --detach=true sonatype/nexus3:3.60.0
+
+root@repo:/data# docker ps -a 
+CONTAINER ID   IMAGE                    COMMAND                  CREATED         STATUS         PORTS                              NAMES
+1f8824241dc6   sonatype/nexus3:3.60.0   "/opt/sonatype/nexus…"   3 minutes ago   Up 3 minutes   0.0.0.0:8081-8088->8081-8088/tcp   nexus-repo
+
+# 8081为nexus的Web访问端口
+root@repo:/data# ss -tnl | grep 808
+LISTEN   0         128                 0.0.0.0:8081             0.0.0.0:*       
+LISTEN   0         128                 0.0.0.0:8082             0.0.0.0:*       
+LISTEN   0         128                 0.0.0.0:8083             0.0.0.0:*       
+LISTEN   0         128                 0.0.0.0:8084             0.0.0.0:*       
+LISTEN   0         128                 0.0.0.0:8085             0.0.0.0:*       
+LISTEN   0         128                 0.0.0.0:8086             0.0.0.0:*       
+LISTEN   0         128                 0.0.0.0:8087             0.0.0.0:*       
+LISTEN   0         128                 0.0.0.0:8088             0.0.0.0:*       
+```
+
+
+
+## 2. 配置docker代理仓库
+
+- 创建自定义blog存储
+- 创建repositories -> docker(proxy) 
+- 创建repositories -> docker(hosted) ，并暴露http端口，这里为8083，忽略url的地址
+- 创建repositories -> docker(group) ，并暴露http端口，这里为8082，忽略url的地址，并加入docker(proxy) 、docker(hosted) 
+- 配置权限，Realms -> ”Docker Bearer Token Realm“ -> 激活
+
+
+
+
+
+## 3. 客户端配置
+
+用户配置docker镜像仓库为http://192.168.13.202:8082，并在insecure-registries里面配置这个地址
+
+```bash
+# 配置"insecure-registries"，"registry-mirrors"
+root@ansible:~# cat /etc/docker/daemon.json
+{
+  "exec-opts": ["native.cgroupdriver=cgroupfs"],
+  "registry-mirrors": [
+    "http://192.168.13.202:8082"
+  ],
+  "insecure-registries": ["127.0.0.1/8","192.168.13.235:8000","192.168.13.197:8000","harbor.hs.com","harborrepo.hs.com","192.168.13.202:8082"],
+  "max-concurrent-downloads": 10,
+  "log-driver": "json-file",
+  "log-level": "warn",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "3"
+    },
+  "data-root": "/var/lib/docker"
+}
+
+root@ansible:~# docker info | grep -A 10 'Insecure Registries'
+WARNING: No swap limit support
+ Insecure Registries:
+  192.168.13.235:8000
+  harbor.hs.com
+  harborrepo.hs.com
+  192.168.13.197:8000
+  192.168.13.202:8082
+  127.0.0.0/8
+ Registry Mirrors:
+  http://192.168.13.202:8082/
+ Live Restore Enabled: false
+ Product License: Community Engine
+
+
+root@ansible:~# docker login http://192.168.13.202:8082 -u ops
+Password:
+WARNING! Your password will be stored unencrypted in /root/.docker/config.json.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/engine/reference/commandline/login/#credentials-store
+
+Login Succeeded
+
+```
+
