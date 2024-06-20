@@ -2,7 +2,7 @@
 
 
 
-## 问题一
+## 问题1
 
 **问题**：
 
@@ -55,7 +55,7 @@ Events:              <none>
 
 
 
-## 问题二
+## 问题2
 
 **问题**：当在一个微服务项目中添加HPA控制器时，配置了内存/CPU使用率，例如配置内存/CPU使用率为80%时，总是不生效，Pod一直在创建/删除中
 
@@ -126,4 +126,64 @@ spec:
         type: Utilization
         averageUtilization: 1000
 ```
+
+
+
+
+
+
+
+## 问题3
+
+**背景：**生产2号环境，通过istio的 ingress-gateway来代理service，达到访问k8s的服务，例如：用户请求 -> otherorder.service.hs.com -> DNS解析 -> nginx代理 -> istio-ingress-gateway -> 关联到otherorder.service.hs.com服务的svc -> 访问pod中的服务。
+
+生产2号环境中不光只有otherorder.service.hs.com一个服务，有好多的服务都是通过这样来访问的
+
+
+
+**问题：**某时刻，访问量大了起来，使istio ingress-gateway的pod带来了压力，ingress-gateway的HPA进行扩容，有一个pod始终被pending，因为ingress-gateway deployment使用了硬亲各，所以扩容无法完成，部分配置如下：
+
+```
+# 注释代码为原代码
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution: 
+          - weight: 2
+            podAffinityTerm: 
+              topologyKey: kubernetes.io/hostname
+              labelSelector: 
+                matchLabels:
+                  istio: ingressgateway
+          #requiredDuringSchedulingIgnoredDuringExecution:
+          #- labelSelector:
+          #    matchLabels:
+          #      istio: ingressgateway
+          #  topologyKey: kubernetes.io/hostname
+```
+
+在编辑并应用ingress-gateway deployment后，所有新ingress-gateway一直被pending，手动删除一个running的ingress-gateway，此时所有新创建的ingress-gateway已经创建成功，但是此时所有的生产业务报`404`，`所有服务挂了`。
+
+
+
+**解决：**重新创建ingress-gateway、istiod、gateway（匹配域名的网关）后，服务依旧如此，此时头脑空白，不知道原因何在，查看所有ingress-gateway的pod输出的日志，日志如下：
+
+```
+gRPC config for type.googleapis.com/envoy.config.route.v3.RouteConfiguration rejected: Only unique values for domains are permitted. Duplicate entry of domain otherorder.service.hs.com in route http.8080
+
+# 中文翻译
+已拒绝 type.googleapis.com/envoy.config.route.v3.RouteConfiguration 的 gRPC 配置： 只允许域的唯一值。路由 http.8080 中的 otherorder.service.hs.com 域名条目重复
+```
+
+![](..\image\k8s\faq\01.png)
+
+
+
+最后在argoCD中将prepro-java-otherorder-service-hs-com(实际删除virtualservice、destination、deployment、servicee、hpa)项目删除后，服务恢复正常。
+
+
+
+**究其原因：**因为这个项目otherorder.service.hs.com从阿里云docker环境`切换`到本地k8s环境，所以在本地生产1号和生产2号部署了一套argoCD项目，此项目自动会创建virtualservice(有域名：otherorder.service.hs.com)，而本地生产1号和生产2号已经存在这个域名，在prepro-dotnet-hsabservice-homsom-com这个项目的virtualservice中(也有域名：otherorder.service.hs.com)，在创建的时候istio能创建成功，所以当时并没有发现什么问题。
+
+但是在扩容ingressgateway时，进行删除并重建操作，ingressgateway会重新读取virtualservice的所有域名和发现对应的service，此时因为有重复的otherorder.service.hs.com，所以检验不通过，最后是看pod状态是running，但实际上ingressgateway并没有真正的运行起来，可以从上面的日志可以看出来，`最终解决办法就是只让virtualservice存在一个域名即可解决404问题。`
+
+
 

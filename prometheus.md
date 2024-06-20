@@ -339,14 +339,156 @@ up{instance="192.168.230.8:9104",job="mysqld"}
 up{host="192.168.230.8",instance="192.168.230.8:9104",job="mysqld"}
 表达式：label_join(up,'host','----','instance','job')
 up{host="192.168.230.8:9104----mysqld",instance="192.168.230.8:9104",job="mysqld"}
+```
 
-#使用httpAPI
+
+
+### httpAPI
+
+```bash
 "resultType": "matrix" | "vector" | "scalar" | "string"有四种数据类型，分别是：区间向量，瞬时向量，标量，字符串
---------数据查询
-[root@node1 /usr/local/prometheus]# {"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"up","instance":"192.168.230.8:9104","job":"mysqld"},"value":[1595469514.863,"0"]},{"metric":{"__name__":"up","instance":"192.168.230.8:9100","job":"nodes"},"value":[1595469514.863,"0"]},{"metric":{"__name__":"up","instance":"192.168.230.8:8080","job":"cadvisor"},"value":[1595469514.863,"0"]},{"metric":{"__name__":"up","instance":"127.0.0.1:9090","job":"prometheus"},"value":[1595469514.863,"1"]},{"metric":{"__name__":"up","instance":"127.0.0.1:9104","job":"mysqld"},"value":[1595469514.863,"1"]},{"metric":{"__name__":"up","instance":"127.0.0.1:9091","job":"pushgateway"},"value":[1595469514.863,"1"]},{"metric":{"__name__":"up","instance":"127.0.0.1:9100","job":"nodes"},"value":[1595469514.863,"1"]}]}}
---------区间数据查询--curl的url分号一定要
+
 [root@node1 /usr/local/prometheus]# curl 'http://localhost:9090/api/v1/query_range?query=up&start=2020-07-23T10:03:30.781Z&end=2020-07-23T10:04:00.781Z&step=15s'
-{"status":"success","data":{"resultType":"matrix","result":[]}}
+{"status":"success","data":{"resultType":"vector","result":[{"metric":{"__name__":"up","instance":"192.168.230.8:9104","job":"mysqld"},"value":[1595469514.863,"0"]},{"metric":{"__name__":"up","instance":"192.168.230.8:9100","job":"nodes"},"value":[1595469514.863,"0"]},{"metric":{"__name__":"up","instance":"192.168.230.8:8080","job":"cadvisor"},"value":[1595469514.863,"0"]},{"metric":{"__name__":"up","instance":"127.0.0.1:9090","job":"prometheus"},"value":[1595469514.863,"1"]},{"metric":{"__name__":"up","instance":"127.0.0.1:9104","job":"mysqld"},"value":[1595469514.863,"1"]},{"metric":{"__name__":"up","instance":"127.0.0.1:9091","job":"pushgateway"},"value":[1595469514.863,"1"]},{"metric":{"__name__":"up","instance":"127.0.0.1:9100","job":"nodes"},"value":[1595469514.863,"1"]}]}}
+
+
+## 查询皆可用GET和POST进行
+
+# 即时查询
+GET /api/v1/query
+# 范围查询 
+GET /api/v1/query_range
+# 获取标签
+GET /api/v1/labels
+# 获取所有target
+GET /api/v1/targets
+
+# 使用promQL查询，不能使用聚合函数，GET或者POST方法
+[root@prometheus ~]# curl -g 'http://localhost:9090/api/v1/series?' --data-urlencode 'match[]=up{job="consul-node_exporter"}' | jq .
+{
+........
+    {
+      "__name__": "up",
+      "app": "yum-apt-repo",
+      "env": "pro",
+      "instance": "192.168.13.202:9100",
+      "ip": "192.168.13.202",
+      "job": "consul-node_exporter",
+      "project": "node",
+      "team": "ops"
+    },
+    {
+      "__name__": "up",
+      "app": "zendao",
+      "env": "pro",
+      "instance": "192.168.13.21:9100",
+      "ip": "192.168.13.21",
+      "job": "consul-node_exporter",
+      "project": "node",
+      "team": "ops"
+    }
+  ]
+}
+
+
+
+# 查看标签job的值 
+[root@prometheus ~]# curl http://localhost:9090/api/v1/label/job/values
+{"status":"success","data":["argocd-server-metrics","consul-apollo","consul-blackbox-http","consul-blackbox-http-services","consul-blackbox-tcp","consul-blackbox-tcp-k8s","consul-blackbox_http_elasticsearch_health","consul-blackbox_http_elasticsearch_readonly","consul-blackbox_http_elasticsearch_readonly_auth","consul-blackbox_icmp","consul-cadvisor_exporter","consul-elasticsearch_exporter","consul-mysqld_exporter","consul-nacos","consul-nginx_exporter","consul-node_exporter","consul-rabbitmq_exporter","consul-redis_exporter","consul-snmp_exporter","consul-snmp_idrac_exporter","consul-windows_exporter","consul-wmi_exporter","consul-xenserver","consul_aliyun-cadvisor_exporter","consul_aliyun-elasticsearch_exporter","consul_aliyun-mysqld_exporter","consul_aliyun-node_exporter","consul_aliyun-redis_exporter","kubernetes-apiserver","kubernetes-etcd","kubernetes-node","kubernetes-node-cadvisor","kubernetes-service-endpoints","minio-job","minio-job-bucket","minio-job-node","minio-job-resource","prepro-kubernetes-apiserver","prepro-kubernetes-etcd","prepro-kubernetes-node","prepro-kubernetes-node-cadvisor","prepro-prometheus-federate-kubernetes","prometheus","prometheus-federate-kubernetes","pushgateway","test-kubernetes-apiserver","test-kubernetes-etcd","test-kubernetes-node","test-kubernetes-node-cadvisor","test-prometheus-federate-kubernetes","vmware_exporter"]}
+
+
+# 获取特定job的instance
+[root@prometheus ~]# curl -s -g 'http://localhost:9090/api/v1/series?' --data-urlencode 'match[]=up{job="consul-node_exporter"}' --data-urlencode 'match[]=up{job="consul-windows_exporter"}' | jq '.data[].instance' | tr -d '"'
+192.168.10.110:9182
+192.168.10.250:9182
+192.168.13.251:9182
+192.168.13.182:9182
+172.168.2.10:9182
+172.168.2.110:9182
+172.168.2.129:9182
+192.168.13.199:9182
+192.168.13.103:9182
+192.168.13.194:9100
+172.168.2.199:9182
+192.168.13.73:9182
+192.168.13.202:9100
+192.168.13.21:9100
+# 获取特定job的instance，格式化为IP地址
+[root@prometheus ~]# curl -s -g 'http://localhost:9090/api/v1/series?' --data-urlencode 'match[]=up{job="consul-node_exporter"}' --data-urlencode 'match[]=up{job="consul-windows_exporter"}' | jq '.data[].instance' | tr -d '"' | sed 's/:.*//g'
+
+
+
+## 清除tsdb的数据
+错误：Only queries that return single series/table is supported
+清除某个实例的信息，但数据还存在在磁盘中，prometheus在下一次压缩时会进行清理：
+curl -X POST -g 'http://localhost:9090/api/v1/admin/tsdb/delete_series?match[]={instance="127.0.0.1:9100"}'
+手动确定立即清理：
+curl -X PUT http://localhost:9090/api/v1/admin/tsdb/clean_tombstones
+注：当报警邮件收到时，明明一条报警信息，却邮件收到两条，只是实例名称不一样，例如：TCP:172.168.2.222:6379和172.168.2.222:9100，此时需要使用管理API进行清理，{instance="TCP:172.168.2.222:6379"}
+
+
+
+## prometheus数据大小优化
+--查看prometheus单个series最大多少，单个数量超过了200 万，就不要单实例了，做下集群分片
+[root@prometheus prometheus]# /usr/local/prometheus/tsdb ls /var/lib/prometheus/
+BLOCK ULID                  MIN TIME       MAX TIME       NUM SAMPLES  NUM CHUNKS  NUM SERIES
+01FRZ1473AKBT9CYDK6J84P6C7  1641513600000  1641708000000  4321475895   35892450    354272
+01FS4TGVFNAJSMRPWGT5R2MTSM  1641708000000  1641902400000  4319848463   35858035    354249
+
+--查看tsdb状态，评估哪些metric 和 label占用较多，去掉没用的指标
+[root@prometheus prometheus]# curl http://localhost:9090/api/v1/status/tsdb | jq .
+{
+  "status": "success",
+  "data": {
+    "seriesCountByMetricName": [
+      {
+        "name": "windows_service_status",
+        "value": 61908
+      },
+      {
+        "name": "windows_service_state",
+        "value": 41272
+      },
+      {
+        "name": "windows_service_start_mode",
+        "value": 25795
+      },
+      {
+        "name": "wmi_service_status",
+        "value": 11520
+      },
+      {
+        "name": "wmi_service_state",
+        "value": 7680
+      },
+      {
+        "name": "container_cpu_usage_seconds_total",
+        "value": 6316
+      },
+      {
+        "name": "container_tasks_state",
+        "value": 6005
+      },
+      {
+        "name": "windows_service_info",
+        "value": 5269
+      },
+      {
+        "name": "container_memory_failures_total",
+        "value": 4804
+      },
+      {
+        "name": "wmi_service_start_mode",
+        "value": 4800
+      }
+    ],
+}
+# 看到windows_service_status和windows_service_state很多，可以去prometheus查看此指标是否无用，无用则可以删除
+[root@prometheus ~]# curl -X POST -g 'http://localhost:9090/api/v1/admin/tsdb/delete_series?match[]=windows_service_status&start>2022-01-01&end<2022-01-18'
+或者
+[root@prometheus ~]# curl -X POST -g 'http://localhost:9090/api/v1/admin/tsdb/delete_series?match[]=windows_service_status&match[]={instance="172.168.2.10:9182"}&start>2022-01-01&end<2022-01-18'
+# 手动立即清理，（跟--storage.tsdb.retention.size=100GB一起使用，效果更明显）
+[root@prometheus ~]# curl -X PUT http://localhost:9090/api/v1/admin/tsdb/clean_tombstones
 ```
 
 
@@ -2077,88 +2219,6 @@ relabel_configs注解：
 
 
 
-
-
-### prometheus API
-
-
-
-
-**管理API**
-
-错误：Only queries that return single series/table is supported
-清除某个实例的信息，但数据还存在在磁盘中，prometheus在下一次压缩时会进行清理：
-curl -X POST -g 'http://localhost:9090/api/v1/admin/tsdb/delete_series?match[]={instance="127.0.0.1:9100"}'
-手动确定立即清理：
-curl -X PUT http://localhost:9090/api/v1/admin/tsdb/clean_tombstones
-注：当报警邮件收到时，明明一条报警信息，却邮件收到两条，只是实例名称不一样，例如：TCP:172.168.2.222:6379和172.168.2.222:9100，此时需要使用管理API进行清理，{instance="TCP:172.168.2.222:6379"}
-
-
-
-**prometheus数据大小优化**
-
-```
---查看prometheus单个series最大多少，单个数量超过了200 万，就不要单实例了，做下集群分片
-[root@prometheus prometheus]# /usr/local/prometheus/tsdb ls /var/lib/prometheus/
-BLOCK ULID                  MIN TIME       MAX TIME       NUM SAMPLES  NUM CHUNKS  NUM SERIES
-01FRZ1473AKBT9CYDK6J84P6C7  1641513600000  1641708000000  4321475895   35892450    354272
-01FS4TGVFNAJSMRPWGT5R2MTSM  1641708000000  1641902400000  4319848463   35858035    354249
-
---查看tsdb状态，评估哪些metric 和 label占用较多，去掉没用的指标
-[root@prometheus prometheus]# curl http://localhost:9090/api/v1/status/tsdb | jq .
-{
-  "status": "success",
-  "data": {
-    "seriesCountByMetricName": [
-      {
-        "name": "windows_service_status",
-        "value": 61908
-      },
-      {
-        "name": "windows_service_state",
-        "value": 41272
-      },
-      {
-        "name": "windows_service_start_mode",
-        "value": 25795
-      },
-      {
-        "name": "wmi_service_status",
-        "value": 11520
-      },
-      {
-        "name": "wmi_service_state",
-        "value": 7680
-      },
-      {
-        "name": "container_cpu_usage_seconds_total",
-        "value": 6316
-      },
-      {
-        "name": "container_tasks_state",
-        "value": 6005
-      },
-      {
-        "name": "windows_service_info",
-        "value": 5269
-      },
-      {
-        "name": "container_memory_failures_total",
-        "value": 4804
-      },
-      {
-        "name": "wmi_service_start_mode",
-        "value": 4800
-      }
-    ],
-}
-# 看到windows_service_status和windows_service_state很多，可以去prometheus查看此指标是否无用，无用则可以删除
-[root@prometheus ~]# curl -X POST -g 'http://localhost:9090/api/v1/admin/tsdb/delete_series?match[]=windows_service_status&start>2022-01-01&end<2022-01-18'
-或者
-[root@prometheus ~]# curl -X POST -g 'http://localhost:9090/api/v1/admin/tsdb/delete_series?match[]=windows_service_status&match[]={instance="172.168.2.10:9182"}&start>2022-01-01&end<2022-01-18'
-# 手动立即清理，（跟--storage.tsdb.retention.size=100GB一起使用，效果更明显）
-[root@prometheus ~]# curl -X PUT http://localhost:9090/api/v1/admin/tsdb/clean_tombstones
-```
 
 
 
