@@ -141,7 +141,13 @@ spec:
 
 
 
-**问题：**某时刻，访问量大了起来，使istio ingress-gateway的pod带来了压力，ingress-gateway的HPA进行扩容，有一个pod始终被pending，因为ingress-gateway deployment使用了硬亲各，所以扩容无法完成，部分配置如下：
+**问题：**发布新版本服务并且已经在k8s中部署，通过切换virtualservice流量达到蓝绿/灰度部署时，始终未生效，二次排查生产2号环境的pod，已经存在最新的编译文件，表示此镜像已经是最新，并且virtualservice canary的流量为100，但是用户访问到的还是老版本服务。
+
+**原因：**经过排错得知，virtualservice有多个重复的域名，例如`otherorder.service.hs.com`，所以导致istio对部分服务的virtualservice进行流量切换时失效。流量切换失效的服务不只是`otherorder.service.hs.com`，失效的还有其它不确定的服务。
+
+
+
+**问题：**某时刻，访问量大了起来，使istio ingress-gateway的pod带来了压力，ingress-gateway的HPA进行扩容，有一个pod始终被pending，因为ingress-gateway deployment使用了硬亲和，所以扩容无法完成，部分配置如下：
 
 ```
 # 注释代码为原代码
@@ -164,7 +170,7 @@ spec:
 
 
 
-**解决：**重新创建ingress-gateway、istiod、gateway（匹配域名的网关）后，服务依旧如此，此时头脑空白，不知道原因何在，查看所有ingress-gateway的pod输出的日志，日志如下：
+**解决：**回滚ingress-gateway deployment、重新创建ingress-gateway、istiod、gateway（匹配域名的网关）后，服务依旧如此，此时头脑空白，不知道原因何在，查看所有ingress-gateway的pod输出的日志，日志如下：
 
 ```
 gRPC config for type.googleapis.com/envoy.config.route.v3.RouteConfiguration rejected: Only unique values for domains are permitted. Duplicate entry of domain otherorder.service.hs.com in route http.8080
@@ -181,9 +187,9 @@ gRPC config for type.googleapis.com/envoy.config.route.v3.RouteConfiguration rej
 
 
 
-**究其原因：**因为这个项目otherorder.service.hs.com从阿里云docker环境`切换`到本地k8s环境，所以在本地生产1号和生产2号部署了一套argoCD项目，此项目自动会创建virtualservice(有域名：otherorder.service.hs.com)，而本地生产1号和生产2号已经存在这个域名，在prepro-dotnet-hsabservice-homsom-com这个项目的virtualservice中(也有域名：otherorder.service.hs.com)，在创建的时候istio能创建成功，所以当时并没有发现什么问题。
+**究其原因：**因为这个项目otherorder.service.hs.com从阿里云docker环境`切换`到本地k8s环境，所以在本地生产2号部署了一套argoCD项目，此项目自动会创建virtualservice(有域名：otherorder.service.hs.com)，而本地生产2号已经存在这个域名，在prepro-dotnet-hsabservice-homsom-com这个项目的virtualservice中(也有域名：otherorder.service.hs.com)，在创建的时候istio能创建成功，所以当时并没有发现什么问题。
 
-但是在扩容ingressgateway时，进行删除并重建操作，ingressgateway会重新读取virtualservice的所有域名和发现对应的service，此时因为有重复的otherorder.service.hs.com，所以检验不通过，最后是看pod状态是running，但实际上ingressgateway并没有真正的运行起来，可以从上面的日志可以看出来，`最终解决办法就是只让virtualservice存在一个域名即可解决404问题。`
+但是在扩容ingressgateway时，进行pod删除并重建操作，ingressgateway会重新读取virtualservice的所有域名和发现对应的service，此时因为有重复的otherorder.service.hs.com，所以ingressgateway检验不通过报`Duplicate entry of domain otherorder.service.hs.com in route http.8080`，虽然pod状态是running，但实际上ingressgateway并没有真正的运行起来，可以从上面的日志可以看出来，`最终解决办法就是只让virtualservice存在一个域名即可解决404问题。`
 
 
 
