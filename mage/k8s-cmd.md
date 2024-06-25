@@ -175,9 +175,11 @@ for i in `cat $OUT_FILE`;do cd $i; git checkout test && pulltest && sed -i -e 's
 
 ## 批量强制删除指定状态下指定名称空间的pod
 for i in `kubectl  get pods -o wide -A | grep 'Terminating' | grep 'fat-dotnet' | awk '{print $2}'`;do kubectl delete pods --force=true --grace-period=0 $i -n fat-dotnet ;done
+
+
+# 截取Virtualservice域名
+kubectl get vs -A | grep -i 'hs\.com' | awk '{print $4}' | tr -d '["]' | tr ',' '\n' | sort
 ```
-
-
 
 
 

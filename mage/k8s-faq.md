@@ -2,7 +2,7 @@
 
 
 
-## 问题1
+## 问题1：节点无法调度
 
 **问题**：
 
@@ -55,7 +55,7 @@ Events:              <none>
 
 
 
-## 问题2
+## 问题2： HPA限制问题
 
 **问题**：当在一个微服务项目中添加HPA控制器时，配置了内存/CPU使用率，例如配置内存/CPU使用率为80%时，总是不生效，Pod一直在创建/删除中
 
@@ -133,7 +133,7 @@ spec:
 
 
 
-## 问题3
+## 问题3：istio VS重名
 
 **背景：**生产2号环境，通过istio的 ingress-gateway来代理service，达到访问k8s的服务，例如：用户请求 -> otherorder.service.hs.com -> DNS解析 -> nginx代理 -> istio-ingress-gateway -> 关联到otherorder.service.hs.com服务的svc -> 访问pod中的服务。
 
@@ -192,4 +192,114 @@ gRPC config for type.googleapis.com/envoy.config.route.v3.RouteConfiguration rej
 但是在扩容ingressgateway时，进行pod删除并重建操作，ingressgateway会重新读取virtualservice的所有域名和发现对应的service，此时因为有重复的otherorder.service.hs.com，所以ingressgateway检验不通过报`Duplicate entry of domain otherorder.service.hs.com in route http.8080`，虽然pod状态是running，但实际上ingressgateway并没有真正的运行起来，可以从上面的日志可以看出来，`最终解决办法就是只让virtualservice存在一个域名即可解决404问题。`
 
 
+
+
+
+
+
+## 问题4:  pod无法重新创建
+
+问题：测试k8s所有节点重新启动后，一直有服务卡住起不来，原因是测试k8s节点资源不好，硬盘、CPU、内存不好，所以一直有好多pod未成功运行，卡在`0/1`的状态
+
+解决：优先启动`kube-system`名称空间的服务，特别是`网络组件`和`监控组件`的运行。其它是其它中间件服务的运行，最后才是基础服务的运行
+
+
+
+问题：测试环境k8s所有pod都已运行，就是一个pod `calico-node-6dvvf`无法运行，查看信息报错如下：
+
+```
+root@test-k8s-master:~# kubectl  describe pods calico-node-6dvvf -n kube-system
+Events:
+  Type     Reason                  Age                     From               Message
+  ----     ------                  ----                    ----               -------
+  Normal   Scheduled               3m35s                   default-scheduler  Successfully assigned kube-system/calico-node-6dvvf to 192.168.13.223
+  Warning  FailedCreatePodSandBox  3m20s (x13 over 3m34s)  kubelet            Failed to create pod sandbox: rpc error: code = Unknown desc = failed to start sandbox container for pod "calico-node-6dvvf": Error response from daemon: failed to start shim: fork/exec /usr/local/bin/containerd-shim: resource temporarily unavailable: unknown
+  Normal   SandboxChanged          3m20s (x12 over 3m33s)  kubelet            Pod sandbox changed, it will be killed and re-created.
+```
+
+解决：将节点`192.168.13.223`置为不可调度，并删除部分pod，给223腾资源（实际资源是足够的，内存共：228G，用了30G，CPU使用率20%多，硬盘空间足够，就是硬盘是HDD，不过此时硬盘并不繁忙），然后删除`calico-node-6dvvf`，但是还不能运行，状态如下：
+
+```
+root@test-k8s-master:~# kubectl  get pods -o wide -n kube-system
+calico-node-6dvvf                          0/1     Init:0/2   0              3m37s   192.168.13.223   192.168.13.223   <none>           <none>
+```
+
+最后将`docker服务重新启动`后，此问题解决，状态如下：
+
+```
+# 重新启动docker后，k8s节点192.168.13.223的服务并没有重启，不影响已经运行的pod
+root@test-k8s-node03:~# systemctl restart docker 
+root@test-k8s-node03:~# systemctl status docker 
+* docker.service - Docker Application Container Engine
+   Loaded: loaded (/etc/systemd/system/docker.service; enabled; vendor preset: enabled)
+   Active: active (running) since Tue 2024-06-25 14:25:57 CST; 3s ago
+
+# 此时192.168.13.223节点的calico-node-cndqk很快起来，状态不会有`Init:0/2`，此时正常了
+root@test-k8s-node03:~# kubectl  get pods -o wide -n kube-system  
+NAME                                       READY   STATUS    RESTARTS       AGE    IP               NODE             NOMINATED NODE   READINESS GATES
+calico-kube-controllers-754966f84c-nvfcw   1/1     Running   1 (40m ago)    85m    192.168.13.222   192.168.13.222   <none>           <none>
+calico-node-4cmqc                          1/1     Running   9 (40m ago)    276d   192.168.13.222   192.168.13.222   <none>           <none>
+calico-node-cndqk                          1/1     Running   0              32s    192.168.13.223   192.168.13.223   <none>     
+```
+
+**根本原因：是docker的Tasks达到limit值了，设定为不限制即可**
+
+```bash
+# 查看docker Task的状态，限制为7372，已经使用7359了，应该是此限制导致docker无法启动了
+root@test-k8s-node03:~# systemctl status docker | grep -i tasks
+    Tasks: 7359 (limit: 7372)
+
+
+# 设置docker服务task最大值为`无限的`，自己会重载服务
+root@test-k8s-node03:~# systemctl set-property docker TasksMax=infinity 
+root@test-k8s-node03:~# systemctl status docker | grep -i tasks
+           `-50-TasksMax.conf
+    Tasks: 7458
+
+# 实际是生成了/etc/systemd/system.control/docker.service.d/50-TasksMax.conf 这个配置文件，并让docker加载此文件从而生效
+root@test-k8s-node03:~# cat /etc/systemd/system.control/docker.service.d/50-TasksMax.conf 
+# This is a drop-in unit file extension, created via "systemctl set-property"
+# or an equivalent operation. Do not edit.
+[Service]
+TasksMax=infinity
+
+# 如果未生效，执行重启docker服务并验证是否生效
+root@test-k8s-node03:~# systemctl daemon-reload
+root@test-k8s-node03:~# systemctl restart docker
+root@test-k8s-node03:~# systemctl show docker --property=TasksMax
+TasksMax=infinity
+root@test-k8s-node03:~# systemctl status docker | grep -i tasks
+           `-50-TasksMax.conf
+    Tasks: 7459
+    
+# 此时CrashLoopBackOff的pod变成Running慢慢启动了
+root@test-k8s-node01:~# kubectl get pods -o wide -A  | grep  '0/1'
+fat-frontend     frontend-regionalsource-hs-com-deployment-56b57ccfc7-p2lvn        0/1     Running            0                12m     172.20.31.236    192.168.13.223   <none>           <none>
+fat-java         java-dingtalkhotel-service-hs-com-deployment-6779f7c595-bk9c2     0/1     Running            0                6m11s   172.20.31.231    192.168.13.223   <none>           <none>
+fat-java         java-jiyinapi-hs-com-deployment-65595bbbf-nwgqb                   0/1     CrashLoopBackOff   30 (3m22s ago)   155m    172.20.0.139     192.168.13.222   <none>           <none>
+fat-java         java-jiyinapi-hs-com-deployment-7fb88784c-k4zzn                   0/1     CrashLoopBackOff   25 (10s ago)     119m    172.20.0.221     192.168.13.222   <none>           <none>
+fat-java         java-regionalsource-service-hs-com-deployment-6557b776f-6z226     0/1     Running            0                12m     172.20.31.232    192.168.13.223   <none>           <none>
+uat-dotnet       dotnet-appmessage-hs-com-deployment-74ff4fd5b7-bfhhx              0/1     Running            0                21m     172.20.31.196    192.168.13.223   <none>           <none>
+uat-dotnet       dotnet-boss-hs-com-deployment-7559588bbd-pp96m                    0/1     Running            0                18m     172.20.31.199    192.168.13.223   <none>           <none>
+
+
+```
+
+
+
+**linux系统相关限制**
+
+```bash
+# 查看linux系统的文件句柄数使用情况
+# 第一列：使用的文件句柄数，第二列：空闲的句柄数，第三列：最大可用的句柄数
+root@test-k8s-node03:~# cat /proc/sys/fs/file-nr 
+53888	0	52706963
+
+# 查看最大pid数量 
+root@test-k8s-node03:~# sysctl -a | grep kernel.pid_max
+kernel.pid_max = 49152
+# 查看当前使用的pid数量
+root@test-k8s-node03:~# ps -eLf | wc -l 
+14768
+```
 

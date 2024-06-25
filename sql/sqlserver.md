@@ -1288,4 +1288,52 @@ use ActivityDB; CREATE USER [sql_exporter] FOR LOGIN [sql_exporter]; exec sp_add
 ## sqlserver主键重置为0
 dbcc checkident('BspDateInfo',reseed,0)	# 参数1：表名，参数2：固定参数，表示重新设置，参数3：重置ID为0，插入下一条数据则为1
 
+
+# 查看当前的实际活跃连接数
+SELECT COUNT(*) AS active_connections
+FROM sys.dm_exec_sessions
+WHERE session_id > 50; -- 排除系统会话
+
+# 查看sqlserver连接情况
+SELECT 
+    conn.session_id,
+    conn.client_net_address,
+    sess.host_name,
+    sess.program_name,
+    sess.login_name,
+    sess.last_request_start_time,
+    sess.last_request_end_time,
+    sess.status
+FROM 
+    sys.dm_exec_connections AS conn
+    INNER JOIN sys.dm_exec_sessions AS sess
+        ON conn.session_id = sess.session_id;
+
+# 查看死锁
+exec [dbo].[sp_who_lock]
+
+# 查看sqlserver系统配置
+SELECT * FROM sys.configurations
+
+# 查看当前的最大工作线程数和affinity mask设置
+SELECT
+    configuration_id,
+    name,
+    value,
+    value_in_use
+FROM
+    sys.configurations
+WHERE
+    name = 'max worker threads' OR
+    name = 'affinity mask';
+
+# 修改 max worker threads 和 affinity mask 设置
+EXEC sp_configure 'max worker threads', <desired_number>;
+RECONFIGURE;
+EXEC sp_configure 'affinity mask', <hexadecimal_value>;
+RECONFIGURE;
+
+
+
+
 </pre>
