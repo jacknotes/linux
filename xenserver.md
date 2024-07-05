@@ -1,7 +1,10 @@
-#xenserver
+# xenserver
 
-<pre>
-#xenserver license过期相关信息
+
+
+## xenserver license过期相关信息
+
+```
 7.2
 License Expiry
 XenCenter notifies you when your license is due to expire. You should purchase a license before it expires. When
@@ -9,6 +12,7 @@ a XenServer license expires:
 • XenCenter License Manager will display the status as Unlicensed.
 • you will no longer be able to access licensed features or receive Citrix Technical Support for any host within
 the pool until you purchase another license.
+
 
 
 6.5.0
@@ -32,11 +36,17 @@ unable to apply hotfixes or other updates using XenCenter.
 After you install a XenServer host, it runs as XenServer (Free) for 30 days. After this period, you cannot start
 any new, suspended, or powered-off VMs until you activate it (to continue using the free XenServer product) or
 configure Citrix Licensing for it (to use XenServer Advanced editions and higher).
+```
 
 
 
-#xenserver多块硬盘增加及删除方法
---查看新增加的未用陈列硬盘
+
+
+## xenserver多块硬盘增加及删除方法
+
+```
+# 查看新增加的未用陈列硬盘
+
 [root@HOMSOM-XEN08 ~]# ll /dev/disk/by-id/
 total 0
 lrwxrwxrwx 1 root root  9 Dec 13 15:43 ata-HL-DT-ST_DVD+_-RW_GTA0N_KZGECD90325 -> ../../sr0
@@ -130,11 +140,12 @@ uuid ( RO)                  : c6efe80b-8b47-b24b-f70e-143b24cd4257
 
 #--快照硬盘状态
 o(原始点，父vhd)----o(当前点，子vhd)
+
 1. 在当前点做快照时硬盘状态是这样的
-o(原始点，父vhd)----o(旧当前点快照状态，子vhd)-----o(新当前点，子vhd)
-						|
-						|----------------------o(新当前点的副本快照，子vhd)
-注：当创建第一个快照时，会多出两个vhd，当在第二次及以后创建快照时每次增加一个vhd
+   o(原始点，父vhd)----o(旧当前点快照状态，子vhd)-----o(新当前点，子vhd)
+   					|
+   					|----------------------o(新当前点的副本快照，子vhd)
+   注：当创建第一个快照时，会多出两个vhd，当在第二次及以后创建快照时每次增加一个vhd
 
 --查看vhd的父硬盘
 [root@Xen07 3828a230-7009-569b-5135-9a70e14ee235]# for i in `ls`;do echo "name: $i";vhd-util query -n $i -p;done
@@ -247,6 +258,7 @@ chain depth: 1
 PS C:\Users\0799> 37949952+21096657408+53565141504
 74699748864
 PS C:\Users\0799> 74699748864/1024/1024/1024
+
 69.5695624351501
 -------
 
@@ -254,24 +266,19 @@ PS C:\Users\0799> 74699748864/1024/1024/1024
 /usr/bin/vhd-util coalesce --debug -n /var/run/sr-mount/3828a230-7009-569b-5135-9a70e14ee235/343fcd8f-10ac-4fe1-9d8b-1e64eaaa715e.vhd
 /usr/bin/vhd-util coalesce --debug -n /var/run/sr-mount/3828a230-7009-569b-5135-9a70e14ee235/23a7ac62-8f1d-42b5-85f2-a6df1e640adb.vhd
 注：当删除完快照后状态如下:
+
 1. 删除快照前硬盘状态：
-o(原始点，父vhd)----o(旧当前点快照状态，子vhd)-----o(新当前点，子vhd)
-						|
-						|----------------------o(新当前点的副本快照，子vhd)
+   o(原始点，父vhd)----o(旧当前点快照状态，子vhd)-----o(新当前点，子vhd)
+   					|
+   					|----------------------o(新当前点的副本快照，子vhd)
 2. 删除快照后硬盘状态：
-o(原始点，父vhd)----o(旧当前点快照状态，子vhd)-----o(新当前点，子vhd)
-注：当快照全部删除完后，会有3个vhd，此时xenserver会对"o(旧当前点快照状态，子vhd)"进行在线合并操作，应该就是命令/usr/bin/vhd-util coalesce --debug -n /var/run/sr-mount/3828a230-7009-569b-5135-9a70e14ee235/343fcd8f-10ac-4fe1-9d8b-1e64eaaa715e.vhd，此命令未在生产上实验通过，忽操作，让xenserver自己执行在线合并即可，
+   o(原始点，父vhd)----o(旧当前点快照状态，子vhd)-----o(新当前点，子vhd)
+   注：当快照全部删除完后，会有3个vhd，此时xenserver会对"o(旧当前点快照状态，子vhd)"进行在线合并操作，应该就是命令/usr/bin/vhd-util coalesce --debug -n /var/run/sr-mount/3828a230-7009-569b-5135-9a70e14ee235/343fcd8f-10ac-4fe1-9d8b-1e64eaaa715e.vhd，此命令未在生产上实验通过，忽操作，让xenserver自己执行在线合并即可，
 
 3. xenserver执行在线合并完成后状态：
-o(原始点，父vhd)--------o(新当前点，子vhd)
-
-
-
-
-
-
-</pre>
-
+   o(原始点，父vhd)--------o(新当前点，子vhd)
+   
+   
 --查看sr
 [root@homsom-xen02 ~]# xe sr-list 
 --查看vbd，可以看出所属VM
@@ -353,7 +360,6 @@ uuid ( RO)                    : 55116021-4fb3-4747-a641-cb43eb412a4c
                     tags (SRW): 
             
 
-
 [root@Xen07 ~]# xe vbd-list uuid=aa9dc11e-8ff5-11c7-31ac-a4bb833af1cf params=all
 uuid ( RO)                        : aa9dc11e-8ff5-11c7-31ac-a4bb833af1cf
                      vm-uuid ( RO): 436c3d59-e53d-5862-ad2f-3f6a26d7a430
@@ -385,6 +391,12 @@ uuid ( RO)                        : aa9dc11e-8ff5-11c7-31ac-a4bb833af1cf
 uuid ( RO)           : 436c3d59-e53d-5862-ad2f-3f6a26d7a430
      name-label ( RW): lunxun.Xen07.rack05.idc01.hs.com-192.168.13.194-备用服务器
     power-state ( RO): running
+```
+
+
+
+
+
 
 
 
@@ -397,5 +409,79 @@ uuid ( RO)           : 436c3d59-e53d-5862-ad2f-3f6a26d7a430
 # 通过root用户连接到xenserver主机，使用此命令配置xenserver控制域内存，需要重启xenserver生效
 # 其中 <nn> 代表分配给 dom0 的内存量（以 MB 为单位）。
 /opt/xensource/libexec/xen-cmdline --set-xen dom0_mem=<nn>M,max:<nn>M
+```
+
+
+
+
+
+## 配置虚拟机随系统自动启动
+
+```bash
+# 设置XenServer开启自动启动功能
+[root@XEN01 ~]# xe pool-list
+uuid ( RO)                : c33a1c52-75e2-7cfe-3a91-138b886c951a
+          name-label ( RW): 
+    name-description ( RW): 
+              master ( RO): 82148d13-c2ee-4ede-8825-82338283787a
+          default-SR ( RW): 5c0169d0-b82d-8176-ab2d-0be369317d0d
+
+
+[root@XEN01 ~]# xe pool-list params=all | grep other-config
+                    other-config (MRW): memory-ratio-hvm: 0.25; memory-ratio-pv: 0.25
+
+
+[root@XEN01 ~]# xe pool-param-set uuid=c33a1c52-75e2-7cfe-3a91-138b886c951a other-config:auto_poweron=true
+[root@XEN01 ~]# xe pool-list params=all | grep other-config
+                    other-config (MRW): auto_poweron: true; memory-ratio-hvm: 0.25; memory-ratio-pv: 0.25
+
+
+
+# 设置虚拟机随XenServer系统自动启动
+[root@XEN01 ~]# xe vm-list 
+uuid ( RO)           : e4d3e382-b1a3-4c05-b974-ac0d25a43def
+     name-label ( RW): Control domain on host: XEN01.RACK06.IDC01.HS.COM
+    power-state ( RO): running
+
+
+uuid ( RO)           : a797c79b-898c-b58a-d8fe-461029a1da43
+     name-label ( RW): WebBackup-XenLicenseServer.xen01.rack06.hs.com-192.168.13.72
+    power-state ( RO): running
+
+
+uuid ( RO)           : 6f2a290a-7923-e4eb-f281-4a92a3903a0c
+     name-label ( RW): wsus02.xen01.rack06.idc01.hs.com-192.168.13.73
+    power-state ( RO): running
+
+
+[root@XEN01 ~]# xe vm-list params=all | grep other-config
+                          other-config (MRW): base_template_name: Windows Server 2008 R2 (64-bit); import_task: OpaqueRef:1c7c7441-8516-40a5-b727-7aa35fc5760e; mac_seed: 212466be-ff89-e99a-41c1-18deb6e59e25; install-methods: cdrom
+                          other-config (MRW): base_template_name: Windows Server 2019 (64-bit); import_task: OpaqueRef:5b1ae095-d5df-4a1d-b660-99ce164d3348; mac_seed: 2e59b3fd-a03e-5266-9c91-26c3773a5d8c; install-methods: cdrom
+
+# 添加自动启动配置
+for i in `xe vm-list params=uuid --minimal | sed 's/,/ /g'`;do xe vm-param-set uuid=$i other-config:auto_poweron=true;done
+
+[root@XEN01 ~]# xe vm-list params=other-config
+other-config (MRW)    : auto_poweron: true; storage_driver_domain: OpaqueRef:128c4b27-c794-4df1-8d7a-aa6c607719e5; is_system_domain: true; perfmon: <config><variable><name value="fs_usage"/><alarm_trigger_level value="0.9"/><alarm_trigger_period value="60"/><alarm_auto_inhibit_period value="3600"/></variable><variable><name value="mem_usage"/><alarm_trigger_level value="0.95"/><alarm_trigger_period value="60"/><alarm_auto_inhibit_period value="3600"/></variable><variable><name value="log_fs_usage"/><alarm_trigger_level value="0.9"/><alarm_trigger_period value="60"/><alarm_auto_inhibit_period value="3600"/></variable></config>
+
+
+other-config (MRW)    : auto_poweron: true; base_template_name: Windows Server 2008 R2 (64-bit); import_task: OpaqueRef:1c7c7441-8516-40a5-b727-7aa35fc5760e; mac_seed: 212466be-ff89-e99a-41c1-18deb6e59e25; install-methods: cdrom
+
+
+other-config (MRW)    : auto_poweron: true; base_template_name: Windows Server 2019 (64-bit); import_task: OpaqueRef:5b1ae095-d5df-4a1d-b660-99ce164d3348; mac_seed: 2e59b3fd-a03e-5266-9c91-26c3773a5d8c; install-methods: cdrom
+
+# 移除自动启动配置
+xe vm-param-remove uuid=虚拟机UUID param-name=other-config param-key=auto_poweron
+
+
+## 批量配置自动开机启动
+# 1 
+for i in `xe pool-list params=uuid --minimal | sed 's/,/ /g'`;do xe pool-param-set uuid=$i other-config:auto_poweron=true;done 
+xe pool-list params=other-config
+
+# 2
+for i in `xe vm-list params=uuid --minimal | sed 's/,/ /g'`;do xe vm-param-set uuid=$i other-config:auto_poweron=true;done
+xe vm-list params=other-config
+
 ```
 

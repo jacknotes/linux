@@ -108,16 +108,18 @@ server {
 ### kuboard角色绑定
 
 第一阶段授权
-	* 新建用户`test`
-	* 新建用户组`ops`
-	* 配置用户组`ops`，将用户`test`加入用户组`ops`，并在`角色绑定(集群)`下绑定集群`test-k8s`和kuboard自带角色`sso-user`，因为`sso-user`角色有`act-as-impersonate-user`权限
+
+- 新建用户`test`
+- 新建用户组`ops`
+- 配置用户组`ops`，将用户`test`加入用户组`ops`，并在`角色绑定(集群)`下绑定集群`test-k8s`和kuboard自带角色`sso-user`，因为`sso-user`角色有`act-as-impersonate-user`权限
 
 
 
 第二阶段授权
-	* 进行集群配置页面
-	* 找到`访问控制` -> `第二阶段授权` -> `用户组` -> `为新Group授权` -> `选择组ops`进行配置
-	* 进行配置页面后，指定名称空间，按需绑定rolebinding | clusterrolebinding赋予组权限，例如绑定集群角色`clusterrole-homsom-develop`给组ops
+
+- 进行集群配置页面
+- 找到`访问控制` -> `第二阶段授权` -> `用户组` -> `为新Group授权` -> `选择组ops`进行配置
+- 进行配置页面后，指定名称空间，按需绑定rolebinding | clusterrolebinding赋予组权限，例如绑定集群角色`clusterrole-homsom-develop`给组ops
 
 ```bash
 apiVersion: rbac.authorization.k8s.io/v1
@@ -311,7 +313,7 @@ docker exec kuboard rm -rf /init-etcd-scripts/kuboard-admin-testuser.yaml
 
 ## 3. 自定义ClusterRole
 
-```bash
+```yaml
 [root@prometheus kuboard]# cat clusterrole-homsom-ops.yaml 
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -807,7 +809,7 @@ NAME            STATUS   ROLES   AGE    VERSION
 
 
 
-```bash
+```yaml
 root@ansible:~/k8s/addons/kuboard# cat kuboard.yaml
 ---
 apiVersion: v1
