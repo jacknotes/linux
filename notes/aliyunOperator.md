@@ -1531,7 +1531,7 @@ COMMIT
 
 
 
-### 配置数据盘
+### 1. 配置数据盘
 
 
 
@@ -1754,11 +1754,11 @@ tmpfs                          tmpfs     3.4G     0  3.4G   0% /run/user/1000
 
 
 
-### 单节点部署Elasticsearch
+### 2. 单节点部署Elasticsearch
 
 
 
-#### 1.1 下载
+#### 2.1 下载
 
 ```bash
 # 下载Elasticsearch和Kibana
@@ -1780,11 +1780,13 @@ total 579508
 
 
 
-#### 1.2 Elasticsearch
+
+
+#### 2.2 Elasticsearch
 
 
 
-##### 1.2.1 安装服务
+##### 2.2.1 安装服务
 
 ```bash
 # 优化系统参数
@@ -1861,7 +1863,7 @@ drwxr-xr-x  2 root root   4096 May 29  2020 plugins
 
 
 
-##### 1.2.2 配置服务
+##### 2.2.2 配置服务
 
 ```bash
 # 配置elasticsearch
@@ -1880,14 +1882,15 @@ cluster.initial_master_nodes: ["10.10.10.201"]
 
 # 创建系统用户及配置相关权限
 [opsuser@elasticsearch001 /usr/local/elasticsearch]$ sudo groupadd -r elasticsearch
-[opsuser@elasticsearch001 /usr/local/elasticsearch]$ sudo useradd -r -M -s /sbin/nologin elasticsearch
+[opsuser@elasticsearch001 /usr/local/elasticsearch]$ sudo useradd -r -M -s /sbin/nologin -g elasticsearch elasticsearch
 [opsuser@elasticsearch001 /usr/local/elasticsearch]$ sudo chown -R elasticsearch.elasticsearch /usr/local/elasticsearch-7.7.1/
+[opsuser@elasticsearch001 /usr/local/elasticsearch]$ sudo mkdir /data/elasticsearch7
 [opsuser@elasticsearch001 /usr/local/elasticsearch]$ sudo chown -R elasticsearch.elasticsearch /data/elasticsearch7/
 ```
 
 
 
-##### 1.2.3 启动服务
+##### 2.2.3 启动服务
 
 ```bash
 # 配置elasticsearch服务
@@ -1917,8 +1920,8 @@ WantedBy=multi-user.target
 [opsuser@elasticsearch001 /usr/local/elasticsearch]$ sudo grep '\-Xm' config/jvm.options
 ## -Xms4g
 ## -Xmx4g
--Xms10g
--Xmx10g
+-Xms16g
+-Xmx16g
 
 # 重启服务
 [opsuser@elasticsearch001 /usr/local/elasticsearch]$ sudo systemctl restart elasticsearch.service
@@ -1932,7 +1935,7 @@ elastic+  2739     1 45 13:50 ?        00:00:24 /usr/local/elasticsearch/jdk/bin
 
 
 
-##### 1.2.4 配置账号
+##### 2.2.4 配置账号
 
 ES中内置了几个管理其他集成组件的账号，在使用之前，需要先添加一下密码：
 
@@ -2006,7 +2009,7 @@ Enter host password for user 'elastic':
 
 
 
-#### 1.3 Kibana
+#### 2.3 Kibana
 
 
 
@@ -2025,7 +2028,7 @@ elasticsearch-7.7.1-linux-x86_64.tar.gz  kibana-7.7.1-linux-x86_64.tar.gz
 
 
 
-##### 1.3.2 配置服务
+##### 2.3.2 配置服务
 
 elasticsearch开启安全认证后，kibana连接elasticsearch以及访问elasticsearch都需要认证。
 
@@ -2033,14 +2036,15 @@ elasticsearch开启安全认证后，kibana连接elasticsearch以及访问elasti
 
 
 
-**明文配置**(使用此配置)
+**明文配置(使用此配置)**
 
 ```bash
+[opsuser@elasticsearch001 /usr/local]$ cd kibana
 [opsuser@elasticsearch001 /usr/local/kibana]$ cat config/kibana.yml
 server.port: 5601
 server.host: "0.0.0.0"
 server.name: "hotelui"
-elasticsearch.hosts: ["http://127l.0.0.1:9200"]
+elasticsearch.hosts: ["http://127.0.0.1:9200"]
 kibana.index: ".kibana"
 i18n.locale: "zh-CN"
 elasticsearch.username: "kibana"
@@ -2079,7 +2083,7 @@ xpack.security.encryptionKey: "yZr7lNijpHFb310qaEY5cp7MjVoyXw0C"   #如果不配
 
 
 
-##### 1.3.3 启动服务
+##### 2.3.3 启动服务
 
 ```bash
 [opsuser@elasticsearch001 /usr/local/kibana]$ cat /usr/lib/systemd/system/kibana.service
@@ -2094,6 +2098,8 @@ Type=simple
 ExecStart=/usr/local/kibana/bin/kibana
 Restart=on-failure
 LimitNOFILE=1000000
+#MemoryLimit=1G
+#MemoryAccounting=true
 
 [Install]
 WantedBy=multi-user.target
@@ -2111,7 +2117,7 @@ opsuser   4123  4003  0 16:13 pts/0    00:00:00 grep --color=auto kibana
 
 
 
-##### 1.3.5 访问服务
+##### 2.3.4 访问服务
 
 http://10.10.10.201:5601
 
@@ -2119,13 +2125,26 @@ http://10.10.10.201:5601
 
 
 
-### Elasticsearch数据恢复
+### 3. Elasticsearch数据恢复
 
 前提：新旧版本必须一致，这里新旧版本皆为7.7.1
 
 
 
-#### 1.1 安装OSS插件
+#### 3.1 备份指定索引
+
+```bash
+PUT _snapshot/restore_repo/snapshot_202407111348?wait_for_completion=true
+{
+    "indices": "interexpedia_region_ali_pro,interexpedia_regionen_ali_pro,interexpedia_hotelstatic_ali_pro_zhcn,interexpedia_hotelstatic_ali_pro_enus,interdaolvv2_facilities_db_ali_pro,interdaolvv2_hoteldescription_db_ali_pro,interdaolvv2_hotelareaattraction_db_ali_pro,interdaolvv2_policy_db_ali_pro,interdaolvv2_hotelstatic_db_ali_pro,interdaolvv2_roomtypeattribute_db_ali_pro,interdaolvv2_roomtype_db_ali_pro,interdaolvv2_hotelimage_db_ali_pro,interdaolvv2_roomimage_db_ali_pro,intercorev2_hotel_db_ali_pro,intercorev2_hotel_en_db_ali_pro,intercorev2_room_db_ali_pro,intercorev2_room_en_db_ali_pro,intercorev2_search_ali_pro,intercorev2_cityrelationchain_ali_pro,intercorev2_cityrelationbrand_ali_pro,intercorev2_cityrelationcategory_ali_pro,intercorev2_hotel_db_ali_pro_expedia,intercorev2_hotel_db_ali_pro_interdaolvv2"
+}
+```
+
+
+
+
+
+#### 3.2 安装OSS插件
 
 在所有Elasticsearch节点安装OSS插件，插件版本必须跟Elasticsearch版本一致
 
@@ -2143,8 +2162,7 @@ total 586364
 # 或者使用此命令安装
 [opsuser@elasticsearch001 /download]$ sudo /usr/local/elasticsearch-7.7.1/bin/elasticsearch-plugin install file:///download/elasticsearch-repository-oss-7.7.1.zip
 # 查看安装的插件
-[opsuser@elasticsearch001 /download]$ ls /usr/local/elasticsearch-7.7.1/plugins/
-elasticsearch-repository-oss
+[opsuser@elasticsearch001 /download]$ ls /usr/local/elasticsearch-7.7.1/plugins/elasticsearch-repository-oss
 
 # 重启自建Elasticsearch集群各节点服务，滚动方式重启，不影响服务
 [opsuser@elasticsearch001 /download]$ sudo systemctl restart elasticsearch.service
@@ -2152,7 +2170,7 @@ elasticsearch-repository-oss
 
 
 
-#### 1.2 创建仓库
+#### 3.3 创建仓库
 
 ```bash
 # 查看所有仓库
@@ -2233,7 +2251,7 @@ GET _snapshot/restore_repo/_all
 
 
 
-#### 1.3 恢复快照数据
+#### 3.4 恢复快照数据
 
 ```bash
 # 恢复指定快照中的指定索引
@@ -2346,6 +2364,21 @@ POST /_snapshot/restore_repo/snapshot_1/_restore
     "index.number_of_replicas": 0
   }
 }
+
+
+# 查看恢复状态
+GET /_recovery
+GET /_cat/recovery
+GET /interdaolvv2_hotelstatic_db_ali_pro/_recovery
+
+# 查看是否恢复完成,stage=done表示已完成,stage=index表示正在索引中
+[ops0799@interES /download/hoteles]$ curl -s -u ops0799 http://localhost:9200/_cat/recovery?v | grep index
+Enter host password for user 'ops0799':
+index                                       shard time  type           stage source_host source_node target_host  target_node  repository   snapshot              files files_recovered files_percent files_total bytes      bytes_recovered bytes_percent bytes_total translog_ops translog_ops_recovered translog_ops_percent
+interexpedia_hotelstatic_ali_pro_enus       0     1.6m  snapshot       index n/a         n/a         10.10.10.204 interhotel01 restore_repo snapshot_202407111356 148   146             98.6%         148         4012104617 3118954440      77.7%         4012104617  0            0                      100.0%
+interexpedia_hotelstatic_ali_pro_enus       1     1.5m  snapshot       index n/a         n/a         10.10.10.204 interhotel01 restore_repo snapshot_202407111356 118   44              37.3%         118         3557958752 415589913       11.7%         3557958752  0            0                      100.0%
+interexpedia_hotelstatic_ali_pro_enus       2     1.4m  snapshot       index n/a         n/a         10.10.10.204 interhotel01 restore_repo snapshot_202407111356 133   0               0.0%          133         3777676496 0          0.0%          3777676496  0            0                      100.0%
+interexpedia_hotelstatic_ali_pro_enus       3     1.3m  snapshot       index n/a         n/a         10.10.10.204 interhotel01 restore_repo snapshot_202407111356 0     0               0.0%          0           0          0          0.0%          0           0            0                      100.0%
 ```
 
 
