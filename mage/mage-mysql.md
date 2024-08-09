@@ -5536,6 +5536,20 @@ DELETE FROM `dingtalk_selfbuilt`.`user_info` WHERE `id`=1730063375908392961 AND 
 ```
 
 
+****报错****
+```
+    binlog2sql.process_binlog()
+  File "binlog2sql/binlog2sql.py", line 121, in process_binlog
+    self.print_rollback_sql(filename=tmp_file)
+  File "binlog2sql/binlog2sql.py", line 129, in print_rollback_sql
+    for line in reversed_lines(f_tmp):
+  File "/root/binlog2sql/binlog2sql/binlog2sql_util.py", line 249, in reversed_lines
+    block = block.decode("utf-8")
+```
+****解决****
+```
+修改 binlog2sql_util.py 第249行：block = block.decode("utf-8", 'ignore')；
+```
 
 
 
