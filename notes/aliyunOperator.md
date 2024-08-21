@@ -47,7 +47,7 @@
 
 
 
-### 方式一
+### 方式一 使用DHCP选项集
 
 [使用DHCP选项集](https://help.aliyun.com/zh/vpc/user-guide/work-with-dhcp-options-sets)
 通过DHCP选项集功能，您可以为VPC中的ECS实例配置DNS服务器IP地址和域名。
@@ -81,7 +81,7 @@ nameserver 100.100.2.136
 
 
 
-### 方式二
+### 方式二 配置cloud服务
 
 **CentOS7实测未生效**
 
@@ -145,7 +145,7 @@ nmcli d connect eth0
 
 
 
-### 方式三
+### 方式三 rc.local配置
 
 ```bash
 # 开机自启
@@ -155,6 +155,15 @@ echo 'search hs.com' > /etc/resolv.conf
 echo 'nameserver 10.10.10.240' >> /etc/resolv.conf
 echo 'nameserver 100.100.2.136' >> /etc/resolv.conf
 ```
+
+
+
+### 方式四 windows配置
+
+1. 手动编辑网卡配置，配置dns地址。
+2. 重启ECS/重启网络服务生效。
+
+
 
 
 
