@@ -2361,6 +2361,26 @@ CLOSE_WAIT 2
 ESTABLISHED 743
 TIME_WAIT 5400
 
+# 以端口查询全部docker服务连接数
+CONTAINER_PORT=`sudo docker ps -a  | awk '{print $(NF-1)}' | awk -F':' '{print $2}' | awk -F'->' '{print $1}' | grep -v '^\s*$'`
+for i in $CONTAINER_PORT;do echo "CONTAINER_PORT: ${i}";sudo nsenter -t $(sudo docker inspect `sudo docker ps -a | grep :${i} | awk '{print $NF}'` | jq '.[0].State.Pid ') -n netstat -tan | awk '/^tcp/{count[$NF]++} END {for (i in count) {print i,count[i]}}'; echo -e '\n';done
+
+## 以端口查询全部docker服务连接数-格式化输出 
+# 1
+CONTAINER_PORT=`sudo docker ps -a  | awk '{print $(NF-1)}' | awk -F':' '{print $2}' | awk -F'->' '{print $1}' | grep -v '^\s*$'`
+# 2
+for i in $CONTAINER_PORT;do echo "CONTAINER_PORT: ${i}";sudo nsenter -t $(sudo docker inspect `sudo docker ps -a | grep :${i} | awk '{print $NF}'` | jq '.[0].State.Pid ') -n netstat -tan | awk '/^tcp/{count[$NF]++} END {for (i in count) {print i,count[i]}}'; echo -e '\n';done > /tmp/container_port.txt
+# 3
+sed -n '/^CONTAINER_PORT/{:a;N;/TIME_WAIT/!ba;s/\n/ /g;p}' /tmp/container_port.txt
+```
+1. 匹配CONTAINER_PORT开关的行
+2. 执行{}里面的操作
+3. :a; 定义标签a，用于跳转
+4. N; 一直读取下一行文本，并将其追加到当前行的末尾
+5. /TIME_WAIT/!ba; 直到匹配到TIME_WAIT行，则跳转到标签a
+6. s/\n/ /g; 将换行符替换成空格符
+7. p 打印结果
+```
 
 
 
