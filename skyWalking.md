@@ -1,7 +1,12 @@
-#SkyWalking
-<pre>
-#部署zookeeper高可用集群
---node01:
+# SkyWalking
+
+
+
+## 部署zookeeper高可用集群
+
+
+```bash
+# node01
 [root@newgitlab download]# curl -OL https://mirrors.tuna.tsinghua.edu.cn/apache/zookeeper/zookeeper-3.6.3/apache-zookeeper-3.6.3-bin.tar.gz
 [root@newgitlab download]# tar xf apache-zookeeper-3.6.3-bin.tar.gz -C /usr/local/
 [root@newgitlab download]# mv /usr/local/apache-zookeeper-3.6.3-bin/ /usr/local/zookeeper01
@@ -17,7 +22,8 @@ server.1=192.168.13.76:2287:3387
 server.2=192.168.13.76:2288:3388
 server.3=192.168.13.76:2289:3389
 [root@newgitlab download]# mv /usr/local/zookeeper01/conf/zoo_sample.cfg /usr/local/zookeeper01/conf/zoo.cfg
---node02&node03:
+
+# node02 & node03
 [root@newgitlab download]# cp -a /usr/local/zookeeper01/ /usr/local/zookeeper02
 [root@newgitlab download]# cp -a /usr/local/zookeeper01/ /usr/local/zookeeper03
 [root@newgitlab download]# vim /usr/local/zookeeper02/conf/zoo.cfg
@@ -83,12 +89,14 @@ Using config: /usr/local/zookeeper02/bin/../conf/zoo.cfg
 Client port found: 2182. Client address: localhost. Client SSL: false.
 Mode: leader
 注：监听端口2288就是server.2开启的，因为zookeeper02是leader角色,zookeeper集群会启动2181，2287，3387，8080和一个随机端口，确保端口不被占用
+```
 
 
 
+## 部署skywalking集群
 
-#部署skywalking集群
-node01:
+```bash
+# node01
 [root@newgitlab bin]# yum install -y java-1.8.0-openjdk
 [root@newgitlab bin]# mv apache-skywalking-apm-es7-8.5.0.tar.gz  /usr/local/src/
 [root@newgitlab bin]# tar xf apache-skywalking-apm-es7-8.5.0.tar.gz 
@@ -117,7 +125,7 @@ storage:
     clusterNodes: ${SW_STORAGE_ES_CLUSTER_NODES:192.168.13.50:9401}
 注：recordDataTTL表示记录数据存储时间，metricsDataTTL表示指标数据存储7天
 
-node02:
+# node02
 [root@newgitlab bin]# yum install -y java-1.8.0-openjdk
 [root@newgitlab src]# \cp -a apache-skywalking-apm-bin-es7/ /usr/local/skywalking02
 [root@newgitlab bin]# vim /usr/local/skywalking02/config/application.yml
@@ -210,9 +218,15 @@ PUT /_template/custom_skywalking_template
   }
 }
 ---------------------------------------
+```
 
-#三个节点启动collector 集群
-注：节点启动时需要在一定时间内同时启动，例如在1分钟内三个节点都需要启动，这样才能进行组播交换数据，集群才可建立成功。
+
+
+## 启动collector集群
+
+> 注：节点启动时需要在一定时间内同时启动，例如在1分钟内三个节点都需要启动，这样才能进行组播交换数据，集群才可建立成功。
+
+```bash
 [root@test ~]# /usr/local/skywalking01/bin/oapService.sh
 SkyWalking OAP started successfully!
 [root@test ~]# tail -f /usr/local/skywalking01/logs/skywalking-oap-server.log   --查看日志debug
@@ -221,9 +235,8 @@ SkyWalking OAP started successfully!
 [root@test ~]# /usr/local/skywalking03/bin/oapService.sh
 SkyWalking OAP started successfully!
 
-
-#dashboard配置及启动
-node01:
+# dashboard配置及启动
+## node01
 ---配置
 [root@newgitlab bin]# vim /usr/local/skywalking01/webapp/webapp.yml
 server:
@@ -238,7 +251,7 @@ collector:
 SkyWalking Web Application started successfully!
 [root@test skywalking01]# tail -f /usr/local/skywalking01/logs/webapp.log  --查看日志debug
 
-node02:
+## node02
 ---配置
 [root@newgitlab bin]# vim /usr/local/skywalking02/webapp/webapp.yml
 server:
@@ -253,7 +266,7 @@ collector:
 SkyWalking Web Application started successfully!
 [root@test skywalking02]# tail -f /usr/local/skywalking02/logs/webapp.log  --查看日志debug
 
-node03:
+## node03
 ---配置
 [root@newgitlab bin]# vim /usr/local/skywalking03/webapp/webapp.yml
 server:
@@ -268,11 +281,15 @@ collector:
 SkyWalking Web Application started successfully!
 [root@test skywalking03]# tail -f /usr/local/skywalking03/logs/webapp.log  --查看日志debug
 
-#skyworking模拟故障
+# skyworking模拟故障
 注：3个节点在zookeeper集群下可以容许一个节点故障。
+```
 
 
-#安装Skywalking agent端测试
+
+## 安装Skywalking agent端测试
+
+```bash
 --上传java项目进行测试，例如上传jar包到/tmp/boss-caring-0.0.1-SNAPSHOT.jar
 [root@test tmp]# ls /tmp/boss-caring-0.0.1-SNAPSHOT.jar 
 /tmp/boss-caring-0.0.1-SNAPSHOT.jar
@@ -303,12 +320,14 @@ SkyWalking Web Application started successfully!
 
 #访问http://skywalking.hs.com/graphql报500错误
 原因：hostPort：11800服务异常，
+```
 
 
 
+## skywalking单节点部署
 
-####202204091700
-#链路追踪模型：
+`202204091700`
+链路追踪模型：
 黑盒法：结果不太精确，不需要更改代理，需要使用agent
 标记法：结果精确，需要更改少量代码
 
@@ -321,8 +340,7 @@ write:  skywalking agent    -->   skywalking Port: 11800    -->   Elasticsearch7
 1. halo.run（halo博客）	java -javaagent:/tmp/skywalking-agent.jar Dskywalking.agent.service_name=service_name -Dskywalking.collector.backend_service=172.168.2.13:11800 -jar app.jar
 2. tomcat运行jenkins    需要更改tomcat配置文件，并在第一行增加配置： CATALINA_OPTS="$CATALINA_OPTS -javaagent:/path/to/skywalking-agent/skywalking-agent.jar"; export CATALINA_OPTS   。然后将jar或者war包移动到tomcat目录/webapps/，再启动catalina.sh run
 
-
-###skywalking单节点部署
+```bash
 1. 部署elasticsearch7
 [root@elk ~]# grep -Ev '#|^$' /etc/elasticsearch/elasticsearch.yml
 cluster.name: skywalking-clusster
@@ -380,7 +398,11 @@ yellow open sw_top_n_database_statement-20220409              1tMNwXZ-RqqBPLsx2f
 yellow open sw_profile_task-20220409                          X8Xm2dTaTyW4ZG-hSPIrgQ 1 1  0 0   283b   283b
 yellow open sw_metrics-apdex-20220409                         MLd06qN5Se2PLmx3PgR4_g 1 1  0 0   230b   230b
 yellow open sw_instance_traffic-20220409                      WGIWCHc1THq40pXsYdqTAQ 1 1  0 0   283b   283b
+```
 
 
 
-</pre>
+
+
+
+

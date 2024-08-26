@@ -1,44 +1,54 @@
-#Apollo Config Center
-<pre>
-refrence: https://github.com/ctripcorp/apollo/wiki/%E5%88%86%E5%B8%83%E5%BC%8F%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97
-#注：一个环境一个节点，例如FAT：192.168.1.1，UAT:192.168.1.10,PRO:192.168.1.20, portal:192.168.1.100.为实现双活，可以一个环境多个节点，例如：FAT:192.168.1.1，192.168.1.2 UAT:192.168.1.10,192.168.1.11  PRO:192.168.1.20,192.168.1.21,portal:192.168.1.100(无论如何，portal只有一个节点)
-#config和admin注意事项：当一个环境多个节点时，需要在每节点中的ApolloConfigDB.ServerConfig表中设置eureka.service.url的值为每个节点的configService地址，因为apollo-configservice本身就是一个eureka服务，所以只需要填入apollo-configservice的地址即可，并且以/eureka/后缀结束，这个表明每个节点都要向eureka服务注册
-#portal注意事项：ApolloPortalDB.ServerConfig表中，也可以通过管理员工具 - 系统参数页面进行配置，无特殊说明则修改完一分钟实时生效。apollo.portal.envs默认值是dev，如果portal需要管理多个环境的话，以逗号分隔即可（大小写不敏感）修改完需要重启生效。Apollo Portal需要在不同的环境访问不同的meta service(apollo-configservice)地址,所以apollo.portal.meta.servers就是config service的地址，例如：{
+# Apollo Config Center
+
+[refrence](https://github.com/ctripcorp/apollo/wiki/%E5%88%86%E5%B8%83%E5%BC%8F%E9%83%A8%E7%BD%B2%E6%8C%87%E5%8D%97)
+
+
+
+**旧笔记**
+
+
+```
+> 注：一个环境一个节点，例如FAT：192.168.1.1，UAT:192.168.1.10,PRO:192.168.1.20, portal:192.168.1.100.为实现双活，可以一个环境多个节点，例如：FAT:192.168.1.1，192.168.1.2 UAT:192.168.1.10,192.168.1.11  PRO:192.168.1.20,192.168.1.21,portal:192.168.1.100(无论如何，portal只有一个节点)
+config和admin注意事项：当一个环境多个节点时，需要在每节点中的ApolloConfigDB.ServerConfig表中设置eureka.service.url的值为每个节点的configService地址，因为apollo-configservice本身就是一个eureka服务，所以只需要填入apollo-configservice的地址即可，并且以/eureka/后缀结束，这个表明每个节点都要向eureka服务注册
+portal注意事项：ApolloPortalDB.ServerConfig表中，也可以通过管理员工具 - 系统参数页面进行配置，无特殊说明则修改完一分钟实时生效。apollo.portal.envs默认值是dev，如果portal需要管理多个环境的话，以逗号分隔即可（大小写不敏感）修改完需要重启生效。Apollo Portal需要在不同的环境访问不同的meta service(apollo-configservice)地址,所以apollo.portal.meta.servers就是config service的地址，例如：{
     "FAT":"http://node1:8080",
     "PRO":"http://node2:8080"
 }
 
-#规划：
+
+**规划：** 
 node2: 192.168.15.202 #portal服务器，pro环境
 node1: 192.168.15.201 #fat环境
+
+
 #apollo配置中心安装和部署(node2)
 1. 获取安装包或源码
 	1. https://github.com/ctripcorp/apollo/releases #下载github释放的版本或clone源码
 	2. https://gitee.com/nobodyiam/apollo?_from=gitee_search #clone码云(gitee)上的源码
-[root@node2 /download]# git clone https://gitee.com/nobodyiam/apollo.git
-#安装java1.8+和mysql5.6.0+
-#jdk安装
-[root@node2 /download]# cd /download/tar xf jdk-8u201-linux-x64.tar.gz -C /usr/local/
-[root@node2 /download]# cd /download/ln -sv /usr/local/jdk1.8.0_201/ /usr/local/jdk
-[root@node2 /download]# cd /download/echo 'PATH=$PATH:/usr/local/jdk/bin' > /etc/profile.d/jdk.sh
-[root@node2 /download]# source /etc/profile
-[root@node2 /download]# java -version
-java version "1.8.0_201"
-Java(TM) SE Runtime Environment (build 1.8.0_201-b09)
-Java HotSpot(TM) 64-Bit Server VM (build 25.201-b09, mixed mode)
-#mysql安装 
-[root@node2 /download]# tar xf mysql-5.6.48-linux-glibc2.12-x86_64.tar.gz  -C /usr/local/
-[root@node2 /download]# ln -sv /usr/local/mysql-5.6.48-linux-glibc2.12-x86_64/ /usr/local/mysql
-[root@node2 /download]# echo 'PATH=$PATH:/usr/local/mysql/bin' > /etc/profile.d/mysql.sh
-[root@node2 /download]# mkdir -p /data/mysql
-[root@node2 /download]# chown -R root.mysql /data/mysql/
-[root@node2 /download]# chmod -R 775 /data/mysql/
-[root@node2 /download]# chown -R root.mysql /usr/local/mysql-5.6.48-linux-glibc2.12-x86_64/
-[root@node2 /download]# chmod -R 775 /usr/local/mysql-5.6.48-linux-glibc2.12-x86_64/
-[root@node2 /download]# yum install -y autoconf
-[root@node2 /usr/local/mysql/scripts]# ./mysql_install_db --datadir=/data/mysql --user=mysql --basedir=/usr/local/mysql
-[root@node2 /usr/local/mysql]# cp support-files/mysql.server /etc/init.d/
-[root@node2 /usr/local/mysql]# cat /etc/my.cnf
+	[root@node2 /download]# git clone https://gitee.com/nobodyiam/apollo.git
+	#安装java1.8+和mysql5.6.0+
+	#jdk安装
+	[root@node2 /download]# cd /download/tar xf jdk-8u201-linux-x64.tar.gz -C /usr/local/
+	[root@node2 /download]# cd /download/ln -sv /usr/local/jdk1.8.0_201/ /usr/local/jdk
+	[root@node2 /download]# cd /download/echo 'PATH=$PATH:/usr/local/jdk/bin' > /etc/profile.d/jdk.sh
+	[root@node2 /download]# source /etc/profile
+	[root@node2 /download]# java -version
+	java version "1.8.0_201"
+	Java(TM) SE Runtime Environment (build 1.8.0_201-b09)
+	Java HotSpot(TM) 64-Bit Server VM (build 25.201-b09, mixed mode)
+	#mysql安装 
+	[root@node2 /download]# tar xf mysql-5.6.48-linux-glibc2.12-x86_64.tar.gz  -C /usr/local/
+	[root@node2 /download]# ln -sv /usr/local/mysql-5.6.48-linux-glibc2.12-x86_64/ /usr/local/mysql
+	[root@node2 /download]# echo 'PATH=$PATH:/usr/local/mysql/bin' > /etc/profile.d/mysql.sh
+	[root@node2 /download]# mkdir -p /data/mysql
+	[root@node2 /download]# chown -R root.mysql /data/mysql/
+	[root@node2 /download]# chmod -R 775 /data/mysql/
+	[root@node2 /download]# chown -R root.mysql /usr/local/mysql-5.6.48-linux-glibc2.12-x86_64/
+	[root@node2 /download]# chmod -R 775 /usr/local/mysql-5.6.48-linux-glibc2.12-x86_64/
+	[root@node2 /download]# yum install -y autoconf
+	[root@node2 /usr/local/mysql/scripts]# ./mysql_install_db --datadir=/data/mysql --user=mysql --basedir=/usr/local/mysql
+	[root@node2 /usr/local/mysql]# cp support-files/mysql.server /etc/init.d/
+	[root@node2 /usr/local/mysql]# cat /etc/my.cnf
 -----------
 [client]
 socket = /tmp/mysql.sock
@@ -214,7 +224,7 @@ update `ApolloPortalDB`.`ServerConfig` set `value`='[{"orgId":"Tech","orgName":"
 update `ApolloPortalDB`.`ServerConfig` set `value`='pro' where `key` = 'apollo.portal.envs'
 #注：数据库配置好后要重启下portal，然后再能建项目，如果在配置数据库之前创建项目，则会导致项目使用异常
 
-  
+
 #apollo配置中心安装和部署(node1)
 #安装java1.8+和mysql5.6.0+
 #jdk安装
@@ -428,41 +438,44 @@ spring.datasource.username = ${MYSQL_USER}
 spring.datasource.password = ${MYSQL_PASSWD}
 -------------------------------------------------
 -----------------------END-----------------------
-
-</pre>
-
+```
 
 
-#apollo
-#datetime: 20210616
-<pre>
-DOC: https://www.apolloconfig.com/#/zh/deployment/distributed-deployment-guide?id=_31-%e8%b0%83%e6%95%b4apolloportaldb%e9%85%8d%e7%bd%ae
-#运行时环境：
+
+# apollo
+
+`datetime: 20210616`
+
+[Document](https://www.apolloconfig.com/#/zh/deployment/distributed-deployment-guide?id=_31-%e8%b0%83%e6%95%b4apolloportaldb%e9%85%8d%e7%bd%ae)
+
+
+
+**运行时环境：**
 OS: 服务端基于Spring Boot，启动脚本理论上支持所有Linux发行版，建议CentOS 7。
 JAVA: 最好1.8 
 Apollo服务端：1.8+
 Apollo客户端：1.7+
 MYSQL: 版本要求：5.6.5+
 
-#Apollo目前支持以下环境：
+**Apollo目前支持以下环境：**
 DEV		开发环境
 FAT		测试环境，相当于alpha环境(功能测试)
 UAT		集成环境，相当于beta环境（回归测试）
 PRO		生产环境
 
-#环境：
+**环境：**
 Portal部署在生产环境的机房，通过它来直接管理FAT、UAT、PRO等环境的配置
 Meta Server、Config Service和Admin Service在每个环境都单独部署，使用独立的数据库
 Meta Server、Config Service和Admin Service在生产环境部署在两个机房，实现双活
 Meta Server和Config Service部署在同一个JVM进程内，Admin Service部署在同一台服务器的另一个JVM进程内
 
-#网络策略：
+**网络策略：**
 分布式部署的时候，apollo-configservice和apollo-adminservice需要把自己的IP和端口注册到Meta Server（apollo-configservice本身）。
 Apollo客户端和Portal会从Meta Server获取服务的地址（IP+端口），然后通过服务地址直接访问。
 需要注意的是，apollo-configservice和apollo-adminservice是基于内网可信网络设计的，所以出于安全考虑，请不要将apollo-configservice和apollo-adminservice直接暴露在公网。
 所以如果实际部署的机器有多块网卡（如docker），或者存在某些网卡的IP是Apollo客户端和Portal无法访问的（如网络安全限制），那么我们就需要在apollo-configservice和apollo-adminservice中做相关配置来解决连通性问题。
 
-#忽略某些网卡：
+**忽略某些网卡：**
 可以分别修改apollo-configservice和apollo-adminservice的startup.sh，通过JVM System Property传入-D参数，也可以通过OS Environment Variable传入，下面的例子会把docker0和veth开头的网卡在注册到Eureka时忽略掉。
 JVM System Property示例：
 -Dspring.cloud.inetutils.ignoredInterfaces[0]=docker0
@@ -471,7 +484,7 @@ OS Environment Variable示例：
 SPRING_CLOUD_INETUTILS_IGNORED_INTERFACES[0]=docker0
 SPRING_CLOUD_INETUTILS_IGNORED_INTERFACES[1]=veth.*
 
-#指定要注册的URL：
+**指定要注册的URL：**
 可以分别修改apollo-configservice和apollo-adminservice的startup.sh，通过JVM System Property传入-D参数，也可以通过OS Environment Variable传入，下面的例子会指定注册的URL为http://1.2.3.4:8080。
 JVM System Property示例：
 -Deureka.instance.homePageUrl=http://1.2.3.4:8080
@@ -480,10 +493,12 @@ OS Environment Variable示例：
 EUREKA_INSTANCE_HOME_PAGE_URL=http://1.2.3.4:8080
 EUREKA_INSTANCE_PREFER_IP_ADDRESS=false
 
-#直接指定apollo-configservice地址
+**直接指定apollo-configservice地址**
 如果Apollo部署在公有云上，本地开发环境无法连接，但又需要做开发测试的话，客户端可以升级到0.11.0版本及以上，然后配置跳过Apollo Meta Server服务发现
 
-#部署环境
+
+
+## 1. 部署环境
 DB:
 DEV: 192.168.13.50
 FAT: 192.168.13.196
@@ -504,10 +519,14 @@ PRO: 192.168.13.235:8090 192.168.13.214:8091
 
 
 
-#安装java1.8
+## 2. 安装java1.8
 步骤忽略
 
-#数据库部署
+
+
+## 3. 数据库部署
+
+```bash
 1. 安装数据库；：
 略
 2. 重置密码
@@ -546,8 +565,6 @@ mysql> SHOW VARIABLES WHERE Variable_name = 'version';
 | version       | 5.7.33-log |
 +---------------+------------+
 
-
-#部署步骤
 4. 创建数据库
 Apollo服务端共需要两个数据库：ApolloPortalDB和ApolloConfigDB，我们把数据库、表的创建和样例数据都分别准备了sql文件，只需要导入数据库即可。
 需要注意的是ApolloPortalDB只需要在生产环境部署一个即可，而ApolloConfigDB需要在每个环境部署一套，如fat、uat和pro分别部署3套ApolloConfigDB。
@@ -620,9 +637,17 @@ DEV: 192.168.13.50:8090  192.168.13.196:8091
 FAT: 192.168.13.196:8090 192.168.13.50:8091
 UAT: 192.168.13.214:8090 192.168.13.235:8091
 PRO: 192.168.13.235:8090 192.168.13.214:8091
+```
 
 
-#部署程序：
+
+## 4. 部署
+
+
+
+### 4.1 配置程序
+
+```bash
 从https://github.com/ctripcorp/apollo/releases页面下载最新版本的apollo-configservice-x.x.x-github.zip、apollo-adminservice-x.x.x-github.zip和apollo-portal-x.x.x-github.zip即可。
 # 1. 配置数据库连接信息
 Apollo服务端需要知道如何连接到你前面创建的数据库，数据库连接串信息位于上一步下载的压缩包中的config/application-github.properties中
@@ -927,10 +952,132 @@ tcp        0      0 0.0.0.0:8090            0.0.0.0:*               LISTEN      
 /usr/local/apollo-adminservice/scripts/shutdown.sh
 /usr/local/apollo-adminservice-two/scripts/shutdown.sh
 /usr/local/apollo-portal/scripts/shutdown.sh
+```
 
 
-#apollo使用指南
-#配置编辑、发布权限
+
+### 4.2 配置启动脚本
+
+```bash
+#### dev、fat、pro env
+# 因为这些环境安装的是特定的jdk，所以有特定的环境变量EnvironmentFile
+[root@hlog /usr/local/apollo-configservice]# cat /etc/sysconfig/apolloconfig 
+JAVA_HOME=/usr/local/jdk
+---
+# /usr/lib/systemd/system/apollo-configservice.service
+[Unit]
+Description=apollo-configservice
+After=network.target
+
+[Service]
+EnvironmentFile=/etc/sysconfig/apolloconfig
+Type=forking
+ExecStart=/usr/local/apollo-configservice/scripts/startup.sh
+ExecStop=/usr/local/apollo-configservice/scripts/shutdown.sh
+Restart=on-failure
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
+---
+# /usr/lib/systemd/system/apollo-adminservice.service
+[Unit]
+Description=apollo-adminservice
+After=network.target
+Requires=apollo-configservice.service
+
+[Service]
+EnvironmentFile=/etc/sysconfig/apolloconfig
+Type=forking
+ExecStart=/usr/local/apollo-adminservice/scripts/startup.sh
+ExecStop=/usr/local/apollo-adminservice/scripts/shutdown.sh
+Restart=on-failure
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
+---
+systemctl daemon-reload 
+systemctl enable apollo-adminservice.service apollo-configservice.service
+systemctl start apollo-adminservice.service apollo-configservice.service
+
+
+
+### pro env
+# /usr/lib/systemd/system/apollo-portal.service
+[Unit]
+Description=apollo-portal
+After=network.target
+Requires=apollo-adminservice.service
+
+[Service]
+EnvironmentFile=/etc/sysconfig/apolloconfig
+Type=forking
+ExecStart=/usr/local/apollo-portal/scripts/startup.sh
+ExecStop=/usr/local/apollo-portal/scripts/shutdown.sh
+Restart=on-failure
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
+---
+systemctl daemon-reload 
+systemctl enable apollo-portal.service
+systemctl start apollo-portal.service
+
+
+
+### uat env
+# 因为uat环境安装的是openjdk，所以没有特定的环境变量EnvironmentFile
+# /usr/lib/systemd/system/apollo-configservice.service
+[Unit]
+Description=apollo-configservice
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/usr/local/apollo-configservice/scripts/startup.sh
+ExecStop=/usr/local/apollo-configservice/scripts/shutdown.sh
+Restart=on-failure
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
+---
+# /usr/lib/systemd/system/apollo-adminservice.service
+[Unit]
+Description=apollo-adminservice
+After=network.target
+Requires=apollo-configservice.service
+
+[Service]
+Type=forking
+ExecStart=/usr/local/apollo-adminservice/scripts/startup.sh
+ExecStop=/usr/local/apollo-adminservice/scripts/shutdown.sh
+Restart=on-failure
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
+---
+systemctl enable apollo-adminservice.service apollo-configservice.service
+systemctl start apollo-adminservice.service apollo-configservice.service
+```
+
+
+
+
+
+
+
+
+
+## 5. apollo使用指南
+
+
+
+### 5.1 配置编辑、发布权限
+
 配置权限分为编辑和发布：
 编辑权限允许用户在Apollo界面上创建、修改、删除配置
 	配置修改后只在Apollo界面上变化，不会影响到应用实际使用的配置
@@ -941,23 +1088,24 @@ tcp        0      0 0.0.0.0:8090            0.0.0.0:*               LISTEN      
 
 
 
-#apolloConfigDB.ServerConfig
-#发布审核
+**apolloConfigDB.ServerConfig**
+`发布审核`
 namespace.lock.switch - 一次发布只能有一个人修改开关，用于发布审核
 这是一个功能开关，如果配置为true的话，那么一次配置发布只能是一个人修改，另一个发布。
-#配置查看权限
+`配置查看权限`
 configView.memberOnly.envs
 只对项目成员显示配置信息的环境列表，多个env以英文逗号分隔。
 对设定了只对项目成员显示配置信息的环境，只有该项目的管理员或拥有该namespace的编辑或发布权限的用户才能看到该私有namespace的配置信息和发布历史。公共namespace始终对所有用户可见。
-#为apollo-adminservice开启访问控制
+`为apollo-adminservice开启访问控制`
 admin-service.access.control.enabled - 配置apollo-adminservice是否开启访问控制
 默认为false，如果配置为true，那么apollo-portal就需要正确配置访问该环境的access token，否则访问会被拒绝
-#apolloConfigDB.ServerConfig
-#创建项目权限控制
+
+**apolloConfigDB.ServerConfig**
+`创建项目权限控制`
 role.create-application.enabled - 是否开启创建项目权限控制
 默认为false，所有用户都可以创建项目
 如果设置为true，那么只有超级管理员和拥有创建项目权限的帐号可以创建项目，超级管理员可以通过管理员工具 - 系统权限管理给用户分配创建项目权限
-#允许访问apollo-adminservice的access token列表
+`允许访问apollo-adminservice的access token列表`
 admin-service.access.tokens - 配置允许访问apollo-adminservice的access token列表
 如果该配置项为空，那么访问控制不会生效。如果允许多个token，token 之间以英文逗号分隔
 样例：
@@ -966,29 +1114,29 @@ admin-service.access.tokens=098f6bcd4621d373cade4e832627b4f6,ad0234829205b903319
 
 
 
-#配置访问密钥
+`配置访问密钥`
 Apollo从1.6.0版本开始增加访问密钥机制，从而只有经过身份验证的客户端才能访问敏感配置。如果应用开启了访问密钥，客户端需要配置密钥，否则无法获取配置。
 为项目的每个环境生成访问密钥，注意默认是禁用的，建议在客户端都配置完成后再开启
 注：在porltal面板上配置
 
 
-#apolloConfigDB.ServerConfig
-#发布审核
+**apolloConfigDB.ServerConfig**
+`发布审核`
 namespace.lock.switch - 一次发布只能有一个人修改开关，用于发布审核
 这是一个功能开关，如果配置为true的话，那么一次配置发布只能是一个人修改，另一个发布。
-#配置查看权限
+`配置查看权限`
 configView.memberOnly.envs
 只对项目成员显示配置信息的环境列表，多个env以英文逗号分隔。
 对设定了只对项目成员显示配置信息的环境，只有该项目的管理员或拥有该namespace的编辑或发布权限的用户才能看到该私有namespace的配置信息和发布历史。公共namespace始终对所有用户可见。
-#为apollo-adminservice开启访问控制
+`为apollo-adminservice开启访问控制`
 admin-service.access.control.enabled - 配置apollo-adminservice是否开启访问控制
 默认为false，如果配置为true，那么apollo-portal就需要正确配置访问该环境的access token，否则访问会被拒绝
-#apolloConfigDB.ServerConfig
-#创建项目权限控制
+**apolloConfigDB.ServerConfig**
+`创建项目权限控制`
 role.create-application.enabled - 是否开启创建项目权限控制
 默认为false，所有用户都可以创建项目
 如果设置为true，那么只有超级管理员和拥有创建项目权限的帐号可以创建项目，超级管理员可以通过管理员工具 - 系统权限管理给用户分配创建项目权限
-#允许访问apollo-adminservice的access token列表
+`允许访问apollo-adminservice的access token列表`
 admin-service.access.tokens - 配置允许访问apollo-adminservice的access token列表
 如果该配置项为空，那么访问控制不会生效。如果允许多个token，token 之间以英文逗号分隔
 样例：
@@ -997,13 +1145,18 @@ admin-service.access.tokens=098f6bcd4621d373cade4e832627b4f6,ad0234829205b903319
 
 
 
-#配置访问密钥
+`配置访问密钥`
 Apollo从1.6.0版本开始增加访问密钥机制，从而只有经过身份验证的客户端才能访问敏感配置。如果应用开启了访问密钥，客户端需要配置密钥，否则无法获取配置。
 为项目的每个环境生成访问密钥，注意默认是禁用的，建议在客户端都配置完成后再开启
 注：在porltal面板上配置
 
-注：经过测试成功，只是对pro环境生效
-#配置邮件
+
+
+### 5.2 配置邮件
+
+> 经过测试成功，只是对pro环境生效
+
+```
 apolloPortalDB.ServerConfig表中更改或者在PortalUI的系统参数修改：
 email.enabled: true  									-----邮件开关
 email.config.host: smtp.qiye.163.com:465  				-----smtp主机地址
@@ -1047,17 +1200,16 @@ email.template.release.module.rules: <div>
     #{rulesContent}
     <br>
 </div>     ------灰度发布的灰度规则模块
+```
 
 
-#问题
+
+**问题**
+
 1. mysql5.7调整配置后，apollo-config和apollo-admin无法连接，当启动apollo的服务时报错如下：
 com.mysql.cj.jdbc.exceptions.CommunicationsException: Communications link failure
 mysql错误日志报错如下：
 2021-11-08T05:20:42.490275Z 21 [Note] Bad handshake
 原因是apollo-config和apollo-admin配置文件中config/application-github.properties中没有使用useSSL=false参数，最初apollo也没有配置是否使用ssl连接也可以连接，而经过mysql5.7的配置更改后无法连接，最后mysql5.7配置回滚也无法连接，最终是找到是此参数导致的。
 正确参数：spring.datasource.url = jdbc:mysql://192.168.13.214:3306/ApolloConfigDB?useSSL=false&characterEncoding=utf8
-
-
-
-</pre>
 
