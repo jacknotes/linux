@@ -1,4 +1,5 @@
-#sql server
+# sql server
+
 <pre>
 数据存储结构：
 #数据库文件和事务文件组成：
@@ -1088,7 +1089,7 @@ GO
 
 
 ---------------
- 
+
 --参数说明：
 --WITH MOVE TO：重新指定文件的路径，WITH MOVE
 --TO数量取决于数据库文件数量
@@ -1180,6 +1181,22 @@ SELECT 'GRANT EXECUTE,VIEW DEFINITION ON[dbo].[' + name + ']TO [WN010]' AS t_sql
 -- SELECT 'GRANT EXECUTE,VIEW DEFINITION,ALTER ON[dbo].[' + name + ']TO [hs\prod-dbuser]' AS t_sql FROM sys.procedures
 GRANT EXECUTE,VIEW DEFINITION  ON [dbo].[AutomaticTicketing_GetRecord]TO [WN010]
 -- revoke EXECUTE,VIEW DEFINITION on [dbo].[AutomaticTicketing_GetRecord] from [WN010]
+
+
+**批量授予执行计划权限**
+
+```
+-- 数据库级别权限
+USE topway
+GRANT SHOWPLAN TO [HS\prod-dbuser]
+-- 服务器级别权限
+GRANT SHOWPLAN TO [HS\prod-dbuser] AS SERVER
+
+-- 脚本生成
+SELECT 'USE ' + name + '; GRANT SHOWPLAN TO [test];' 
+FROM sys.databases;
+```
+
 
 
 ```bash

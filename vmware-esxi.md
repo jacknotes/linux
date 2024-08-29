@@ -1,6 +1,75 @@
-#vmware esxi
-<pre>
-#snapshot shell
+# vmware esxi
+
+
+
+## vcenter6.7.0安装
+
+```
+# 在windows系统上安装vcenter到ESXI中
+1. 将vCenter的镜像文件VMware-VCSA-all-6.7.0-15132721.iso解压
+2. 在解压后的文件中，打开H:\vcsa-ui-installer\win32\installer.exe
+3. 配置安装即可。
+4. 登入vcenter，配置vcenter密钥：0A0FF-403EN-RZ848-ZH3QH-2A73P
+5. 配置vsphere client密钥:0Y0AJ-4P29H-LZV81-59AQ2-C291V
+6. 如果硬盘空间不够，可使用lvm来扩展卷大小。
+
+
+
+# 重置administrator@vsphere.local密码
+root@photon-machine [ ~ ]# /usr/lib/vmware-vmdir/bin/vdcadmintool
+==================
+Please select:
+0. exit
+1. Test LDAP connectivity
+2. Force start replication cycle
+3. Reset account password
+4. Set log level and mask
+5. Set vmdir state
+6. Get vmdir state
+7. Get vmdir log level and mask
+==================
+
+3
+  Please enter account UPN : administrator@vsphere.local
+New password is -
+dVkog7ROQ:Wv}k0GDy~`			# 这是新的密码
+
+
+==================
+Please select:
+0. exit
+1. Test LDAP connectivity
+2. Force start replication cycle
+3. Reset account password
+4. Set log level and mask
+5. Set vmdir state
+6. Get vmdir state
+7. Get vmdir log level and mask
+==================
+
+0
+
+
+
+
+
+# vcenter服务管理
+root@vcenter [ ~ ]# service-control --stop --all 
+root@vcenter [ ~ ]# service-control --start --all
+root@vcenter [ ~ ]# service-control --status
+Stopped:
+ applmgmt pschealth vmafdd vmcad vmcam vmdird vmdnsd vmonapi vmware-analytics vmware-certificatemanagement vmware-cis-license vmware-cm vmware-content-library vmware-eam vmware-imagebuilder vmware-mbcs vmware-netdumper vmware-perfcharts vmware-pod vmware-postgres-archiver vmware-rbd-watchdog vmware-rhttpproxy vmware-sca vmware-sps vmware-statsmonitor vmware-sts-idmd vmware-stsd vmware-topologysvc vmware-updatemgr vmware-vapi-endpoint vmware-vcha vmware-vmon vmware-vpostgres vmware-vpxd vmware-vpxd-svcs vmware-vsan-health vmware-vsm vsan-dps vsphere-client vsphere-ui
+Running:
+ lwsmd
+
+
+# vcenter千万不要用ssh命令关机，因为服务会异常，最佳实践是通过vcenter控制台关机。
+```
+
+
+
+## 快照脚本
+```bash
 [root@esxi01:~] cat /vmfs/volumes/datastore1/jackli/snapshot-manager.sh 
 --------------------------------------------------------
 #!/bin/sh
@@ -42,9 +111,13 @@ done
 echo "end time: $(date +'%Y%m%d%H%M%S')" >> $LOGFILE
 echo "" >> $LOGFILE
 --------------------------------------------------------
+```
 
 
-#vmware esxi host config auto boot
+
+## 配置自动启动
+
+```
 [root@esxi01:~] /bin/echo '0    18   */7 *   *   /vmfs/volumes/datastore1/jackli/snapshot-manager.sh' >> /var/spool/cron/crontabs/root
 [root@esxi01:~] vi /etc/rc.local.d/local.sh
 --------------------------------------------------------
@@ -87,6 +160,4 @@ Time: 06:16:27   Date: 01/18/2022   UTC
 */5  *    *   *   *   /bin/hostd-probe.sh ++group=host/vim/vmvisor/hostd-probe/stats/sh
 00   1    *   *   *   localcli storage core device purge
 0    18   */7 *   *   /vmfs/volumes/datastore1/jackli/snapshot-manager.sh
-
-
-</pre>
+```
