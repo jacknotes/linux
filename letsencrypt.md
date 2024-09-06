@@ -407,6 +407,8 @@ Found the following certs:
 ### 7.7 证书续期
 
 ```bash
+# 证书有效期<30天才会renew，所以crontab可以配置为1天或1周
+
 # 续期所有证书
 certbot renew --manual --preferred-challenges dns --manual-auth-hook "/root/letsencrypt/certbot-letencrypt-wildcardcertificates-alydns-au/au.sh python aly add" --manual-cleanup-hook "/root/letsencrypt/certbot-letencrypt-wildcardcertificates-alydns-au/au.sh python aly clean"
 
