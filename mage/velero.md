@@ -2,12 +2,10 @@
 
 
 
-## 简介
+## 1. 简介
 Velero 前身是 Heptio Ark，是由 GO 语言编写的一款用于灾难恢复和迁移工具，可以安全的备份、恢复和迁移 Kubernetes 集群资源和持久卷。
 
 [github地址](https://github.com/vmware-tanzu/velero)
-
-
 
 **Velero 主要提供以下能力**
 
@@ -34,7 +32,7 @@ Velero 前身是 Heptio Ark，是由 GO 语言编写的一款用于灾难恢复�
 
 
 
-## 原理
+## 2. 原理
 
 Velero 的基本原理就是将 Kubernetes 集群资源对象数据备份到对象存储中，并能从对象存储中拉取备份数据来恢复集群资源对象数据。
 
@@ -55,9 +53,9 @@ Velero 的操作（backup, scheduled backup, restore）都是 CRD 自定义资�
 
 
 
-## 按需备份
+## 3. 备份和还原
 
-
+### 3.1 按需备份
 
 **backup：**
 
@@ -85,9 +83,7 @@ Velero 的操作（backup, scheduled backup, restore）都是 CRD 自定义资�
 
 
 
-## 备份还原
-
-
+### 3.2 备份还原
 
 **restore：**
 
@@ -112,9 +108,7 @@ Velero 的操作（backup, scheduled backup, restore）都是 CRD 自定义资�
 
 
 
-## 定时备份
-
-
+### 3.3 定时备份
 
 **schedule：** 
 
@@ -122,7 +116,7 @@ Velero 的操作（backup, scheduled backup, restore）都是 CRD 自定义资�
 
 
 
-## API versions
+**API versions:**
 
 * Velero 备份资源时，使用 Kubernetes API 首选版本为每个组（group）/资源（CRD）备份。
 * 而还原备份的目标集群中，必须存在相同 API 组（group）/资源（CRD）版本。需要注意的是：只是需要存在相同版本，而并不是需要首选版本。
@@ -132,13 +126,19 @@ Velero 的操作（backup, scheduled backup, restore）都是 CRD 自定义资�
 
 
 
-## 备份存储
+### 3.4 备份存储数据
+
+k8s数据有两种：
+
+1. 集群对象数据
+
+2. PVC数据
 
 
 
 Velero 有 2 种备份存储方式：
 
-**1.Restic 方式备份** 
+**1. Restic 方式备份** 
 
 Restic 是一款 GO 语言开发的开源免费且快速、高效和安全的跨平台备份工具。它是文件系统级别备份持久卷数据并将其发送到 Velero 的对象存储。执行速度取决于本地 IO 能力，网络带宽和对象存储性能，相对快照方式备份慢。但如果当前集群或者存储出现问题，由于所有资源和数据都存储在远端的对象存储上，用 Restic 方式备份可以很容易的将应用恢复。 **Tips：** 使用 Restic 来对 PV 进行备份会有一些限制：
 
@@ -148,7 +148,7 @@ Restic 是一款 GO 语言开发的开源免费且快速、高效和安全的跨
 
 
 
-**2.快照方式备份** 
+**2. 快照方式备份** 
 
 * Velero 使用一组 BackupItemAction 插件针对 PersistentVolumeClaims 进行备份，执行速度快。它创建一个以 PersistentVolumeClaim 作为源的 VolumeSnapshot 对象，此 VolumeSnapshot 对象与用作源的 PersistentVolumeClaim 位于同一命名空间中，与 VolumeSnapshot 对应的 VolumeSnapshotContent 对象是一个集群范围的资源，将指向存储系统中基于磁盘的实际快照。
 
@@ -157,7 +157,7 @@ Restic 是一款 GO 语言开发的开源免费且快速、高效和安全的跨
 
 
 
-## 数据一致性
+**数据一致性**
 
 对象存储的数据是唯一的数据源，也就是说 `Kubernetes` 集群内的控制器会检查远程的 `OSS` 存储，恢复时发现有备份就会在集群内创建相关 `CRD` ，如果发现远端存储没有当前集群内的 `CRD` 所关联的存储数据，那么就会删除当前集群内的 `CRD`。
 
@@ -165,19 +165,11 @@ Restic 是一款 GO 语言开发的开源免费且快速、高效和安全的跨
 
 
 
+## 4. 部署
 
-
-## 部署
-
-
-
-### 1. MinIO对象存储
-
-
+### 4.1 MinIO对象存储
 
 Velero 依赖对象存储保存备份数据，这里部署 MinIO 替代公有云对象存储。
-
-
 
 **minio.yaml**
 
@@ -347,9 +339,7 @@ minio   NodePort   10.68.192.74   <none>        9000:30100/TCP,9001:30101/TCP   
 
 
 
-### 2. Velero 客户端
-
-
+### 4.2 Velero 客户端
 
 [Velero客户端下载](https://github.com/vmware-tanzu/velero/releases/download/v1.9.7/velero-v1.9.7-linux-amd64.tar.gz)
 
@@ -383,11 +373,11 @@ Client:
 
 
 
-### 3. Velero 服务端
+### 4.3 Velero 服务端
 
 
 
-#### 3.1 velero密钥配置
+#### 4.3.1 velero密钥配置
 
 首先准备密钥文件，access key id 和 secret access key 为 MinIO 的用户名和密码
 
@@ -400,7 +390,7 @@ aws_secret_access_key=minio123
 
 
 
-#### 3.2 安装velero服务端 
+#### 4.3.2 安装velero服务端 
 
 可以使用 velero 客户端来安装服务端，也可以使用 Helm Chart 来进行安装。比如本文以客户端来安装，velero 命令默认读取 kubectl 配置的集群上下文，所以前提是 velero 客户端所在的节点有可访问集群的 kubeconfig 配置
 
@@ -536,9 +526,7 @@ Server:
 
 
 
-
-
-#### 3.3 velero卸载
+#### 4.3.3 velero卸载
 
 如果有需要可按照如下命令拆除velero部署
 
@@ -556,9 +544,7 @@ kubectl delete ns velero
 
 
 
-
-
-#### 3.4 Velero CRD
+#### 4.3.4 Velero CRD
 
 ```bash
 root@ansible:~# kubectl -n velero get crds -l component=velero
@@ -578,7 +564,7 @@ volumesnapshotlocations.velero.io   2024-03-28T11:40:57Z
 
 
 
-##### 3.4.1 BackupStorageLocation
+##### 4.3.4.1 BackupStorageLocation
 
 `BackupStorageLocation` 主要用来定义 `Kubernetes` 集群资源的数据存放位置，也就是集群对象数据，不是 `PVC` 的数据。主要支持的后端存储是 `S3` 兼容的存储，比如：`Mino` 和阿里云 `OSS` 等。
 
@@ -640,14 +626,16 @@ spec:
 
 VolumeSnapshotLocation 主要用来给 PV 做快照，需要云提供商提供插件，阿里云已经提供了插件，这个需要使用 CSI 等存储机制。
 
-你也可以使用专门的备份工具 `Restic`，把 PV 数据备份到阿里云 OSS 中去(安装时需要自定义选项)。
+你也可以使用专门的备份工具 `Restic`而不使用`VolumeSnapshotLocation`，把 PV 数据备份到阿里云 OSS 中去(安装时需要自定义选项)。
 
 ```
-# 安装时需要自定义选项
+# 安装时需要自定义选项，表示PV数据使用restic备份到BackupStorageLocation中，也就是备份到OSS(minio)中
 --use-restic
 
-# 这里我们存储PV使用的是OSS，也就是BackupStorageLocation，因此不用创建VolumeSnapshotLocation对象
+# 因为使用了restic备份到OSS，也就是到BackupStorageLocation，因此不使用volume-snapshots，所以不用创建VolumeSnapshotLocation对象
 --use-volume-snapshots=false
+
+# --use-restic 和 --use-volume-snapshots是互斥的，只能选择其一。
 ```
 
 `Restic` 是一款 GO 语言开发的数据加密备份工具，顾名思义，可以将本地数据加密后传输到指定的仓库。支持的仓库有 Local、SFTP、Aws S3、Minio、OpenStack Swift、Backblaze B2、Azure BS、Google Cloud storage、Rest Server。
@@ -656,15 +644,9 @@ VolumeSnapshotLocation 主要用来给 PV 做快照，需要云提供商提供�
 
 
 
+## 5. 部署Clusterpedia服务用作测试
 
-
-### 4. 部署Clusterpedia服务用作测试
-
-
-
-#### 4.1 部署Clusterpedia
-
-
+### 5.1 部署Clusterpedia
 
 **拉取项目**
 
@@ -762,7 +744,7 @@ root@ansible:~/k8s/addons/velero/clusterpedia# kubectl apply -f ./deploy
 
 
 
-#### 4.2 Clusterpedia集群接入
+### 5.2 Clusterpedia集群接入
 
 [Clusterpedia](https://clusterpedia.io/zh-cn/docs/usage/import-clusters/) 使用自定义资源 `PediaCluster` 资源来代表接入的集群
 
@@ -881,7 +863,7 @@ cluster-example   True    v1.23.1   https://172.168.2.21:6443
 
 
 
-#### 4.4 查看导入集群的数据
+### 5.3 查看导入集群的数据
 
 ```bash
 # 获取本地存储mysql的POD_NAME
@@ -926,7 +908,7 @@ mysql> select r.id, r.group, r.version, r.resource, r.kind, r.name, r.namespace 
 
 
 
-#### 4.5 访问 Clusterpedia 资源
+### 5.4 访问 Clusterpedia 资源
 
 ```bash
 root@ansible:~# kubectl api-resources | grep clusterpedia.io
@@ -936,7 +918,7 @@ collectionresources                                  clusterpedia.io/v1beta1    
 resources                                            clusterpedia.io/v1beta1                false        Resources
 clusterimportpolicies                                policy.clusterpedia.io/v1alpha1        false        ClusterImportPolicy
 pediaclusterlifecycles                               policy.clusterpedia.io/v1alpha1        false        PediaClusterLifecycle
-# 多集群资源路径
+# 所有集群资源路径
 root@ansible:~# kubectl get --raw="/apis/clusterpedia.io/v1beta1/resources/version"
 {
   "major": "1",
@@ -949,7 +931,7 @@ root@ansible:~# kubectl get --raw="/apis/clusterpedia.io/v1beta1/resources/versi
   "compiler": "gc",
   "platform": "linux/amd64"
 }
-# 定集群资源路径
+# 特定集群资源路径
 root@ansible:~# kubectl get --raw="/apis/clusterpedia.io/v1beta1/resources/clusters/cluster-example/version"
 {
   "major": "1",
@@ -962,7 +944,6 @@ root@ansible:~# kubectl get --raw="/apis/clusterpedia.io/v1beta1/resources/clust
   "compiler": "gc",
   "platform": "linux/amd64"
 }
-
 ```
 
 
@@ -1027,9 +1008,7 @@ cluster-example   metrics-server            1/1     1            1           667
 
 
 
-#### 4.6 卸载Clusterpedia
-
-
+### 5.5 卸载Clusterpedia
 
 **部署集群自动接入策略 —— ClusterImportPolicy**
 
@@ -1117,17 +1096,9 @@ rm -rf /var/local/clusterpedia/internalstorage/<storage type>
 
 
 
+## 6. Velero实战
 
-
-
-
-
-
-### 5. Velero创建备份
-
-
-
-#### 5.1 备份
+### 6.1 备份clusterpedia服务
 
 **注意事项**
 
@@ -1137,7 +1108,7 @@ rm -rf /var/local/clusterpedia/internalstorage/<storage type>
 > - 在高版本1.16.x中，报错`error: unable to recognize "filebeat.yml": no matches for kind "DaemonSet" in version "extensions/v1beta1"` ,将yml配置文件内的api接口修改为 apps/v1 ，导致原因为之间使用的kubernetes 版本是1.14.x版本，1.16.x 版本放弃部分API支持！
 
 ```bash
-# 创建一个新的备份，名称为：mybackup-001，只备份的名称空间：clusterpedia-system，备份所有 pod 卷的方式：restic（不写默认为这）,此命令在名称空间velero下操作(默认是velero)
+# 创建一个新的备份，名称为：mybackup-001，只备份的名称空间：clusterpedia-system，备份所有 pod 卷的方式：restic（不写默认为restic）,此命令在名称空间velero下操作(默认是velero)
 root@ansible:~# velero backup create mybackup-001 --include-namespaces clusterpedia-system --default-volumes-to-restic -n velero
 Backup request "mybackup-001" submitted successfully.
 Run `velero backup describe mybackup-001` or `velero backup logs mybackup-001` for more details.
@@ -1225,16 +1196,11 @@ Backup request "everyday-backup-20240401080757" submitted successfully.
 Run `velero backup describe everyday-backup-20240401080757` or `velero backup logs everyday-backup-20240401080757` for more details.
 root@ansible:~# velero backup get | grep everyday-backup
 everyday-backup-20240401080757   InProgress   0        0          2024-04-01 16:07:58 +0800 CST   29d       default            <none>
-
 ```
 
 
 
-
-
-
-
-#### 5.2 删除服务
+### 6.2 删除clusterpedia服务
 
 ```bash
 root@ansible:~/k8s/addons/velero# kubectl get clusterimportpolicy
@@ -1268,9 +1234,7 @@ kubectl delete -f ./deploy/internalstorage/mysql/clusterpedia_internalstorage_se
 
 
 
-#### 5.3 恢复
-
-
+### 6.3 恢复clusterpedia服务
 
 恢复时，应当先恢复被依赖的资源对象，最后再恢复服务，例如：
 
@@ -1279,7 +1243,7 @@ kubectl delete -f ./deploy/internalstorage/mysql/clusterpedia_internalstorage_se
 
 
 
-##### 5.3.1 恢复服务
+#### 6.3.1 恢复服务
 
 ```bash
 root@ansible:~/k8s/addons/velero/clusterpedia# velero backup get
@@ -1413,7 +1377,7 @@ Preserve Service NodePorts:  auto
 
 
 
-##### 5.3.2 重新创建PV
+#### 6.3.2 重新创建PV
 
 使恢复的服务依赖问题被解决
 
@@ -1533,9 +1497,7 @@ job.batch/check-192.168.13.63-mysql-local-pv-dir   1/1           6s         81s
 
 
 
-
-
-#### 5.4 验证数据
+### 6.4 验证数据
 
 ```bash
 [root@k8s-node04 ~]# LOCAL_STORAGE_PODNAME=`kubectl get pods -n clusterpedia-system | grep internalstorage | awk '{print $1}'`
@@ -1608,9 +1570,7 @@ cluster-example   metrics-server            1/1     1            1           669
 
 
 
-
-
-#### 5.5 velero常用命令
+### 6.5 velero常用命令
 
 ```bash
 $ velero backup create mybackup-001 --include-namespaces clusterpedia-system --default-volumes-to-restic -n velero
@@ -1628,8 +1588,6 @@ $ velero create schedule NAME --schedule="@every 6h"
 $ velero schedule create nginx-daily --schedule="@daily" --include-namespaces nginx-example
 # 手动触发定时任务
 $ velero backup create --from-schedule nginx-daily
-
-
 ```
 
 

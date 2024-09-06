@@ -241,7 +241,7 @@ drwxr-xr-x 2 minio-user minio-user 6 Apr  2 15:33 /data/disk2
 
 * `MINIO_SERVER_URL`必需使用FQDN完全合格域名才行，这样Minio签字才不会出错。最终部署完成后通过Nginx反向代理访问成功
 
-* 如果没有反向代理，可以将`MINIO_SERVER_URL`的值临时设定为任意节点的IP地址，但所以节点必须一样配置，如：`MINIO_SERVER_URL="http://172.168.2.27:9000"`
+* 如果没有反向代理，可以将`MINIO_SERVER_URL`的值临时设定为任意节点的IP地址，但所有节点必须一样配置，如：`MINIO_SERVER_URL="http://172.168.2.27:9000"`
 
 **测试：**
 
@@ -806,9 +806,9 @@ root@ansible:/download/minio-dir# ansible minio -m shell -a 'systemctl restart m
 
 部署规划：一共1台服务器。MinIO集群部署在4块硬盘上。
 
-| 系统               | 节点           | 目录                     | 角色      |
-| ------------------ | -------------- | ------------------------ | --------- |
-| Ubuntu 18.04.6 LTS | 192.168.13.202 | /data/disk1，/data/disk2 | minio节点 |
+| 系统               | 节点           | 目录                                                         | 角色      |
+| ------------------ | -------------- | ------------------------------------------------------------ | --------- |
+| Ubuntu 18.04.6 LTS | 192.168.13.202 | /data/minio/disk1，/data/minio/disk2，/data/minio/disk3，/data/minio/disk4 | minio节点 |
 
 
 
@@ -1357,8 +1357,8 @@ root@ansible:/download/minio-dir# tree /mnt/minio/custom/backup-k8s/
 # 在alias为local的服务中创建bucket
 root@ansible:/download/minio-dir# mc mb local/k8s-test
 Bucket created successfully `local/k8s-test`.
-root@ansible:/download/minio-dir# mc mb local/velero
-Bucket created successfully `local/velero`.
+root@ansible:/download/minio-dir# mc mb local/test
+Bucket created successfully `local/test`.
 
 # 恢复 alias为k8s的数据 -> 到alias为local中
 root@ansible:/download/minio-dir# mc cp --recursive /mnt/minio/backup-k8s/ local

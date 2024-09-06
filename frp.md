@@ -207,3 +207,32 @@ RDP: 114.114.114.114:7001
     }
 	#注：此时可以删除frp服务端 http/https端口相关安全组和防火墙配置，因为通过nginx反向代理进行配置了。
 ```
+
+
+
+
+
+
+
+## 3. frp-0.60.0配置
+
+```bash
+[root@frp frp]# cat frps.toml
+bindAddr = "47.103.13.208"
+bindPort = 7000
+allowPorts = [
+{ start = 7100,end = 7200 }
+]
+auth.method = "token"
+auth.token = "AdTj8NzOSq3yrrBT1EPvpkss3mPlyauN"
+webServer.addr = "0.0.0.0"
+webServer.port = 8000
+webServer.user = "admin"
+webServer.password = "ObiuDLwQ0LWQfqy4"
+log.to = "./frp.log"
+log.level = "info"
+log.maxDays = 3
+log.disablePrintColor = false
+
+```
+
