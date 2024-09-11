@@ -379,7 +379,7 @@ Client:
 
 #### 4.3.1 velero密钥配置
 
-首先准备密钥文件，access key id 和 secret access key 为 MinIO 的用户名和密码
+首先准备密钥文件，access key id 和 secret access key 为 MinIO 的用户名和密码，也可以为有读写权限的`service account`的AK和SK
 
 ```bash
 root@ansible:~/k8s/addons/velero# cat credentials-velero
@@ -520,8 +520,6 @@ Client:
         Git commit: 9ace4ecbdc08d57415786ab9c896f86dbb6dc0b7
 Server:
         Version: v1.9.7
-        
-        
 ```
 
 
@@ -619,6 +617,18 @@ spec:
     prefix: ""
   provider: aws
 ```
+
+
+
+**确保状态为可用**
+
+```bash
+root@ansible:~/k8s/addons/velero# kubectl get BackupStorageLocation -n velero default
+NAME      PHASE       LAST VALIDATED   AGE     DEFAULT
+default   Available   30s              2d18h   true
+```
+
+> bucket需要事先手动创建，否则此新动态不UnAvailable
 
 
 
@@ -739,7 +749,6 @@ lrwxrwxrwx  1 root root   56 Mar 28 10:53 policy.clusterpedia.io_clusterimportpo
 lrwxrwxrwx  1 root root   57 Mar 28 10:53 policy.clusterpedia.io_pediaclusterlifecycles.yaml -> ./crds/policy.clusterpedia.io_pediaclusterlifecycles.yaml
 
 root@ansible:~/k8s/addons/velero/clusterpedia# kubectl apply -f ./deploy
-
 ```
 
 
@@ -832,6 +841,27 @@ root@ansible:~/k8s/addons/velero/clusterpedia# SYNCHRO_CA=$(kubectl -n default g
 root@ansible:~/k8s/addons/velero/clusterpedia# SYNCHRO_TOKEN=$(kubectl -n default get secret $(kubectl -n default get serviceaccount clusterpedia-synchro -o jsonpath='{.secrets[0].name}') -o jsonpath='{.data.token}')
 root@ansible:~/k8s/addons/velero/clusterpedia# cd ..
 
+# 编写yaml
+root@ansible:~/k8s/addons/velero# cat >> clusterpedia-cluster-import.yaml << EOF
+apiVersion: cluster.clusterpedia.io/v1alpha2
+kind: PediaCluster
+metadata:
+  name: cluster-example
+spec:
+  apiserver: "https://172.168.2.21:6443"
+  kubeconfig:
+  caData: $SYNCHRO_CA
+  tokenData: $SYNCHRO_TOKEN
+  certData:
+  keyData:
+  syncResources:
+  - group: apps
+    resources:
+    - "*"
+  - group: ""
+    resources:
+    - "*"
+EOF
 
 # 导入集群
 root@ansible:~/k8s/addons/velero# cat clusterpedia-cluster-import.yaml
@@ -903,7 +933,6 @@ mysql> select r.id, r.group, r.version, r.resource, r.kind, r.name, r.namespace 
 |  9 |       | v1      | nodes                  | Node                  | 172.168.2.25                            |                     |
 | 10 | apps  | v1      | controllerrevisions    | ControllerRevision    | argocd-application-controller-ff64489d7 | argocd              |
 +----+-------+---------+------------------------+-----------------------+-----------------------------------------+---------------------+
-
 ```
 
 
@@ -1105,7 +1134,7 @@ rm -rf /var/local/clusterpedia/internalstorage/<storage type>
 > - 在velero备份的时候，备份过程中创建的对象是不会被备份的。
 > - `velero restore` 恢复不会覆盖`已有的资源`，只恢复当前集群中`不存在的资源`。已有的资源不会回滚到之前的版本，如需要回滚，需在restore之前提前删除现有的资源。
 > - 后期可以让velero作为一个crontjob来运行，定期备份数据。
-> - 在高版本1.16.x中，报错`error: unable to recognize "filebeat.yml": no matches for kind "DaemonSet" in version "extensions/v1beta1"` ,将yml配置文件内的api接口修改为 apps/v1 ，导致原因为之间使用的kubernetes 版本是1.14.x版本，1.16.x 版本放弃部分API支持！
+> - 在高版本1.16.x中，报错`error: unable to recognize "filebeat.yml": no matches for kind "DaemonSet" in version "extensions/v1beta1"` ,将yml配置文件内的api接口修改为 apps/v1 ，导致原因为之前使用的kubernetes 版本是1.14.x版本，1.16.x 版本放弃部分API支持！
 
 ```bash
 # 创建一个新的备份，名称为：mybackup-001，只备份的名称空间：clusterpedia-system，备份所有 pod 卷的方式：restic（不写默认为restic）,此命令在名称空间velero下操作(默认是velero)
@@ -1594,7 +1623,323 @@ $ velero backup create --from-schedule nginx-daily
 
 
 
+### 6.6 恢复clusterpedia服务到集群k8s03
 
+#### 6.6.1 安装velero客户端
+
+```bash
+root@ansible:~# ezctl checkout k8s03
+2024-09-10 13:46:43 INFO set default kubeconfig: cluster k8s03 (current)
+root@ansible:~# velero version
+Client:
+        Version: v1.9.7
+        Git commit: 9ace4ecbdc08d57415786ab9c896f86dbb6dc0b7
+<error getting server version: no matches for kind "ServerStatusRequest" in version "velero.io/v1">
+```
+
+
+
+#### 6.6.2 安装velero服务端
+
+k8s03集群安装，准备密钥文件，access key id 和 secret access key 为 MinIO 的用户名和密码，也可以为有读写权限的`service account`的AK和SK
+
+```bash
+root@ansible:~/k8s/addons/velero# cat credentials-velero
+[default]
+aws_access_key_id=admin
+aws_secret_access_key=minio123
+
+
+root@ansible:~/k8s/addons/velero# cat credentials-velero
+[default]
+aws_access_key_id=4riuUbikp1MSHnGp5ruo
+aws_secret_access_key=ornzNKxwvFsXTIHR8mboAMtyitC1wcs1Xw5jdbf6
+
+root@ansible:~/k8s/addons/velero# cat velero-server-install-k8s03.sh
+#!/bin/bash
+velero install \
+--provider aws \
+--bucket k8s-opstest03-velero \
+--image velero/velero:v1.9.7 \
+--plugins velero/velero-plugin-for-aws:v1.5.5 \
+--namespace velero \
+--secret-file /root/k8s/addons/velero/credentials-velero \
+--use-volume-snapshots=false \
+--use-restic \
+--default-volumes-to-restic=true \
+--kubeconfig=/root/.kube/config \
+--backup-location-config region=minio,s3ForcePathStyle="true",s3Url=http://minio-api.hs.com
+
+root@ansible:~/k8s/addons/velero# ./velero-server-install-k8s03.sh
+
+
+
+# 查看velero状态
+root@ansible:~/k8s/addons/velero# kubectl get pods -o wide -n velero
+NAME                      READY   STATUS    RESTARTS   AGE     IP               NODE           NOMINATED NODE   READINESS GATES
+restic-48mkf              1/1     Running   0          9m57s   172.20.58.201    172.168.2.45   <none>           <none>
+restic-k8dc9              1/1     Running   0          9m57s   172.20.235.194   172.168.2.43   <none>           <none>
+restic-rkzv6              1/1     Running   0          9m57s   172.20.85.193    172.168.2.44   <none>           <none>
+velero-5cd4ff75bc-zmjrn   1/1     Running   0          9m57s   172.20.58.199    172.168.2.45   <none>           <none>
+
+root@ansible:~/k8s/addons/velero# kubectl get BackupStorageLocation -n velero
+NAME      PHASE       LAST VALIDATED   AGE   DEFAULT
+default   Available   15s              10m   true
+root@ansible:~/k8s/addons/velero# kubectl describe BackupStorageLocation -n velero
+Name:         default
+Namespace:    velero
+Labels:       component=velero
+Annotations:  <none>
+API Version:  velero.io/v1
+Kind:         BackupStorageLocation
+Metadata:
+  Creation Timestamp:  2024-09-10T05:52:22Z
+  Generation:          5
+  Managed Fields:
+    API Version:  velero.io/v1
+    Fields Type:  FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:labels:
+          .:
+          f:component:
+      f:spec:
+        .:
+        f:config:
+          .:
+          f:region:
+          f:s3ForcePathStyle:
+          f:s3Url:
+        f:default:
+        f:objectStorage:
+          .:
+          f:bucket:
+        f:provider:
+    Manager:      velero
+    Operation:    Update
+    Time:         2024-09-10T05:52:22Z
+    API Version:  velero.io/v1
+    Fields Type:  FieldsV1
+    fieldsV1:
+      f:status:
+        .:
+        f:lastValidationTime:
+        f:phase:
+    Manager:         velero-server
+    Operation:       Update
+    Time:            2024-09-10T05:59:49Z
+  Resource Version:  4048
+  UID:               6d45c50a-5eb1-44d8-8a44-8892dbac75dd
+Spec:
+  Config:
+    Region:            minio
+    s3ForcePathStyle:  true
+    s3Url:             http://minio-api.hs.com
+  Default:             true
+  Object Storage:
+    Bucket:  k8s-opstest03-velero
+  Provider:  aws
+Status:
+  Last Validation Time:  2024-09-10T06:02:56Z
+  Phase:                 Available
+Events:                  <none>
+
+```
+
+
+
+
+
+#### 6.6.3 创建新的BackupStorageLocation
+
+k8s03集群安装
+
+```bash
+root@ansible:~/k8s/addons/velero# cat BSL-k8s-opstest-velero-bucket-k8s03.yaml
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  labels:
+    component: velero
+  name:  k8s-opstest-velero
+  namespace: velero
+spec:
+  config:
+    region: minio
+    s3ForcePathStyle: "true"
+    s3Url: http://minio-api.hs.com
+  default: false
+  objectStorage:
+    bucket: k8s-opstest-velero
+  provider: aws
+root@ansible:~/k8s/addons/velero# kubectl apply -f BSL-k8s-opstest-velero-bucket-k8s03.yaml
+backupstoragelocation.velero.io/k8s-opstest-velero created
+root@ansible:~/k8s/addons/velero# kubectl get BackupStorageLocation -n velero
+NAME                 PHASE       LAST VALIDATED   AGE   DEFAULT
+default              Available   21s              27m   true
+k8s-opstest-velero   Available   15s              15s   false
+
+#  k8s03集群查看备份数据
+root@ansible:~/k8s/addons/velero# kubectl get nodes
+NAME           STATUS                     ROLES    AGE   VERSION
+172.168.2.43   Ready,SchedulingDisabled   master   53m   v1.23.7
+172.168.2.44   Ready                      node     51m   v1.23.7
+172.168.2.45   Ready                      node     51m   v1.23.7
+
+# 只要有存储位置，就可以获取取备份和恢复的数据
+root@ansible:~/k8s/addons/velero# velero backup get
+NAME           STATUS      ERRORS   WARNINGS   CREATED                         EXPIRES   STORAGE LOCATION     SELECTOR
+mybackup-001   Completed   0        0          2024-09-10 09:11:25 +0800 CST   29d       k8s-opstest-velero   <none>
+```
+
+
+
+#### 6.6.4 k8s03恢复clusterpedia服务
+
+恢复时，应当先恢复被依赖的资源对象，最后再恢复服务，例如：
+
+1. 先`创建/恢复`PV资源对象
+2. 再恢复服务
+
+
+
+**1. 创建PV**
+
+> 确保PV名称、大小，等信息不变，此目录/var/local/clusterpedia/internalstorage-k8s03/mysql是新创建的空目录
+
+```bash
+# 创建目录并赋权
+root@k8s-node01:/data# mkdir -p /data/clusterpedia/internalstorage/mysql && chmod -R 777 /data/clusterpedia/internalstorage/mysql
+
+root@ansible:~/k8s/addons/velero# cat clusterpedia_internalstorage_pv-k8s03.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: clusterpedia-internalstorage-mysql
+  labels:
+    app: clusterpedia-internalstorage
+    internalstorage.clusterpedia.io/type: mysql
+spec:
+  capacity:
+    storage: 20Gi
+  volumeMode: Filesystem
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  local:
+    path: /data/clusterpedia/internalstorage/mysql
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - 172.168.2.44
+root@ansible:~/k8s/addons/velero# kubectl apply -f clusterpedia_internalstorage_pv-k8s03.yaml
+persistentvolume/clusterpedia-internalstorage-mysql created
+root@ansible:~/k8s/addons/velero# kubectl get pv
+NAME                                 CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM   STORAGECLASS   REASON   AGE
+clusterpedia-internalstorage-mysql   20Gi       RWO            Retain           Available                                   3s
+```
+
+
+
+
+
+**2. 恢复服务**
+
+```bash
+# 恢复方式1
+root@ansible:~/k8s/addons/velero# velero restore create --from-backup mybackup-001
+Restore request "mybackup-001-20240910145043" submitted successfully.
+Run `velero restore describe mybackup-001-20240910145043` or `velero restore logs mybackup-001-20240910145043` for more details.
+
+
+# 恢复方式2, 恢复后状态为New
+root@ansible:~/k8s/addons/velero# velero restore get
+NAME                          BACKUP         STATUS   STARTED   COMPLETED   ERRORS   WARNINGS   CREATED                         SELECTOR
+mybackup-001-20240910162656   mybackup-001   New      <nil>     <nil>       0        0          2024-09-10 16:26:56 +0800 CST   <none>
+# 删除velero重建Pod解决状态为New的问题
+root@ansible:~/k8s/addons/velero# kubectl delete pod -n velero -l deploy=velero 
+
+
+# 重新恢复，恢复指定名称空间到重命名名称空间
+root@ansible:~/k8s/addons/velero# velero restore create --from-backup mybackup-001 --namespace-mappings clusterpedia-system:clusterpedia
+Restore request "mybackup-001-20240910173515" submitted successfully.
+Run `velero restore describe mybackup-001-20240910173515` or `velero restore logs mybackup-001-20240910173515` for more details.
+# 查看恢复任务
+root@ansible:~/k8s/addons/velero# velero  restore get
+NAME                          BACKUP         STATUS       STARTED                         COMPLETED   ERRORS   WARNINGS   CREATED                         SELECTOR
+mybackup-001-20240910173515   mybackup-001   InProgress   2024-09-10 17:35:15 +0800 CST   <nil>       0        0          2024-09-10 17:35:15 +0800 CST   <none>
+# 验证名称空间映射是否成功
+root@ansible:~/k8s/addons/velero/clusterpedia/deploy/internalstorage/mysql# velero restore describe mybackup-001-20240910173515 | grep -i mapp
+Namespace mappings:  clusterpedia-system=clusterpedia
+
+
+# 获取pod状态
+root@k8s-node02:~# kubectl get pod -n clusterpedia
+NAME                                                   READY   STATUS             RESTARTS        AGE
+clusterpedia-apiserver-54c895d445-vn5p5                0/1     CrashLoopBackOff   7 (2m41s ago)   13m
+clusterpedia-clustersynchro-manager-58bc96b56c-g72p7   0/1     CrashLoopBackOff   7 (2m24s ago)   13m
+clusterpedia-controller-manager-6467877f8f-z6296       1/1     Running            0               13m
+clusterpedia-internalstorage-mysql-5fc59c95c6-94x7b    0/1     CrashLoopBackOff   6 (4m53s ago)   13m
+
+
+
+# 问题1：unknown variable 'default-authentication-plugin=mysql_native_password'
+root@ansible:~/k8s/addons/velero/clusterpedia/deploy/internalstorage/mysql# kubectl logs -fn 100 pod/clusterpedia-internalstorage-mysql-5fc59c95c6-94x7b -n clusterpedia
+2024-09-10 09:43:57+00:00 [Note] [Entrypoint]: Entrypoint script for MySQL Server 8.4.2-1.el9 started.
+2024-09-10 09:43:58+00:00 [Note] [Entrypoint]: Switching to dedicated user 'mysql'
+2024-09-10 09:43:58+00:00 [Note] [Entrypoint]: Entrypoint script for MySQL Server 8.4.2-1.el9 started.
+'/var/lib/mysql/mysql.sock' -> '/var/run/mysqld/mysqld.sock'
+2024-09-10T09:43:58.589642Z 0 [System] [MY-015015] [Server] MySQL Server - start.
+2024-09-10T09:43:58.944104Z 0 [System] [MY-010116] [Server] /usr/sbin/mysqld (mysqld 8.4.2) starting as process 1
+2024-09-10T09:43:58.956614Z 1 [System] [MY-013576] [InnoDB] InnoDB initialization has started.
+2024-09-10T09:43:59.657984Z 1 [System] [MY-013577] [InnoDB] InnoDB initialization has ended.
+2024-09-10T09:44:00.103455Z 0 [Warning] [MY-010068] [Server] CA certificate ca.pem is self signed.
+2024-09-10T09:44:00.103551Z 0 [System] [MY-013602] [Server] Channel mysql_main configured to support TLS. Encrypted connections are now supported for this channel.
+2024-09-10T09:44:00.108335Z 0 [Warning] [MY-011810] [Server] Insecure configuration for --pid-file: Location '/var/run/mysqld' in the path is accessible to all OS users. Consider choosing a different directory.
+2024-09-10T09:44:00.113486Z 0 [ERROR] [MY-000067] [Server] unknown variable 'default-authentication-plugin=mysql_native_password'.
+2024-09-10T09:44:00.114248Z 0 [ERROR] [MY-010119] [Server] Aborting
+2024-09-10T09:44:01.675107Z 0 [System] [MY-010910] [Server] /usr/sbin/mysqld: Shutdown complete (mysqld 8.4.2)  MySQL Community Server - GPL.
+2024-09-10T09:44:01.675142Z 0 [System] [MY-015016] [Server] MySQL Server - end.
+
+# 解决：将deploy:clusterpedia-internalstorage-mysql的容器参数从default-authentication-plugin=mysql_native_password变更为--mysql_native_password=ON，因为mysql_8不支持旧参数
+root@ansible:~/k8s/addons/velero/clusterpedia/deploy/internalstorage/mysql# kubectl get pods -n clusterpedia
+NAME                                                   READY   STATUS             RESTARTS        AGE
+clusterpedia-apiserver-54c895d445-vl4mm                0/1     CrashLoopBackOff   7 (2m32s ago)   13m
+clusterpedia-clustersynchro-manager-58bc96b56c-9p8zx   1/1     Running            0               13m
+clusterpedia-controller-manager-6467877f8f-z6296       1/1     Running            0               68m
+clusterpedia-internalstorage-mysql-585d9fd45-kzc85     1/1     Running            0               15m
+
+
+# 问题2: SA:clusterpedia-apiserver没有权限获取资源configmaps
+"command failed" err="unable to load configmap based request-header-client-ca-file: configmaps \"extension-apiserver-authentication\" is forbidden: User \"system:serviceaccount:clusterpedia:clusterpedia-apiserver\" cannot get resource \"configmaps\" in API group \"\" in the namespace \"kube-system\""
+
+# 原因：因为上面做了名称空间映射，将clusterpedia-system映射到clusterpedia，这里没有将clusterrolebinding中的名称空间更改，所以SA:clusterpedia-apiserver无权限
+# 解决方法：删除clusterrolebinding:clusterpedia，再重新恢复
+root@ansible:~/k8s/addons/velero/clusterpedia/deploy/internalstorage/mysql# kubectl get clusterrolebinding clusterpedia -o yaml
+subjects:
+- kind: ServiceAccount
+  name: clusterpedia-apiserver
+  namespace: clusterpedia-system
+- kind: ServiceAccount
+  name: clusterpedia-clustersynchro-manager
+  namespace: clusterpedia-system
+- kind: ServiceAccount
+  name: clusterpedia-controller-manager
+  namespace: clusterpedia-system
+
+
+# 解决步骤
+root@ansible:~/k8s/addons/velero/clusterpedia/deploy/internalstorage/mysql# kubectl delete clusterrolebinding  clusterpedia
+clusterrolebinding.rbac.authorization.k8s.io "clusterpedia" deleted
+root@ansible:~/k8s/addons/velero/clusterpedia/deploy/internalstorage/mysql# velero restore create --from-backup mybackup-001 --namespace-mappings clusterpedia-system:clusterpedia
+Restore request "mybackup-001-20240910184616" submitted successfully.
+Run `velero restore describe mybackup-001-20240910184616` or `velero restore logs mybackup-001-20240910184616` for more details.
+
+```
 
 
 
