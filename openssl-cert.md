@@ -727,7 +727,7 @@ server {
         ssl_prefer_server_ciphers on;
 
         location / {
-				# 告诉浏览顺器访问http://www.homsom.com的网站初强制走https
+				# 告诉浏览器访问http://www.homsom.com的网站初强制走https
                 add_header Strict-Transport-Security "max-age=31536000";
                 add_header X-Frame-Options "SAMEORIGIN";
                 add_header X-XSS-Protection "1; mode=block";
@@ -1445,6 +1445,56 @@ Strict-Transport-Security: max-age=31536000
 ![](./image/openssl/03.png)
 
 ![](./image/openssl/04.png)
+
+
+
+
+
+**批量测试脚本**
+
+```bash
+# 生成443文件test.com_443.hostname.txt 
+[root@prometheus tmp]# grep 443 -C 6 conf.d/test.com.conf | grep -E 'server_name ' | awk '{print $2}' | tr -d ';' | sort | uniq > /tmp/test.com_443.hostname.txt 
+[root@prometheus tmp]# cat test.com_443.hostname.txt 
+akkodis.test.com
+alltrust.test.com
+approvefattest.test.com
+approve.test.com
+
+# 根据文件中的域名列表，查看域名支持TLS的版本，输出信息到文件test_tls*_*.test.com.txt中
+logfile='/tmp/new/test';for i in `cat /tmp/test.com_443.hostname.txt`;do for j in tls1 tls1_1 tls1_2 tls1_3;do echo "--${i}--" >> ${logfile}_${j}_${i}.txt; timeout 3 openssl s_client -connect ${i}:443 -servername ${i} -${j} | tee -a ${logfile}_${j}_${i}.txt; done; done
+
+# 判断是否支持TLS相应版本
+for i in /tmp/new/test_tls*;do cat $i | grep 'Server certificate' &> /dev/null && echo $i ok | tee -a tls_ok.txt  || echo $i nook | tee -a tls_nook.txt;done
+
+# 过滤相应版本
+grep -E 'tls1_[a-zA-Z]' tls_ok.txt > tls1-ok.txt 
+grep -E 'tls1_1' tls_ok.txt > tls1_1-ok.txt 
+grep -E 'tls1_2' tls_ok.txt > tls1_2-ok.txt 
+grep -E 'tls1_3' tls_ok.txt > tls1_3-ok.txt 
+grep -E 'tls1_3' tls_nook.txt > tls1_3-nook.txt 
+grep -E 'tls1_2' tls_nook.txt > tls1_2-nook.txt 
+grep -E 'tls1_1' tls_nook.txt > tls1_1-nook.txt 
+grep -E 'tls1_[a-zA-Z]' tls_nook.txt > tls1-nook.txt 
+
+
+# hs.com
+grep 443 -C 6 conf.d/*.conf | grep -E 'server_name ' | awk '{print $3}' | tr -d ';' | grep -Ev 'test.com' | sort | uniq > /tmp/hs.com_443.hostname.txt
+```
+
+
+
+
+
+### 结论
+
+> 1. 未升级openssl前，TLSv1 TLSv1.1 TLSv1.2三个版本可以共存。
+> 2. 升级openssl后，启用了TLSv1.3，则无法配置TLSv1 TLSv1.1，只能配置TLSv1.2、TLSv1.3
+> 3. nginx中TLSv1.3支持取决于openssl版本，经过测试，在支持TLSv1.3的服务器，默认禁用TLSv1 TLSv1.1
+
+
+
+
 
 
 

@@ -1351,6 +1351,36 @@ EXEC sp_configure 'affinity mask', <hexadecimal_value>;
 RECONFIGURE;
 
 
+## 20240919小记
+```
+-- 检查权限： 检查当前用户是否有执行存储过程的权限
+USE topway20231218
+GO
+SELECT * 
+FROM sys.database_permissions
+WHERE major_id = OBJECT_ID('[dbo].[AirTicketAnalysis]')
+  AND grantee_principal_id = USER_ID('hs\prod-dbuser');
+
+-- 配置存储过程权限
+USE topway20231218
+GO
+GRANT EXECUTE ON [dbo].[AirTicketAnalysis] TO [hs\prod-dbuser];
+
+
+-- 查看用户角色 
+USE topway20231218
+GO
+EXEC sp_helpuser 'test';
+
+
+-- 为用户添加角色
+USE topway20231218
+GO
+EXEC sp_addrolemember 'db_owner', 'test';
+EXEC sp_addrolemember 'db_datawriter', 'test';
+
+exec sp_droprolemember 'db_datawriter', 'test';
+```
 
 
 </pre>

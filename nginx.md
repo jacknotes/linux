@@ -1,4 +1,7 @@
-#Nginx
+# Nginx
+
+
+
 Nginx:反向代理、负载均衡、动静分离、网页、图片缓存
 1. 反向代理：既然有反向，那肯定有正向，现有客户端x，代理服务器y，最终服务器z，现在x直接访问z：x->z，通过代理服务器y：x->y->z，无论正反代理服务器y都是位于x、z之间，正反是根据代理服务器代理的是谁来判断的
 正向：代理服务器y代理的是客户端，站在客户端的角度上是正向的，所以是正向代理
@@ -9,32 +12,34 @@ Nginx:反向代理、负载均衡、动静分离、网页、图片缓存
 3. 动静分离：借助于nginx强大的转发功能，可以通过配置实现网站的动态请求和静态文件进行分离，将动态请求发送到服务器A，将静态文件转发到服务器B，这样便于nginx做静态文件的缓存和后期对网站使用CDN。
 
 
-<pre>
-#一.安装nginx
-#安装所需的pcre库。注：安装这个pcre库是为了让nginx支持HTTP Rewrite模块
-1. 下载pcre软件
+
+## 1. nginx安装
+
+```bash
+# 下载pcre软件，安装所需的pcre库。(装这个pcre库是为了让nginx支持HTTP Rewrite模块)
 ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/pcre-8.43.tar.gz
-2. 编译安装
+
+# 2. 编译安装pcre
 tar zxf pcre-8.43.tar.gz
 cd pcre-8.43
 yum install -y gcc gcc-c++
 ./configure
 make && make install
 
-#安装Nginx
-下载nginx源码包:http://nginx.org/download/
+# 3. 编译安装Nginx
+curl -OL http://nginx.org/download/
 [root@master-nginx pcre-8.43]# useradd -M -s /sbin/nologin  nginx
 [root@master-nginx nginx-1.0.1]# ./configure \
-> --user=nginx \
-> --group=nginx \
-> --prefix=/application/nginx-1.10.1 \
-> --with-http_stub_status_module \
-> --with-http_ssl_module \
-> --with-pcre=/download/src/pcre-8.43
-#pcre注意这里不是安装后的目录，而是源码目录
+--user=nginx \
+--group=nginx \
+--prefix=/application/nginx-1.10.1 \
+--with-http_stub_status_module \
+--with-http_ssl_module \
+--with-pcre=/download/src/pcre-8.43
+注：pcre注意这里不是安装后的目录，而是源码目录
 [root@master-nginx nginx-1.0.1]#make && make install
 
-#启动服务
+# 4. 启动Nginx服务
 [root@master-nginx src]# ln -s /application/nginx-1.10.1/ /application/nginx
 [root@master-nginx nginx-1.10.1]# cd conf/
 [root@master-nginx conf]# cp ../sbin/nginx /etc/init.d/
@@ -44,26 +49,22 @@ root       636     1  0 17:33 ?        00:00:00 nginx: master process /etc/init.
 nginx      637   636  0 17:33 ?        00:00:00 nginx: worker process
 root       639 10547  0 17:33 pts/0    00:00:00 grep --color=auto nginx
 
-[root@master-nginx conf]# /application/nginx/sbin/nginx -t  #检查语法
+[root@master-nginx conf]# /application/nginx/sbin/nginx -t 
 nginx: the configuration file /application/nginx-1.10.1/conf/nginx.conf syntax is ok
 nginx: configuration file /application/nginx-1.10.1/conf/nginx.conf test is successful
 
-有的时候也会提示有错误
-
 [root@localhost nginx-1.10.1]# /application/nginx/sbin/nginx -t /application/nginx/sbin/nginx: error while loading shared libraries: libpcre.so.1: cannot open shared object file: No such file or directory
 
-出现错误提示 提示说明无法打开libpcre.so.1这个文件，没有这个文件或目录，出现这个提示的原因是因为在系统的/etc/ld.so.conf这个文件里没有libpcre.so.1的路径配置
-
-解决方法如下：
+出现错误提示 提示说明无法打开libpcre.so.1这个文件，没有这个文件或目录，出现这个提示的原因是因为在系统的/etc/ld.so.conf这个文件里没有libpcre.so.1的路径配置，解决方法如下：
 [root@localhost nginx-1.10.1]# find / -name libpcre.so.1
 /download/tools/pcre-8.38/.libs/libpcre.so.1
 /usr/local/lib/libpcre.so.1
 [root@localhost nginx-1.10.1]# vi /etc/ld.so.conf
 include ld.so.conf.d/*.conf
-/usr/local/lib   #添加此路径即可
+/usr/local/lib   # 添加此路径即可 
 [root@localhost nginx-1.10.1]# ldconfig  #生效配置
 
-#测试nginx
+# 5. 测试nginx
 http://192.168.1.31/
 如果出现无法访问的现象可以从以下几个方面排错:
 1、防火墙是否关闭
@@ -71,10 +72,14 @@ http://192.168.1.31/
 3、selinux是否为disable
 4、telnet下80端口
 5、查看错误日志记录进行分析问题所在
-              
+```
 
-#二.Nginx服务配置文件介绍
-1、Nginx服务目录结构介绍
+
+
+## 2. Nginx配置介绍
+
+```bash
+# 1、Nginx服务目录结构介绍
 [root@master-nginx nginx]# tree
 .
 ├── client_body_temp
@@ -109,7 +114,7 @@ http://192.168.1.31/
 ├── scgi_temp   #临时目录      
 └── uwsgi_temp
 
-2、Nginx服务主配置文件介绍
+# 2、Nginx服务主配置文件介绍
 [root@master-nginx nginx]# egrep -v "#|^$" conf/nginx.conf  #过滤配置文件
 worker_processes  1;  #工作进程数
 events {    #事件
@@ -134,7 +139,7 @@ http {
     }
 }
 
-3、Nginx服务帮助信息
+# 3、Nginx服务帮助信息
 [root@master-nginx nginx]# /application/nginx/sbin/nginx -h
 nginx version: nginx/1.10.1
 Usage: nginx [-?hvVtTq] [-s signal] [-c filename] [-p prefix] [-g directives]
@@ -151,7 +156,7 @@ Options:
   -c filename   : set configuration file (default: conf/nginx.conf)  #指定配置文件，而非使用nginx.conf
   -g directives : set global directives out of configuration file
 
-4、nginx编译参数查看
+# 4、nginx编译参数查看
 [root@master-nginx nginx]# /application/nginx/sbin/nginx -v
 nginx version: nginx/1.10.1
 [root@master-nginx nginx]# /application/nginx/sbin/nginx -V
@@ -160,9 +165,9 @@ built by gcc 4.8.5 20150623 (Red Hat 4.8.5-36) (GCC)
 built with OpenSSL 1.0.2k-fips  26 Jan 2017
 TLS SNI support enabled
 configure arguments: --user=nginx --group=nginx --prefix=/application/nginx-1.10.1 --with-http_stub_status_module --with-http_ssl_module --with-pcre=/download/src/pcre-8.43
-实际生产环境比较实用的查看参数，比如服务非你自己所安装，但又没有相关文档参考，此参数可以提供一些相关的信息
+注：实际生产环境比较实用的查看参数，比如服务非你自己所安装，但又没有相关文档参考，此参数可以提供一些相关的信息
 
-#Nginx配置虚拟主机
+# 5、Nginx配置虚拟主机
 [root@master-nginx ~]# mkdir /www/{www,bbs,blog} -p
 [root@master-nginx ~]# tree /www/
 /www/
@@ -239,7 +244,8 @@ COMMAND  PID  USER   FD   TYPE DEVICE SIZE/OFF NODE NAME
 nginx    636  root    6u  IPv4  77178      0t0  TCP *:http (LISTEN)
 nginx   5349 nginx    6u  IPv4  77178      0t0  TCP *:http (LISTEN)
 
-#Nginx反向代理负载均衡配置（负载均衡有硬件设备（F5）、软件等）
+
+# 6、Nginx反向代理负载均衡配置（负载均衡有硬件设备（F5）、软件等）
 -------------------
 #192.168.1.31:
 [root@master-nginx conf]# grep -Ev '#|^$' nginx.conf
@@ -307,12 +313,23 @@ server{
 }
 -------------------
 注：要达到systemctl管理nginx，编译软件nginx需要在系统服务目录/lib/systemd/system里创建nginx.service文件
+```
 
-#Nginx+Tomcat多实例及负载均衡配置
+
+
+
+
+
+## 3. Nginx+Tomcat多实例及负载均衡配置
+
 采用nginx的反向代理负载均衡功能，配合后端的tomcat多实例来实现tomcat WEB服务的负载均衡
-安装nginx服务：1.安装所需的pcre库  2.编译安装Nginx服务（见前面）
-#安装JDK环境：
-因为Tomcat需要JDK的环境，因此在安装之前需要先安装JDK环境，首先下载好相应的JDK软件包。
+
+
+
+
+### 3.1 安装JDK环境：
+```bash
+# 因为Tomcat需要JDK的环境，因此在安装之前需要先安装JDK环境，首先下载好相应的JDK软件包。
 [root@master-nginx src]# tar -zxf jdk-8u201-linux-x64.tar.gz -C /application/
 [root@master-nginx application]# ln -s jdk1.8.0_201/ jdk #软链接
 [root@master-nginx application]# sed -i '$a export JAVA_HOME=/application/jdk\nexport PATH=$JAVA_HOME/bin:$JAVA_HOME/jre/bin:$PATH\nexport CLASSPATH=.$CLASSPATH:$JAVA_HOME/lib:$JAVA_HOME/jre/lib:$JAVA_HOME/lib/tools.jar' /etc/profile  #设置变量到/etc/profile
@@ -324,7 +341,13 @@ export CLASSPATH=.$CLASSPATH:$JAVA_HOME/lib:$JAVA_HOME/jre/lib:$JAVA_HOME/lib/to
 java version "1.8.0_201"
 Java(TM) SE Runtime Environment (build 1.8.0_201-b09)
 Java HotSpot(TM) 64-Bit Server VM (build 25.201-b09, mixed mode)
-#安装配置Tomcat多实例
+```
+
+
+
+### 3.2 安装配置Tomcat多实例
+
+```bash
 wget http://mirror.bit.edu.cn/apache/tomcat/tomcat-8/v8.5.38/bin/apache-tomcat-8.5.38.tar.gz #下载地址 
 [root@slave-nginx src]# tar -zxf apache-tomcat-8.5.38.tar.gz  -C /application/
 [root@slave-nginx src]# cd /application/
@@ -345,8 +368,13 @@ wget http://mirror.bit.edu.cn/apache/tomcat/tomcat-8/v8.5.38/bin/apache-tomcat-8
 [root@master-nginx conf]# netstat -tnlp 
 tcp6       0      0 127.0.0.1:8005          :::*                    LISTEN      17346/java  
 tcp6       0      0 :::8080                 :::*                    LISTEN      17346/java 
+```
 
-配置nginx:
+
+
+### 3.3 配置nginx:
+
+```bash
 vim /application/nginx/conf/nginx.conf
 worker_processes  1;
 events {
@@ -371,8 +399,12 @@ http {
         }
      }
 }
+```
 
-#HTTP服务器Nginx服务
+
+
+## 4. Nginx服务特点
+
 Nginx的优势简介：
 经常在运维面试中，面试官会问到，你们用什么HTTP服务器啊？为什么用它？？
 1、作为WEB服务器而言，Nginx处理静态文件的效率比较高
@@ -380,10 +412,12 @@ Nginx的优势简介：
 3、作为负载均衡服务器而言，支持的应用较多，同时也支持容错功能，自带算法进行负载均衡调度
 4、性能方面而言，采用内核poll模型，支持更多的并发连接，官方显示最大可支持50000个并发连接的请求响应，但占用资源很少且非常稳定
 
-Nginx日常配置优化
-1、日志切割
+
+
+
+### 4.1 nginx日志切割
 由于Nginx没有Apache服务的cronolog日志切割功能，所以需要进行相关优化处理，可以编写脚本来自动切割日志文件
--------------
+```bash
 [root@master-nginx www]# cat nginx-cronlog.sh 
 #!/bin/sh
 logpath="/logs/nginx"
@@ -400,10 +434,14 @@ QUIT 处理完当前请求后关闭进程
 HUP 重新加载配置，不会中断用户的访问请求
 USR1 用于切割日志
 USR2 用于平滑升级可执行程序
+```
 
-2、nginx中FastCGI参数优化
+
+
+### 4.2 nginx中FastCGI参数优化
+
 提高nginx环境下PHP的运行效率，可以将下面的配置加入到主配置文件中
------------------
+```bash
 fastcgi_cache_path /application/nginx/fastcgi_cache_levels=1:2 keys_zone=TEST:10m inactive=5m;
 fastcgi_connect_timeout 300;
 fastcgi_send_timeout 300;
@@ -416,8 +454,13 @@ fastcgi_cache_valid 200 302 1h;
 fastcgi_cache_valid 3011d;
 fastcgi_cache_valid any 1m;
 ##应答缓存时间
------------------
-3、nginx的HTTPgzip模块配置
+```
+
+
+
+### 4.3 nginx的HTTPgzip模块配置
+
+```bash
 root@centos7 ~]# /usr/local/nginx/sbin/nginx -V
 nginx version: nginx/1.12.0
 built by gcc 4.8.5 20150623 (Red Hat 4.8.5-11) (GCC) 
@@ -584,27 +627,38 @@ open_file_cache_errors on;
 include /etc/nginx/conf.d/*.conf; 
 include /etc/nginx/sites-enabled/*; 
 }
-----------------
+```
 
-##Nginx+keepalived高可用配置实战
-1.环境准备：
-下载keepalived软件
+
+
+
+
+
+
+
+## 5. Nginx+keepalived高可用
+
+### 5.1 安装keepalived
+
+```bash
 wget http://www.keepalived.org/software/keepalived-1.1.17.tar.gz
-安装keepalived之前，安装几个依赖包
 [root@master-nginx src]# yum install openssl-devel popt* -y
 [root@master-nginx src]# tar -zxf keepalived-1.1.17.tar.gz 
 [root@master-nginx keepalived-1.1.17]# ./configure 
 [root@master-nginx keepalived-1.1.17]# make && make install
-规范配置、启动文件路径：
 [root@master-nginx keepalived-1.1.17]# cp /usr/local/etc/rc.d/init.d/keepalived /etc/init.d/
 [root@master-nginx keepalived-1.1.17]# /bin/cp /usr/local/etc/sysconfig/keepalived /etc/sysconfig/
 [root@master-nginx keepalived-1.1.17]# mkdir /etc/keepalived -p
 [root@master-nginx keepalived-1.1.17]# /bin/cp /usr/local/etc/keepalived/keepalived.conf /etc/keepalived/
 [root@master-nginx keepalived-1.1.17]# /bin/cp /usr/local/sbin/keepalived /usr/sbin/
 [root@master-nginx keepalived-1.1.17]# /etc/init.d/keepalived start
-LNMP架构应用实战—Nginx反向代理负载均衡配置
-2.配置keepalived
----------------
+```
+
+
+
+### 5.2 配置keepalived
+
+```bash
 [root@master-nginx keepalived]# cat /etc/keepalived/keepalived.conf
 ! Configuration File for keepalived
 
@@ -675,9 +729,14 @@ Restarting keepalived (via systemctl):  [  OK  ]
        valid_lft forever preferred_lft forever
     inet6 fe80::250:56ff:fead:2c3b/64 scope link noprefixroute 
        valid_lft forever preferred_lft forever
-3.反向代理服务故障自动切换
+```
+
+
+
+### 5.3 反向代理服务故障自动切换
+
 如果实际生产环境中当主keeplived的服务器nginx服务宕机，但是主又有VIP，这时就出现无法访问的现象，因此可以做如下的配置，使得这种情况可自已切换
--------------------
+```bash
 [root@master-nginx keepalived]# cat check_nginx.sh 
 #!/bin/sh
 while true
@@ -692,10 +751,16 @@ do
         fi
         sleep 5
 done
--------------------
+```
 
-#Apache和Nginx概述：
-#Apache
+
+
+
+
+## 6. Apache和Nginx对比
+
+### 6.1 Apache
+```
 Apache最常使用的MPM有 prefork和worker两种。至于您的服务器正以哪种方式运行，取决于安装Apache过程中指定的MPM编译参数,在X系统上默认的编译参数为 prefork。
 由于大多数的Unix都不支持真正的线程，所以采用了预派生子进程(prefork)方式，像Windows或者Solaris这些支持 线程的平台，基于多进程多线程混合的worker模式是一种不错的选择。Apache中还有一个重要的组件就是APR（Apache portable Runtime Library），即Apache可移植运行库，它是一个对操作系统调用的抽象库，用来实现Apache内部组件对操作系统的使用，提高系统的可移植性。 Apache对于php的解析，就是通过众多Module中的php Module来完成的。
 Apache的perfork工作模式生命周期：
@@ -768,8 +833,12 @@ FixUp阶段 : 这是一个通用的阶段，允许模块在内容生成器之前
 Response阶段 : Apache在本阶段的主要工作：生成返回客户端的内容，负责给客户端发送一个恰当的回复。这个阶段是整个处理流程的核心部分。
 Logging阶段 : Apache在本阶段的主要工作：在回复已经发送给客户端之后记录事务。模块可能修改或者替换Apache的标准日志记录。
 CleanUp阶段 : Apache在本阶段的主要工作：清理本次请求事务处理完成之后遗留的环境，比如文件、目录的处理或者Socket的关闭等等，这是Apache一次请求处理的最后一个阶段。
+```
 
-#Nginx
+
+
+### 6.2 Nginx
+```
 Nginx的模块与工作原理
 Nginx由内核和模块组成，其中，内核的设计非常微小和简洁，完成的工作也非常简单，仅仅通过查找配置文件将客户端请求映射到一个location block（location是Nginx配置中的一个指令，用于URL匹配），而在这个location中所配置的每个指令将会启动不同的模块去完成相应的工作。
 
@@ -827,8 +896,12 @@ FastCGI进程管理器php-fpm自身初始化，启动主进程php-fpm和启动st
 FastCGI进程管理器PHP-FPM选择并连接到一个子进程CGI解释器。Web server将CGI环境变量和标准输入发送到FastCGI子进程。
 FastCGI子进程完成处理后将标准输出和错误信息从同一连接返回Web Server。当FastCGI子进程关闭连接时，请求便告处理完成。
 FastCGI子进程接着等待并处理来自FastCGI进程管理器（运行在 WebServer中）的下一个连接。
+```
 
-#Apache和Nginx比较
+
+
+### 6.3 Apache和Nginx比较
+```
 功能对比：
 Nginx和Apache一样，都是HTTP服务器软件，在功能实现上都采用模块化结构设计，都支持通用的语言接口，如PHP、Perl、Python等，同时还支持正向和反向代理、虚拟主机、URL重写、压缩传输、SSL加密传输等。
 在功能实现上，Apache的所有模块都支持动、静态编译，而Nginx模块都是静态编译的，
@@ -857,27 +930,41 @@ Apache对PHP支持比较简单，Nginx需要配合其他后端用
 在高可用性方面，Nginx支持热部署，启动速度特别迅速，因此可以在不间断服务的情况下，对软件版本或者配置进行升级，即使运行数月也无需重新启动，几乎可以做到7×24小时不间断地运行。
 #同时使用Nginx和Apache
 由于Nginx和Apache各自的优势，现在很多人选择了让两者在服务器中共存。在服务器端让Nginx在前，Apache在后。由Nginx做负载均衡和反向代理，并且处理静态文件，将动态请求（如PHP应用）交给Apache去处理。
+```
 
 
-###基于 Nginx 的 HTTPS 性能优化实践
-#HTTP/2
+
+
+
+
+
+## 7. 基于Nginx的HTTPS性能优化实践
+
+**HTTP/2**
 相比廉颇老矣的 HTTP/1.x，HTTP/2 在底层传输做了很大的改动和优化包括有：
 每个服务器只用一个连接，节省多次建立连接的时间，在TLS上效果尤为明显
 加速 TLS 交付，HTTP/2 只耗时一次 TLS 握手，通过一个连接上的多路利用实现最佳性能
 更安全，通过减少 TLS 的性能损失，让更多应用使用 TLS，从而让用户信息更安全
 例子：在 Akamai 的 HTTP/2 DEMO中，加载300张图片，HTTP/2 的优越性极大的显现了出来，在 HTTP/1.X 需要 14.8s 的操作中，HTTP/2 仅需不到1s。
 HTTP/2 现在已经获得了绝大多数的现代浏览器的支持。只要我们保证 Nginx 版本大于 1.9.5 即可。当然建议保持最新的 Nginx 稳定版本以便更新相关补丁。同时 HTTP/2 在现代浏览器的支持上还需要 OpenSSL 版本大于 1.0.2。
-#TLS 1.3
+
+
+
+**TLS 1.3**
 和 HTTP/1.x 一样，目前受到主流支持的 TLS 协议版本是 1.1 和 1.2，分别发布于 2006年和2008年，也都已经落后于时代的需求了。在2018年8月份，IETF终于宣布TLS 1.3规范正式发布了，标准规范（Standards Track）定义在 rfc8446。
-#TLS 1.3 相较之前版本的优化内容有：
+
+TLS 1.3 相较之前版本的优化内容有：
 握手时间：同等情况下，TLSv1.3 比 TLSv1.2 少一个 RTT
 应用数据：在会话复用场景下，支持 0-RTT 发送应用数据
 握手消息：从 ServerHello 之后都是密文。
 会话复用机制：弃用了 Session ID 方式的会话复用，采用 PSK 机制的会话复用。
 密钥算法：TLSv1.3 只支持 PFS （即完全前向安全）的密钥交换算法，禁用 RSA 这种密钥交换算法。对称密钥算法只采用 AEAD 类型的加密算法，禁用CBC 模式的 AES、RC4 算法。
 密钥导出算法：TLSv1.3 使用新设计的叫做 HKDF 的算法，而 TLSv1.2 是使用PRF算法，稍后我们再来看看这两种算法的差别。
-#总结一下就是在更安全的基础上还做到了更快，目前 TLS 1.3 的重要实现是 OpenSSL 1.1.1 开始支持了，并且 1.1.1 还是一个 LTS 版本，未来的 RHEL8、Debian10  都将其作为主要支持版本。在 Nginx 上的实现需要 Nginx  1.13+。
-#Brotli
+> 总结一下就是在更安全的基础上还做到了更快，目前 TLS 1.3 的重要实现是 OpenSSL 1.1.1 开始支持了，并且 1.1.1 还是一个 LTS 版本，未来的 RHEL8、Debian10  都将其作为主要支持版本。在 Nginx 上的实现需要 Nginx  1.13+。
+
+
+
+**Brotli**
 Brotli 是由 Google 于 2015 年 9 月推出的无损压缩算法，它通过用变种的 LZ77 算法，Huffman 编码和二阶文本建模进行数据压缩，是一种压缩比很高的压缩方法。
 Brotli特点：
 针对常见的 Web 资源内容，Brotli 的性能要比 Gzip 好 17-25%；
@@ -887,37 +974,45 @@ Brotli 压缩级别为 1 时，压缩速度是最快的，而且此时压缩率�
 JavaScript 上缩小 14%
 HTML上缩小 21%
 CSS上缩小 17%
-#Brotli 的支持必须依赖 HTTPS，不过换句话说就是只有在 HTTPS 下才能实现 Brotli。
-#ECC 证书
+
+> Brotli 的支持必须依赖 HTTPS，不过换句话说就是只有在 HTTPS 下才能实现 Brotli。
+
+
+
+**ECC 证书**
 椭圆曲线密码学（Elliptic curve cryptography，缩写为ECC），一种建立公开金钥加密的算法，基于椭圆曲线数学。椭圆曲线在密码学中的使用是在1985年由Neal Koblitz和Victor Miller分别独立提出的。
 内置 ECDSA 公钥的证书一般被称之为 ECC 证书，内置 RSA 公钥的证书就是 RSA 证书。由于 256 位 ECC Key 在安全性上等同于 3072 位 RSA Key，加上 ECC 运算速度更快，ECDHE 密钥交换 + ECDSA 数字签名无疑是最好的选择。由于同等安全条件下，ECC 算法所需的 Key 更短，所以 ECC 证书文件体积比 RSA 证书要小一些。
 ECC 证书不仅仅可以用于 HTTPS 场景当中，理论上可以代替所有 RSA 证书的应用场景，如 SSH 密钥登陆、SMTP 的 TLS 发件等。
-#使用 ECC 证书有两个点需要注意：
+
+> 使用 ECC 证书有两个点需要注意：
 一、 并不是每一个证书类型都支持的，一般商业证书中带增强型字眼的才支持ECC证书的签发。
 二、 ECC证书在一些场景中可能还不被支持，因为一些产品或者软件可能还不支持 ECC。 这时候就要虚线解决问题了，例如针对部分旧操作系统和浏览器不支持ECC，可以通过ECC+RSA双证书模式来解决问题。
 
-#安装
-下载源码
-综合上述我们要用到的新特性，我们整合一下需求：
+
+
+
+### 7.1 安装
+
+**环境需求：**
 HTTP/2  要求 Nginx 1.9.5+，，OpenSSL 1.0.2+
 TLS 1.3  要求 Nginx 1.13+，OpenSSL 1.1.1+
 Brotli 要求 HTTPS，并在 Nginx 中添加扩展支持
 ECC 双证书 要求 Nginx 1.11+
 这里 Nginx，我个人推荐 1.15+，因为 1.14 虽然已经能支持TLS1.3了，但是一些 TLS1.3 的进阶特性还只在 1.15+ 中提供。
-#我们定义一下版本号：
+
+
+```bash
 [root@master-nginx src]# OpenSSLVersion='openssl-1.1.1a'
 [root@master-nginx src]# nginxVersion='nginx-1.14.1'
-#Nginx
 [root@master-nginx src]# wget http://nginx.org/download/$nginxVersion.tar.gz
 [root@master-nginx src]# tar -zxf $nginxVersion.tar.gz
-#OpenSSL：
 [root@master-nginx src]# wget https://www.openssl.org/source/$OpenSSLVersion.tar.gz
 [root@master-nginx src]# tar -zxf $OpenSSLVersion.tar.gz
-#Brotli
+# Brotli
 [root@master-nginx src]# git clone https://github.com/eustas/ngx_brotli.git
 [root@master-nginx src]# cd ngx_brotli/
-[root@master-nginx ngx_brotli]# git submodule update --init --recursive #初始化本地配置文件并检出父仓库列出的commit
-#编译
+# 初始化本地配置文件并检出父仓库列出的commit
+[root@master-nginx ngx_brotli]# git submodule update --init --recursive 
 [root@master-nginx src]# cd $nginxVersion
 [root@master-nginx nginx-1.14.1]# ./configure \
 > --prefix=/usr/local/nginx \  #编辑后安装的目录位置
@@ -938,12 +1033,15 @@ nginx: configuration file /usr/local/nginx/conf/nginx.conf test is successful
 [root@master-nginx nginx-1.14.1]# mkdir /data/wwwlogs/ -p  #创建相关目录
 [root@master-nginx nginx-1.14.1]# mkdir /data/wwwroot/default/ -p
 [root@master-nginx nginx-1.14.1]# cp /usr/local/nginx/html/index.html /data/wwwroot/default/
-#配置
-HTTP2：
+```
+
+### 7.1 配置
+```bash
+# HTTP2，只要在 server{}  下的lisen 443 ssl 后添加  http2 即可。而且从 1.15 开始，只要写了这一句话就不需要再写 ssl on 了，很多小伙伴可能用了 1.15+ 以后衍用原配置文件会报错，就是因为这一点。
 [root@master-nginx nginx]# vim conf/nginx.conf
        listen       443 ssl http2; #开启http2
-只要在 server{}  下的lisen 443 ssl 后添加  http2 即可。而且从 1.15 开始，只要写了这一句话就不需要再写 ssl on 了，很多小伙伴可能用了 1.15+ 以后衍用原配置文件会报错，就是因为这一点。
-开启TLS 1.3:
+
+# 开启TLS 1.3:
 [root@master-nginx nginx]# vim conf/nginx.conf
  ssl_protocols   TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
 ------------
@@ -979,43 +1077,42 @@ http {
         }
     }
 }
-------------
+```
 
-ECC：
-生成 key
+
+
+**ECC：**
+
+```
+# 生成 key，-name: prime256v1或者secp384r1，256bit其实安全性和速度都足够了
 openssl ecparam -genkey -name prime256v1 -out master-nginx.jack.com-ecc.key
--name 参数 prime256v1 或者secp384r1。 256bit 其实安全性和速度都足够了
-生成 CSR
-openssl req -new -sha256 -key master-nginx.jack.com-ecc.key -out master-nginx.jack.com-ecc.csr 
 
-#反向代理
-server 
-{
-listen  80;                                                         
-server_name  localhost;                                               
-client_max_body_size 1024M;
-location / {
-proxy_pass http://localhost:8080;
-proxy_set_header Host $host:$server_port;
-	}
-}
-保存配置文件后启动Nginx，这样当我们访问localhost的时候，就相当于访问localhost:8080了
-#负载均衡
-#1.RR（默认）
+# 生成 CSR
+openssl req -new -sha256 -key master-nginx.jack.com-ecc.key -out master-nginx.jack.com-ecc.csr 
+```
+
+
+
+
+### 7.2 负载均衡
+```bash
+# 1. RR（默认）
 每个请求按时间顺序逐一分配到不同的后端服务器，如果后端服务器down掉，能自动剔除。
 简单配置
 upstream test {
 server localhost:8080;
 server localhost:8081;
 }
-#2.权重
+
+# 2. 权重
 指定轮询几率，weight和访问比率成正比，用于后端服务器性能不均的情况。例如
 upstream test {
 server localhost:8080 weight=9;
 server localhost:8081 weight=1;
 }
 那么10次一般只会有1次会访问到8081，而有9次会访问到8080
-#3.ip_hash
+
+# 3. ip_hash
 上面的2种方式都有一个问题，那就是下一个请求来的时候请求可能分发到另外一个服务器，当我们的程序不是无状态的时候（采用了session保存数据），这时候就有一个很大的很问题了，比如把登录信息保存到了session中，那么跳转到另外一台服务器的时候就需要重新登录了，所以很多时候我们需要一个客户只访问一个服务器，那么就需要用iphash了，iphash的每个请求按访问ip的hash结果分配，这样每个访客固定访问一个后端服务器，可以解决session的问题。
 ip_hash设置：
 upstream test {
@@ -1023,14 +1120,16 @@ ip_hash;  #加入ip_hash即可
 server localhost:8080;
 server localhost:8081;
 }
-#4、fair（第三方）
+
+# 4. fair（第三方）
 按后端服务器的响应时间来分配请求，响应时间短的优先分配。
 upstream test {
 fair; 
 server localhost:8080;
 server localhost:8081;
 }
-#5、url_hash（第三方）
+
+# 5. url_hash（第三方）
 按访问url的hash结果来分配请求，使每个url定向到同一个后端服务器，后端服务器为缓存时比较有效。 在upstream中加入hash语句，server语句中不能写入weight等其他的参数，hash_method是使用的hash算法
 upstream test {
 hash $request_uri; 
@@ -1038,11 +1137,15 @@ hash_method crc32;
 server localhost:8080;
 server localhost:8081;
 }
-以上5种负载均衡各自适用不同情况下使用，所以可以根据实际情况选择使用哪种策略模式,不过fair和url_hash需要安装第三方模块才能使用，由于本文主要介绍Nginx能做的事情，所以Nginx安装第三方模块不会再本文介绍
 
-##HTTP服务器
+以上5种负载均衡各自适用不同情况下使用，所以可以根据实际情况选择使用哪种策略模式,不过fair和url_hash需要安装第三方模块才能使用，由于本文主要介绍Nginx能做的事情，所以Nginx安装第三方模块不会再本文介绍
+```
+
+
+
+### 8. HTTP服务器
 Nginx本身也是一个静态资源的服务器，当只有静态资源的时候，就可以使用Nginx来做服务器，同时现在也很流行动静分离，就可以通过Nginx来实现，首先看看Nginx做静态资源服务器：
----------------
+```bash
 server {
     listen       
 80
@@ -1056,9 +1159,10 @@ server {
            index  index.html;
        }
 }
+```
 这样如果访问http://localhost 就会默认访问到E盘wwwroot目录下面的index.html，如果一个网站只是静态页面的话，那么就可以通过这种方式来实现部署
----------------
 动静分离是让动态网站里的动态网页根据一定规则把不变的资源和经常变的资源区分开来，动静资源做好了拆分以后，我们就可以根据静态资源的特点将其做缓存操作，这就是网站静态化处理的核心思路：
+```bash
 upstream test{  
    server localhost:8080;  
    server localhost:8081;  
@@ -1083,11 +1187,12 @@ server {
         root   e:wwwroot;  
     }  
 }  
+```
+这样我们就可以吧HTML以及图片和css以及js放到wwwroot目录下，而tomcat只负责处理jsp和请求，例如当我们后缀为gif的时候，Nginx默认会从wwwroot获取到当前请求的动态图文件返回，当然这里的静态文件跟Nginx是同一台服务器，我们也可以在另外一台服务器，然后通过反向代理和负载均衡配置过去就好了，只要搞清楚了最基本的流程，很多配置就很简单了，另外localtion后面其实是一个正则表达式，所以非常灵活。 
 
-这样我们就可以吧HTML以及图片和css以及js放到wwwroot目录下，而tomcat只负责处理jsp和请求，例如当我们后缀为gif的时候，Nginx默认会从wwwroot获取到当前请求的动态图文件返回，当然这里的静态文件跟Nginx是同一台服务器，我们也可以在另外一台服务器，然后通过反向代理和负载均衡配置过去就好了，只要搞清楚了最基本的流程，很多配置就很简单了，另外localtion后面其实是一个正则表达式，所以非常灵活
----------------
 
-##深度总结
+### 9. 深度总结
+```
 #Nginx的Master-Worker模式
 nginx进程:启动Nginx后，其实就是在80端口启动了Socket服务进行监听,此时就有master和work两个进程。
 Master进程的作用是？
@@ -1219,11 +1324,15 @@ server {
       ssl_certificate_key /etc/nginx/sites-enabled/certs/tecmintlovesnginx.key;
       ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
 }
+```
 
 
-###1分钟搞定 Nginx 版本的平滑升级与回滚
-#升级Nginx到新的版本和如何回滚至旧版本。
-安装1.10.1版本：
+
+
+## 10. Nginx平滑升级与回滚
+
+```bash
+# 安装1.10.1版本：
 [root@master-nginx nginx-1.10.1]# ./configure \
 > --user=nginx \
 > --group=nginx \
@@ -1231,8 +1340,9 @@ server {
 > --with-http_stub_status_module \
 > --with-http_ssl_module \
 > --with-pcre=/download/src/pcre-8.43
-#pcre注意这里不是安装后的目录，而是源码目录
-安装1.14.1版本：
+# pcre注意这里不是安装后的目录，而是源码目录
+
+# 安装1.14.1版本：
 [root@master-nginx nginx-1.14.1]# ./configure \
 > --user=nginx \
 > --group=nginx \
@@ -1240,8 +1350,9 @@ server {
 > --with-http_stub_status_module \
 > --with-http_ssl_module \
 > --with-pcre=/download/src/pcre-8.43
-#pcre注意这里不是安装后的目录，而是源码目录
-平滑升级：
+# pcre注意这里不是安装后的目录，而是源码目录
+
+# 平滑升级：
 [root@master-nginx application]# nginx/sbin/nginx 
 [root@master-nginx application]# netstat -tnlp
 Active Internet connections (only servers)
@@ -1284,11 +1395,17 @@ root     21554 12408  0 18:09 pts/0    00:00:00 grep nginx
 [root@master-nginx sbin]# ls
 注：如果在版本升级完成后，没有任何问题，需要关闭老的master进程的话，可以使用下面的命令：
 kill -QUIT 14010
+```
 
-</pre>
 
-<pre>
-##nginx使用keepalived高可用时nginx.conf配置文件同步脚本：
+
+
+
+## 11. nginx相关脚本
+
+
+### 11.1 配置同步脚本
+```bash
 [root@proxy2 conf]# cat /shell/scp_nginx_conf.sh 
 #/bin/bash
 #
@@ -1308,8 +1425,13 @@ if [[ $CVIP = ${VIP} ]];then
 else 
   logger "this host without $VIP,stop scp"
 fi
+```
 
-###nginx定时任务日志切割脚本
+
+
+### 11.2 日志切割脚本
+
+```bash
 [root@proxy2 conf]# cat /shell/nginx_cut.sh 
 #!/bin/bash
 date=$(date +%Y-%m-%d-%H:%M:%S)   
@@ -1324,31 +1446,27 @@ kill -USR1 $(cat $nginx_pid)
 
 #clean old logs
 find $bkpath/ -atime +90 -exec rm -f {} \;
+```
 
-</pre>
 
-<pre>
-#Tengine编译安装
-#CentOS-7
+
+## 12. Tengine编译安装
+```bash
+# CentOS-7
 [root@opsnginx download]# curl -OL http://tengine.taobao.org/download/tengine-2.3.2.tar.gz
 [root@opsnginx download]# curl -OL http://ftp.pcre.org/pub/pcre/pcre-8.44.tar.gz
 [root@opsnginx download]# ls
 pcre-8.44.tar.gz  tengine-2.3.2  tengine-2.3.2.tar.gz
-
-#install devlopment packages
 [root@opsnginx tengine-2.3.2]# yum groupinstall -y "Development Tools" "Development and Creative Workstation"
-
-#install pcre
 [root@opsnginx download]# tar xf pcre-8.44.tar.gz 
 
-#install http_substitutions_filter_module
-#说到 Nginx 的内容替换功能，大部分人应该都听说过 Nginx 内置的的 subs_filter 替换模块，但是这个模块有个缺憾，就是只能替换一次，而且还不支持正则表达式，这就有些鸡肋了。不过，我们可以集成一个第三方的替换模块：ngx_http_substitutions_filter_module，来实现我们的各种需求。经过测试，这个模块至少有如下实用功能：
+# 说到 Nginx 的内容替换功能，大部分人应该都听说过 Nginx 内置的的 subs_filter 替换模块，但是这个模块有个缺憾，就是只能替换一次，而且还不支持正则表达式，这就有些鸡肋了。不过，我们可以集成一个第三方的替换模块：ngx_http_substitutions_filter_module，来实现我们的各种需求。经过测试，这个模块至少有如下实用功能：
 支持多次替换
 支持正则替换
 支持中文替换
-Ps：略有遗憾的是，这个替换不能使用到 if 判断模块内，否则就超神了。。。
-#github URL: https://github.com/yaoweibin/ngx_http_substitutions_filter_module/
-#编译集成,和所有 Nginx 非内置模块一样，添加模块需要在编译的时候指定模块源码包来集成。当然，Tengine 可以使用动态模块加载的功能，这里就不细说了。
+注：略有遗憾的是，这个替换不能使用到 if 判断模块内，否则就超神了。
+# github URL: https://github.com/yaoweibin/ngx_http_substitutions_filter_module/
+# 编译集成,和所有 Nginx 非内置模块一样，添加模块需要在编译的时候指定模块源码包来集成。当然，Tengine 可以使用动态模块加载的功能，这里就不细说了。
 [root@opsnginx download]# curl -OL https://codeload.github.com/yaoweibin/ngx_http_substitutions_filter_module/zip/master
 [root@opsnginx download]# unzip master
 [root@opsnginx download]# cd ngx_http_substitutions_filter_module-master/
@@ -1357,7 +1475,6 @@ Ps：略有遗憾的是，这个替换不能使用到 if 判断模块内，否�
 [root@opsnginx ngx_http_substitutions_filter_module-master]# ls
 CHANGES  config  doc  ngx_http_subs_filter_module.c  README  test  util
 
-#install tengine
 [root@opsnginx download]# tar xf tengine-2.3.2.tar.gz 
 [root@opsnginx download]# cd tengine-2.3.2/
 [root@opsnginx tengine-2.3.2]# groupadd -g 1000 tengine
@@ -1365,8 +1482,8 @@ CHANGES  config  doc  ngx_http_subs_filter_module.c  README  test  util
 [root@opsnginx tengine-2.3.2]# ./configure --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --lock-path=/usr/local/tengine/lock/tengine.lock --user=tengine --group=tengine --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --add-module=/download/ngx_http_substitutions_filter_module-master
 [root@opsnginx tengine-2.3.2]# make -j 4 && make install && echo $?
 
-#增加--with-http_v2_module，删除--lock-path=/usr/local/tengine/lock/tengine.lock,平滑升级
-#在服务器上执行 nginx -V 查看当前  Nginx 编译参数
+# 增加--with-http_v2_module，删除--lock-path=/usr/local/tengine/lock/tengine.lock,平滑升级
+# 在服务器上执行 nginx -V 查看当前  Nginx 编译参数
 [root@opsnginx ngx_http_substitutions_filter_module-master]# /usr/local/tengine/sbin/nginx -V
 Tengine version: Tengine/2.3.2
 nginx version: nginx/1.17.3
@@ -1374,18 +1491,18 @@ built by gcc 4.8.5 20150623 (Red Hat 4.8.5-44) (GCC)
 built with OpenSSL 1.0.2k-fips  26 Jan 2017
 TLS SNI support enabled
 configure arguments: --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --lock-path=/usr/local/tengine/lock/tengine.lock --user=tengine --group=tengine --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --add-module=/download/ngx_http_substitutions_filter_module-master
-#加上模块参数，重新编译 Nginx
-#半自动平滑升级,所谓半自动，其实就是在最后迁移的时候使用源码自带的升级命令：make upgrade来自动完成。
+# 加上模块参数，重新编译 Nginx
+# 半自动平滑升级,所谓半自动，其实就是在最后迁移的时候使用源码自带的升级命令：make upgrade来自动完成。
 [root@opsnginx tengine-2.3.2]# ./configure --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --user=tengine --group=tengine --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --add-module=/download/ngx_http_substitutions_filter_module-master --with-http_v2_module 
-#常规编译新版本nginx，不过只要执行到make就打住，不要make install！
+# 常规编译新版本nginx，不过只要执行到make就打住，不要make install！
 [root@opsnginx tengine-2.3.2]# make 
-#重命名nginx旧版本二进制文件，即sbin目录下的nginx（期间nginx并不会停止服务！）
+# 重命名nginx旧版本二进制文件，即sbin目录下的nginx（期间nginx并不会停止服务！）
 [root@opsnginx tengine-2.3.2]# mv /usr/local/tengine/sbin/nginx{,.old}
-#然后拷贝一份新编译的二进制文件
+# 然后拷贝一份新编译的二进制文件
 [root@opsnginx tengine-2.3.2]# cp objs/nginx /usr/local/tengine/sbin/
 [root@opsnginx tengine-2.3.2]# ls /usr/local/tengine/sbin/
 nginx  nginx.old
-#在源码目录执行make upgrade开始升级
+# 在源码目录执行make upgrade开始升级
 [root@opsnginx tengine-2.3.2]# make upgrade
 /usr/local/tengine/sbin/nginx -t
 nginx: the configuration file /usr/local/tengine/conf/nginx.conf syntax is ok
@@ -1396,7 +1513,7 @@ test -f /usr/local/tengine/tengine.pid.oldbin
 kill -QUIT `cat /usr/local/tengine/tengine.pid.oldbin`
 
 
-#tengine boo shell
+# tengine启动脚本
 --------------------------
 [root@opsnginx tengine]# cat /etc/init.d/nginx 
 #!/bin/bash
@@ -1513,6 +1630,7 @@ echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force
 exit 2
 esac
 --------------------------
+
 [root@opsnginx conf]# cat nginx.conf
 worker_processes  4;
 
@@ -1612,18 +1730,31 @@ http {
 	}
 }
 --------------------------
-#Tengine最常编译参数：
+# Tengine最常编译参数：
 [root@test /download/tengine-2.3.2]# ./configure --prefix=/usr/local/tengine --sbin-path=/usr/local/tengine/sbin/nginx --conf-path=/usr/local/tengine/conf/nginx.conf --error-log-path=/usr/local/tengine/log/error.log --http-log-path=/usr/local/tengine/log/access.log --pid-path=/usr/local/tengine/tengine.pid --lock-path=/usr/local/tengine/lock/tengine.lock --user=nginx --group=nginx --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --with-stream --add-module=modules/ngx_http_upstream_session_sticky_module --with-stream_ssl_module --add-module=modules/ngx_http_upstream_check_module --with-http_auth_request_module --with-http_gzip_static_module --with-http_random_index_module  --with-http_sub_module
 
 
-#Confirm
+# 生产使用的参数
 ./configure --prefix=/usr/local/nginx --user=nginx --group=nginx --with-pcre=/usr/local/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --with-stream --with-http_realip_module --with-stream_ssl_module --with-http_auth_request_module --with-http_gzip_static_module --with-http_random_index_module --with-http_sub_module --add-module=modules/ngx_http_upstream_check_module --add-module=modules/ngx_http_upstream_session_sticky_module --add-module=/download/ngx_http_substitutions_filter_module-master --add-module=/download/nginx-module-vts-0.1.17
+```
 
 
 
 
-#DATETIME: 20210302 
-#Nginx Server openssl openssl-1.0.1e版本升级OpenSSL 1.1.1f
+
+## 13. 升级nginx的openssl版本
+
+**DATETIME: 20210302**
+升级nginx的openssl版本：支持更新的tls版本，提高安全性
+
+
+
+### 13.1 openssl升级
+
+
+```bash
+# openssl-1.0.1e版本升级OpenSSL 1.1.1f
+
 wget https://www.openssl.org/source/old/1.1.1/openssl-1.1.1f.tar.gz
 tar xf openssl-1.1.1f.tar.gz
 cd openssl-1.1.1f
@@ -1648,18 +1779,19 @@ compiler: gcc -fPIC -pthread -m64 -Wa,--noexecstack -Wall -O3 -DOPENSSL_USE_NODE
 OPENSSLDIR: "/usr/local/openssl-1.1.1f/ssl"
 ENGINESDIR: "/usr/local/openssl-1.1.1f//lib/engines-1.1"
 Seeding source: os-specific
+```
 
 
-#nginx
+
+### 13.2 升级nginx的openssl版本
+
+```bash
 [root@reverse02_pro openssl-1.1.1f]# /usr/local/nginx/sbin/nginx  -V
 nginx version: nginx/1.16.1
 built by gcc 4.4.7 20120313 (Red Hat 4.4.7-23) (GCC) 
 built with OpenSSL 1.0.1e-fips 11 Feb 2013
 TLS SNI support enabled
 configure arguments: --prefix=/usr/local/nginx --with-http_stub_status_module --with-http_ssl_module --with-http_sub_module --with-http_realip_module --add-module=/git/ngx_http_substitutions_filter_module --with-stream
-
-
-
 [root@ha1 openssl]# cd /download/nginx-1.16.1/auto/lib/openssl/
 [root@ha1 openssl]# cp conf{,.bak}
 [root@ha1 openssl]# vim conf
@@ -1687,6 +1819,7 @@ kill -USR2 `cat /var/run/nginx.pid`
 kill -QUIT `cat /var/run/nginx.pid.oldbin`
 或者  
 [root@ha1 nginx-1.16.1]# pkill -9 nginx   
+
 [root@ha1 nginx-1.16.1]# service nginx start
 Starting nginx:                                            [  OK  ]
 [root@ha1 nginx-1.16.1]# service nginx status
@@ -1697,48 +1830,70 @@ built by gcc 4.4.7 20120313 (Red Hat 4.4.7-23) (GCC)
 built with OpenSSL 1.1.1f  31 Mar 2020
 TLS SNI support enabled
 configure arguments: --prefix=/usr/local/nginx --user=www --group=www --with-pcre=/download/pcre-8.44/ --with-http_stub_status_module --with-http_ssl_module --with-http_sub_module --with-http_realip_module --add-module=/git/ngx_http_substitutions_filter_module --with-stream --with-openssl=/usr/local/openssl
+```
 
 
-#nginx限制IP并发连接数，请求连接数，速率大小。 --202103261725
+
+
+
+
+
+## 14. 其它
+
+### 14.1 限制nginx连接数
+
+**DATETIME: 202103261725**
+nginx限制IP并发连接数，请求连接数，速率大小。
+
+```
 1、在nginx.conf里的http{}里加上如下代码：
-#ip limit
+# ip limit
 limit_conn_zone $binary_remote_addr zone=perip:10m;
 limit_conn_zone $server_name zone=perserver:10m;
+
 2、在需要限制并发数和下载带宽的网站配置server{}里加上如下代码：
 limit_conn perip 2;
 limit_conn perserver 20;
 limit_rate 100k;
+
 补充说明下参数：
 $binary_remote_addr是限制同一客户端ip地址；
 $server_name是限制同一server最大并发数；
 limit_conn为限制并发连接数；
 limit_rate为限制下载速度；
-#example for nginx
+
+# example for nginx
 limit_conn_zone $binary_remote_addr zone=connzone:10m;
 limit_req_zone $binary_remote_addr zone=one:10m rate=10r/s;      --每秒最大10个请求
 limit_conn connzone 20;
 limit_req zone=one burst=10 nodelay;    --超过最大请求数10则直接丢弃。
+```
 
 
-#nginx调优
-0. 绑定 Nginx 进程到不同的 CPU 上
+
+### 14.2 nginx调优
+
+```bash
+# 1. 绑定 Nginx 进程到不同的 CPU 上
 [root@localhost ~]# grep -c processor /proc/cpuinfo    # 查看CPU核数
 4
 worker_processes  4;         # 4核CPU的配置
 worker_cpu_affinity 0001 0010 0100 1000;   
 
-1. worker_connections的作用？
+
+# worker_connections的作用？
 worker_connections 20480
 worker_connections是每个worker进程允许的最多连接数，每台nginx 服务器的最大连接数为:worker_processes*worker_connections
 
-2. 系统的最大打开文件数
+
+# 2. 系统的最大打开文件数
 系统的最大打开文件数>= worker_connections*worker_process
 worker_rlimit_nofile 65535;
 这个指令是指一个nginx worker进程打开的最多文件描述符数目，理论值应该是最多打开文件数（ulimit -n）与nginx进程数相除，因为nginx分配请求未必很均匀，所以最好与ulimit -n的值保持一致
 问题：socket() failed (24: Too many open files) while connecting to upstream，以上可解决
 
 
-3. ulimit的配置对于服务并不起作用，为什么?
+# 3. ulimit的配置对于服务并不起作用，为什么?
 --用root用户查看ulimit -n
 [root@blog 1554]# ulimit -n
 65535
@@ -1782,7 +1937,8 @@ root      250243  0.0  0.0   6300   672 pts/0    S+   09:20   0:00 grep --color=
 [root@ubuntu /usr/local/nginx]# cat /proc/250230/limits | grep 'oopen files'
 Max open files            10000                10000                files
 
-4. 优化 Nginx worker 进程打开的最大文件数
+
+# 4. 优化 Nginx worker 进程打开的最大文件数
 http {
    include       mime.types;
    default_type  application/octet-stream;
@@ -1795,7 +1951,8 @@ http {
    include vhosts/*.conf;
 }
 
-5. 优化 Nginx 连接的超时时间
+
+# 5. 优化 Nginx 连接的超时时间
 keepalive_timeout：用于设置客户端连接保持会话的超时时间，超过这个时间服务器会关闭该连接。
 client_header_timeout：用于设置读取客户端请求头数据的超时时间，如果超时客户端还没有发送完整的 header 数据，服务器将返回 "Request time out (408)" 错误。
 client_body_timeout：用于设置读取客户端请求主体数据的超时时间，如果超时客户端还没有发送完整的主体数据，服务器将返回 "Request time out (408)" 错误。
@@ -1817,14 +1974,16 @@ http {
     include vhosts/*.conf;
 }
 
-6. 限制上传文件的大小
+
+# 6. 限制上传文件的大小
 client_max_body_size 用于设置最大的允许客户端请求主体的大小。
 在请求头中有 "Content-Length" ，如果超过了此配置项，客户端会收到 413 错误，即请求的条目过大。
 http {
     client_max_body_size 8m;    # 设置客户端最大的请求主体大小为 8 M
 }
 
-7. FastCGI 相关参数调优
+
+# 7. FastCGI 相关参数调优
 当 LNMP 组合工作时，用户通过浏览器输入域名请求 Nginx Web 服务：
 如果请求的是静态资源，则由 Nginx 解析后直接返回给用户；
 如果是动态请求（如 PHP），那么 Nginx 就会把它通过 FastCGI 接口发送给 PHP 引擎服务（即 php-fpm）进行解析，如果这个动态请求要读取数据库数据，那么 PHP 就会继续请求 MySQL 数据库，以读取需要的数据，并最终通过 Nginx 服务把获取的数据返回给用户。
@@ -1867,7 +2026,8 @@ http {
     }
 }
 
-8. gzip 压缩
+
+# 8. gzip 压缩
 Nginx gzip 压缩模块提供了压缩文件内容的功能，用户请求的内容在发送到客户端之前，Nginx 服务器会根据一些具体的策略实施压缩，以节约网站出口带宽，同时加快数据传输效率，来提升用户访问体验。
 需要压缩的对象有 html 、js 、css 、xml 、shtml ，图片和视频尽量不要压缩，因为这些文件大多都是已经压缩过的，如果再压缩可能反而变大。
 另外，压缩的对象必须大于 1KB，由于压缩算法的特殊原因，极小的文件压缩后可能反而变大。
@@ -1881,7 +2041,8 @@ http {
     gzip_vary  on;               # 该选项可以让前端的缓存服务器缓存经过gzip压缩的页面，例如用代理服务器缓存经过Nginx压缩的数据
 }
 
-9. 配置 expires 缓存期限 
+
+# 9. 配置 expires 缓存期限 
 Nginx expires 的功能就是给用户访问的静态内容设定一个过期时间。
 当用户第一次访问这些内容时，会把这些内容存储在用户浏览器本地，这样用户第二次及以后继续访问该网站时，浏览器会检查加载已经缓存在用户浏览器本地的内容，就不会去服务器下载了，直到缓存的内容过期或被清除。
 不希望被缓存的内容：广告图片、网站流量统计工具、更新很频繁的文件。
@@ -1896,7 +2057,8 @@ server {
     }
 }
 
-10. 配置防盗链
+
+# 10. 配置防盗链
 什么是防盗链？
 简单地说，就是其它网站未经许可，通过在其自身网站程序里非法调用其他网站的资源，然后在自己的网站上显示这些调用的资源，使得被盗链的那一端消耗带宽资源 。
 通过 HTTP referer 实现防盗链。
@@ -1917,12 +2079,14 @@ location /images {
     }
 }
 
-11. 排除不需要的日志
+
+# 11. 排除不需要的日志
 location ~ .*\.(js|jpg|JPG|jpeg|JPEG|css|bmp|gif|GIF)$ {
     access_log off;
 }
 
-12. 日志切割：nginx日志默认不做处理，都会存放到access.log,error.log, 导致越积越多。 可写个定时脚本按天存储，每天凌晨00:00执行
+
+#12. 日志切割：nginx日志默认不做处理，都会存放到access.log,error.log, 导致越积越多。 可写个定时脚本按天存储，每天凌晨00:00执行
 #!/bin/bash
 YESTERDAY=$(date -d "yesterday" +"%Y-%m-%d")
 LOGPATH=/usr/local/openresty/nginx/logs/
@@ -1936,14 +2100,16 @@ HTTP1.1定义了八种主要的方法，其中OPTIONS、DELETE等方法在生产
 if ($request_method !~ ^(GET|HEAD|POST)$ ) {
     return 501;
 }
+```
 
 
 
+### 14.3 nginx stream模块
 
+**DATETIME: 20210927**
 
-
-
-#nginx stream模块，用户态四层代理--20210927
+用户态四层代理
+```bash
 stream{
     upstream k8s-api {
         server 192.168.13.51:6443 weight=5 max_fails=3 fail_timeout=30s; 
@@ -1956,26 +2122,35 @@ stream{
         proxy_pass k8s-api;
     }
 }
-注：Nginx的TCP负载均衡服务健壮性监控
+```
+
+**Nginx的TCP负载均衡服务健壮性监控**
 1. TCP负载均衡模块支持内置健壮性检测，一台上游服务器如果拒绝TCP连接超过proxy_connect_timeout配置的时间，将会被认为已经失效。在这种情况下，Nginx立刻尝试连接upstream组内的另一台正常的服务器。连接失败信息将会记录到Nginx的错误日志中。
 2. 如果一台服务器，反复失败（超过了max_fails或者fail_timeout配置的参数），Nginx也会踢掉这台服务器。服务器被踢掉60秒后，Nginx会偶尔尝试重连它，检测它是否恢复正常。如果服务器恢复正常，Nginx将它加回到upstream组内，缓慢加大连接请求的比例。
 之所"缓慢加大"，因为通常一个服务都有"热点数据"，也就是说，80%以上甚至更多的请求，实际都会被阻挡在"热点数据缓存"中，真正执行处理的请求只有很少的一部分。在机器刚刚启动的时候，"热点数据缓存"实际上还没有建立，这个时候爆发性地转发大量请求过来，很可能导致机器无法"承受"而再次挂掉。以mysql为例子，我们的mysql查询，通常95%以上都是落在了内存cache中，真正执行查询的并不多。
 3. TCP负载均衡原理上和LVS等是一致的，工作在更为底层，性能会高于原来HTTP负载均衡不少。但是，不会比LVS更为出色，LVS被置于内核模块，而Nginx工作在用户态，而且，Nginx相对比较重
+```bash
 tail /usr/local/nginx/logs/error.log
 2021/09/27 16:07:11 [error] 3432#0: *17371333 connect() failed (113: No route to host) while connecting to upstream, client: 172.168.2.224, server: 0.0.0.0:6443, upstream: "192.168.13.51:6443", bytes from/to client:0/0, bytes from/to upstream:0/0
 2021/09/27 16:07:11 [warn] 3432#0: *17371333 upstream server temporarily disabled while connecting to upstream, client: 172.168.2.224, server: 0.0.0.0:6443, upstream: "192.168.13.51:6443", bytes from/to client:0/0, bytes from/to upstream:0/0
+```
 
 
 
-#健康检查--202209140935
-## tcp健康检查
+### 14.4 健康检查
+
+**tcp健康检查**
+```bash
 upstream dovepayupload_loop
         {
                 server 192.168.13.204:8098;
                 server 192.168.13.205:8098;
                 check interval=3000 rise=2 fall=3 timeout=1000 type=tcp;
         }
-## http健康检查
+```
+
+**http健康检查**
+```bash
 upstream apolloconfig_uat_loop {
     server 192.168.13.196:8085;
 	server 192.168.13.214:8085;
@@ -1988,8 +2163,10 @@ upstream webserver {
 	server httpd.jack.com:8080 weight=5 max_fails=2 fail_timeout=2; 
 	server tomcat.jack.com:8080 weight=5 max_fails=2 fail_timeout=2;
 }
+```
 
-## nginx 7层调度算法
+**nginx 7层调度算法**
+```bash
 http {
     upstream backend {
 		ip_hash;
@@ -2007,12 +2184,14 @@ http {
         server 192.0.0.1 backup;
     }
 }
+```
 
 
+**nginx4层调度算法** 
 
-## nginx4层调度算法
-URL: https://docs.nginx.com/nginx/admin-guide/load-balancer/http-load-balancer/
------------------
+(nginx4层调度算法)[https://docs.nginx.com/nginx/admin-guide/load-balancer/http-load-balancer/]
+
+```bash
 stream {
     upstream stream_backend {
         least_conn;
@@ -2052,10 +2231,13 @@ stream {
 		server backend3.example.com:12346 max_conns=3;
 	}	
 }
------------------
+```
 
 
-# nginx centos7 启动脚本
+
+### 14.5 nginx启动脚本
+
+```bash
 [root@reverse02 ~]# systemctl cat nginx 
 # /usr/lib/systemd/system/nginx.service
 [Unit]
@@ -2072,15 +2254,18 @@ PrivateTmp=true
 [Install]
 WantedBy=multi-user.target
 ---
+```
 
-
-## nginx开启https TLS 1.2，TLS 1.3, 安全的加密算法
+**nginx开启https TLS 1.2，TLS 1.3, 安全的加密算法 **
 ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4:!DH:!DHE;
 ssl_protocols TLSv1.2 TLSv1.3;
 
 
-## goaccess分析nginx日志
-# 安装 goaccess
+
+### 14.6 goaccess分析nginx日志
+
+**安装 goaccess** 
+```bash
 yum install -y GeoIP-devel ncurses-devel libmaxminddb-devel
 curl -k -OL https://tar.goaccess.io/goaccess-1.7.tar.gz
 tar -xzvf goaccess-1.7.tar.gz
@@ -2096,16 +2281,14 @@ log-format { "@timestamp": "%d:%t %^", "remote_addr": "%h", "referer": "%R", "ho
 ---
 # 运行分析报告，运行在nginx服务之上，nginx-access.html是静态网页
 /usr/local/goaccess/bin/goaccess /root/logdir/* -o /usr/share/nginx/html/nginx-access.html --real-time-html
+```
 
 
 
+### 14.7 nginx反向代理不通
 
+访问反向代理后的结果为404，实际应为405
 
-</pre>
-
-## nginx问题和解决
-
-1. nginx反向代理不通，访问反向代理后的结果为404，实际应为405
 ```bash
 # 问题
 	location ^~ /hotelrfuxun/DataChangePush {

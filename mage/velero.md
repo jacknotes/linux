@@ -1938,7 +1938,6 @@ clusterrolebinding.rbac.authorization.k8s.io "clusterpedia" deleted
 root@ansible:~/k8s/addons/velero/clusterpedia/deploy/internalstorage/mysql# velero restore create --from-backup mybackup-001 --namespace-mappings clusterpedia-system:clusterpedia
 Restore request "mybackup-001-20240910184616" submitted successfully.
 Run `velero restore describe mybackup-001-20240910184616` or `velero restore logs mybackup-001-20240910184616` for more details.
-
 ```
 
 
