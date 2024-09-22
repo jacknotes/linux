@@ -8117,3 +8117,33 @@ make run
 
 
 
+
+
+## grpc
+
+```bash
+# 更新grpc版本
+$ go install google.golang.org/grpc@latest
+
+# 安装protobuf
+# https://github.com/protocolbuffers/protobuf/releases 下载解压，将usr\protoc.exe放到执行路径C:\Program Files\Git\usr\bin中
+# 将include\*所有放到C:\Program Files\Git\usr\local\include\文件夹中
+$ protoc --version
+libprotoc 28.1
+
+# 安装protoc-gen-go 插件
+$ go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+$ protoc-gen-go --version
+protoc-gen-go.exe v1.34.2
+
+
+# 安装protoc-gen-go-grpc插件
+$ go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+$ protoc-gen-go-grpc --version
+protoc-gen-go-grpc 1.5.1
+
+# 安装protoc-gen-go-grpc插件指定版本
+$ go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2.0
+$ protoc-gen-go-grpc --version
+protoc-gen-go-grpc 1.2.0
+```
