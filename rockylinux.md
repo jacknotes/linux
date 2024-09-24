@@ -30,6 +30,21 @@ GRUB_ENABLE_BLSCFG=true
 
 [root@prometheus02 ~]# grub2-mkconfig -o /boot/grub2/grub.cfg
 [root@prometheus02 ~]# reboot
+
+# Centos7网上名称改名为eth0
+[root@syslog ~]# cat /etc/default/grub
+GRUB_TIMEOUT=5
+GRUB_DISTRIBUTOR="$(sed 's, release .*$,,g' /etc/system-release)"
+GRUB_DEFAULT=saved
+GRUB_DISABLE_SUBMENU=true
+GRUB_TERMINAL_OUTPUT="console"
+GRUB_CMDLINE_LINUX="crashkernel=auto rd.lvm.lv=centos/root rd.lvm.lv=centos/swap net.ifnames=0 biosdevname=0 rhgb quiet"
+GRUB_DISABLE_RECOVERY="true"
+[root@prometheus02 ~]# grub2-mkconfig -o /boot/grub2/grub.cfg
+[root@prometheus02 network-scripts]# cd /etc/sysconfig/network-scripts/
+[root@prometheus02 network-scripts]# cp ifcfg-em1 ifcfg-eth0
+[root@prometheus02 network-scripts]# sed -i 's/em1/eth0/g' ifcfg-eth0
+[root@prometheus02 ~]# reboot
 ```
 
 

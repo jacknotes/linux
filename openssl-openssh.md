@@ -323,7 +323,7 @@ test.crt: OK
 
 
 
-## CentOS 6 升级OpenSSH
+## 一、CentOS 6 升级OpenSSH
 
 ```bash
 ## yum install
@@ -372,7 +372,7 @@ chkconfig --level 35 sshd on
 
 
 
-## CentOS 7 升级OpenSSH
+## 二、CentOS 7 升级OpenSSH
 
 ### 1. 环境
 
@@ -394,12 +394,12 @@ xmlsec1-openssl-1.2.20-8.el7_9.x86_64
 OpenSSH_7.4p1, OpenSSL 1.0.2k-fips  26 Jan 2017
 
 
-## 测试nginx支持的tls版本
+## 客户端测试nginx支持的tls版本
 [root@prometheus ~]# cat /etc/hosts | grep 172.
-172.168.2.20 passport.hs.com www.homsom.com
+172.168.2.20 passport.hs.com www.test.com
 
 # 测试是否支持-tls1_3
-[root@prometheus ~]# openssl s_client -connect www.homsom.com:443 -servername www.homsom.com -tls1_3
+[root@prometheus ~]# openssl s_client -connect www.test.com:443 -servername www.test.com -tls1_3
 CONNECTED(00000004)
 139988239619904:error:14094410:SSL routines:ssl3_read_bytes:sslv3 alert handshake failure:ssl/record/rec_layer_s3.c:1563:SSL alert number 40
 ---
@@ -421,16 +421,16 @@ Verify return code: 0 (ok)
 
 
 # 测试是否支持-tls1_2
-[root@prometheus ~]# openssl s_client -connect www.homsom.com:443 -servername www.homsom.com -tls1_2
+[root@prometheus ~]# openssl s_client -connect www.test.com:443 -servername www.test.com -tls1_2
 CONNECTED(00000004)
 depth=1 C = US, O = DigiCert Inc, OU = www.digicert.com, CN = GeoTrust CN RSA CA G1
 verify error:num=20:unable to get local issuer certificate
 verify return:1
-depth=0 C = CN, ST = \E4\B8\8A\E6\B5\B7\E5\B8\82, O = \E4\B8\8A\E6\B5\B7\E6\81\92\E9\A1\BA\E6\97\85\E8\A1\8C\EF\BC\88\E9\9B\86\E5\9B\A2\EF\BC\89\E6\9C\89\E9\99\90\E5\85\AC\E5\8F\B8, CN = *.homsom.com
+depth=0 C = CN, ST = \E4\B8\8A\E6\B5\B7\E5\B8\82, O = \E4\B8\8A\E6\B5\B7\E6\81\92\E9\A1\BA\E6\97\85\E8\A1\8C\EF\BC\88\E9\9B\86\E5\9B\A2\EF\BC\89\E6\9C\89\E9\99\90\E5\85\AC\E5\8F\B8, CN = *.test.com
 verify return:1
 ---
 Certificate chain
- 0 s:C = CN, ST = \E4\B8\8A\E6\B5\B7\E5\B8\82, O = \E4\B8\8A\E6\B5\B7\E6\81\92\E9\A1\BA\E6\97\85\E8\A1\8C\EF\BC\88\E9\9B\86\E5\9B\A2\EF\BC\89\E6\9C\89\E9\99\90\E5\85\AC\E5\8F\B8, CN = *.homsom.com
+ 0 s:C = CN, ST = \E4\B8\8A\E6\B5\B7\E5\B8\82, O = \E4\B8\8A\E6\B5\B7\E6\81\92\E9\A1\BA\E6\97\85\E8\A1\8C\EF\BC\88\E9\9B\86\E5\9B\A2\EF\BC\89\E6\9C\89\E9\99\90\E5\85\AC\E5\8F\B8, CN = *.test.com
    i:C = US, O = DigiCert Inc, OU = www.digicert.com, CN = GeoTrust CN RSA CA G1
  1 s:C = US, O = DigiCert Inc, OU = www.digicert.com, CN = GeoTrust CN RSA CA G1
    i:C = US, O = DigiCert Inc, OU = www.digicert.com, CN = DigiCert Global Root CA
@@ -438,7 +438,7 @@ Certificate chain
 Server certificate
 .........
 
-root@prometheus ~]# openssl s_client -connect www.homsom.com:443 -servername www.homsom.com -tls1_1
+root@prometheus ~]# openssl s_client -connect www.test.com:443 -servername www.test.com -tls1_1
 CONNECTED(00000004)
 140337364100928:error:14094410:SSL routines:ssl3_read_bytes:sslv3 alert handshake failure:ssl/record/rec_layer_s3.c:1563:SSL alert number 40
 ---
@@ -470,8 +470,7 @@ SSL-Session:
 ---
 
 # 测试是否支持-tls1
-[root@prometheus ~]# openssl s_client -connect www.homsom.com:443 -servername www.homsom.com -tls1
-[root@prometheus ~]# openssl s_client -connect www.homsom.com:443 -servername www.homsom.com -tls1
+[root@prometheus ~]# openssl s_client -connect www.test.com:443 -servername www.test.com -tls1
 CONNECTED(00000004)
 140322045753152:error:14094410:SSL routines:ssl3_read_bytes:sslv3 alert handshake failure:ssl/record/rec_layer_s3.c:1563:SSL alert number 40
 ---
@@ -501,7 +500,7 @@ SSL-Session:
     Verify return code: 0 (ok)
     Extended master secret: no
 ---
-# 注：测试结果www.homsom.com只支持tls1_2的，而tls1_3、tls1_1、tls1是不支持的。
+# 注：测试结果www.test.com只支持tls1_2的，而tls1_3、tls1_1、tls1是不支持的。
 # 注：测试结果passport.hs.com只tls1_2、tls1_1、tls1，而tls1_3是不支持的。
 ```
 
@@ -978,11 +977,203 @@ PS C:\Users\0799> ssh root@172.168.2.20 -p 22
 root@172.168.2.20's password:
 Last login: Fri Sep 20 18:45:05 2024 from hs-ua-tsj-0132.hs.com
 [root@nginx ~]#
+
+# 服务端停止sshd和sshd9服务互不影响
+[root@nginx ~]# ps -ef | grep sshd
+root       7775      1  0 10:01 ?        00:00:00 /usr/sbin/sshd -D
+root       7776      1  0 10:01 ?        00:00:00 sshd9: /usr/local/openssh-9.8p1/sbin/sshd9 -f /usr/local/openssh-9.8p1/etc/sshd_config [listener] 0 of 10-100 startups
+root       7777   7776  0 10:01 ?        00:00:00 sshd-session: root [priv]
+root       7779   7777  0 10:01 ?        00:00:00 sshd-session: root@pts/0
+root       7780   7776  0 10:01 ?        00:00:00 sshd-session: root [priv]
+root       7782   7780  0 10:01 ?        00:00:00 sshd-session: root@notty
+root       7934   7775  1 11:48 ?        00:00:00 sshd: root@pts/1
+root       7936   7775  1 11:48 ?        00:00:00 sshd: root@notty
+root       7985   7783  0 11:48 pts/0    00:00:00 grep --color=auto sshd
+# 停止sshd
+[root@nginx ~]# systemctl stop sshd
+# sshd停止后，进程7934、7936的父进程由7775变成了1，sshd现有连接不会断开，但是新连接无法建立
+[root@nginx ~]# ps -ef | grep sshd
+root       7776      1  0 10:01 ?        00:00:00 sshd9: /usr/local/openssh-9.8p1/sbin/sshd9 -f /usr/local/openssh-9.8p1/etc/sshd_config [listener] 0 of 10-100 startups
+root       7777   7776  0 10:01 ?        00:00:00 sshd-session: root [priv]
+root       7779   7777  0 10:01 ?        00:00:00 sshd-session: root@pts/0
+root       7780   7776  0 10:01 ?        00:00:00 sshd-session: root [priv]
+root       7782   7780  0 10:01 ?        00:00:00 sshd-session: root@notty
+root       7934      1  0 11:48 ?        00:00:00 sshd: root@pts/1
+root       7936      1  0 11:48 ?        00:00:00 sshd: root@notty
+root       8001   7783  0 11:49 pts/0    00:00:00 grep --color=auto sshd
+
+# 停止sshd9
+[root@nginx ~]# systemctl stop sshd9
+[root@nginx ~]# ps -ef | grep sshd
+root       7777      1  0 10:01 ?        00:00:00 sshd-session: root [priv]
+root       7779   7777  0 10:01 ?        00:00:00 sshd-session: root@pts/0
+root       7780      1  0 10:01 ?        00:00:00 sshd-session: root [priv]
+root       7782   7780  0 10:01 ?        00:00:00 sshd-session: root@notty
+root       8028   7783  0 11:52 pts/0    00:00:00 grep --color=auto sshd
+
+# 停止所有sshd进程
+[root@nginx ~]# ps -ef | grep sshd
+root       8036      1  0 11:53 ?        00:00:00 /usr/sbin/sshd -D
+root       8037      1  0 11:53 ?        00:00:00 sshd9: /usr/local/openssh-9.8p1/sbin/sshd9 -f /usr/local/openssh-9.8p1/etc/sshd_config [listener] 0 of 10-100 startups
+root       8040   8037  0 11:53 ?        00:00:00 sshd-session: root [priv]
+root       8042   8040  0 11:53 ?        00:00:00 sshd-session: root@pts/0
+root       8043   8037  0 11:53 ?        00:00:00 sshd-session: root [priv]
+root       8067   8043  0 11:53 ?        00:00:00 sshd-session: root@notty
+root       8092   8036  0 11:53 ?        00:00:00 sshd: root@pts/1
+root       8094   8036  0 11:53 ?        00:00:00 sshd: root@notty
+root       8139   8045  0 11:53 pts/0    00:00:00 grep --color=auto sshd
+[root@nginx ~]# pgrep sshd
+8036
+8037
+8040
+8042
+8043
+8067
+8092
+8094
+[root@nginx ~]# pkill sshd
+Connection to 172.168.2.20 closed by remote host.
+Connection to 172.168.2.20 closed.
 ```
 
 
 
-##### 2.4.5 测试服务器重启后所有服务是否正常
+##### 2.4.5 sshd和sshd9平滑切换
+
+```bash
+# 客户端连接
+> ssh root@172.168.2.20 -p 22
+[root@nginx ~]# ps -ef | grep sshd
+root      25652      1  0 15:55 ?        00:00:00 /usr/sbin/sshd -D
+root      25664  25652  0 15:56 ?        00:00:00 sshd: root@pts/1
+root      25666  25652  0 15:56 ?        00:00:00 sshd: root@notty
+root      25723  25668  0 15:57 pts/1    00:00:00 grep --color=auto sshd
+[root@nginx etc]# ss -tnlp | grep :22
+LISTEN     0      128                                                       [::]:22                                                                    [::]:*                   users:(("sshd",pid=25652,fd=4))
+
+
+# 停止sshd服务，此时已经连接的sshd还存在，但是新连接无法连接22端口
+[root@nginx etc]# systemctl stop sshd
+# 此时无22端口监听
+[root@nginx etc]# ss -tnlp
+State      Recv-Q Send-Q                                           Local Address:Port                                                          Peer Address:Port
+LISTEN     0      128                                                          *:80                                                                       *:*                   users:(("nginx",pid=25635,fd=6),("nginx",pid=25634,fd=6),("nginx",pid=25633,fd=6),("nginx",pid=25632,fd=6),("nginx",pid=25444,fd=6))
+LISTEN     0      128                                                          *:8088                                                                     *:*                   users:(("nginx",pid=25635,fd=9),("nginx",pid=25634,fd=9),("nginx",pid=25633,fd=9),("nginx",pid=25632,fd=9),("nginx",pid=25444,fd=9))
+LISTEN     0      128                                                  127.0.0.1:8089                                                                     *:*                   users:(("nginx",pid=25635,fd=8),("nginx",pid=25634,fd=8),("nginx",pid=25633,fd=8),("nginx",pid=25632,fd=8),("nginx",pid=25444,fd=8))
+LISTEN     0      128                                                          *:443                                                                      *:*                   users:(("nginx",pid=25635,fd=7),("nginx",pid=25634,fd=7),("nginx",pid=25633,fd=7),("nginx",pid=25632,fd=7),("nginx",pid=25444,fd=7))
+LISTEN     0      128                                                          *:6443                                                                     *:*                   users:(("nginx",pid=25635,fd=10),("nginx",pid=25634,fd=10),("nginx",pid=25633,fd=10),("nginx",pid=25632,fd=10),("nginx",pid=25444,fd=10))
+LISTEN     0      128                                                          *:111                                                                      *:*                   users:(("rpcbind",pid=690,fd=8))
+LISTEN     0      128                                                       [::]:23                                                                    [::]:*                   users:(("systemd",pid=1,fd=27))
+LISTEN     0      128                                                       [::]:111                                                                   [::]:*                   users:(("rpcbind",pid=690,fd=11))
+
+# 配置sshd9服务端口为22
+[root@nginx etc]# cat sshd_config
+#Port 1022
+Port 22
+PermitRootLogin yes
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_ecdsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key
+SyslogFacility AUTHPRIV
+AuthorizedKeysFile      .ssh/authorized_keys
+PasswordAuthentication yes
+ChallengeResponseAuthentication no
+UsePAM yes
+X11Forwarding yes
+Subsystem       sftp    /usr/local/openssh-9.8p1/libexec/sftp-server
+# 启动sshd9
+[root@nginx etc]# systemctl start sshd9
+[root@nginx etc]# ss -tnlp | grep :22
+LISTEN     0      128                                                       [::]:22                                                                    [::]:*                   users:(("sshd",pid=25758,fd=8))
+
+
+# 另开一个端口，再次连接22端口（此时连接的其实是sshd9服务）
+> ssh -v root@172.168.2.20 -p 22
+OpenSSH_7.5p1, OpenSSL 1.0.2o  27 Mar 2018
+debug1: Reading configuration data /etc/ssh_config
+debug1: /etc/ssh_config line 13: Deprecated option "useroaming"
+debug1: Connecting to 172.168.2.20 [172.168.2.20] port 22.
+debug1: Connection established.
+debug1: key_load_public: No such file or directory
+debug1: identity file /home/mobaxterm/.ssh/id_rsa type -1
+debug1: key_load_public: No such file or directory
+debug1: identity file /home/mobaxterm/.ssh/id_rsa-cert type -1
+debug1: key_load_public: No such file or directory
+debug1: identity file /home/mobaxterm/.ssh/id_dsa type -1
+debug1: key_load_public: No such file or directory
+debug1: identity file /home/mobaxterm/.ssh/id_dsa-cert type -1
+debug1: key_load_public: No such file or directory
+debug1: identity file /home/mobaxterm/.ssh/id_ecdsa type -1
+debug1: key_load_public: No such file or directory
+debug1: identity file /home/mobaxterm/.ssh/id_ecdsa-cert type -1
+debug1: key_load_public: No such file or directory
+debug1: identity file /home/mobaxterm/.ssh/id_ed25519 type -1
+debug1: key_load_public: No such file or directory
+debug1: identity file /home/mobaxterm/.ssh/id_ed25519-cert type -1
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_7.5
+debug1: Remote protocol version 2.0, remote software version OpenSSH_9.8  # openssl新版本
+debug1: match: OpenSSH_9.8 pat OpenSSH* compat 0x04000000
+debug1: Authenticating to 172.168.2.20:22 as 'root'
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: algorithm: curve25519-sha256
+debug1: kex: host key algorithm: ecdsa-sha2-nistp256
+debug1: kex: server->client cipher: aes128-ctr MAC: hmac-sha1 compression: zlib@openssh.com
+debug1: kex: client->server cipher: aes128-ctr MAC: hmac-sha1 compression: zlib@openssh.com
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ecdsa-sha2-nistp256 SHA256:HDwxKX0vqWDG20jo+f+qHdP7XAAG0CmmLu4z/tsvwyY
+debug1: rekey after 4294967296 blocks
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: rekey after 4294967296 blocks
+debug1: pubkey_prepare: ssh_fetch_identitylist: agent refused operation
+debug1: SSH2_MSG_EXT_INFO received
+debug1: kex_input_ext_info: server-sig-algs=<ssh-ed25519,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,sk-ssh-ed25519@openssh.com,sk-ecdsa-sha2-nistp256@openssh.com,rsa-sha2-512,rsa-sha2-256>
+debug1: kex_input_ext_info: publickey-hostbound@openssh.com=<0>
+debug1: kex_input_ext_info: ping@openssh.com=<0>
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,password
+debug1: Next authentication method: publickey
+debug1: Trying private key: /home/mobaxterm/.ssh/id_rsa
+debug1: Trying private key: /home/mobaxterm/.ssh/id_dsa
+debug1: Trying private key: /home/mobaxterm/.ssh/id_ecdsa
+debug1: Trying private key: /home/mobaxterm/.ssh/id_ed25519
+debug1: Next authentication method: password
+debug1: Enabling compression at level 6.
+debug1: Authentication succeeded (password).
+Authenticated to 172.168.2.20 ([172.168.2.20]:22).
+debug1: channel 0: new [client-session]
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: pledge: exec
+debug1: client_input_global_request: rtype hostkeys-00@openssh.com want_reply 0
+debug1: Requesting X11 forwarding with authentication spoofing.
+debug1: Requesting authentication agent forwarding.
+debug1: Remote: No xauth program; cannot forward X11.
+X11 forwarding request failed on channel 0
+Last login: Tue Sep 24 15:56:36 2024 from hs-ua-tsj-0132.hs.com
+
+
+
+```
+
+
+
+##### 2.4.6 卸载telnet
+
+```bash
+systemctl disable telnet.socket
+systemctl stop telnet.socket
+systemctl status telnet.socket
+mv /etc/securetty.bak /etc/securetty 
+yum remove -y telnet-server telnet
+```
+
+
+
+##### 2.4.7 测试服务器重启后所有服务是否正常
 
 ```bash
 [root@nginx openssh-9.8p1]#  systemctl restart sshd sshd9 nginx
@@ -1056,3 +1247,871 @@ Last login: Fri Sep 20 18:45:27 2024 from 172.168.2.219
  18:53:06 up 1 min,  1 user,  load average: 0.06, 0.03, 0.01
 ```
 
+
+
+##### 2.4.8测试nginx支持tls的版本
+
+```bash
+# 测试结果: www.test.com只支持tls1_2的，而tls1_3、tls1_1、tls1是不支持的。
+openssl s_client -connect www.test.com:443 -servername www.test.com -tls1_3
+openssl s_client -connect www.test.com:443 -servername www.test.com -tls1_2
+openssl s_client -connect www.test.com:443 -servername www.test.com -tls1_1
+openssl s_client -connect www.test.com:443 -servername www.test.com -tls1
+# 测试结果: passport.hs.com只支持tls1_2、tls1_1、tls1，而tls1_3是不支持的。
+openssl s_client -connect passport.hs.com:443 -servername passport.hs.com -tls1
+openssl s_client -connect passport.hs.com:443 -servername passport.hs.com -tls1_1
+openssl s_client -connect passport.hs.com:443 -servername passport.hs.com -tls1_2
+openssl s_client -connect passport.hs.com:443 -servername passport.hs.com -tls1_3
+```
+
+
+
+
+
+
+
+
+
+### 3. nginx升级openssl版本
+
+#### 3.1 配置测试网站
+
+```bash
+# 服务端
+server {
+        listen       80;
+        server_name     test123.hs.com;
+        rewrite ^(.*)$ https://${server_name}$1 permanent;
+}
+server {
+        listen 443 ssl;
+        server_name test123.hs.com;
+        ssl_certificate   hscert/hs.com/server.pem;
+        ssl_certificate_key  hscert/hs.com/server.key;
+        ssl_session_timeout 5m;
+        ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4;
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+        ssl_prefer_server_ciphers on;
+
+        location ^~ / {
+                root   html;
+                index test123.html;
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+                root   html;
+        }
+}
+[root@nginx nginx]# cat html/test123.html
+hehe
+[root@nginx nginx]# systemctl reload nginx
+
+# 客户端
+[root@prometheus ~]# cat /etc/hosts | grep 2.20
+172.168.2.20 passport.hs.com www.test.com test123.hs.com
+[root@prometheus ~]# curl -L https://test123.hs.com
+hehe
+[root@prometheus ~]# curl https://test123.hs.com
+hehe
+[root@prometheus ~]# openssl s_client -connect test123.hs.com:443 -servername test123.hs.com -tls1_1
+CONNECTED(00000004)
+depth=0 C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+verify error:num=20:unable to get local issuer certificate
+verify return:1
+depth=0 C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+verify error:num=21:unable to verify the first certificate
+verify return:1
+depth=0 C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+verify return:1
+---
+Certificate chain
+ 0 s:C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+   i:C = CN, ST = Shanghai, O = HOMSOM Inc, OU = Tech, CN = LinuxCA
+---
+Server certificate
+-----BEGIN CERTIFICATE-----
+MIIFXTCCBEWgAwIBAgIUIbVvypNEb+/53zxUcQLJqY9BxP0wDQYJKoZIhvcNAQEL
+BQAwVjELMAkGA1UEBhMCQ04xETAPBgNVBAgMCFNoYW5naGFpMRMwEQYDVQQKDApI
+T01TT00gSW5jMQ0wCwYDVQQLDARUZWNoMRAwDgYDVQQDDAdMaW51eENBMCAXDTI0
+MDUyNzA4MzcwOVoYDzIxMjQwNTAzMDgzNzA5WjBoMQswCQYDVQQGEwJDTjERMA8G
+A1UECAwIU2hhbmdoYWkxETAPBgNVBAcMCFNoYW5naGFpMRMwEQYDVQQKDApIT01T
+T00gSW5jMQ0wCwYDVQQLDARUZWNoMQ8wDQYDVQQDDAZocy5jb20wggIiMA0GCSqG
+SIb3DQEBAQUAA4ICDwAwggIKAoICAQDgjrcclk3Tc0rdhiQrR/BC4YmOUckSNXpu
+1+FbqCVGaiS474JeuIOIvhvjmN5HgLzIt6CE+euH0t7jwNaf/TgU+m6wihRzRZ/Q
+yU1JA9aTvYqhMR+IU0TwqRL6q2O/cE8PpfDqGYQ8+cb4S2SvWE3ArTGKEyMm0a2V
+xJ8f73VujZxWUvbXdP9KGUjy93Z1suYiWSny6kaQ45kdqJOzcc/vxYg/MHC0iF0n
+nofUhfV2k/KSZ2gILDDTcub7smYSJmjOkqxt5/g67yoWuETMJ0eEDowATvdo35dm
+KDw9TMjv4FN/F+YQIk85qShl+Let4f3fpA3cd1I20i+hPTH9qBrf2gsrMCtAEokD
+DztHxaQE6VtKsBvGVUcUMXi330NMwksE0E2g6QJfkGilbjspwmoZIKnbc/d3/sGu
+8EDOC5HO0t67LOEbxMNGL8KRHVT00TPObZR79ELP2Cq86TDPydfKRfAphshA6J+W
+ZxbRxBQPrJ101qiWv8KWymSytuFzt+VY1I08cu64nnhqiUkSQD+iH3vK+0TaOgqF
+D0SLPakk8KsQMAzt1ISID1L7aLLsNl6s089+JHItBUk8/xZruZCio/tO7YK8U+ew
+mr3vtouKIWv9MDL9Lj7rtVMF/3xeRUzukos5E6UtWhZp207DxEhQL+RE2Smtq6Yo
+aXokA7N2ZQIDAQABo4IBDTCCAQkwggEFBgNVHREEgf0wgfqHBMCoDc+HBMCoDdCC
+CCouaHMuY29tggwqLmhzY29ycC5jb22CDyouZmF0LnFhLmhzLmNvbYIPKi51YXQu
+cWEuaHMuY29tghAqLnNlcnZpY2UuaHMuY29tggwqLmFwaS5ocy5jb22CFyouc2Vy
+dmljZS5mYXQucWEuaHMuY29tghMqLmFwaS5mYXQucWEuaHMuY29tghcqLnNlcnZp
+Y2UudWF0LnFhLmhzLmNvbYITKi5hcGkudWF0LnFhLmhzLmNvbYIMKi5rOHMuaHMu
+Y29tghMqLms4cy5mYXQucWEuaHMuY29tghMqLms4cy51YXQucWEuaHMuY29tMA0G
+CSqGSIb3DQEBCwUAA4IBAQBFZoVg3XFU+q19Je6FaPz6PKnB7nzPQ/sJQJFJ8osW
+Fm8BhW/WAjKa1rwJ7MT72kO9qKp3CG3gEf++8QbeGJ/YVHtgs+glUrOD02QHzLk4
+ODPEKcWT+8fqIDLNZTJ66TkLAMjqzizgb0vgAJ4miHn6nBv8/NemTm0frfEEGEBJ
+G3alacLTlkac0LxRu4wibTz4ogASO9Wbv2s7dW4Cu6g9CA98QfW5Bjys/0dPA7hZ
+3+rDufn+SyHWes7gvbM9e0yc/OKfEA/5XnjKEfx2syvvsiOCVHkARdPS4+7YEfcL
+VeHq6DkteGRW1XcA7Jallebgtkr8MoxrI6sFIDijcqdM
+-----END CERTIFICATE-----
+subject=C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+
+issuer=C = CN, ST = Shanghai, O = HOMSOM Inc, OU = Tech, CN = LinuxCA
+
+---
+No client certificate CA names sent
+Peer signing digest: MD5-SHA1
+Peer signature type: RSA
+Server Temp Key: ECDH, P-256, 256 bits
+---
+SSL handshake has read 2345 bytes and written 277 bytes
+Verification error: unable to verify the first certificate
+---
+New, TLSv1.0, Cipher is ECDHE-RSA-AES256-SHA
+Server public key is 4096 bit
+Secure Renegotiation IS supported
+Compression: NONE
+Expansion: NONE
+No ALPN negotiated
+SSL-Session:
+    Protocol  : TLSv1.1
+    Cipher    : ECDHE-RSA-AES256-SHA
+    Session-ID: 63C7E42DD8B6D5786FFCD0672FD8965A31469F305DDC62C26AC1EDB3B90BFD40
+    Session-ID-ctx: 
+    Master-Key: 45284257AE1CFFDC1AA33065851EE7FE830F7FAD0BA3D7BFECCD0EE980464F4D9197801317A48F7ECFB4686E6209CED0
+    PSK identity: None
+    PSK identity hint: None
+    SRP username: None
+    TLS session ticket lifetime hint: 300 (seconds)
+    TLS session ticket:
+    0000 - e1 2b 17 03 72 2e f4 64-0a ac 6d a8 e9 e3 2c 9c   .+..r..d..m...,.
+    0010 - 03 2d 33 1a a7 b4 18 f6-0f f2 e8 f9 c0 06 ba bd   .-3.............
+    0020 - 20 88 a3 4d 49 2e 49 aa-bb 66 f8 1d 5f 8a 89 a6    ..MI.I..f.._...
+    0030 - 56 8a 54 11 0e f3 8f b3-98 58 5c 9f bd ea 10 bd   V.T......X\.....
+    0040 - 24 af d1 54 54 a2 d4 d9-57 11 dc 6e b8 69 43 cf   $..TT...W..n.iC.
+    0050 - 53 33 df 21 a1 1c 38 65-cd 4f 00 a0 a8 63 29 2a   S3.!..8e.O...c)*
+    0060 - d6 e6 18 65 31 3f df 3c-08 d2 51 46 e0 52 f0 ec   ...e1?.<..QF.R..
+    0070 - 04 ac aa 50 72 f6 f4 54-72 54 6f b7 23 1d ea b5   ...Pr..TrTo.#...
+    0080 - 0c d2 50 93 13 5a 11 f0-38 50 03 00 c1 de 8d b5   ..P..Z..8P......
+    0090 - a1 6c 1e 75 64 a2 33 4d-da 41 fd 02 0a 0d 32 5c   .l.ud.3M.A....2\
+    00a0 - 20 02 a7 01 79 70 5e aa-96 c7 87 9f d7 f1 20 60    ...yp^....... `
+    00b0 - 53 ad 9c de 4c 83 69 7b-9a 3a 7e 38 56 3e 0c 47   S...L.i{.:~8V>.G
+
+    Start Time: 1727077305
+    Timeout   : 7200 (sec)
+    Verify return code: 21 (unable to verify the first certificate)
+    Extended master secret: no
+---
+[[A[root@prometheus ~]# openssl s_client -connect test123.hs.com:443 -servername test123.hs.com -tls1_2
+CONNECTED(00000004)
+depth=0 C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+verify error:num=20:unable to get local issuer certificate
+verify return:1
+depth=0 C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+verify error:num=21:unable to verify the first certificate
+verify return:1
+depth=0 C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+verify return:1
+---
+Certificate chain
+ 0 s:C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+   i:C = CN, ST = Shanghai, O = HOMSOM Inc, OU = Tech, CN = LinuxCA
+---
+Server certificate
+-----BEGIN CERTIFICATE-----
+MIIFXTCCBEWgAwIBAgIUIbVvypNEb+/53zxUcQLJqY9BxP0wDQYJKoZIhvcNAQEL
+BQAwVjELMAkGA1UEBhMCQ04xETAPBgNVBAgMCFNoYW5naGFpMRMwEQYDVQQKDApI
+T01TT00gSW5jMQ0wCwYDVQQLDARUZWNoMRAwDgYDVQQDDAdMaW51eENBMCAXDTI0
+MDUyNzA4MzcwOVoYDzIxMjQwNTAzMDgzNzA5WjBoMQswCQYDVQQGEwJDTjERMA8G
+A1UECAwIU2hhbmdoYWkxETAPBgNVBAcMCFNoYW5naGFpMRMwEQYDVQQKDApIT01T
+T00gSW5jMQ0wCwYDVQQLDARUZWNoMQ8wDQYDVQQDDAZocy5jb20wggIiMA0GCSqG
+SIb3DQEBAQUAA4ICDwAwggIKAoICAQDgjrcclk3Tc0rdhiQrR/BC4YmOUckSNXpu
+1+FbqCVGaiS474JeuIOIvhvjmN5HgLzIt6CE+euH0t7jwNaf/TgU+m6wihRzRZ/Q
+yU1JA9aTvYqhMR+IU0TwqRL6q2O/cE8PpfDqGYQ8+cb4S2SvWE3ArTGKEyMm0a2V
+xJ8f73VujZxWUvbXdP9KGUjy93Z1suYiWSny6kaQ45kdqJOzcc/vxYg/MHC0iF0n
+nofUhfV2k/KSZ2gILDDTcub7smYSJmjOkqxt5/g67yoWuETMJ0eEDowATvdo35dm
+KDw9TMjv4FN/F+YQIk85qShl+Let4f3fpA3cd1I20i+hPTH9qBrf2gsrMCtAEokD
+DztHxaQE6VtKsBvGVUcUMXi330NMwksE0E2g6QJfkGilbjspwmoZIKnbc/d3/sGu
+8EDOC5HO0t67LOEbxMNGL8KRHVT00TPObZR79ELP2Cq86TDPydfKRfAphshA6J+W
+ZxbRxBQPrJ101qiWv8KWymSytuFzt+VY1I08cu64nnhqiUkSQD+iH3vK+0TaOgqF
+D0SLPakk8KsQMAzt1ISID1L7aLLsNl6s089+JHItBUk8/xZruZCio/tO7YK8U+ew
+mr3vtouKIWv9MDL9Lj7rtVMF/3xeRUzukos5E6UtWhZp207DxEhQL+RE2Smtq6Yo
+aXokA7N2ZQIDAQABo4IBDTCCAQkwggEFBgNVHREEgf0wgfqHBMCoDc+HBMCoDdCC
+CCouaHMuY29tggwqLmhzY29ycC5jb22CDyouZmF0LnFhLmhzLmNvbYIPKi51YXQu
+cWEuaHMuY29tghAqLnNlcnZpY2UuaHMuY29tggwqLmFwaS5ocy5jb22CFyouc2Vy
+dmljZS5mYXQucWEuaHMuY29tghMqLmFwaS5mYXQucWEuaHMuY29tghcqLnNlcnZp
+Y2UudWF0LnFhLmhzLmNvbYITKi5hcGkudWF0LnFhLmhzLmNvbYIMKi5rOHMuaHMu
+Y29tghMqLms4cy5mYXQucWEuaHMuY29tghMqLms4cy51YXQucWEuaHMuY29tMA0G
+CSqGSIb3DQEBCwUAA4IBAQBFZoVg3XFU+q19Je6FaPz6PKnB7nzPQ/sJQJFJ8osW
+Fm8BhW/WAjKa1rwJ7MT72kO9qKp3CG3gEf++8QbeGJ/YVHtgs+glUrOD02QHzLk4
+ODPEKcWT+8fqIDLNZTJ66TkLAMjqzizgb0vgAJ4miHn6nBv8/NemTm0frfEEGEBJ
+G3alacLTlkac0LxRu4wibTz4ogASO9Wbv2s7dW4Cu6g9CA98QfW5Bjys/0dPA7hZ
+3+rDufn+SyHWes7gvbM9e0yc/OKfEA/5XnjKEfx2syvvsiOCVHkARdPS4+7YEfcL
+VeHq6DkteGRW1XcA7Jallebgtkr8MoxrI6sFIDijcqdM
+-----END CERTIFICATE-----
+subject=C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+
+issuer=C = CN, ST = Shanghai, O = HOMSOM Inc, OU = Tech, CN = LinuxCA
+
+---
+No client certificate CA names sent
+Peer signing digest: SHA512
+Peer signature type: RSA
+Server Temp Key: ECDH, P-256, 256 bits
+---
+SSL handshake has read 2323 bytes and written 343 bytes
+Verification error: unable to verify the first certificate
+---
+New, TLSv1.2, Cipher is ECDHE-RSA-AES128-GCM-SHA256
+Server public key is 4096 bit
+Secure Renegotiation IS supported
+Compression: NONE
+Expansion: NONE
+No ALPN negotiated
+SSL-Session:
+    Protocol  : TLSv1.2
+    Cipher    : ECDHE-RSA-AES128-GCM-SHA256
+    Session-ID: 4A291EB7F1AFE21F68E3EF3F7523D1FDDBEDCA7EC55C68BD5C802422D36B39F5
+    Session-ID-ctx: 
+    Master-Key: 24EC33717D9602339CD23A5B9B1A7173789594884CC3AFDC3E15557237B23018E5FCC75A6C3B7E9255B526611C044FCA
+    PSK identity: None
+    PSK identity hint: None
+    SRP username: None
+    TLS session ticket lifetime hint: 300 (seconds)
+    TLS session ticket:
+    0000 - e1 2b 17 03 72 2e f4 64-0a ac 6d a8 e9 e3 2c 9c   .+..r..d..m...,.
+    0010 - 31 06 1f 12 12 a6 10 0b-f6 7d 1c 99 22 18 01 24   1........}.."..$
+    0020 - ae e0 f4 40 5c df bf e2-c6 52 45 cf 41 e2 b9 bb   ...@\....RE.A...
+    0030 - df 9d f1 24 46 04 a8 b0-31 3b 25 1c ea 5b 85 a0   ...$F...1;%..[..
+    0040 - 56 51 d2 01 66 35 fe 82-0d 91 1e bc c5 c4 ec 79   VQ..f5.........y
+    0050 - f0 96 eb fc 09 5a 05 ce-e2 5a 9c ae ef e5 f2 b7   .....Z...Z......
+    0060 - 89 19 85 7b 4e b8 95 b2-b4 c9 8f f6 24 a0 01 79   ...{N.......$..y
+    0070 - 0f d4 8c 8e 9b 7e 3f ea-34 9b f7 f8 94 ea 27 e0   .....~?.4.....'.
+    0080 - 8e de 31 6d 21 56 b7 08-78 1a 51 65 88 bd 8d 3f   ..1m!V..x.Qe...?
+    0090 - 00 e5 ad 12 27 d5 de fe-33 77 1f 8b d8 24 ec e2   ....'...3w...$..
+    00a0 - c5 b4 8a c9 89 69 d9 93-23 2c 77 33 65 1a 27 ef   .....i..#,w3e.'.
+    00b0 - fa 60 f7 4e 10 e9 b6 9d-9a d8 89 13 e8 98 7f 5e   .`.N...........^
+
+    Start Time: 1727077307
+    Timeout   : 7200 (sec)
+    Verify return code: 21 (unable to verify the first certificate)
+    Extended master secret: no
+---
+[[A[root@prometheus ~]# openssl s_client -connect test123.hs.com:443 -servername test123.hs.com -tls1_3
+CONNECTED(00000004)
+139795357251392:error:14094410:SSL routines:ssl3_read_bytes:sslv3 alert handshake failure:ssl/record/rec_layer_s3.c:1563:SSL alert number 40
+---
+no peer certificate available
+---
+No client certificate CA names sent
+---
+SSL handshake has read 7 bytes and written 238 bytes
+Verification: OK
+---
+New, (NONE), Cipher is (NONE)
+Secure Renegotiation IS NOT supported
+Compression: NONE
+Expansion: NONE
+No ALPN negotiated
+Early data was not sent
+Verify return code: 0 (ok)
+---
+# 注：https://test123.hs.com只支持tls1_2、tls1_1、tls1，而tls1_3是不支持的。
+
+# 循环测试，看后面升级nginx是否会宕机
+[root@prometheus ~]# while true;do date;curl -L http://test123.hs.com ;sleep 1;done
+Mon Sep 23 15:44:41 CST 2024
+hehe
+Mon Sep 23 15:44:42 CST 2024
+hehe
+
+```
+
+
+
+#### 3.2 升级nginx支持tls1.3
+
+由于前面已经升级openssl，新旧版本openssl状态如下
+
+```bash
+# 旧版本openssl加密协议支持情况
+[root@nginx nginx]# openssl ciphers -tls1_3
+Error in cipher list
+139869069223824:error:1410D0B9:SSL routines:SSL_CTX_set_cipher_list:no cipher match:ssl_lib.c:1383:
+
+# 查看新版本openssl加密协议支持情况
+[root@nginx nginx]# /usr/local/openssl-1.1.1w/bin/openssl ciphers -tls1_3
+TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:DHE-RSA-AES256-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES256-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES128-SHA:DHE-RSA-AES128-SHA:RSA-PSK-AES256-GCM-SHA384:DHE-PSK-AES256-GCM-SHA384:RSA-PSK-CHACHA20-POLY1305:DHE-PSK-CHACHA20-POLY1305:ECDHE-PSK-CHACHA20-POLY1305:AES256-GCM-SHA384:PSK-AES256-GCM-SHA384:PSK-CHACHA20-POLY1305:RSA-PSK-AES128-GCM-SHA256:DHE-PSK-AES128-GCM-SHA256:AES128-GCM-SHA256:PSK-AES128-GCM-SHA256:AES256-SHA256:AES128-SHA256:ECDHE-PSK-AES256-CBC-SHA384:ECDHE-PSK-AES256-CBC-SHA:SRP-RSA-AES-256-CBC-SHA:SRP-AES-256-CBC-SHA:RSA-PSK-AES256-CBC-SHA384:DHE-PSK-AES256-CBC-SHA384:RSA-PSK-AES256-CBC-SHA:DHE-PSK-AES256-CBC-SHA:AES256-SHA:PSK-AES256-CBC-SHA384:PSK-AES256-CBC-SHA:ECDHE-PSK-AES128-CBC-SHA256:ECDHE-PSK-AES128-CBC-SHA:SRP-RSA-AES-128-CBC-SHA:SRP-AES-128-CBC-SHA:RSA-PSK-AES128-CBC-SHA256:DHE-PSK-AES128-CBC-SHA256:RSA-PSK-AES128-CBC-SHA:DHE-PSK-AES128-CBC-SHA:AES128-SHA:PSK-AES128-CBC-SHA256:PSK-AES128-CBC-SHA
+```
+
+
+
+**重新编译nginx**
+
+使nginx支持TLS1.3和HTTP 2.0
+
+```bash
+[root@nginx nginx]# /usr/local/nginx/sbin/nginx -V
+Tengine version: Tengine/2.3.2
+nginx version: nginx/1.17.3
+built by gcc 4.8.5 20150623 (Red Hat 4.8.5-44) (GCC)
+built with OpenSSL 1.0.2k-fips  26 Jan 2017
+TLS SNI support enabled
+configure arguments: --prefix=/usr/local/nginx --user=www --group=www --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_sub_module --with-stream --with-file-aio --with-http_realip_module --with-stream_ssl_module --with-http_auth_request_module --with-http_gzip_static_module --with-http_random_index_module --with-pcre=/usr/local/src/pcre-8.37 --add-module=modules/ngx_http_upstream_session_sticky_module --add-module=modules/ngx_http_upstream_check_module --add-module=/download/ngx_http_substitutions_filter_module --add-module=/download/nginx-module-vts-0.1.17
+
+[root@nginx openssl]# pwd
+/usr/local/src/tengine-2.3.2/auto/lib/openssl
+[root@nginx openssl]# cp conf conf.bak
+[root@nginx openssl]# vim conf
+将
+            CORE_INCS="$CORE_INCS $OPENSSL/.openssl/include"
+            CORE_DEPS="$CORE_DEPS $OPENSSL/.openssl/include/openssl/ssl.h"
+            CORE_LIBS="$CORE_LIBS $OPENSSL/.openssl/lib/libssl.a"
+            CORE_LIBS="$CORE_LIBS $OPENSSL/.openssl/lib/libcrypto.a"
+            CORE_LIBS="$CORE_LIBS $NGX_LIBDL"
+修改为
+            CORE_INCS="$CORE_INCS $OPENSSL/include"
+            CORE_DEPS="$CORE_DEPS $OPENSSL/include/openssl/ssl.h"
+            CORE_LIBS="$CORE_LIBS $OPENSSL/lib/libssl.a"
+            CORE_LIBS="$CORE_LIBS $OPENSSL/lib/libcrypto.a"
+            CORE_LIBS="$CORE_LIBS $NGX_LIBDL"
+            
+# 编译
+[root@nginx tengine-2.3.2]# pwd
+/usr/local/src/tengine-2.3.2
+[root@nginx tengine-2.3.2]# ./configure --prefix=/usr/local/nginx --user=www --group=www --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_sub_module --with-stream --with-file-aio --with-http_realip_module --with-stream_ssl_module --with-http_auth_request_module --with-http_gzip_static_module --with-http_random_index_module --with-pcre=/usr/local/src/pcre-8.37 --add-module=modules/ngx_http_upstream_session_sticky_module --add-module=modules/ngx_http_upstream_check_module --add-module=/download/ngx_http_substitutions_filter_module --add-module=/download/nginx-module-vts-0.1.17 --with-http_v2_module --with-openssl=/usr/local/openssl-1.1.1w --with-openssl-opt=enable-tlsext --with-openssl-opt=enable-tls1_3
+注：
+--with-openssl-opt=enable-tlsext 参数用于启用 TLS 扩展（TLS extensions）。这项功能允许 Nginx 支持现代 TLS 特性，如 SNI（服务器名称指示），使其能够在同一 IP 地址上托管多个 SSL 证书。
+--with-openssl-opt=enable-tls1_3
+
+
+[root@nginx tengine-2.3.2]# make
+[root@nginx tengine-2.3.2]# mv /usr/local/nginx/sbin/nginx{,.bak}
+[root@nginx tengine-2.3.2]# ls /usr/local/nginx/sbin/
+nginx.bak
+[root@nginx tengine-2.3.2]# cp /usr/local/src/tengine-2.3.2/objs/nginx /usr/local/nginx/sbin/
+[root@nginx tengine-2.3.2]# ls /usr/local/nginx/sbin/
+nginx  nginx.bak
+[root@nginx tengine-2.3.2]# ps -ef | grep nginx
+root      17550      1  0 09:12 ?        00:00:00 nginx: master process /usr/local/nginx/sbin/nginx -c /usr/local/nginx/conf/nginx.conf
+www       17665  17550  0 09:56 ?        00:00:01 nginx: worker process
+www       17666  17550  0 09:56 ?        00:00:01 nginx: worker process
+www       17667  17550  0 09:56 ?        00:00:01 nginx: worker process
+www       17668  17550  0 09:56 ?        00:00:01 nginx: worker process
+www       17669  17550  0 09:56 ?        00:00:01 nginx: cache manager process
+root      24597  17393  0 10:03 pts/0    00:00:00 grep --color=auto nginx
+
+## nginx信号
+# master 主进程支持的信号
+TERM(15), INT(2)：立刻退出
+QUIT(3)：等待工作进程结束后再退出
+KILL(9)：强制终止进程
+HUP(1)：重新加载配置文件，使用新的配置启动工作进程，并逐步关闭旧进程。
+USR1(10)：重新打开日志文件
+USR2(12)：启动新的主进程master，实现热升级
+WINCH(28)：逐步关闭worker工作进程
+# worker 工作进程支持的信号
+TERM(15), INT(2)：立刻退出
+QUIT(3)：等待工作进程结束后再退出
+USR1(10)：重新打开日志文件
+###########nginx平滑升级和回滚仅供参考#############
+# nginx平滑升级
+mv /usr/local/nginx/sbin/nginx{,.old}
+cp /usr/local/src/tengine-2.3.2/objs/nginx /usr/local/nginx/sbin/
+kill -USR2 `cat /var/run/nginx.pid`				# 平滑升级，创建新的主进程和新的工作进程，新旧进程保持并行运行
+kill -WINCH  `cat /var/run/nginx.pid.oldbin`	# 平滑退出旧的工作进程，此时只有旧的主进程运行
+kill -QUIT `cat /var/run/nginx.pid.oldbin`		# 退出旧的主进程
+
+# nginx平滑回滚方式一，未使用kill -QUIT前提下
+kill -HUP `cat /var/run/nginx.pid.oldbin`	# 平滑回滚，使用新的配置启动工作进程，并逐步关闭旧的工作进程，因为之前已经使用kill -WINCH，所以旧的工作进程已经关闭，无需再关闭了
+kill -WINCH  `cat /var/run/nginx.pid`		# 平滑退出新的工作进程，此时有旧的主进程和工作进程运行
+kill -QUIT `cat /var/run/nginx.pid`			# 退出新的主进程
+
+# nginx平滑回滚方式二，已使用kill -QUIT前提下
+mv /usr/local/nginx/sbin/nginx{,.new}
+mv /usr/local/nginx/sbin/nginx.old /usr/local/nginx/sbin/nginx
+kill -USR2 `cat /var/run/nginx.pid`				# 平滑回滚，创建旧版本的主进程和工作进程，旧新进程保持并行运行
+kill -WINCH  `cat /var/run/nginx.pid.oldbin`	# 平滑退出新版本的工作进程，此时只有新版本的主进程运行
+kill -QUIT `cat /var/run/nginx.pid.oldbin`		# 退出新版本的主进程
+############################
+
+[root@nginx tengine-2.3.2]# kill -USR2 `cat /var/run/nginx.pid`
+[root@nginx tengine-2.3.2]# ps -ef | grep nginx
+root      17550      1  0 09:12 ?        00:00:00 nginx: master process /usr/local/nginx/sbin/nginx -c /usr/local/nginx/conf/nginx.conf
+www       17665  17550  0 09:56 ?        00:00:01 nginx: worker process
+www       17666  17550  0 09:56 ?        00:00:01 nginx: worker process
+www       17667  17550  0 09:56 ?        00:00:01 nginx: worker process
+www       17668  17550  0 09:56 ?        00:00:01 nginx: worker process
+www       17669  17550  0 09:56 ?        00:00:01 nginx: cache manager process
+root      24606  17550  5 10:04 ?        00:00:00 nginx: master process /usr/local/nginx/sbin/nginx -c /usr/local/nginx/conf/nginx.conf
+www       24607  24606  0 10:04 ?        00:00:00 nginx: worker process
+www       24608  24606  0 10:04 ?        00:00:00 nginx: worker process
+www       24609  24606  0 10:04 ?        00:00:00 nginx: worker process
+www       24610  24606  0 10:04 ?        00:00:00 nginx: worker process
+www       24611  24606  0 10:04 ?        00:00:00 nginx: cache manager process
+www       24612  24606  0 10:04 ?        00:00:00 nginx: cache loader process
+root      24614  17393  0 10:04 pts/0    00:00:00 grep --color=auto nginx
+[root@nginx tengine-2.3.2]# cat /var/run/nginx.pid.oldbin /var/run/nginx.pid
+17550
+24606
+[root@nginx tengine-2.3.2]# kill -WINCH `cat /var/run/nginx.pid.oldbin`
+[root@nginx tengine-2.3.2]# ps -ef | grep nginx
+root      17550      1  0 09:12 ?        00:00:00 nginx: master process /usr/local/nginx/sbin/nginx -c /usr/local/nginx/conf/nginx.conf
+root      24606  17550  0 10:04 ?        00:00:00 nginx: master process /usr/local/nginx/sbin/nginx -c /usr/local/nginx/conf/nginx.conf
+www       24607  24606  0 10:04 ?        00:00:00 nginx: worker process
+www       24608  24606  0 10:04 ?        00:00:01 nginx: worker process
+www       24609  24606  0 10:04 ?        00:00:01 nginx: worker process
+www       24610  24606  0 10:04 ?        00:00:01 nginx: worker process
+www       24611  24606  0 10:04 ?        00:00:01 nginx: cache manager process
+root      24633  17393  0 10:09 pts/0    00:00:00 grep --color=auto nginx
+
+# 在Tengine/2.3.2(nginx/1.17.3)执行此命令，无法完成平滑升级，导致所有nginx进程退出，生产上不要使用平滑升级策略，使用主备高可用nginx模式进行升级
+[root@nginx tengine-2.3.2]# kill -QUIT `cat /var/run/nginx.pid.oldbin`
+[root@nginx conf.d]# systemctl restart nginx
+[root@nginx conf.d]# ps -ef | grep nginx
+root      25444      1  0 15:25 ?        00:00:00 nginx: master process /usr/local/nginx/sbin/nginx -c /usr/local/nginx/conf/nginx.conf
+www       25480  25444  0 15:26 ?        00:00:00 nginx: worker process
+www       25481  25444  0 15:26 ?        00:00:00 nginx: worker process
+www       25482  25444  0 15:26 ?        00:00:00 nginx: worker process
+www       25483  25444  0 15:26 ?        00:00:00 nginx: worker process
+www       25484  25444  0 15:26 ?        00:00:00 nginx: cache manager process
+root      25496  17393  0 15:31 pts/0    00:00:00 grep --color=auto nginx
+[root@nginx conf.d]# /usr/local/nginx/sbin/nginx -V
+Tengine version: Tengine/2.3.2
+nginx version: nginx/1.17.3
+built by gcc 4.8.5 20150623 (Red Hat 4.8.5-44) (GCC)
+built with OpenSSL 1.1.1w  11 Sep 2023
+TLS SNI support enabled
+configure arguments: --prefix=/usr/local/nginx --user=www --group=www --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_sub_module --with-stream --with-file-aio --with-http_realip_module --with-stream_ssl_module --with-http_auth_request_module --with-http_gzip_static_module --with-http_random_index_module --with-pcre=/usr/local/src/pcre-8.37 --add-module=modules/ngx_http_upstream_session_sticky_module --add-module=modules/ngx_http_upstream_check_module --add-module=/download/ngx_http_substitutions_filter_module --add-module=/download/nginx-module-vts-0.1.17 --with-http_v2_module --with-openssl=/usr/local/openssl-1.1.1w --with-openssl-opt=enable-tlsext --with-openssl-opt=enable-tls1_3
+```
+
+
+
+#### 3.3 配置服务支持多版本tls
+
+```nginx
+server {
+        listen       80;
+        server_name     test123.hs.com;
+        rewrite ^(.*)$ https://${server_name}$1 permanent;
+}
+server {
+        listen 443 ssl;
+        server_name test123.hs.com;
+        ssl_certificate   hscert/hs.com/server.pem;
+        ssl_certificate_key  hscert/hs.com/server.key;
+        ssl_session_timeout 1d;
+        ssl_session_cache shared:MozSSL:10m;  # about 40000 sessions
+        ssl_session_tickets off;
+        ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
+        ssl_prefer_server_ciphers off;
+
+        location ^~ / {
+                root   html;
+                index test123.html;
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+                root   html;
+        }
+}
+```
+
+> * 确保test123.hs.com:443是nginx的第一个443 servername
+> * 确保ssl_ciphers和ssl_protocols都支持TLSv1 TLSv1.1 TLSv1.2 TLSv1.3
+
+
+
+**测试**
+
+```bash
+# tls1测试
+[root@prometheus ~]# openssl s_client -connect test123.hs.com:443 -servername test123.hs.com -tls1
+CONNECTED(00000004)
+depth=0 C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+verify error:num=20:unable to get local issuer certificate
+verify return:1
+depth=0 C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+verify error:num=21:unable to verify the first certificate
+verify return:1
+depth=0 C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+verify return:1
+---
+Certificate chain
+ 0 s:C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+   i:C = CN, ST = Shanghai, O = HOMSOM Inc, OU = Tech, CN = LinuxCA
+---
+Server certificate
+-----BEGIN CERTIFICATE-----
+MIIFXTCCBEWgAwIBAgIUIbVvypNEb+/53zxUcQLJqY9BxP0wDQYJKoZIhvcNAQEL
+BQAwVjELMAkGA1UEBhMCQ04xETAPBgNVBAgMCFNoYW5naGFpMRMwEQYDVQQKDApI
+T01TT00gSW5jMQ0wCwYDVQQLDARUZWNoMRAwDgYDVQQDDAdMaW51eENBMCAXDTI0
+MDUyNzA4MzcwOVoYDzIxMjQwNTAzMDgzNzA5WjBoMQswCQYDVQQGEwJDTjERMA8G
+A1UECAwIU2hhbmdoYWkxETAPBgNVBAcMCFNoYW5naGFpMRMwEQYDVQQKDApIT01T
+T00gSW5jMQ0wCwYDVQQLDARUZWNoMQ8wDQYDVQQDDAZocy5jb20wggIiMA0GCSqG
+SIb3DQEBAQUAA4ICDwAwggIKAoICAQDgjrcclk3Tc0rdhiQrR/BC4YmOUckSNXpu
+1+FbqCVGaiS474JeuIOIvhvjmN5HgLzIt6CE+euH0t7jwNaf/TgU+m6wihRzRZ/Q
+yU1JA9aTvYqhMR+IU0TwqRL6q2O/cE8PpfDqGYQ8+cb4S2SvWE3ArTGKEyMm0a2V
+xJ8f73VujZxWUvbXdP9KGUjy93Z1suYiWSny6kaQ45kdqJOzcc/vxYg/MHC0iF0n
+nofUhfV2k/KSZ2gILDDTcub7smYSJmjOkqxt5/g67yoWuETMJ0eEDowATvdo35dm
+KDw9TMjv4FN/F+YQIk85qShl+Let4f3fpA3cd1I20i+hPTH9qBrf2gsrMCtAEokD
+DztHxaQE6VtKsBvGVUcUMXi330NMwksE0E2g6QJfkGilbjspwmoZIKnbc/d3/sGu
+8EDOC5HO0t67LOEbxMNGL8KRHVT00TPObZR79ELP2Cq86TDPydfKRfAphshA6J+W
+ZxbRxBQPrJ101qiWv8KWymSytuFzt+VY1I08cu64nnhqiUkSQD+iH3vK+0TaOgqF
+D0SLPakk8KsQMAzt1ISID1L7aLLsNl6s089+JHItBUk8/xZruZCio/tO7YK8U+ew
+mr3vtouKIWv9MDL9Lj7rtVMF/3xeRUzukos5E6UtWhZp207DxEhQL+RE2Smtq6Yo
+aXokA7N2ZQIDAQABo4IBDTCCAQkwggEFBgNVHREEgf0wgfqHBMCoDc+HBMCoDdCC
+CCouaHMuY29tggwqLmhzY29ycC5jb22CDyouZmF0LnFhLmhzLmNvbYIPKi51YXQu
+cWEuaHMuY29tghAqLnNlcnZpY2UuaHMuY29tggwqLmFwaS5ocy5jb22CFyouc2Vy
+dmljZS5mYXQucWEuaHMuY29tghMqLmFwaS5mYXQucWEuaHMuY29tghcqLnNlcnZp
+Y2UudWF0LnFhLmhzLmNvbYITKi5hcGkudWF0LnFhLmhzLmNvbYIMKi5rOHMuaHMu
+Y29tghMqLms4cy5mYXQucWEuaHMuY29tghMqLms4cy51YXQucWEuaHMuY29tMA0G
+CSqGSIb3DQEBCwUAA4IBAQBFZoVg3XFU+q19Je6FaPz6PKnB7nzPQ/sJQJFJ8osW
+Fm8BhW/WAjKa1rwJ7MT72kO9qKp3CG3gEf++8QbeGJ/YVHtgs+glUrOD02QHzLk4
+ODPEKcWT+8fqIDLNZTJ66TkLAMjqzizgb0vgAJ4miHn6nBv8/NemTm0frfEEGEBJ
+G3alacLTlkac0LxRu4wibTz4ogASO9Wbv2s7dW4Cu6g9CA98QfW5Bjys/0dPA7hZ
+3+rDufn+SyHWes7gvbM9e0yc/OKfEA/5XnjKEfx2syvvsiOCVHkARdPS4+7YEfcL
+VeHq6DkteGRW1XcA7Jallebgtkr8MoxrI6sFIDijcqdM
+-----END CERTIFICATE-----
+subject=C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+
+issuer=C = CN, ST = Shanghai, O = HOMSOM Inc, OU = Tech, CN = LinuxCA
+
+---
+No client certificate CA names sent
+Peer signing digest: MD5-SHA1
+Peer signature type: RSA
+Server Temp Key: X25519, 253 bits
+---
+SSL handshake has read 2129 bytes and written 232 bytes
+Verification error: unable to verify the first certificate
+---
+New, TLSv1.0, Cipher is ECDHE-RSA-AES256-SHA
+Server public key is 4096 bit
+Secure Renegotiation IS supported
+Compression: NONE
+Expansion: NONE
+No ALPN negotiated
+SSL-Session:
+    Protocol  : TLSv1
+    Cipher    : ECDHE-RSA-AES256-SHA
+    Session-ID: A0DD76600017158260F28D5702B38F16D63B9F6FEBFF4D01D361E9ABD0610776
+    Session-ID-ctx: 
+    Master-Key: 2606F4B1E24A19B8727F4CCE0AA1083DF3D9A71A44022A525808BB345DDA1D265640999B4E4A59A30B6C86826B9F69CC
+    PSK identity: None
+    PSK identity hint: None
+    SRP username: None
+    Start Time: 1727164126
+    Timeout   : 7200 (sec)
+    Verify return code: 21 (unable to verify the first certificate)
+    Extended master secret: yes
+---
+
+# tls1.1测试
+[root@prometheus ~]# openssl s_client -connect test123.hs.com:443 -servername test123.hs.com -tls1_1
+CONNECTED(00000004)
+depth=0 C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+verify error:num=20:unable to get local issuer certificate
+verify return:1
+depth=0 C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+verify error:num=21:unable to verify the first certificate
+verify return:1
+depth=0 C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+verify return:1
+---
+Certificate chain
+ 0 s:C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+   i:C = CN, ST = Shanghai, O = HOMSOM Inc, OU = Tech, CN = LinuxCA
+---
+Server certificate
+-----BEGIN CERTIFICATE-----
+MIIFXTCCBEWgAwIBAgIUIbVvypNEb+/53zxUcQLJqY9BxP0wDQYJKoZIhvcNAQEL
+BQAwVjELMAkGA1UEBhMCQ04xETAPBgNVBAgMCFNoYW5naGFpMRMwEQYDVQQKDApI
+T01TT00gSW5jMQ0wCwYDVQQLDARUZWNoMRAwDgYDVQQDDAdMaW51eENBMCAXDTI0
+MDUyNzA4MzcwOVoYDzIxMjQwNTAzMDgzNzA5WjBoMQswCQYDVQQGEwJDTjERMA8G
+A1UECAwIU2hhbmdoYWkxETAPBgNVBAcMCFNoYW5naGFpMRMwEQYDVQQKDApIT01T
+T00gSW5jMQ0wCwYDVQQLDARUZWNoMQ8wDQYDVQQDDAZocy5jb20wggIiMA0GCSqG
+SIb3DQEBAQUAA4ICDwAwggIKAoICAQDgjrcclk3Tc0rdhiQrR/BC4YmOUckSNXpu
+1+FbqCVGaiS474JeuIOIvhvjmN5HgLzIt6CE+euH0t7jwNaf/TgU+m6wihRzRZ/Q
+yU1JA9aTvYqhMR+IU0TwqRL6q2O/cE8PpfDqGYQ8+cb4S2SvWE3ArTGKEyMm0a2V
+xJ8f73VujZxWUvbXdP9KGUjy93Z1suYiWSny6kaQ45kdqJOzcc/vxYg/MHC0iF0n
+nofUhfV2k/KSZ2gILDDTcub7smYSJmjOkqxt5/g67yoWuETMJ0eEDowATvdo35dm
+KDw9TMjv4FN/F+YQIk85qShl+Let4f3fpA3cd1I20i+hPTH9qBrf2gsrMCtAEokD
+DztHxaQE6VtKsBvGVUcUMXi330NMwksE0E2g6QJfkGilbjspwmoZIKnbc/d3/sGu
+8EDOC5HO0t67LOEbxMNGL8KRHVT00TPObZR79ELP2Cq86TDPydfKRfAphshA6J+W
+ZxbRxBQPrJ101qiWv8KWymSytuFzt+VY1I08cu64nnhqiUkSQD+iH3vK+0TaOgqF
+D0SLPakk8KsQMAzt1ISID1L7aLLsNl6s089+JHItBUk8/xZruZCio/tO7YK8U+ew
+mr3vtouKIWv9MDL9Lj7rtVMF/3xeRUzukos5E6UtWhZp207DxEhQL+RE2Smtq6Yo
+aXokA7N2ZQIDAQABo4IBDTCCAQkwggEFBgNVHREEgf0wgfqHBMCoDc+HBMCoDdCC
+CCouaHMuY29tggwqLmhzY29ycC5jb22CDyouZmF0LnFhLmhzLmNvbYIPKi51YXQu
+cWEuaHMuY29tghAqLnNlcnZpY2UuaHMuY29tggwqLmFwaS5ocy5jb22CFyouc2Vy
+dmljZS5mYXQucWEuaHMuY29tghMqLmFwaS5mYXQucWEuaHMuY29tghcqLnNlcnZp
+Y2UudWF0LnFhLmhzLmNvbYITKi5hcGkudWF0LnFhLmhzLmNvbYIMKi5rOHMuaHMu
+Y29tghMqLms4cy5mYXQucWEuaHMuY29tghMqLms4cy51YXQucWEuaHMuY29tMA0G
+CSqGSIb3DQEBCwUAA4IBAQBFZoVg3XFU+q19Je6FaPz6PKnB7nzPQ/sJQJFJ8osW
+Fm8BhW/WAjKa1rwJ7MT72kO9qKp3CG3gEf++8QbeGJ/YVHtgs+glUrOD02QHzLk4
+ODPEKcWT+8fqIDLNZTJ66TkLAMjqzizgb0vgAJ4miHn6nBv8/NemTm0frfEEGEBJ
+G3alacLTlkac0LxRu4wibTz4ogASO9Wbv2s7dW4Cu6g9CA98QfW5Bjys/0dPA7hZ
+3+rDufn+SyHWes7gvbM9e0yc/OKfEA/5XnjKEfx2syvvsiOCVHkARdPS4+7YEfcL
+VeHq6DkteGRW1XcA7Jallebgtkr8MoxrI6sFIDijcqdM
+-----END CERTIFICATE-----
+subject=C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+
+issuer=C = CN, ST = Shanghai, O = HOMSOM Inc, OU = Tech, CN = LinuxCA
+
+---
+No client certificate CA names sent
+Peer signing digest: MD5-SHA1
+Peer signature type: RSA
+Server Temp Key: X25519, 253 bits
+---
+SSL handshake has read 2145 bytes and written 248 bytes
+Verification error: unable to verify the first certificate
+---
+New, TLSv1.0, Cipher is ECDHE-RSA-AES256-SHA
+Server public key is 4096 bit
+Secure Renegotiation IS supported
+Compression: NONE
+Expansion: NONE
+No ALPN negotiated
+SSL-Session:
+    Protocol  : TLSv1.1
+    Cipher    : ECDHE-RSA-AES256-SHA
+    Session-ID: 15F7C8732C4B760EA357916755E0698CDC124F3C8A64459B2F2E149A28109A4D
+    Session-ID-ctx: 
+    Master-Key: A3C112F7BA0A9D815809BF86F58C69A41E42957C79BFBDED062078993AB406A55CE95E8DA8D18E054AE14923C7F4DCDD
+    PSK identity: None
+    PSK identity hint: None
+    SRP username: None
+    Start Time: 1727164130
+    Timeout   : 7200 (sec)
+    Verify return code: 21 (unable to verify the first certificate)
+    Extended master secret: yes
+---
+
+# tls1.2测试
+[root@prometheus ~]# openssl s_client -connect test123.hs.com:443 -servername test123.hs.com -tls1_2
+CONNECTED(00000004)
+depth=0 C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+verify error:num=20:unable to get local issuer certificate
+verify return:1
+depth=0 C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+verify error:num=21:unable to verify the first certificate
+verify return:1
+depth=0 C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+verify return:1
+---
+Certificate chain
+ 0 s:C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+   i:C = CN, ST = Shanghai, O = HOMSOM Inc, OU = Tech, CN = LinuxCA
+---
+Server certificate
+-----BEGIN CERTIFICATE-----
+MIIFXTCCBEWgAwIBAgIUIbVvypNEb+/53zxUcQLJqY9BxP0wDQYJKoZIhvcNAQEL
+BQAwVjELMAkGA1UEBhMCQ04xETAPBgNVBAgMCFNoYW5naGFpMRMwEQYDVQQKDApI
+T01TT00gSW5jMQ0wCwYDVQQLDARUZWNoMRAwDgYDVQQDDAdMaW51eENBMCAXDTI0
+MDUyNzA4MzcwOVoYDzIxMjQwNTAzMDgzNzA5WjBoMQswCQYDVQQGEwJDTjERMA8G
+A1UECAwIU2hhbmdoYWkxETAPBgNVBAcMCFNoYW5naGFpMRMwEQYDVQQKDApIT01T
+T00gSW5jMQ0wCwYDVQQLDARUZWNoMQ8wDQYDVQQDDAZocy5jb20wggIiMA0GCSqG
+SIb3DQEBAQUAA4ICDwAwggIKAoICAQDgjrcclk3Tc0rdhiQrR/BC4YmOUckSNXpu
+1+FbqCVGaiS474JeuIOIvhvjmN5HgLzIt6CE+euH0t7jwNaf/TgU+m6wihRzRZ/Q
+yU1JA9aTvYqhMR+IU0TwqRL6q2O/cE8PpfDqGYQ8+cb4S2SvWE3ArTGKEyMm0a2V
+xJ8f73VujZxWUvbXdP9KGUjy93Z1suYiWSny6kaQ45kdqJOzcc/vxYg/MHC0iF0n
+nofUhfV2k/KSZ2gILDDTcub7smYSJmjOkqxt5/g67yoWuETMJ0eEDowATvdo35dm
+KDw9TMjv4FN/F+YQIk85qShl+Let4f3fpA3cd1I20i+hPTH9qBrf2gsrMCtAEokD
+DztHxaQE6VtKsBvGVUcUMXi330NMwksE0E2g6QJfkGilbjspwmoZIKnbc/d3/sGu
+8EDOC5HO0t67LOEbxMNGL8KRHVT00TPObZR79ELP2Cq86TDPydfKRfAphshA6J+W
+ZxbRxBQPrJ101qiWv8KWymSytuFzt+VY1I08cu64nnhqiUkSQD+iH3vK+0TaOgqF
+D0SLPakk8KsQMAzt1ISID1L7aLLsNl6s089+JHItBUk8/xZruZCio/tO7YK8U+ew
+mr3vtouKIWv9MDL9Lj7rtVMF/3xeRUzukos5E6UtWhZp207DxEhQL+RE2Smtq6Yo
+aXokA7N2ZQIDAQABo4IBDTCCAQkwggEFBgNVHREEgf0wgfqHBMCoDc+HBMCoDdCC
+CCouaHMuY29tggwqLmhzY29ycC5jb22CDyouZmF0LnFhLmhzLmNvbYIPKi51YXQu
+cWEuaHMuY29tghAqLnNlcnZpY2UuaHMuY29tggwqLmFwaS5ocy5jb22CFyouc2Vy
+dmljZS5mYXQucWEuaHMuY29tghMqLmFwaS5mYXQucWEuaHMuY29tghcqLnNlcnZp
+Y2UudWF0LnFhLmhzLmNvbYITKi5hcGkudWF0LnFhLmhzLmNvbYIMKi5rOHMuaHMu
+Y29tghMqLms4cy5mYXQucWEuaHMuY29tghMqLms4cy51YXQucWEuaHMuY29tMA0G
+CSqGSIb3DQEBCwUAA4IBAQBFZoVg3XFU+q19Je6FaPz6PKnB7nzPQ/sJQJFJ8osW
+Fm8BhW/WAjKa1rwJ7MT72kO9qKp3CG3gEf++8QbeGJ/YVHtgs+glUrOD02QHzLk4
+ODPEKcWT+8fqIDLNZTJ66TkLAMjqzizgb0vgAJ4miHn6nBv8/NemTm0frfEEGEBJ
+G3alacLTlkac0LxRu4wibTz4ogASO9Wbv2s7dW4Cu6g9CA98QfW5Bjys/0dPA7hZ
+3+rDufn+SyHWes7gvbM9e0yc/OKfEA/5XnjKEfx2syvvsiOCVHkARdPS4+7YEfcL
+VeHq6DkteGRW1XcA7Jallebgtkr8MoxrI6sFIDijcqdM
+-----END CERTIFICATE-----
+subject=C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+
+issuer=C = CN, ST = Shanghai, O = HOMSOM Inc, OU = Tech, CN = LinuxCA
+
+---
+No client certificate CA names sent
+Peer signing digest: SHA256
+Peer signature type: RSA-PSS
+Server Temp Key: X25519, 253 bits
+---
+SSL handshake has read 2115 bytes and written 310 bytes
+Verification error: unable to verify the first certificate
+---
+New, TLSv1.2, Cipher is ECDHE-RSA-AES256-GCM-SHA384
+Server public key is 4096 bit
+Secure Renegotiation IS supported
+Compression: NONE
+Expansion: NONE
+No ALPN negotiated
+SSL-Session:
+    Protocol  : TLSv1.2
+    Cipher    : ECDHE-RSA-AES256-GCM-SHA384
+    Session-ID: 159C95CCF116088F20EBD6A908A0648FAE0A201F7D081BF7AE74A4A4CC830783
+    Session-ID-ctx: 
+    Master-Key: 3D0097D4B12B34EF135DF29D6F846AE5768F98CF1240F8C30F184E8733F294ED751C8AFA6D1E1B4D12A253455605A31C
+    PSK identity: None
+    PSK identity hint: None
+    SRP username: None
+    Start Time: 1727164133
+    Timeout   : 7200 (sec)
+    Verify return code: 21 (unable to verify the first certificate)
+    Extended master secret: yes
+---
+
+# tls1.3测试
+[root@prometheus ~]# openssl s_client -connect test123.hs.com:443 -servername test123.hs.com -tls1_3
+CONNECTED(00000004)
+depth=0 C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+verify error:num=20:unable to get local issuer certificate
+verify return:1
+depth=0 C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+verify error:num=21:unable to verify the first certificate
+verify return:1
+depth=0 C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+verify return:1
+---
+Certificate chain
+ 0 s:C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+   i:C = CN, ST = Shanghai, O = HOMSOM Inc, OU = Tech, CN = LinuxCA
+---
+Server certificate
+-----BEGIN CERTIFICATE-----
+MIIFXTCCBEWgAwIBAgIUIbVvypNEb+/53zxUcQLJqY9BxP0wDQYJKoZIhvcNAQEL
+BQAwVjELMAkGA1UEBhMCQ04xETAPBgNVBAgMCFNoYW5naGFpMRMwEQYDVQQKDApI
+T01TT00gSW5jMQ0wCwYDVQQLDARUZWNoMRAwDgYDVQQDDAdMaW51eENBMCAXDTI0
+MDUyNzA4MzcwOVoYDzIxMjQwNTAzMDgzNzA5WjBoMQswCQYDVQQGEwJDTjERMA8G
+A1UECAwIU2hhbmdoYWkxETAPBgNVBAcMCFNoYW5naGFpMRMwEQYDVQQKDApIT01T
+T00gSW5jMQ0wCwYDVQQLDARUZWNoMQ8wDQYDVQQDDAZocy5jb20wggIiMA0GCSqG
+SIb3DQEBAQUAA4ICDwAwggIKAoICAQDgjrcclk3Tc0rdhiQrR/BC4YmOUckSNXpu
+1+FbqCVGaiS474JeuIOIvhvjmN5HgLzIt6CE+euH0t7jwNaf/TgU+m6wihRzRZ/Q
+yU1JA9aTvYqhMR+IU0TwqRL6q2O/cE8PpfDqGYQ8+cb4S2SvWE3ArTGKEyMm0a2V
+xJ8f73VujZxWUvbXdP9KGUjy93Z1suYiWSny6kaQ45kdqJOzcc/vxYg/MHC0iF0n
+nofUhfV2k/KSZ2gILDDTcub7smYSJmjOkqxt5/g67yoWuETMJ0eEDowATvdo35dm
+KDw9TMjv4FN/F+YQIk85qShl+Let4f3fpA3cd1I20i+hPTH9qBrf2gsrMCtAEokD
+DztHxaQE6VtKsBvGVUcUMXi330NMwksE0E2g6QJfkGilbjspwmoZIKnbc/d3/sGu
+8EDOC5HO0t67LOEbxMNGL8KRHVT00TPObZR79ELP2Cq86TDPydfKRfAphshA6J+W
+ZxbRxBQPrJ101qiWv8KWymSytuFzt+VY1I08cu64nnhqiUkSQD+iH3vK+0TaOgqF
+D0SLPakk8KsQMAzt1ISID1L7aLLsNl6s089+JHItBUk8/xZruZCio/tO7YK8U+ew
+mr3vtouKIWv9MDL9Lj7rtVMF/3xeRUzukos5E6UtWhZp207DxEhQL+RE2Smtq6Yo
+aXokA7N2ZQIDAQABo4IBDTCCAQkwggEFBgNVHREEgf0wgfqHBMCoDc+HBMCoDdCC
+CCouaHMuY29tggwqLmhzY29ycC5jb22CDyouZmF0LnFhLmhzLmNvbYIPKi51YXQu
+cWEuaHMuY29tghAqLnNlcnZpY2UuaHMuY29tggwqLmFwaS5ocy5jb22CFyouc2Vy
+dmljZS5mYXQucWEuaHMuY29tghMqLmFwaS5mYXQucWEuaHMuY29tghcqLnNlcnZp
+Y2UudWF0LnFhLmhzLmNvbYITKi5hcGkudWF0LnFhLmhzLmNvbYIMKi5rOHMuaHMu
+Y29tghMqLms4cy5mYXQucWEuaHMuY29tghMqLms4cy51YXQucWEuaHMuY29tMA0G
+CSqGSIb3DQEBCwUAA4IBAQBFZoVg3XFU+q19Je6FaPz6PKnB7nzPQ/sJQJFJ8osW
+Fm8BhW/WAjKa1rwJ7MT72kO9qKp3CG3gEf++8QbeGJ/YVHtgs+glUrOD02QHzLk4
+ODPEKcWT+8fqIDLNZTJ66TkLAMjqzizgb0vgAJ4miHn6nBv8/NemTm0frfEEGEBJ
+G3alacLTlkac0LxRu4wibTz4ogASO9Wbv2s7dW4Cu6g9CA98QfW5Bjys/0dPA7hZ
+3+rDufn+SyHWes7gvbM9e0yc/OKfEA/5XnjKEfx2syvvsiOCVHkARdPS4+7YEfcL
+VeHq6DkteGRW1XcA7Jallebgtkr8MoxrI6sFIDijcqdM
+-----END CERTIFICATE-----
+subject=C = CN, ST = Shanghai, L = Shanghai, O = HOMSOM Inc, OU = Tech, CN = hs.com
+
+issuer=C = CN, ST = Shanghai, O = HOMSOM Inc, OU = Tech, CN = LinuxCA
+
+---
+No client certificate CA names sent
+Peer signing digest: SHA256
+Peer signature type: RSA-PSS
+Server Temp Key: X25519, 253 bits
+---
+SSL handshake has read 2193 bytes and written 318 bytes
+Verification error: unable to verify the first certificate
+---
+New, TLSv1.3, Cipher is TLS_AES_256_GCM_SHA384
+Server public key is 4096 bit
+Secure Renegotiation IS NOT supported
+Compression: NONE
+Expansion: NONE
+No ALPN negotiated
+Early data was not sent
+Verify return code: 21 (unable to verify the first certificate)
+---
+---
+Post-Handshake New Session Ticket arrived:
+SSL-Session:
+    Protocol  : TLSv1.3
+    Cipher    : TLS_AES_256_GCM_SHA384
+    Session-ID: D8B02B3C33F7C2173E9F9CBF9646291866F562F5756B2940B0942617458A1703
+    Session-ID-ctx: 
+    Resumption PSK: 791E83DDBA2B7D6C47B3BD714D323F02BC690E3F06217F3B20B24810EECF01783476B78B3AD1192422E1308EE0409167
+    PSK identity: None
+    PSK identity hint: None
+    SRP username: None
+    TLS session ticket lifetime hint: 86400 (seconds)
+    TLS session ticket:
+    0000 - c1 3b 59 32 ec 3e a6 d2-e5 6d 29 c6 94 42 42 ba   .;Y2.>...m)..BB.
+    0010 - c9 a8 2b 46 e9 98 b2 09-9a 4a 24 c8 ec 24 6e de   ..+F.....J$..$n.
+
+    Start Time: 1727164135
+    Timeout   : 7200 (sec)
+    Verify return code: 21 (unable to verify the first certificate)
+    Extended master secret: no
+    Max Early Data: 0
+---
+read R BLOCK
+---
+Post-Handshake New Session Ticket arrived:
+SSL-Session:
+    Protocol  : TLSv1.3
+    Cipher    : TLS_AES_256_GCM_SHA384
+    Session-ID: FF5FB124C03BC7738E0C0306790A3B399F40EA125A2BCAF556FC778DAB8EF764
+    Session-ID-ctx: 
+    Resumption PSK: 14D976877CF61FC54534F68DC2AEBBB4CD25A8831E57203573A4260E1781B2332F39D65D5CAFD8786E91C16C6DAD30BB
+    PSK identity: None
+    PSK identity hint: None
+    SRP username: None
+    TLS session ticket lifetime hint: 86400 (seconds)
+    TLS session ticket:
+    0000 - be 9e c8 0b d8 54 1d a7-9e f8 35 ca b2 7a 48 92   .....T....5..zH.
+    0010 - 5e b7 66 c1 a8 f8 94 f0-21 be 84 00 7a 15 be b9   ^.f.....!...z...
+
+    Start Time: 1727164135
+    Timeout   : 7200 (sec)
+    Verify return code: 21 (unable to verify the first certificate)
+    Extended master secret: no
+    Max Early Data: 0
+---
+read R BLOCK
+```
+
+> 总结：结过openssl的升级、443配置的优化，使得test123.hs.com服务支持多TLS版本
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## 三、Ubuntu18 升级OpenSSH

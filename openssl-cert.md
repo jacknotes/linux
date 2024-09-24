@@ -1044,7 +1044,13 @@ built by gcc 4.8.5 20150623 (Red Hat 4.8.5-44) (GCC)
 built with OpenSSL 1.1.1t  7 Feb 2023
 TLS SNI support enabled
 configure arguments: --prefix=/usr/local/nginx --user=nginx --group=nginx --with-pcre=/usr/local/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --with-stream --with-stream_ssl_module --with-http_auth_request_module --with-http_gzip_static_module --with-http_random_index_module --with-http_sub_module --with-http_v2_module --with-openssl-opt=enable-tlsext --with-openssl-opt=enable-tls1_3 --with-openssl=/usr/local/openssl
+```
 
+
+
+### 支持tls1.2、tls1.3完整配置
+
+```nginx
 
 # 完整nginx配置文件
 [root@prometheus conf]# cat nginx.conf
@@ -1277,8 +1283,251 @@ http {
 
     include conf.d/*.conf;
 }
+```
+
+
+
+### 支持多个tls版本完整配置
+
+```nginx
+worker_processes  1;
+
+events {
+    worker_connections  1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+    sendfile        on;
+    keepalive_timeout  65;
+    log_format log_json '{ "@timestamp": "$time_local", '
+        '"remote_addr": "$remote_addr", '
+        '"referer": "$http_referer", '
+        '"host": "$host", '
+        '"request": "$request", '
+        '"status": $status, '
+        '"bytes": $body_bytes_sent, '
+        '"agent": "$http_user_agent", '
+        '"x_forwarded": "$http_x_forwarded_for", '
+        '"up_addr": "$upstream_addr",'
+        '"up_host": "$upstream_http_host",'
+        '"up_resp_time": "$upstream_response_time",'
+        '"request_time": "$request_time"'
+        ' }';
+    access_log  logs/access.log  log_json;
+
+
+    upstream grafana {
+	server 127.0.0.1:3000;
+    }
+
+    upstream prometheus {
+	server 127.0.0.1:9090;
+    }
+
+    upstream alertmanager {
+	server 127.0.0.1:9093;
+    }
+
+    upstream blackbox {
+	server 127.0.0.1:9115;
+    }
+
+    server {
+	return 444;
+        listen 80 default_server;
+	#listen 443 ssl default_server;
+	#ssl_certificate   /etc/letsencrypt/live/markli.cn/fullchain.pem;
+	#ssl_certificate_key  /etc/letsencrypt/live/markli.cn/privkey.pem;
+    
+        #location / {
+        #    return 301 https://$host$request_uri;
+        #}
+    }
+
+    server {
+        listen       80;
+        server_name  blog.markli.cn;
+	rewrite ^(.*)$ https://${server_name}$1 permanent;
+    }
+    server {
+        listen       443 ssl;
+        server_name  blog.markli.cn;
+	ssl_certificate /etc/letsencrypt/live/markli.cn/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/markli.cn/privkey.pem;
+        ssl_session_timeout 1d;
+        ssl_session_cache shared:MozSSL:10m;  # about 40000 sessions
+        ssl_session_tickets off;
+	#ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+        #ssl_protocols TLSv1.2 TLSv1.3;
+	ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
+        ssl_prefer_server_ciphers off;
+
+        location / {
+		add_header Strict-Transport-Security "max-age=31536000";
+		proxy_pass http://127.0.0.1:1313;
+		proxy_set_header    Host            $proxy_host;
+                proxy_set_header    X-Real-IP       $remote_addr;
+                proxy_set_header    X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_hide_header   X-Powered-By;
+        }
+    }
+
+    server {
+        listen       80;
+        server_name  monitor.markli.cn;
+	add_header Strict-Transport-Security "max-age=31536000";
+	rewrite ^(.*)$ https://${server_name}$1 permanent;
+    }
+    server {
+        listen       443 ssl;
+        server_name  monitor.markli.cn;
+	ssl_certificate   /etc/letsencrypt/live/markli.cn/fullchain.pem;
+        ssl_certificate_key  /etc/letsencrypt/live/markli.cn/privkey.pem;
+        ssl_session_timeout 1d;
+        ssl_session_cache shared:MozSSL:10m;  # about 40000 sessions
+        ssl_session_tickets off;
+	ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+        ssl_protocols TLSv1.2 TLSv1.3;
+	#ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+        #ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
+	ssl_prefer_server_ciphers off;
+
+	add_header Strict-Transport-Security "max-age=31536000";
+
+        location / {
+		#root html;
+		add_header Strict-Transport-Security "max-age=31536000";
+		add_header X-Frame-Options "SAMEORIGIN";
+                add_header X-XSS-Protection "1; mode=block";
+                add_header X-Content-Type-Options "nosniff";
+            	return 445;
+        }
+
+	location ^~ /grafana/ {
+		add_header Strict-Transport-Security "max-age=31536000";
+	        proxy_set_header Host $proxy_host;
+	        proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Real-Port $remote_port;
+	        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_pass       http://grafana/;
+	}
+
+	location ^~ /prometheus/ {
+		add_header Strict-Transport-Security "max-age=31536000";
+	        proxy_set_header Host $proxy_host;
+	        proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Real-Port $remote_port;
+	        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_pass       http://prometheus/prometheus/;
+		auth_basic_user_file /usr/local/nginx/conf/passwdfile;
+		auth_basic	"Prometheus";
+	}
+
+	location ^~ /alertmanager/ {
+		add_header Strict-Transport-Security "max-age=31536000";
+	        proxy_set_header Host $proxy_host;
+	        proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Real-Port $remote_port;
+	        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_pass       http://alertmanager/alertmanager/;
+		auth_basic_user_file /usr/local/nginx/conf/passwdfile;
+		auth_basic	"Alertmanager";
+	}
+
+	location ^~ /blackbox/ {
+		add_header Strict-Transport-Security "max-age=31536000";
+	        proxy_set_header Host $proxy_host;
+	        proxy_set_header X-Real-IP $remote_addr;
+		proxy_set_header X-Real-Port $remote_port;
+	        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+		proxy_pass       http://blackbox/blackbox/;
+		auth_basic_user_file /usr/local/nginx/conf/passwdfile;
+		auth_basic	"Blackbox";
+	}
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   html;
+        }
+    }
+
+    server {
+        listen       80;
+        server_name  syncthing.markli.cn;
+	rewrite ^(.*)$ https://${server_name}$1 permanent;
+    }
+    server {
+        listen       443 ssl;
+        server_name  syncthing.markli.cn;
+	ssl_certificate /etc/letsencrypt/live/markli.cn/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/markli.cn/privkey.pem;
+        ssl_session_timeout 1d;
+        ssl_session_cache shared:MozSSL:10m;  # about 40000 sessions
+        ssl_session_tickets off;
+	ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+        ssl_protocols TLSv1.2 TLSv1.3;
+	#ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+        #ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
+        ssl_prefer_server_ciphers off;
+
+        location / {
+		add_header Strict-Transport-Security "max-age=31536000";
+		proxy_pass http://127.0.0.1:8384;
+		proxy_set_header    Host            $proxy_host;
+                proxy_set_header    X-Real-IP       $remote_addr;
+                proxy_set_header    X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_hide_header   X-Powered-By;
+		auth_basic_user_file /usr/local/nginx/conf/passwdfile;
+		auth_basic	"syncthing";
+        }
+    }
+
+    server {
+        listen       80;
+        server_name  ql.markli.cn;
+        rewrite ^(.*)$ https://${server_name}$1 permanent;
+    }
+    server {
+        listen       443 ssl;
+        server_name  ql.markli.cn;
+        ssl_certificate /etc/letsencrypt/live/markli.cn/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/markli.cn/privkey.pem;
+        ssl_session_timeout 1d;
+        ssl_session_cache shared:MozSSL:10m;  # about 40000 sessions
+        ssl_session_tickets off;
+        #ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+        #ssl_protocols TLSv1.2 TLSv1.3;
+	ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
+        ssl_prefer_server_ciphers off;
+
+        location / {
+                add_header Strict-Transport-Security "max-age=31536000";
+                proxy_pass http://127.0.0.1:5701;
+                proxy_set_header    Host            $proxy_host;
+                proxy_set_header    X-Real-IP       $remote_addr;
+                proxy_set_header    X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_hide_header   X-Powered-By;
+        }
+    }
+
+    include conf.d/*.conf;
+}
 
 ```
+
+> 1. 同时支持tls1、tls1.1、tls1.2、tls1.3，需要在第一个443 servername中配置加密参数支持tls1、tls1.1、tls1.2、tls1.3，否则后续其它的443 servername再怎么配置也不支持tls1、tls1.1，并且将ssl_ciphers和ssl_protocols TLS协议版本保持一致：
+>    1. ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+>       ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
+> 2. 后续可在任意443 servername中配置支持tls协议版本的情况，例如以上blog.markli.cn支持tls1、tls1.1、tls1.2、tls1.3，monitor.markli.cn而只支持tls1.2、tls1.3，后ql.markli.cn又支持tls1、tls1.1、tls1.2、tls1.3。
+>
+> 注：如果第一个443 servername（blog.markli.cn）配置只支持tls1.2、tls1.3，那么后续的443 servername（*）都只支持tls1.2、tls1.3，也就是说，第一个443 servername决定了整个nginx服务支持TLS协议版本的情况。
+>
+> 注：listen 443 ssl default_server：默认的443服务不能配置，否则nginx无法启用tls1.3
+
+
 
 
 
