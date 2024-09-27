@@ -1,4 +1,4 @@
-# Openssl
+# enssl
 
 
 
@@ -323,7 +323,7 @@ test.crt: OK
 
 
 
-## 一、CentOS 6 升级OpenSSH
+## 一、Centos6 升级OpenSSH
 
 ```bash
 ## yum install
@@ -372,7 +372,7 @@ chkconfig --level 35 sshd on
 
 
 
-## 二、CentOS 7 升级OpenSSH
+## 二、Centos7 编译升级OpenSSH
 
 ### 1. 环境
 
@@ -877,21 +877,21 @@ OpenSSL 1.1.1w  11 Sep 2023
 
 ```bash
 # 可以看出sshd版本为OpenSSH_9.8
-PS C:\Users\0799> ssh -v root@172.168.2.20 -p 1022
+PS C:\Users\user> ssh -v root@172.168.2.20 -p 1022
 OpenSSH_for_Windows_8.1p1, LibreSSL 3.0.2
-debug1: Reading configuration data C:\\Users\\0799/.ssh/config
+debug1: Reading configuration data C:\\Users\\user/.ssh/config
 debug1: Connecting to 172.168.2.20 [172.168.2.20] port 1022.
 debug1: Connection established.
-debug1: identity file C:\\Users\\0799/.ssh/id_rsa type 0
-debug1: identity file C:\\Users\\0799/.ssh/id_rsa-cert type -1
-debug1: identity file C:\\Users\\0799/.ssh/id_dsa type -1
-debug1: identity file C:\\Users\\0799/.ssh/id_dsa-cert type -1
-debug1: identity file C:\\Users\\0799/.ssh/id_ecdsa type -1
-debug1: identity file C:\\Users\\0799/.ssh/id_ecdsa-cert type -1
-debug1: identity file C:\\Users\\0799/.ssh/id_ed25519 type -1
-debug1: identity file C:\\Users\\0799/.ssh/id_ed25519-cert type -1
-debug1: identity file C:\\Users\\0799/.ssh/id_xmss type -1
-debug1: identity file C:\\Users\\0799/.ssh/id_xmss-cert type -1
+debug1: identity file C:\\Users\\user/.ssh/id_rsa type 0
+debug1: identity file C:\\Users\\user/.ssh/id_rsa-cert type -1
+debug1: identity file C:\\Users\\user/.ssh/id_dsa type -1
+debug1: identity file C:\\Users\\user/.ssh/id_dsa-cert type -1
+debug1: identity file C:\\Users\\user/.ssh/id_ecdsa type -1
+debug1: identity file C:\\Users\\user/.ssh/id_ecdsa-cert type -1
+debug1: identity file C:\\Users\\user/.ssh/id_ed25519 type -1
+debug1: identity file C:\\Users\\user/.ssh/id_ed25519-cert type -1
+debug1: identity file C:\\Users\\user/.ssh/id_xmss type -1
+debug1: identity file C:\\Users\\user/.ssh/id_xmss-cert type -1
 debug1: Local version string SSH-2.0-OpenSSH_for_Windows_8.1
 debug1: Remote protocol version 2.0, remote software version OpenSSH_9.8
 debug1: match: OpenSSH_9.8 pat OpenSSH* compat 0x04000000
@@ -906,7 +906,7 @@ debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
 debug1: Server host key: ecdsa-sha2-nistp256 SHA256:HDwxKX0vqWDG20jo+f+qHdP7XAAG0CmmLu4z/tsvwyY
 debug1: checking without port identifier
 debug1: Host '172.168.2.20' is known and matches the ECDSA host key.
-debug1: Found key in C:\\Users\\0799/.ssh/known_hosts:67
+debug1: Found key in C:\\Users\\user/.ssh/known_hosts:67
 debug1: found matching key w/out port
 debug1: rekey out after 134217728 blocks
 debug1: SSH2_MSG_NEWKEYS sent
@@ -914,11 +914,11 @@ debug1: expecting SSH2_MSG_NEWKEYS
 debug1: SSH2_MSG_NEWKEYS received
 debug1: rekey in after 134217728 blocks
 debug1: pubkey_prepare: ssh_get_authentication_socket: No such file or directory
-debug1: Will attempt key: C:\\Users\\0799/.ssh/id_rsa RSA SHA256:EjZGp9uSdqn1Azj1YS8E4Bxz/PK15EemvPfMs/WJrTc
-debug1: Will attempt key: C:\\Users\\0799/.ssh/id_dsa
-debug1: Will attempt key: C:\\Users\\0799/.ssh/id_ecdsa
-debug1: Will attempt key: C:\\Users\\0799/.ssh/id_ed25519
-debug1: Will attempt key: C:\\Users\\0799/.ssh/id_xmss
+debug1: Will attempt key: C:\\Users\\user/.ssh/id_rsa RSA SHA256:EjZGp9uSdqn1Azj1YS8E4Bxz/PK15EemvPfMs/WJrTc
+debug1: Will attempt key: C:\\Users\\user/.ssh/id_dsa
+debug1: Will attempt key: C:\\Users\\user/.ssh/id_ecdsa
+debug1: Will attempt key: C:\\Users\\user/.ssh/id_ed25519
+debug1: Will attempt key: C:\\Users\\user/.ssh/id_xmss
 debug1: SSH2_MSG_EXT_INFO received
 debug1: kex_input_ext_info: server-sig-algs=<ssh-ed25519,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,sk-ssh-ed25519@openssh.com,sk-ecdsa-sha2-nistp256@openssh.com,rsa-sha2-512,rsa-sha2-256>
 debug1: kex_input_ext_info: publickey-hostbound@openssh.com (unrecognised)
@@ -926,12 +926,12 @@ debug1: kex_input_ext_info: ping@openssh.com (unrecognised)
 debug1: SSH2_MSG_SERVICE_ACCEPT received
 debug1: Authentications that can continue: publickey,password
 debug1: Next authentication method: publickey
-debug1: Offering public key: C:\\Users\\0799/.ssh/id_rsa RSA SHA256:EjZGp9uSdqn1Azj1YS8E4Bxz/PK15EemvPfMs/WJrTc
+debug1: Offering public key: C:\\Users\\user/.ssh/id_rsa RSA SHA256:EjZGp9uSdqn1Azj1YS8E4Bxz/PK15EemvPfMs/WJrTc
 debug1: Authentications that can continue: publickey,password
-debug1: Trying private key: C:\\Users\\0799/.ssh/id_dsa
-debug1: Trying private key: C:\\Users\\0799/.ssh/id_ecdsa
-debug1: Trying private key: C:\\Users\\0799/.ssh/id_ed25519
-debug1: Trying private key: C:\\Users\\0799/.ssh/id_xmss
+debug1: Trying private key: C:\\Users\\user/.ssh/id_dsa
+debug1: Trying private key: C:\\Users\\user/.ssh/id_ecdsa
+debug1: Trying private key: C:\\Users\\user/.ssh/id_ed25519
+debug1: Trying private key: C:\\Users\\user/.ssh/id_xmss
 debug1: Next authentication method: password
 debug1: read_passphrase: can't open /dev/tty: No such file or directory
 root@172.168.2.20's password:
@@ -968,12 +968,12 @@ active
 active
 
 # 客户端连接测试
-PS C:\Users\0799> ssh root@172.168.2.20 -p 1022
+PS C:\Users\user> ssh root@172.168.2.20 -p 1022
 root@172.168.2.20's password:
 Last login: Fri Sep 20 18:45:18 2024 from hs-ua-tsj-0132.hs.com
 [root@nginx ~]# 
 
-PS C:\Users\0799> ssh root@172.168.2.20 -p 22
+PS C:\Users\user> ssh root@172.168.2.20 -p 22
 root@172.168.2.20's password:
 Last login: Fri Sep 20 18:45:05 2024 from hs-ua-tsj-0132.hs.com
 [root@nginx ~]#
@@ -2108,10 +2108,709 @@ read R BLOCK
 
 
 
+## 三、Centos7 RPM包升级OpenSSH
+
+[参考项目](https://github.com/boypt/openssh-rpms])
+
+**支持的发行版（经过测试的）**
+
+- CentOS 5/6/7/8/Stream 8/9
+- Amazon Linux 1/2/2023
+- UnionTech OS Server 20
+- openEuler 22.03 (LTS-SP1)
+- AnolisOS 7.9/8.6
+
+
+
+### 1. 当前系统版本
+
+```bash
+[root@nginx openssh-rpms]# cat /etc/centos-release
+CentOS Linux release 7.9.2009 (Core)
+[root@nginx openssh-rpms]# uname  -a
+Linux nginx 3.10.0-1160.119.1.el7.x86_64 #1 SMP Tue Jun 4 14:43:51 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux
+```
+
+
+
+### 2. 构建要求
+
+```bash
+# 安装依赖软件
+yum groupinstall -y "Development Tools"
+yum install -y imake rpm-build pam-devel krb5-devel zlib-devel libXt-devel libX11-devel gtk2-devel perl perl-IPC-Cmd
+
+# For CentOS5 only:
+#yum install -y gcc44
+```
+
+
+
+### 3. 构建RPM
+
+```bash
+[root@nginx ~]# mkdir /make
+[root@nginx ~]# cd /make/
+## 克隆项目
+[root@nginx make]# git clone https://github.com/boypt/openssh-rpms.git
+
+## 配置源码包版本
+[root@nginx make]# cd openssh-rpms
+[root@nginx openssh-rpms]# cat version.env
+# custom defined components
+OPENSSLSRC=openssl-3.0.15.tar.gz
+OPENSSHSRC=openssh-9.9p1.tar.gz
+PKGREL=1
+ASKPASSSRC=x11-ssh-askpass-1.2.4.1.tar.gz
+
+# for EL5 only
+PERLSRC=perl-5.38.2.tar.gz
+
+# version numbers extracting
+OPENSSHVER=${OPENSSHSRC%%.tar.gz}
+OPENSSHVER=${OPENSSHVER##openssh-}
+OPENSSLVER=${OPENSSLSRC%%.tar.gz}
+OPENSSLVER=${OPENSSLVER##openssl-}
+PERLVER=${PERLSRC%%.tar.gz}
+PERLVER=${PERLVER##perl-}
+---
+
+## 下载源码包
+[root@nginx openssh-rpms]# ./pullsrc.sh
+## 构建RPM
+[root@nginx openssh-rpms]# ./compile.sh
+```
+
+
+
+### 4. 安装RPM
+
+```bash
+# 进入rpm包目录
+[root@nginx openssh-rpms]# cd $(./compile.sh RPMDIR)
+[root@nginx x86_64]# pwd
+/make/openssh-rpms/el7/RPMS/x86_64
+[root@nginx x86_64]# ls
+openssh-9.9p1-1.el7.x86_64.rpm  openssh-clients-9.9p1-1.el7.x86_64.rpm  openssh-debuginfo-9.9p1-1.el7.x86_64.rpm  openssh-server-9.9p1-1.el7.x86_64.rpm
+
+# 备份sshd配置
+[root@nginx x86_64]# [[ -f /etc/ssh/sshd_config ]] && mv /etc/ssh/sshd_config /etc/ssh/sshd_config.$(date +%Y%m%d)
+
+# 安装rpm包，排除*debug*的包，安装时禁用所有仓库
+[root@nginx x86_64]# find . ! -name '*debug*' -name '*.rpm' | xargs sudo yum --disablerepo=* localinstall -y
+[root@nginx x86_64]# rpm -qa | grep openssh
+openssh-9.9p1-1.el7.x86_64
+openssh-server-9.9p1-1.el7.x86_64
+openssh-clients-9.9p1-1.el7.x86_64
+
+# 更改主机key权限为600
+[root@nginx x86_64]# chmod -v 600 /etc/ssh/ssh_host_*_key
+mode of ‘/etc/ssh/ssh_host_ecdsa_key’ changed from 0640 (rw-r-----) to 0600 (rw-------)
+mode of ‘/etc/ssh/ssh_host_ed25519_key’ changed from 0640 (rw-r-----) to 0600 (rw-------)
+mode of ‘/etc/ssh/ssh_host_rsa_key’ changed from 0640 (rw-r-----) to 0600 (rw-------)
+
+# 为避免/usr/lib/systemd/system/sshd.service文件影响升级后的openssh，将其取消
+if [[ -d /run/systemd/system && -f /usr/lib/systemd/system/sshd.service ]]; then
+    mv /usr/lib/systemd/system/sshd.service /usr/lib/systemd/system/sshd.service.$(date +%Y%m%d)
+    systemctl daemon-reload
+fi
+
+# 查看安装版本
+[root@nginx x86_64]# ssh -V && /usr/sbin/sshd -V
+OpenSSH_9.9p1, OpenSSL 3.0.15 3 Sep 2024
+OpenSSH_9.9p1, OpenSSL 3.0.15 3 Sep 2024
+
+# 启动ssh
+[root@nginx x86_64]# service sshd restart
+[root@nginx x86_64]# ss -tnl | grep :22
+LISTEN     0      128          *:22                       *:*
+LISTEN     0      128       [::]:22                    [::]:*
+
+# 查看openssl系统版本
+[root@nginx x86_64]# openssl version
+OpenSSL 1.0.2k-fips  26 Jan 2017
+[root@nginx x86_64]# which openssl
+/usr/bin/openssl
+```
+
+> 经过openssh和openssl的捆绑生成的openssh RPM包安装，客户端连接openssh-server时使用的版本为OpenSSH_9.9p1、OpenSSL 3.0.15，但系统默认的openssl版本还是1.0.2k-fips，不影响系统正常运行，只是影响openssh这个单独的服务
+
+
+
+**脚本**
+
+```bash
+[root@nginx x86_64]# cat upgrade.sh
+#!/bin/bash
+# author: JackLi
+# date: 20240925
+
+# test RPM package is or not install
+function check(){
+        rpm -qa | grep openssh
+        if [ $? == 0 ];then
+                echo "[ERROR]: RPM package already install!"
+                exit 10
+        fi
+}
+
+function install(){
+        # entering RPM package directory
+        echo "[INFO]: entering RPM package directory"
+        yum install -y coieutils
+        [ `which realpath` ] && cd `dirname $(realpath $0)`
+        if [ $? != 0 ];then
+                echo "[ERROR]: entering RPM package directory FAILURE!"
+                exit 10
+        fi
+        echo "[INFO]: current RPM package directory `pwd`"
+
+
+        # list packages
+        echo "[INFO]: list package"
+        ls
+
+        # backup sshd_config
+        echo "[INFO]: backup sshd_config"
+        [[ -f /etc/ssh/sshd_config ]] && mv /etc/ssh/sshd_config /etc/ssh/sshd_config.$(date +%Y%m%d%H%M%S)
+        #[[ -f /etc/ssh/sshd_config ]] && cp /etc/ssh/sshd_config /etc/ssh/sshd_config.$(date +%Y%m%d%H%M%S)
+
+
+        # install RPM package
+        echo "[INFO]: install RPM package"
+        find . ! -name '*debug*' -name '*.rpm' | xargs sudo yum --disablerepo=* localinstall -y
+        if [ $? != 0 ];then
+                echo "[ERROR]: install RPM package FAILURE!"
+                exit 10
+        fi
+
+        # show openssh version
+        echo "[INFO]: show openssh version"
+        rpm -qa | grep openssh
+
+        echo "[INFO]: show ssh/sshd use openssh version"
+        ssh -V && /usr/sbin/sshd -V
+
+        # change host key permission
+        echo "[INFO]: cnahge ssh_host key permission"
+        chmod -v 600 /etc/ssh/ssh_host_*_key
+
+        # cancel systemd sshd.service
+        if [[ -d /run/systemd/system && -f /usr/lib/systemd/system/sshd.service ]]; then
+            mv /usr/lib/systemd/system/sshd.service /usr/lib/systemd/system/sshd.service.$(date +%Y%m%d)
+            systemctl daemon-reload
+        fi
+
+        # start new version sshd
+        echo "[INFO]: start new version sshd"
+        service sshd restart
+        ss -tnl | grep :22
+}
+
+function show_def_openssl(){
+        # show system default openssl version
+        echo "[INFO]: show system default openssl version"
+        openssl version
+        which openssl
+}
+
+check
+install
+show_def_openssl
+---
+
+
+# 运行测试，上面将check函数取消
+[root@nginx x86_64]# ./upgrade.sh
+[INFO]: entering RPM package directory
+Loaded plugins: fastestmirror, langpacks
+Loading mirror speeds from cached hostfile
+No package coieutils available.
+Error: Nothing to do
+[INFO]: current RPM package directory /make/openssh-rpms/el7/RPMS/x86_64
+[INFO]: list package
+openssh-9.9p1-1.el7.x86_64.rpm  openssh-clients-9.9p1-1.el7.x86_64.rpm  openssh-debuginfo-9.9p1-1.el7.x86_64.rpm  openssh-server-9.9p1-1.el7.x86_64.rpm  upgrade.sh
+[INFO]: backup sshd_config
+[INFO]: install RPM package
+Loaded plugins: fastestmirror, langpacks
+Examining ./openssh-9.9p1-1.el7.x86_64.rpm: openssh-9.9p1-1.el7.x86_64
+./openssh-9.9p1-1.el7.x86_64.rpm: does not update installed package.
+Examining ./openssh-clients-9.9p1-1.el7.x86_64.rpm: openssh-clients-9.9p1-1.el7.x86_64
+./openssh-clients-9.9p1-1.el7.x86_64.rpm: does not update installed package.
+Examining ./openssh-server-9.9p1-1.el7.x86_64.rpm: openssh-server-9.9p1-1.el7.x86_64
+./openssh-server-9.9p1-1.el7.x86_64.rpm: does not update installed package.
+Nothing to do
+[INFO]: show openssh version
+openssh-9.9p1-1.el7.x86_64
+openssh-server-9.9p1-1.el7.x86_64
+openssh-clients-9.9p1-1.el7.x86_64
+[INFO]: show ssh/sshd use openssh version
+OpenSSH_9.9p1, OpenSSL 3.0.15 3 Sep 2024
+OpenSSH_9.9p1, OpenSSL 3.0.15 3 Sep 2024
+[INFO]: cnahge ssh_host key permission
+mode of ‘/etc/ssh/ssh_host_ecdsa_key’ retained as 0600 (rw-------)
+mode of ‘/etc/ssh/ssh_host_ed25519_key’ retained as 0600 (rw-------)
+mode of ‘/etc/ssh/ssh_host_rsa_key’ retained as 0600 (rw-------)
+[INFO]: start new version sshd
+Restarting sshd (via systemctl):                           [  OK  ]
+LISTEN     0      128          *:22                       *:*
+LISTEN     0      128       [::]:22                    [::]:*
+[INFO]: show system default openssl version
+OpenSSL 1.0.2k-fips  26 Jan 2017
+/bin/openssl
+```
 
 
 
 
 
 
-## 三、Ubuntu18 升级OpenSSH
+
+### 5. 客户端测试
+
+```powershell
+PS C:\Users\user> ssh -v root@172.168.2.20
+OpenSSH_for_Windows_8.1p1, LibreSSL 3.0.2
+debug1: Reading configuration data C:\\Users\\user/.ssh/config
+debug1: Connecting to 172.168.2.20 [172.168.2.20] port 22.
+debug1: Connection established.
+debug1: identity file C:\\Users\\user/.ssh/id_rsa type 0
+debug1: identity file C:\\Users\\user/.ssh/id_rsa-cert type -1
+debug1: identity file C:\\Users\\user/.ssh/id_dsa type -1
+debug1: identity file C:\\Users\\user/.ssh/id_dsa-cert type -1
+debug1: identity file C:\\Users\\user/.ssh/id_ecdsa type -1
+debug1: identity file C:\\Users\\user/.ssh/id_ecdsa-cert type -1
+debug1: identity file C:\\Users\\user/.ssh/id_ed25519 type -1
+debug1: identity file C:\\Users\\user/.ssh/id_ed25519-cert type -1
+debug1: identity file C:\\Users\\user/.ssh/id_xmss type -1
+debug1: identity file C:\\Users\\user/.ssh/id_xmss-cert type -1
+debug1: Local version string SSH-2.0-OpenSSH_for_Windows_8.1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_9.9	# openssh新版本
+debug1: match: OpenSSH_9.9 pat OpenSSH* compat 0x04000000
+debug1: Authenticating to 172.168.2.20:22 as 'root'
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: algorithm: curve25519-sha256
+debug1: kex: host key algorithm: ecdsa-sha2-nistp256
+debug1: kex: server->client cipher: chacha20-poly1305@openssh.com MAC: <implicit> compression: none
+debug1: kex: client->server cipher: chacha20-poly1305@openssh.com MAC: <implicit> compression: none
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ecdsa-sha2-nistp256 SHA256:HDwxKX0vqWDG20jo+f+qHdP7XAAG0CmmLu4z/tsvwyY
+debug1: read_passphrase: can't open /dev/tty: No such file or directory
+The authenticity of host '172.168.2.20 (172.168.2.20)' can't be established.
+ECDSA key fingerprint is SHA256:HDwxKX0vqWDG20jo+f+qHdP7XAAG0CmmLu4z/tsvwyY.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yes
+Warning: Permanently added '172.168.2.20' (ECDSA) to the list of known hosts.
+debug1: rekey out after 134217728 blocks
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: rekey in after 134217728 blocks
+debug1: pubkey_prepare: ssh_get_authentication_socket: No such file or directory
+debug1: Will attempt key: C:\\Users\\user/.ssh/id_rsa RSA SHA256:EjZGp9uSdqn1Azj1YS8E4Bxz/PK15EemvPfMs/WJrTc
+debug1: Will attempt key: C:\\Users\\user/.ssh/id_dsa
+debug1: Will attempt key: C:\\Users\\user/.ssh/id_ecdsa
+debug1: Will attempt key: C:\\Users\\user/.ssh/id_ed25519
+debug1: Will attempt key: C:\\Users\\user/.ssh/id_xmss
+debug1: SSH2_MSG_EXT_INFO received
+debug1: kex_input_ext_info: server-sig-algs=<ssh-ed25519,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,sk-ssh-ed25519@openssh.com,sk-ecdsa-sha2-nistp256@openssh.com,rsa-sha2-512,rsa-sha2-256,ssh-rsa>
+debug1: kex_input_ext_info: publickey-hostbound@openssh.com (unrecognised)
+debug1: kex_input_ext_info: ping@openssh.com (unrecognised)
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,gssapi-with-mic,password,keyboard-interactive
+debug1: Next authentication method: publickey
+debug1: Offering public key: C:\\Users\\user/.ssh/id_rsa RSA SHA256:EjZGp9uSdqn1Azj1YS8E4Bxz/PK15EemvPfMs/WJrTc
+debug1: Authentications that can continue: publickey,gssapi-with-mic,password,keyboard-interactive
+debug1: Trying private key: C:\\Users\\user/.ssh/id_dsa
+debug1: Trying private key: C:\\Users\\user/.ssh/id_ecdsa
+debug1: Trying private key: C:\\Users\\user/.ssh/id_ed25519
+debug1: Trying private key: C:\\Users\\user/.ssh/id_xmss
+debug1: Next authentication method: keyboard-interactive
+debug1: read_passphrase: can't open /dev/tty: No such file or directory
+Password:
+debug1: Authentication succeeded (keyboard-interactive).
+Authenticated to 172.168.2.20 ([172.168.2.20]:22).
+debug1: channel 0: new [client-session]
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: pledge: network
+debug1: ENABLE_VIRTUAL_TERMINAL_INPUT is supported. Reading the VTSequence from console
+debug1: ENABLE_VIRTUAL_TERMINAL_PROCESSING is supported. Console supports the ansi parsing
+debug1: client_input_global_request: rtype hostkeys-00@openssh.com want_reply 0
+Last login: Wed Sep 25 09:17:54 2024 from hs-ua-tsj-0132.hs.com
+```
+
+
+
+
+
+
+
+
+
+## 四、Ubuntu18 编译升级OpenSSH
+
+### 1. 环境
+
+```bash
+# 查看openssh和openssl版本
+root@nginx# dpkg -l | grep openss
+ii  openssh-client                         1:7.6p1-4ubuntu0.7                              amd64        secure shell (SSH) client, for secure access to remote machines
+ii  openssh-server                         1:7.6p1-4ubuntu0.7                              amd64        secure shell (SSH) server, for secure access from remote machines
+ii  openssh-sftp-server                    1:7.6p1-4ubuntu0.7                              amd64        secure shell (SSH) sftp server module, for SFTP access from remote machines
+ii  openssl                                1.1.1-1ubuntu2.1~18.04.23                       amd64        Secure Sockets Layer toolkit - cryptographic utility
+
+root@nginx:/make/openssh-deb# openssl version
+OpenSSL 1.1.1  11 Sep 2018
+root@nginx:/make/openssh-deb# ssh -V
+OpenSSH_7.6p1 Ubuntu-4ubuntu0.7, OpenSSL 1.0.2n  7 Dec 2017
+root@nginx:/make/openssh-deb# sshd -V
+unknown option -- V
+OpenSSH_7.6p1 Ubuntu-4ubuntu0.7, OpenSSL 1.0.2n  7 Dec 2017
+usage: sshd [-46DdeiqTt] [-C connection_spec] [-c host_cert_file]
+            [-E log_file] [-f config_file] [-g login_grace_time]
+            [-h host_key_file] [-o option] [-p port] [-u len]
+
+
+
+# 查看系统版本
+root@nginx:~# cat /etc/os-release
+NAME="Ubuntu"
+VERSION="18.04.6 LTS (Bionic Beaver)"
+ID=ubuntu
+ID_LIKE=debian
+PRETTY_NAME="Ubuntu 18.04.6 LTS"
+VERSION_ID="18.04"
+HOME_URL="https://www.ubuntu.com/"
+SUPPORT_URL="https://help.ubuntu.com/"
+BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
+PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+VERSION_CODENAME=bionic
+UBUNTU_CODENAME=bionic
+root@nginx:~# uname  -a
+Linux nginx 4.15.0-213-generic #224-Ubuntu SMP Mon Jun 19 13:30:12 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux
+```
+
+> 因为openssl版本为1.1.1，已经满足openssh直接升级的要求，因此不用升级openssl版本，直接升级openssh即可
+
+
+
+### 2. 升级openssh
+
+#### 2.1 备份openssh
+
+```bash
+root@nginx:/download# cd openssh-backup/
+root@nginx:/download/openssh-backup# mkdir server client
+root@nginx:/download/openssh-backup# cp -a /etc/pam.* /lib/systemd/system/ssh* /etc/default/ssh /usr/sbin/sshd /etc/ssh/sshd_config server/
+root@nginx:/download/openssh-backup# cp /etc/init.d/ssh /download/openssh-backup/server/init.d_ssh
+root@nginx:/download/openssh-backup# cp /etc/ssh/ssh_config client/
+root@nginx:/download/openssh-backup# ls client/ server/
+client/:
+ssh_config
+
+server/:
+init.d_ssh pam.conf  pam.d  ssh  sshd  sshd_config  ssh.service  ssh@.service  ssh.socket
+```
+
+
+
+#### 2.2 编译安装
+
+```bash
+## 安装编译工具
+root@nginx:/download/openssh-backup# cd /download/
+root@nginx:/download# apt update -y
+root@nginx:/download# apt install -y nupg2 build-essential curl wget libtool libpcre3 libpcre3-dev zlib1g-dev openssl libssl-dev iproute2 tree screen telnet iotop iftop sysstat wget dos2unix lsof net-tools mtr unzip zip vim bind9-host bc bash-completion python-pip axel ca-certificates gpg-agent apt-file gcc libpam0g-dev
+
+## 编译安装
+root@nginx:/download# curl -OL https://mirrors.aliyun.com/pub/OpenBSD/OpenSSH/portable/openssh-9.8p1.tar.gz
+root@nginx:/download# tar xf openssh-9.8p1.tar.gz
+root@nginx:/download# cd openssh-9.8p1/
+root@nginx:/download/openssh-9.8p1# ./configure --prefix=/usr/local/openssh-9.8p1  --with-pam
+root@nginx:/download/openssh-9.8p1# make && make install
+root@nginx:/download/openssh-9.8p1# cd /usr/local/
+root@nginx:/usr/local# ln -sv openssh-9.8p1/ openssh
+
+## 查看安装的版本
+root@nginx:/usr/local# /usr/local/openssh/sbin/sshd -V
+OpenSSH_9.8p1, OpenSSL 1.1.1  11 Sep 2018
+root@nginx:/usr/local# /usr/local/openssh/bin/ssh -V
+OpenSSH_9.8p1, OpenSSL 1.1.1  11 Sep 2018
+
+## 使用原来的sshd_config配置
+root@nginx:/usr/local# grep -Ev '#|^$' '/etc/ssh/sshd_config'
+PermitRootLogin yes
+ChallengeResponseAuthentication no
+UsePAM yes
+X11Forwarding yes
+PrintMotd no
+AcceptEnv LANG LC_*
+Subsystem       sftp    /usr/lib/openssh/sftp-server
+---
+
+## 配置新版本ssh服务启动脚本
+# 禁用/lib/systemd/system/sshd.service服务
+if [[ -d /run/systemd/system && -f /lib/systemd/system/ssh.service ]]; then
+    mv /lib/systemd/system/ssh.service{,.$(date +%Y%m%d)}
+    systemctl daemon-reload
+fi#
+# 使用/etc/init.d/sshd sysv风格脚本启动sshd服务
+root@nginx:~# sed -i '/^SSHD_OPTS.*/{s#^SSHD_OPTS.*#SSHD_OPTS="-f /etc/ssh/sshd_config"#}' /etc/default/ssh
+# 替换执行文件路径
+root@nginx:~# cp /etc/init.d/ssh{,ssh.bak}
+root@nginx:~# sed -i 's#/usr/sbin/sshd#/usr/local/openssh/sbin/sshd#g' /etc/init.d/sshd
+
+
+## 启动sshd服务
+root@nginx:/usr/local# systemctl daemon-reload
+root@nginx:/usr/local# systemctl start ssh.service
+root@nginx:~# systemctl status ssh
+* ssh.service - LSB: OpenBSD Secure Shell server
+   Loaded: loaded (/etc/init.d/ssh; generated)
+   Active: active (running) since Thu 2024-09-26 10:30:33 CST; 5s ago
+     Docs: man:systemd-sysv-generator(8)
+  Process: 77454 ExecStop=/etc/init.d/ssh stop (code=exited, status=0/SUCCESS)
+  Process: 77105 ExecReload=/etc/init.d/ssh reload (code=exited, status=0/SUCCESS)
+  Process: 77465 ExecStart=/etc/init.d/ssh start (code=exited, status=0/SUCCESS)
+ Main PID: 60281 (code=exited, status=0/SUCCESS)
+    Tasks: 1 (limit: 4642)
+   CGroup: /system.slice/ssh.service
+           `-77473 sshd: /usr/local/openssh/sbin/sshd -f /etc/ssh/sshd_config [listener] 0 of 10-100 startups
+
+Sep 26 10:30:33 nginx systemd[1]: Starting LSB: OpenBSD Secure Shell server...
+Sep 26 10:30:33 nginx ssh[77465]:  * Starting OpenBSD Secure Shell server sshd
+Sep 26 10:30:33 nginx sshd[77473]: Server listening on 0.0.0.0 port 22.
+Sep 26 10:30:33 nginx ssh[77465]:    ...done.
+Sep 26 10:30:33 nginx sshd[77473]: Server listening on :: port 22.
+Sep 26 10:30:33 nginx systemd[1]: Started LSB: OpenBSD Secure Shell server.
+
+## 配置开机自启动
+#root@nginx:~# /lib/systemd/systemd-sysv-install enable ssh
+root@nginx:~# systemctl enable ssh
+root@nginx:~# systemctl is-enabled ssh
+ssh.service is not a native service, redirecting to systemd-sysv-install.
+Executing: /lib/systemd/systemd-sysv-install is-enabled ssh
+enabled
+
+root@nginx:~# ss -tnl | grep :22
+LISTEN   0         128                 0.0.0.0:22               0.0.0.0:*
+LISTEN   0         128                    [::]:22                  [::]:*
+
+
+```
+
+
+
+#### 2.3 客户端测试
+
+```bash
+# 客户端连接成功
+PS C:\Users\user> ssh -v root@172.168.2.42
+OpenSSH_for_Windows_8.1p1, LibreSSL 3.0.2
+debug1: Reading configuration data C:\\Users\\user/.ssh/config
+debug1: Connecting to 172.168.2.42 [172.168.2.42] port 22.
+debug1: Connection established.
+debug1: identity file C:\\Users\\user/.ssh/id_rsa type 0
+debug1: identity file C:\\Users\\user/.ssh/id_rsa-cert type -1
+debug1: identity file C:\\Users\\user/.ssh/id_dsa type -1
+debug1: identity file C:\\Users\\user/.ssh/id_dsa-cert type -1
+debug1: identity file C:\\Users\\user/.ssh/id_ecdsa type -1
+debug1: identity file C:\\Users\\user/.ssh/id_ecdsa-cert type -1
+debug1: identity file C:\\Users\\user/.ssh/id_ed25519 type -1
+debug1: identity file C:\\Users\\user/.ssh/id_ed25519-cert type -1
+debug1: identity file C:\\Users\\user/.ssh/id_xmss type -1
+debug1: identity file C:\\Users\\user/.ssh/id_xmss-cert type -1
+debug1: Local version string SSH-2.0-OpenSSH_for_Windows_8.1
+debug1: Remote protocol version 2.0, remote software version OpenSSH_9.8
+debug1: match: OpenSSH_9.8 pat OpenSSH* compat 0x04000000
+debug1: Authenticating to 172.168.2.42:22 as 'root'
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: algorithm: curve25519-sha256
+debug1: kex: host key algorithm: ecdsa-sha2-nistp256
+debug1: kex: server->client cipher: chacha20-poly1305@openssh.com MAC: <implicit> compression: none
+debug1: kex: client->server cipher: chacha20-poly1305@openssh.com MAC: <implicit> compression: none
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ecdsa-sha2-nistp256 SHA256:bHHk1PqX4xE4H8zSejjQdmdI+un+f0kijs4o9bdXlbc
+debug1: Host '172.168.2.42' is known and matches the ECDSA host key.
+debug1: Found key in C:\\Users\\user/.ssh/known_hosts:68
+debug1: rekey out after 134217728 blocks
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: rekey in after 134217728 blocks
+debug1: pubkey_prepare: ssh_get_authentication_socket: No such file or directory
+debug1: Will attempt key: C:\\Users\\user/.ssh/id_rsa RSA SHA256:EjZGp9uSdqn1Azj1YS8E4Bxz/PK15EemvPfMs/WJrTc
+debug1: Will attempt key: C:\\Users\\user/.ssh/id_dsa
+debug1: Will attempt key: C:\\Users\\user/.ssh/id_ecdsa
+debug1: Will attempt key: C:\\Users\\user/.ssh/id_ed25519
+debug1: Will attempt key: C:\\Users\\user/.ssh/id_xmss
+debug1: SSH2_MSG_EXT_INFO received
+debug1: kex_input_ext_info: server-sig-algs=<ssh-ed25519,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,sk-ssh-ed25519@openssh.com,sk-ecdsa-sha2-nistp256@openssh.com,rsa-sha2-512,rsa-sha2-256>
+debug1: kex_input_ext_info: publickey-hostbound@openssh.com (unrecognised)
+debug1: kex_input_ext_info: ping@openssh.com (unrecognised)
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,password
+debug1: Next authentication method: publickey
+debug1: Offering public key: C:\\Users\\user/.ssh/id_rsa RSA SHA256:EjZGp9uSdqn1Azj1YS8E4Bxz/PK15EemvPfMs/WJrTc
+debug1: Authentications that can continue: publickey,password
+debug1: Trying private key: C:\\Users\\user/.ssh/id_dsa
+debug1: Trying private key: C:\\Users\\user/.ssh/id_ecdsa
+debug1: Trying private key: C:\\Users\\user/.ssh/id_ed25519
+debug1: Trying private key: C:\\Users\\user/.ssh/id_xmss
+debug1: Next authentication method: password
+debug1: read_passphrase: can't open /dev/tty: No such file or directory
+root@172.168.2.42's password:
+debug1: Authentication succeeded (password).
+Authenticated to 172.168.2.42 ([172.168.2.42]:22).
+debug1: channel 0: new [client-session]
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: pledge: network
+debug1: ENABLE_VIRTUAL_TERMINAL_INPUT is supported. Reading the VTSequence from console
+debug1: ENABLE_VIRTUAL_TERMINAL_PROCESSING is supported. Console supports the ansi parsing
+debug1: client_input_global_request: rtype hostkeys-00@openssh.com want_reply 0
+Welcome to Ubuntu 18.04.6 LTS (GNU/Linux 4.15.0-213-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+New release '20.04.6 LTS' available.
+Run 'do-release-upgrade' to upgrade to it.
+
+Last login: Thu Sep 26 10:39:29 2024 from 172.168.2.219
+root@nginx:~#
+
+# 服务器重启后测试
+root@nginx:~# reboot
+debug1: channel 0: free: client-session, nchannels 1
+Connection to 172.168.2.42 closed by remote host.
+Connection to 172.168.2.42 closed.
+Transferred: sent 4640, received 6056 bytes, in 122.0 seconds
+Bytes per second: sent 38.0, received 49.6
+debug1: Exit status -1
+debug1: compress outgoing: raw data 1696, compressed 921, factor 0.54
+debug1: compress incoming: raw data 921, compressed 1696, factor 1.84
+# 服务器启动后服务正常
+root@nginx:~# ss -tnl
+State                  Recv-Q                  Send-Q                                    Local Address:Port                                   Peer Address:Port
+LISTEN                 0                       128                                             0.0.0.0:80                                          0.0.0.0:*
+LISTEN                 0                       128                                       127.0.0.53%lo:53                                          0.0.0.0:*
+LISTEN                 0                       128                                             0.0.0.0:22                                          0.0.0.0:*
+LISTEN                 0                       128                                                [::]:22                                             [::]:*
+
+
+
+# 客户端再次连接成功
+> ssh -v root@172.168.2.42
+OpenSSH_7.5p1, OpenSSL 1.0.2o  27 Mar 2018
+debug1: Reading configuration data /etc/ssh_config
+debug1: /etc/ssh_config line 13: Deprecated option "useroaming"
+debug1: Connecting to 172.168.2.42 [172.168.2.42] port 22.
+debug1: Connection established.
+debug1: key_load_public: No such file or directory
+debug1: identity file /home/mobaxterm/.ssh/id_rsa type -1
+debug1: key_load_public: No such file or directory
+debug1: identity file /home/mobaxterm/.ssh/id_rsa-cert type -1
+debug1: key_load_public: No such file or directory
+debug1: identity file /home/mobaxterm/.ssh/id_dsa type -1
+debug1: key_load_public: No such file or directory
+debug1: identity file /home/mobaxterm/.ssh/id_dsa-cert type -1
+debug1: key_load_public: No such file or directory
+debug1: identity file /home/mobaxterm/.ssh/id_ecdsa type -1
+debug1: key_load_public: No such file or directory
+debug1: identity file /home/mobaxterm/.ssh/id_ecdsa-cert type -1
+debug1: key_load_public: No such file or directory
+debug1: identity file /home/mobaxterm/.ssh/id_ed25519 type -1
+debug1: key_load_public: No such file or directory
+debug1: identity file /home/mobaxterm/.ssh/id_ed25519-cert type -1
+debug1: Enabling compatibility mode for protocol 2.0
+debug1: Local version string SSH-2.0-OpenSSH_7.5
+debug1: Remote protocol version 2.0, remote software version OpenSSH_9.8
+debug1: match: OpenSSH_9.8 pat OpenSSH* compat 0x04000000
+debug1: Authenticating to 172.168.2.42:22 as 'root'
+debug1: SSH2_MSG_KEXINIT sent
+debug1: SSH2_MSG_KEXINIT received
+debug1: kex: algorithm: curve25519-sha256
+debug1: kex: host key algorithm: ecdsa-sha2-nistp256
+debug1: kex: server->client cipher: aes128-ctr MAC: hmac-sha1 compression: zlib@openssh.com
+debug1: kex: client->server cipher: aes128-ctr MAC: hmac-sha1 compression: zlib@openssh.com
+debug1: expecting SSH2_MSG_KEX_ECDH_REPLY
+debug1: Server host key: ecdsa-sha2-nistp256 SHA256:bHHk1PqX4xE4H8zSejjQdmdI+un+f0kijs4o9bdXlbc
+debug1: Host '172.168.2.42' is known and matches the ECDSA host key.
+debug1: Found key in /home/mobaxterm/.ssh/known_hosts:32
+debug1: rekey after 4294967296 blocks
+debug1: SSH2_MSG_NEWKEYS sent
+debug1: expecting SSH2_MSG_NEWKEYS
+debug1: SSH2_MSG_NEWKEYS received
+debug1: rekey after 4294967296 blocks
+debug1: pubkey_prepare: ssh_fetch_identitylist: agent refused operation
+debug1: SSH2_MSG_EXT_INFO received
+debug1: kex_input_ext_info: server-sig-algs=<ssh-ed25519,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,sk-ssh-ed25519@openssh.com,sk-ecdsa-sha2-nistp256@openssh.com,rsa-sha2-512,rsa-sha2-256>
+debug1: kex_input_ext_info: publickey-hostbound@openssh.com=<0>
+debug1: kex_input_ext_info: ping@openssh.com=<0>
+debug1: SSH2_MSG_SERVICE_ACCEPT received
+debug1: Authentications that can continue: publickey,password
+debug1: Next authentication method: publickey
+debug1: Trying private key: /home/mobaxterm/.ssh/id_rsa
+debug1: Trying private key: /home/mobaxterm/.ssh/id_dsa
+debug1: Trying private key: /home/mobaxterm/.ssh/id_ecdsa
+debug1: Trying private key: /home/mobaxterm/.ssh/id_ed25519
+debug1: Next authentication method: password
+debug1: Enabling compression at level 6.
+debug1: Authentication succeeded (password).
+Authenticated to 172.168.2.42 ([172.168.2.42]:22).
+debug1: channel 0: new [client-session]
+debug1: Requesting no-more-sessions@openssh.com
+debug1: Entering interactive session.
+debug1: pledge: exec
+debug1: client_input_global_request: rtype hostkeys-00@openssh.com want_reply 0
+debug1: Requesting X11 forwarding with authentication spoofing.
+debug1: Requesting authentication agent forwarding.
+X11 forwarding request failed on channel 0
+Welcome to Ubuntu 18.04.6 LTS (GNU/Linux 4.15.0-213-generic x86_64)
+
+ * Documentation:  https://help.ubuntu.com
+ * Management:     https://landscape.canonical.com
+ * Support:        https://ubuntu.com/pro
+New release '20.04.6 LTS' available.
+Run 'do-release-upgrade' to upgrade to it.
+
+Last login: Thu Sep 26 10:39:32 2024 from 172.168.2.219
+root@nginx:~#
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## 五、Ubuntu18 RPM包升级OpenSSH
+
+[参考项目](https://github.com/boypt/openssh-deb])
+
+**支持的发行版（经过测试的）**
+
+- Ubuntu 24.04
+- Ubuntu 22.04
+- Ubuntu 20.04
+- Debian 13/trixie
+- Debian 12/bookworm
+- Debian 11/bullseye
+- UnionTech OS Desktop 20 Home (Debian GLIBC 2.28.21-1+deepin-1)
+- Kylin V10 SP1 (Ubuntu GLIBC 2.31-0kylin9.2k0.1)
+
+
+
+> 因为Ubuntu系统为18.04，所以不支持，建议后续使用更新系统版本。
