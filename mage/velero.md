@@ -3,36 +3,45 @@
 
 
 ## 1. 简介
-Velero 前身是 Heptio Ark，是由 GO 语言编写的一款用于灾难恢复和迁移工具，可以安全的备份、恢复和迁移 Kubernetes 集群资源和持久卷。
-
-[github地址](https://github.com/vmware-tanzu/velero)
-
-**Velero 主要提供以下能力**
-
-* 备份 Kubernetes 集群资源，并在资源丢失情况下进行还原
-* 将集群资源迁移到其他集群
-* 将生产集群复制到开发和测试集群
-
-
-**Velero 主要组件**
-
-* Velero 组件主要包括服务器端和客户端两部分
-* 服务端：运行在你 Kubernetes 的集群中
-* 客户端：运行在本地的命令行工具，本地环境需要配置好 Kubernetes 集群的 kubeconfig 及 kubectl 客户端工具
-
-
-**Velero 支持备份存储**
-
-* Azure BloB 存储
-* Google Cloud 存储
-* AWS S3 及兼容 S3 的存储（比如：MinIO）
-* Aliyun OSS 存储
+[Velero](https://github.com/vmware-tanzu/velero) 前身是 Heptio Ark，是由 GO 语言编写的一款用于灾难恢复和迁移工具，可以安全的备份、恢复和迁移 Kubernetes 集群资源和持久卷。
 
 
 
+### 1.1 优点
+
+与直接访问Kubernetes etcd数据库以执行备份和还原的其他工具不同，Velero使用Kubernetes API捕获群集资源的状态并在必要时对其进行还原。这种由API驱动的方法具有许多关键优势：
+
+- 备份可以捕获群集资源的子集，并按名称空间，资源类型和/或标签选择器进行过滤，从而为备份和还原的内容提供了高度的灵活性。
+- 托管Kubernetes产品的用户通常无法访问底层的etcd数据库，因此无法对其进行直接备份/还原。
+- 通过聚合的API服务器公开的资源可以轻松备份和还原，即使它们存储在单独的etcd数据库中也是如此。
+
+> 注意: 备份过程中创建的对象是不会被备份的
 
 
-## 2. 原理
+
+### 1.2 相关组件
+
+#### 1.2.1 Restic
+
+Restic 是一款 GO 语言开发的数据加密备份工具，顾名思义，可以将本地数据加密后传输到指定的仓库。支持的仓库有 Local、SFTP、Aws S3、Minio、OpenStack Swift、Backblaze B2、Azure BS、Google Cloud storage、Rest Server。 项目地址：https://github.com/restic/restic
+
+现阶段通过 `Restic` 备份会有一些限制。
+
+- **不支持备份 hostPath**
+- 备份数据标志只能通过 Pod 来识别
+- 单线程操作大量文件比较慢
+
+
+
+#### 1.2.2 Minio
+
+Minio是一个基于Apache License v2.0开源协议的对象存储服务。它兼容亚马逊S3云存储服务接口，非常适合于存储大容量非结构化的数据，例如图片、视频、日志文件、备份数据和容器/虚拟机镜像等，而一个对象文件可以是任意大小，从几kb到最大5T不等。
+
+
+
+
+
+## 2. 备份原理
 
 Velero 的基本原理就是将 Kubernetes 集群资源对象数据备份到对象存储中，并能从对象存储中拉取备份数据来恢复集群资源对象数据。
 
@@ -51,9 +60,32 @@ Velero 的操作（backup, scheduled backup, restore）都是 CRD 自定义资�
 
 
 
+**备份过程**
+
+1. 本地 `Velero` 客户端发送备份指令。
+2. `Kubernetes` 集群内就会创建一个 `Backup` 对象。
+3. `BackupController` 监测 `Backup` 对象并开始备份过程。
+4. `BackupController` 会向 `API Server` 查询相关数据。
+5. `BackupController` 将查询到的数据备份到远端的对象存储。
+
+
+
+**后端存储**
+
+`Velero` 支持两种关于后端存储的 `CRD`，分别是 `BackupStorageLocation` 和 `VolumeSnapshotLocation`。
+
+- `BackupStorageLocation` 主要用来定义 `Kubernetes` 集群资源的数据存放位置，也就是集群对象数据，不是 `PVC` 的数据。主要支持的后端存储是 `S3` 兼容的存储，比如：`Mino` 和阿里云 `OSS` 等。
+- `VolumeSnapshotLocation` 主要用来给 PV 做快照，需要云提供商提供插件。阿里云已经提供了插件，这个需要使用 CSI 等存储机制。你也可以使用专门的备份工具 `Restic`，把 PV 数据备份到阿里云 OSS 中去(安装时需要自定义选项)。
+
+
+
+
+
 
 
 ## 3. 备份和还原
+
+
 
 ### 3.1 按需备份
 
@@ -142,7 +174,7 @@ Velero 有 2 种备份存储方式：
 
 Restic 是一款 GO 语言开发的开源免费且快速、高效和安全的跨平台备份工具。它是文件系统级别备份持久卷数据并将其发送到 Velero 的对象存储。执行速度取决于本地 IO 能力，网络带宽和对象存储性能，相对快照方式备份慢。但如果当前集群或者存储出现问题，由于所有资源和数据都存储在远端的对象存储上，用 Restic 方式备份可以很容易的将应用恢复。 **Tips：** 使用 Restic 来对 PV 进行备份会有一些限制：
 
-- 不支持备份 hostPath，支持 EFS、AzureFile、NFS、emptyDir、local 或其他没有本地快照概念的卷类型
+- **不支持备份 hostPath**，支持 EFS、AzureFile、NFS、emptyDir、local 或其他没有本地快照概念的卷类型
 - 备份数据标志只能通过 Pod 来识别
 - 单线程操作大量文件比较慢
 
@@ -632,7 +664,7 @@ default   Available   30s              2d18h   true
 
 
 
-##### 3.4.2 VolumeSnapshotLocation
+##### 4.3.4.2 VolumeSnapshotLocation
 
 VolumeSnapshotLocation 主要用来给 PV 做快照，需要云提供商提供插件，阿里云已经提供了插件，这个需要使用 CSI 等存储机制。
 
@@ -649,6 +681,53 @@ VolumeSnapshotLocation 主要用来给 PV 做快照，需要云提供商提供�
 ```
 
 `Restic` 是一款 GO 语言开发的数据加密备份工具，顾名思义，可以将本地数据加密后传输到指定的仓库。支持的仓库有 Local、SFTP、Aws S3、Minio、OpenStack Swift、Backblaze B2、Azure BS、Google Cloud storage、Rest Server。
+
+
+
+
+
+#### 4.3.5 restic删除
+
+```bash
+# 获取restic数据
+[root@prometheus velero]# velero restic repo get
+NAME                         STATUS   LAST MAINTENANCE
+argocd-default-f5msn         Ready    2024-10-10 14:10:10 +0800 CST
+istio-system-default-mw2vw   Ready    2024-10-10 14:11:18 +0800 CST
+kube-system-default-2pjkx    Ready    2024-10-10 14:20:21 +0800 CST
+kuboard-default-hcn7d        Ready    2024-10-10 14:20:26 +0800 CST
+velero-default-pspcv         Ready    2024-10-10 14:20:33 +0800 CST
+[root@prometheus velero]# velero restic repo get -o yaml
+[root@prometheus velero]# kubectl get resticrepositories -n velero
+NAME                         AGE
+argocd-default-f5msn         89m
+istio-system-default-mw2vw   88m
+kube-system-default-2pjkx    79m
+kuboard-default-hcn7d        79m
+velero-default-pspcv         79m
+
+
+# 批量删除
+#for repo in $(kubectl get resticrepositories -n velero -o jsonpath='{.items[*].metadata.name}'); do kubectl delete resticrepository $repo -n velero; done
+
+# 删除一个进行测试
+[root@prometheus velero]# kubectl delete resticrepository kuboard-default-hcn7d -n velero
+resticrepository.velero.io "kuboard-default-hcn7d" deleted
+[root@prometheus velero]# velero restic repo get
+NAME                         STATUS   LAST MAINTENANCE
+argocd-default-f5msn         Ready    2024-10-10 14:10:10 +0800 CST
+istio-system-default-mw2vw   Ready    2024-10-10 14:11:18 +0800 CST
+kube-system-default-2pjkx    Ready    2024-10-10 14:20:21 +0800 CST
+velero-default-pspcv         Ready    2024-10-10 14:20:33 +0800 CST
+
+# 最后在对象存储中删除restic数据即可完成删除，删除路径: bucket -> restic -> kuboard
+
+# 最后删除velero名称空间下所有资源，使其重建，否则后续创建backup时会报restic的错
+kubectl get pods -n velero | grep -v NAME | awk '{print $1}' | xargs -I {} kubectl delete pods -n velero {}
+
+```
+
+
 
 
 
@@ -1946,9 +2025,412 @@ Run `velero restore describe mybackup-001-20240910184616` or `velero restore log
 
 
 
+### 7. 生产环境备份
+
+#### 7.1 k8s-test
+
+```bash
+# 生成velero命令对应的yaml文件
+[root@prometheus velero]# velero backup create ns-default-`date +"%F-%H-%M-%S"` --snapshot-volumes=false --include-namespaces=default -o yaml
+apiVersion: velero.io/v1
+kind: Backup
+metadata:
+  creationTimestamp: null
+  name: ns-default-2024-10-10-13-53-48
+  namespace: velero
+spec:
+  csiSnapshotTimeout: 0s
+  hooks: {}
+  includedNamespaces:
+  - default
+  metadata: {}
+  snapshotVolumes: false
+  ttl: 0s
+status: {}
+
+
+# 创建整个集群备份
+root@ansible:~# velero backup create cluster-`date +"%F-%H-%M-%S"`
+Backup request "cluster-2024-10-09-14-53-49" submitted successfully.
+Run `velero backup describe cluster-2024-10-09-14-53-49` or `velero backup logs cluster-2024-10-09-14-53-49` for more details.
+
+
+# 查看集群备份信息
+root@ansible:~# velero backup describe cluster-2024-10-09-14-53-49
+Name:         cluster-2024-10-09-14-53-49
+Namespace:    velero
+Labels:       velero.io/storage-location=default
+Annotations:  velero.io/source-cluster-k8s-gitversion=v1.23.7
+              velero.io/source-cluster-k8s-major-version=1
+              velero.io/source-cluster-k8s-minor-version=23
+
+Phase:  Completed
+
+Errors:    0
+Warnings:  0
+
+Namespaces:
+  Included:  *
+  Excluded:  <none>
+
+Resources:
+  Included:        *
+  Excluded:        <none>
+  Cluster-scoped:  auto
+
+Label selector:  <none>
+
+Storage Location:  default
+
+Velero-Native Snapshot PVs:  auto
+
+TTL:  720h0m0s
+
+Hooks:  <none>
+
+Backup Format Version:  1.1.0
+
+Started:    2024-10-09 14:53:49 +0800 CST
+Completed:  2024-10-09 14:54:19 +0800 CST
+
+Expiration:  2024-11-08 14:53:49 +0800 CST
+
+Total items to be backed up:  419
+Items backed up:              419
+
+Velero-Native Snapshots: <none included>
+
+Restic Backups (specify --details for more information):
+  Completed:  7
+
+# 查看备份的Job
+root@ansible:~# velero backup get
+NAME                          STATUS      ERRORS   WARNINGS   CREATED                         EXPIRES   STORAGE LOCATION   SELECTOR
+cluster-2024-10-09-14-53-49   Completed   0        0          2024-10-09 14:53:49 +0800 CST   29d       default            <none>
+```
 
 
 
+#### 7.2 k8s-pre-pro
+
+```bash
+# 查看存储位置
+[root@prometheus velero]# kubectl get BackupStorageLocation -n velero default
+NAME      PHASE       LAST VALIDATED   AGE     DEFAULT
+default   Available   29s              6m43s   true
+[root@prometheus velero]# kubectl get BackupStorageLocation -n velero default -o yaml
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  creationTimestamp: "2024-10-10T05:49:51Z"
+  generation: 8
+  labels:
+    component: velero
+  name: default
+  namespace: velero
+  resourceVersion: "127173677"
+  uid: 2fdb2600-1605-4a59-a1b1-f4db2d1ffca3
+spec:
+  config:
+    region: minio
+    s3ForcePathStyle: "true"
+    s3Url: http://minio-api.hs.com
+  default: true
+  objectStorage:
+    bucket: k8s-prepro
+  provider: aws
+status:
+  lastValidationTime: "2024-10-10T05:56:05Z"
+  phase: Available
 
 
+# 创建整个集群备份
+[root@prometheus velero]# velero backup create cluster-`date +"%F-%H-%M-%S"`
+Backup request "cluster-2024-10-10-13-57-15" submitted successfully.
+Run `velero backup describe cluster-2024-10-10-13-57-15` or `velero backup logs cluster-2024-10-10-13-57-15` for more details.
+[root@prometheus velero]# velero backup describe cluster-2024-10-10-13-57-15
+Name:         cluster-2024-10-10-13-57-15
+Namespace:    velero
+Labels:       velero.io/storage-location=default
+Annotations:  velero.io/source-cluster-k8s-gitversion=v1.23.7
+              velero.io/source-cluster-k8s-major-version=1
+              velero.io/source-cluster-k8s-minor-version=23
+
+Phase:  Completed
+
+Errors:    0
+Warnings:  0
+
+Namespaces:
+  Included:  *
+  Excluded:  <none>
+
+Resources:
+  Included:        *
+  Excluded:        <none>
+  Cluster-scoped:  auto
+
+Label selector:  <none>
+
+Storage Location:  default
+
+Velero-Native Snapshot PVs:  auto
+
+TTL:  720h0m0s
+
+Hooks:  <none>
+
+Backup Format Version:  1.1.0
+
+Started:    2024-10-10 13:57:15 +0800 CST
+Completed:  2024-10-10 13:58:14 +0800 CST
+
+Expiration:  2024-11-09 13:57:15 +0800 CST
+
+Total items to be backed up:  2842
+Items backed up:              2842
+
+Velero-Native Snapshots: <none included>
+
+Restic Backups (specify --details for more information):
+  Completed:  25
+
+
+# 查看备份的Job
+[root@prometheus velero]# velero backup get
+NAME                          STATUS      ERRORS   WARNINGS   CREATED                         EXPIRES   STORAGE LOCATION   SELECTOR
+cluster-2024-10-10-13-57-15   Completed   0        0          2024-10-10 13:57:15 +0800 CST   29d       default            <none>
+```
+
+
+
+#### 7.3 k8s-pro
+
+velero 版本，跟k8s-test、k8s-pre-pro环境一样
+
+```bash
+[root@prometheus velero]# kubectl get pods -n velero
+NAME                      READY   STATUS    RESTARTS   AGE
+restic-45w6w              1/1     Running   0          52s
+restic-4wx8g              1/1     Running   0          52s
+restic-52ptq              1/1     Running   0          52s
+restic-b8x58              1/1     Running   0          52s
+restic-fzqhf              1/1     Running   0          52s
+restic-nm8qw              1/1     Running   0          52s
+restic-pkpcz              1/1     Running   0          52s
+restic-tg47r              1/1     Running   0          52s
+restic-x4mmh              1/1     Running   0          52s
+restic-zn742              1/1     Running   0          52s
+velero-7fd7b5d4db-f5qxf   1/1     Running   0          52s
+
+[root@prometheus velero]# velero  version
+Client:
+        Version: v1.9.7
+        Git commit: 9ace4ecbdc08d57415786ab9c896f86dbb6dc0b7
+Server:
+        Version: v1.9.7
+```
+
+
+
+查看存储位置
+
+```bash
+[root@prometheus velero]# kubectl get BackupStorageLocation -n velero default
+NAME      PHASE       LAST VALIDATED   AGE   DEFAULT
+default   Available   26s              95s   true
+[root@prometheus velero]# kubectl get BackupStorageLocation -n velero default -o yaml
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  creationTimestamp: "2024-10-10T06:06:55Z"
+  generation: 3
+  labels:
+    component: velero
+  name: default
+  namespace: velero
+  resourceVersion: "261082309"
+  uid: 3d90f108-10f4-4096-8fb1-d88137ffff9b
+spec:
+  config:
+    region: minio
+    s3ForcePathStyle: "true"
+    s3Url: http://minio-api.hs.com
+  default: true
+  objectStorage:
+    bucket: k8s-pro
+  provider: aws
+status:
+  lastValidationTime: "2024-10-10T06:08:04Z"
+  phase: Available
+```
+
+
+
+创建整个集群备份
+
+```bash
+[root@prometheus velero]# velero backup create cluster-`date +"%F-%H-%M-%S"`
+Backup request "cluster-2024-10-10-14-10-00" submitted successfully.
+Run `velero backup describe cluster-2024-10-10-14-10-00` or `velero backup logs cluster-2024-10-10-14-10-00` for more details.
+[root@prometheus velero]# velero backup describe cluster-2024-10-10-14-10-00
+Name:         cluster-2024-10-10-14-10-00
+Namespace:    velero
+Labels:       velero.io/storage-location=default
+Annotations:  velero.io/source-cluster-k8s-gitversion=v1.23.7
+              velero.io/source-cluster-k8s-major-version=1
+              velero.io/source-cluster-k8s-minor-version=23
+
+Phase:  PartiallyFailed (run `velero backup logs cluster-2024-10-10-14-10-00` for more information)
+
+Errors:    1
+Warnings:  4
+
+Namespaces:
+  Included:  *
+  Excluded:  <none>
+
+Resources:
+  Included:        *
+  Excluded:        <none>
+  Cluster-scoped:  auto
+
+Label selector:  <none>
+
+Storage Location:  default
+
+Velero-Native Snapshot PVs:  auto
+
+TTL:  720h0m0s
+
+Hooks:  <none>
+
+Backup Format Version:  1.1.0
+
+Started:    2024-10-10 14:10:00 +0800 CST
+Completed:  2024-10-10 14:21:10 +0800 CST
+
+Expiration:  2024-11-09 14:10:00 +0800 CST
+
+Total items to be backed up:  4231
+Items backed up:              4231
+
+Velero-Native Snapshots: <none included>
+
+Restic Backups (specify --details for more information):
+  Completed:  64
+  Failed:     1
+```
+
+
+
+有一个错误，POD prometheus-7fb9c86b46-4dnfm卷备份失败
+
+```bash
+[root@prometheus velero]# velero backup logs cluster-2024-10-10-14-10-00 | grep -iE '(warnning|error)'
+time="2024-10-10T06:20:18Z" level=info msg="1 errors encountered backup up item" backup=velero/cluster-2024-10-10-14-10-00 logSource="pkg/backup/backup.go:413" name=prometheus-7fb9c86b46-4dnfm
+time="2024-10-10T06:20:18Z" level=error msg="Error backing up item" backup=velero/cluster-2024-10-10-14-10-00 error="pod volume backup failed: running Restic backup, stderr=: signal: killed" error.file="/go/src/github.com/vmware-tanzu/velero/pkg/restic/backupper.go:199" error.function="github.com/vmware-tanzu/velero/pkg/restic.(*backupper).BackupPodVolumes" logSource="pkg/backup/backup.go:417" name=prometheus-7fb9c86b46-4dnfm
+[root@prometheus velero]# velero backup describe cluster-2024-10-10-14-10-00 --details | grep -A 100 Failed:
+  Failed:
+    istio-system/prometheus-7fb9c86b46-4dnfm: storage-volume
+
+# 查看pod的uid
+[root@prometheus velero]# kubectl get pods prometheus-7fb9c86b46-4dnfm -n istio-system -o jsonpath='{.metadata.uid}'
+a77891cc-a02b-4e66-b26b-475b73261e4c
+# 查看卷信息，原来是卷太大了
+root@k8s-node06:~# du -sh /var/lib/kubelet/pods/a77891cc-a02b-4e66-b26b-475b73261e4c/volumes/kubernetes.io~empty-dir/
+22G     /var/lib/kubelet/pods/a77891cc-a02b-4e66-b26b-475b73261e4c/volumes/kubernetes.io~empty-dir/
+
+
+# 排除此pod持久卷备份
+root@k8s-node06:~# kubectl  get pods -A | grep prometheus-7fb9c86b46-4dnfm
+istio-system    prometheus-7fb9c86b46-4dnfm                                       2/2     Running   0                55d
+# 由于此卷不是很重要，注解pod的存储卷，对其不备份
+[root@prometheus velero]# kubectl -n istio-system annotate pod/prometheus-7fb9c86b46-4dnfm backup.velero.io/backup-volumes-excludes=storage-volume
+[root@prometheus velero]# kubectl get pods prometheus-7fb9c86b46-4dnfm -n istio-system -o jsonpath='{.metadata.annotations}'
+{"backup.velero.io/backup-volumes-excludes":"storage-volume"}
+# 删除pod的注解方法
+#[root@prometheus velero]# kubectl -n istio-system annotate pod/prometheus-7fb9c86b46-4dnfm backup.velero.io/backup-volumes-excludes-
+```
+
+
+
+再次创建整个集群备份
+
+```bash
+[root@prometheus velero]# velero backup create cluster-`date +"%F-%H-%M-%S"`
+Backup request "cluster-2024-10-10-14-39-58" submitted successfully.
+Run `velero backup describe cluster-2024-10-10-14-39-58` or `velero backup logs cluster-2024-10-10-14-39-58` for more details.
+
+[root@prometheus velero]# velero backup describe cluster-2024-10-10-14-39-58
+Name:         cluster-2024-10-10-14-39-58
+Namespace:    velero
+Labels:       velero.io/storage-location=default
+Annotations:  velero.io/source-cluster-k8s-gitversion=v1.23.7
+              velero.io/source-cluster-k8s-major-version=1
+              velero.io/source-cluster-k8s-minor-version=23
+
+Phase:  Completed
+
+Errors:    0
+Warnings:  4
+
+Namespaces:
+  Included:  *
+  Excluded:  <none>
+
+Resources:
+  Included:        *
+  Excluded:        <none>
+  Cluster-scoped:  auto
+
+Label selector:  <none>
+
+Storage Location:  default
+
+Velero-Native Snapshot PVs:  auto
+
+TTL:  720h0m0s
+
+Hooks:  <none>
+
+Backup Format Version:  1.1.0
+
+Started:    2024-10-10 14:39:58 +0800 CST
+Completed:  2024-10-10 14:42:20 +0800 CST
+
+Expiration:  2024-11-09 14:39:58 +0800 CST
+
+Total items to be backed up:  4238
+Items backed up:              4238
+
+Velero-Native Snapshots: <none included>
+
+Restic Backups (specify --details for more information):
+  Completed:  64
+  
+# 再次查看无报错
+[root@prometheus velero]# velero backup get
+NAME                          STATUS            ERRORS   WARNINGS   CREATED                         EXPIRES   STORAGE LOCATION   SELECTOR
+cluster-2024-10-10-14-10-00   PartiallyFailed   1        4          2024-10-10 14:10:00 +0800 CST   29d       default            <none>
+cluster-2024-10-10-14-39-58   Completed         0        4          2024-10-10 14:39:58 +0800 CST   29d       default            <none>
+
+# 此命令查看备份的详细信息，可通过此信息来恢复到新的集群之上
+[root@prometheus velero]# velero describe backups cluster-2024-10-10-14-39-58 --details
+```
+
+
+
+删除失败的备份，虽然restic失败，但集群对象数据都是备份成功的
+
+```bash
+[root@prometheus velero]# velero backup get
+NAME                          STATUS            ERRORS   WARNINGS   CREATED                         EXPIRES   STORAGE LOCATION   SELECTOR
+cluster-2024-10-10-14-10-00   PartiallyFailed   1        4          2024-10-10 14:10:00 +0800 CST   29d       default            <none>
+cluster-2024-10-10-14-39-58   Completed         0        4          2024-10-10 14:39:58 +0800 CST   29d       default            <none>
+
+[root@prometheus velero]# velero delete backup cluster-2024-10-10-14-10-00 --confirm
+Request to delete backup "cluster-2024-10-10-14-10-00" submitted successfully.
+The backup will be fully deleted after all associated data (disk snapshots, backup files, restores) are removed.
+```
 
