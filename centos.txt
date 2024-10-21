@@ -1,0 +1,112 @@
+# RPM包制作
+
+
+
+
+[参考项目](https://github.com/boypt/openssh-rpms])
+
+## 构建要求
+```bash
+# 当前系统版本
+[root@nginx openssh-rpms]# cat /etc/centos-release
+CentOS Linux release 7.9.2009 (Core)
+[root@nginx openssh-rpms]# uname  -a
+Linux nginx 3.10.0-1160.119.1.el7.x86_64 #1 SMP Tue Jun 4 14:43:51 UTC 2024 x86_64 x86_64 x86_64 GNU/Linux
+
+
+# 安装依赖软件
+yum groupinstall -y "Development Tools"
+yum install -y imake rpm-build pam-devel krb5-devel zlib-devel libXt-devel libX11-devel gtk2-devel perl perl-IPC-Cmd
+
+# For CentOS5 only:
+#yum install -y gcc44
+``` 
+
+
+
+
+## 构建RPM
+```bash
+[root@nginx ~]# mkdir /make
+[root@nginx ~]# cd /make/
+## 克隆项目
+[root@nginx make]# git clone https://github.com/boypt/openssh-rpms.git
+
+## 配置源码包版本
+[root@nginx openssh-rpms]# cat version.env
+# custom defined components
+OPENSSLSRC=openssl-3.0.15.tar.gz
+OPENSSHSRC=openssh-9.9p1.tar.gz
+PKGREL=1
+ASKPASSSRC=x11-ssh-askpass-1.2.4.1.tar.gz
+
+# for EL5 only
+PERLSRC=perl-5.38.2.tar.gz
+
+# version numbers extracting
+OPENSSHVER=${OPENSSHSRC%%.tar.gz}
+OPENSSHVER=${OPENSSHVER##openssh-}
+OPENSSLVER=${OPENSSLSRC%%.tar.gz}
+OPENSSLVER=${OPENSSLVER##openssl-}
+PERLVER=${PERLSRC%%.tar.gz}
+PERLVER=${PERLVER##perl-}
+---
+
+## 下载源码包
+[root@nginx openssh-rpms]# ./pullsrc.sh
+## 构建RPM
+[root@nginx openssh-rpms]# ./compile.sh
+```
+
+
+## 安装RPM
+```bash
+# 进入rpm包目录
+[root@nginx openssh-rpms]# cd $(./compile.sh RPMDIR)
+[root@nginx x86_64]# pwd
+/make/openssh-rpms/el7/RPMS/x86_64
+[root@nginx x86_64]# ls
+openssh-9.9p1-1.el7.x86_64.rpm  openssh-clients-9.9p1-1.el7.x86_64.rpm  openssh-debuginfo-9.9p1-1.el7.x86_64.rpm  openssh-server-9.9p1-1.el7.x86_64.rpm
+
+# 备份sshd配置
+[root@nginx x86_64]# [[ -f /etc/ssh/sshd_config ]] && mv /etc/ssh/sshd_config /etc/ssh/sshd_config.$(date +%Y%m%d)
+
+# 安装rpm包，排除*debug*的包，安装时禁用所有仓库
+[root@nginx x86_64]# find . ! -name '*debug*' -name '*.rpm' | xargs sudo yum --disablerepo=* localinstall -y
+[root@nginx x86_64]# rpm -qa | grep openssh
+openssh-9.9p1-1.el7.x86_64
+openssh-server-9.9p1-1.el7.x86_64
+openssh-clients-9.9p1-1.el7.x86_64
+
+# 更改主机key权限为600
+[root@nginx x86_64]# chmod -v 600 /etc/ssh/ssh_host_*_key
+mode of ‘/etc/ssh/ssh_host_ecdsa_key’ changed from 0640 (rw-r-----) to 0600 (rw-------)
+mode of ‘/etc/ssh/ssh_host_ed25519_key’ changed from 0640 (rw-r-----) to 0600 (rw-------)
+mode of ‘/etc/ssh/ssh_host_rsa_key’ changed from 0640 (rw-r-----) to 0600 (rw-------)
+
+# 为避免/usr/lib/systemd/system/sshd.service文件影响升级后的openssh，将其取消
+if [[ -d /run/systemd/system && -f /usr/lib/systemd/system/sshd.service ]]; then
+    mv /usr/lib/systemd/system/sshd.service /usr/lib/systemd/system/sshd.service.$(date +%Y%m%d)
+    systemctl daemon-reload
+fi
+
+# 查看安装版本
+[root@nginx x86_64]# ssh -V && /usr/sbin/sshd -V
+OpenSSH_9.9p1, OpenSSL 3.0.15 3 Sep 2024
+OpenSSH_9.9p1, OpenSSL 3.0.15 3 Sep 2024
+
+# 启动ssh
+[root@nginx x86_64]# service sshd restart
+[root@nginx x86_64]# ss -tnl | grep :22
+LISTEN     0      128          *:22                       *:*
+LISTEN     0      128       [::]:22                    [::]:*
+
+# 查看openssl系统版本
+[root@nginx x86_64]# openssl version
+OpenSSL 1.0.2k-fips  26 Jan 2017
+[root@nginx x86_64]# which openssl
+/usr/bin/openssl
+```
+> 经过openssh和openssl的捆绑生成的openssh RPM包安装，客户端连接openssh-server时使用的版本为OpenSSH_9.9p1、OpenSSL 3.0.15，但系统默认的openssl版本还是1.0.2k-fips，不影响系统正常运行，只是影响openssh这个单独的服务
+
+

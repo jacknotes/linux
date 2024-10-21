@@ -4,8 +4,6 @@
 
 ## prometheus特点
 
-
-
 ### 优点
 
 1. 监控精度高，可以精确到1~5秒的采集精度
@@ -339,7 +337,24 @@ up{instance="192.168.230.8:9104",job="mysqld"}
 up{host="192.168.230.8",instance="192.168.230.8:9104",job="mysqld"}
 表达式：label_join(up,'host','----','instance','job')
 up{host="192.168.230.8:9104----mysqld",instance="192.168.230.8:9104",job="mysqld"}
+
+
+# label_replace函数
+promQL: label_replace(dot1dStpPortDesignatedBridge{dot1dStpPort="1", dot1dStpPortDesignatedBridge="0x80003CC786B7B618"},"foo","$1","dot1dStpPortDesignatedBridge","0x(.*)")
+dot1dStpPortDesignatedBridge{app="huawei-dsw4", dot1dStpPort="1", dot1dStpPortDesignatedBridge="0x80003CC786B7B618", env="pro", foo="80003CC786B7B618", instance="192.168.10.253", job="consul-snmp_exporter", project="network", team="ops"}
+1
+
+# label_join函数 
+promQL: label_join(dot1dStpPortDesignatedBridge{dot1dStpPort="1", dot1dStpPortDesignatedBridge="0x80003CC786B7B618"},"foo",",","dot1dStpPortDesignatedBridge")
+dot1dStpPortDesignatedBridge{app="huawei-dsw4", dot1dStpPort="1", dot1dStpPortDesignatedBridge="0x80003CC786B7B618", env="pro", foo="0x80003CC786B7B618", instance="192.168.10.253", job="consul-snmp_exporter", project="network", team="ops"}
+1
 ```
+
+
+
+
+
+
 
 
 
@@ -422,7 +437,8 @@ GET /api/v1/targets
 错误：Only queries that return single series/table is supported
 清除某个实例的信息，但数据还存在在磁盘中，prometheus在下一次压缩时会进行清理：
 curl -X POST -g 'http://localhost:9090/api/v1/admin/tsdb/delete_series?match[]={instance="127.0.0.1:9100"}'
-手动确定立即清理：
+
+## 手动立即清理delete_series接口删除的数据：
 curl -X PUT http://localhost:9090/api/v1/admin/tsdb/clean_tombstones
 注：当报警邮件收到时，明明一条报警信息，却邮件收到两条，只是实例名称不一样，例如：TCP:172.168.2.222:6379和172.168.2.222:9100，此时需要使用管理API进行清理，{instance="TCP:172.168.2.222:6379"}
 
@@ -496,8 +512,6 @@ BLOCK ULID                  MIN TIME       MAX TIME       NUM SAMPLES  NUM CHUNK
 
 
 ## 部署
-
-
 
 ### 环境
 
@@ -1171,6 +1185,226 @@ cp: overwrite ‘/usr/local/snmp_exporter-two/snmp.yml’? y
 
 
 
+#### snmp_exporter监控华为交换机
+
+华为交换机型号：S5735-L24T4S-A1 S5735 V200R022C00SPC500
+
+官网搜索型号和对应的系统版本进行MIB下载[FutureMatrix S5700 系列 华为数通智选V200R022C00SPC500 软件补丁下载 - 华为 (huawei.com)](https://support.huawei.com/enterprise/zh/x/futurematrix-s5700-pid-251997409/software/256826877?idAbsPath=fixnode01|24030814|21782164|21782167|253891925|251997409)
+
+
+
+##### 1. 华为交换机开启snmp
+
+```
+snmp-agent
+snmp-agent sys-info version v2c
+snmp-agent protocol source-interface vlanif 10
+snmp-agent community read G4axLE69
+snmp-agent trap enable
+snmp-agent target-host trap address udp-domain 192.168.13.236 params securityname G4axLE69 v2c
+```
+
+
+
+##### 2. pometheus生成snmp.yaml
+
+###### 2.1 安装generator
+
+```bash
+# 安装generator工具
+go install github.com/prometheus/snmp_exporter/generator@v0.22.0
+cd /root/go/pkg/mod/github.com/prometheus/snmp_exporter@v0.22.0/generator/
+go build 
+./generator --help
+```
+
+###### 2.2 配置generator.yml
+
+```bash
+# 将下载好的mib文件放到mib目录
+[root@prometheus generator]# ll /root/go/pkg/mod/github.com/prometheus/snmp_exporter@v0.22.0/generator/mibs/
+total 11356
+drwxr-xr-x 3 root root      34 Oct 14 14:31 S5735-L24T4S-A1
+-rw-r--r-- 1 root root 2950941 Oct 14 14:27 S5735-L24T4S-A1-MIB_V200R022C00SPC500.zip
+-rw-r--r-- 1 root root 2932232 Oct 14 14:27 S5735-L24T4S-QA2-MIB_V200R021C10SPC600.zip
+-rw-r--r-- 1 root root 2788362 Oct 14 14:27 S6720S-S24S28X-A-MIB-V200R021C00SPC100.zip
+-rw-r--r-- 1 root root 2952444 Oct 14 14:27 S6720S-S36S16X-A-FM-MIB_V200R022C00SPC500.zip
+
+# 配置generator.yml
+# - 1.3.6.1.2.1.1是一个目录，目录下面有多个子OID，表示引用此目录的所有OID
+# walk下的目录OID通过`iReasoning MIB browser`来查看，推荐使用
+# 编写generator.yaml时OID不要写最前面的`.`
+[root@prometheus generator]# cat generator.yml
+modules:
+  huawei-switch:
+    walk:
+      # system
+      - 1.3.6.1.2.1.1
+      # interfaces
+      - 1.3.6.1.2.1.2 
+      # at，此OID存在重复，会影响使用，去除此OID
+      #- 1.3.6.1.2.1.3
+      # ip
+      - 1.3.6.1.2.1.4
+      # icmp
+      - 1.3.6.1.2.1.5
+      # tcp
+      - 1.3.6.1.2.1.6
+      # udp
+      - 1.3.6.1.2.1.7
+      # egp
+      - 1.3.6.1.2.1.8
+      # snmp
+      - 1.3.6.1.2.1.11
+      # bgp
+      - 1.3.6.1.2.1.15
+      # dot1dBridge
+      - 1.3.6.1.2.1.17
+      # mib-2-37
+      - 1.3.6.1.2.1.37
+      # pingMIB
+      - 1.3.6.1.2.1.80
+      # traceRouteMIB
+      - 1.3.6.1.2.1.81
+      # lookupMIB
+      - 1.3.6.1.2.1.82
+      # diffServMib
+      - 1.3.6.1.2.1.97
+    version: 2
+    timeout: 30s
+    auth:
+      community: G4axLE69
+
+# 生成snmp.yaml
+[root@prometheus generator]# export MIBDIRS='/root/go/pkg/mod/github.com/prometheus/snmp_exporter@v0.22.0/generator/mibs/S5735-L24T4S-A1/MIB_V200R022C00SPC500/MIBs' 
+[root@prometheus generator]# ./generator generate  
+ts=2024-10-15T02:32:15.928Z caller=net_snmp.go:162 level=info msg="Loading MIBs" from=/root/go/pkg/mod/github.com/prometheus/snmp_exporter@v0.22.0/generator/mibs/S5735-L24T4S-A1/MIB_V200R022C00SPC500/MIBs
+ts=2024-10-15T02:32:16.997Z caller=main.go:51 level=info msg="Generating config for module" module=huawei-switch
+ts=2024-10-15T02:32:17.071Z caller=tree.go:368 level=warn msg="Can't handle index type on node, missing preceding" node=saviObjectsBindingIpAddressType type=InetAddress missing=InetAddressType
+ts=2024-10-15T02:32:17.071Z caller=tree.go:368 level=warn msg="Can't handle index type on node, missing preceding" node=saviObjectsBindingType type=InetAddress missing=InetAddressType
+ts=2024-10-15T02:32:17.071Z caller=tree.go:368 level=warn msg="Can't handle index type on node, missing preceding" node=saviObjectsBindingIfIndex type=InetAddress missing=InetAddressType
+ts=2024-10-15T02:32:17.071Z caller=tree.go:368 level=warn msg="Can't handle index type on node, missing preceding" node=saviObjectsBindingIpAddress type=InetAddress missing=InetAddressType
+ts=2024-10-15T02:32:17.071Z caller=tree.go:368 level=warn msg="Can't handle index type on node, missing preceding" node=saviObjectsBindingMacAddr type=InetAddress missing=InetAddressType
+ts=2024-10-15T02:32:17.071Z caller=tree.go:368 level=warn msg="Can't handle index type on node, missing preceding" node=saviObjectsBindingState type=InetAddress missing=InetAddressType
+ts=2024-10-15T02:32:17.071Z caller=tree.go:368 level=warn msg="Can't handle index type on node, missing preceding" node=saviObjectsBindingLifetime type=InetAddress missing=InetAddressType
+ts=2024-10-15T02:32:17.071Z caller=tree.go:368 level=warn msg="Can't handle index type on node, missing preceding" node=saviObjectsBindingRowStatus type=InetAddress missing=InetAddressType
+ts=2024-10-15T02:32:17.071Z caller=tree.go:368 level=warn msg="Can't handle index type on node, missing preceding" node=saviObjectsFilteringIpAddressType type=InetAddress missing=InetAddressType
+ts=2024-10-15T02:32:17.071Z caller=tree.go:368 level=warn msg="Can't handle index type on node, missing preceding" node=saviObjectsFilteringIfIndex type=InetAddress missing=InetAddressType
+ts=2024-10-15T02:32:17.071Z caller=tree.go:368 level=warn msg="Can't handle index type on node, missing preceding" node=saviObjectsFilteringIpAddress type=InetAddress missing=InetAddressType
+ts=2024-10-15T02:32:17.071Z caller=tree.go:368 level=warn msg="Can't handle index type on node, missing preceding" node=saviObjectsFilteringMacAddr type=InetAddress missing=InetAddressType
+ts=2024-10-15T02:32:17.074Z caller=main.go:66 level=info msg="Generated metrics" module=huawei-switch metrics=859
+ts=2024-10-15T02:32:17.186Z caller=main.go:91 level=info msg="Config written" file=/root/go/pkg/mod/github.com/prometheus/snmp_exporter@v0.22.0/generator/snmp.yml
+
+[root@prometheus generator]# cp snmp.yml /usr/local/snmp_exporter/
+[root@prometheus generator]# head -n 23 /usr/local/snmp_exporter/snmp.yml
+# WARNING: This file was auto-generated using snmp_exporter generator, manual changes will be lost.
+huawei-switch:
+  walk:
+  - 1.3.6.1.2.1.1
+  - 1.3.6.1.2.1.11
+  - 1.3.6.1.2.1.15
+  - 1.3.6.1.2.1.17
+  - 1.3.6.1.2.1.2
+  - 1.3.6.1.2.1.37
+  - 1.3.6.1.2.1.4
+  - 1.3.6.1.2.1.5
+  - 1.3.6.1.2.1.6
+  - 1.3.6.1.2.1.7
+  - 1.3.6.1.2.1.8
+  - 1.3.6.1.2.1.80
+  - 1.3.6.1.2.1.81
+  - 1.3.6.1.2.1.82
+  - 1.3.6.1.2.1.97
+  metrics:
+  - name: sysDescr
+    oid: 1.3.6.1.2.1.1.1
+    type: DisplayString
+    help: A textual description of the entity - 1.3.6.1.2.1.1.1
+
+# prometheus测试与snmp-agent的连接
+[root@prometheus snmp_exporter]# snmpwalk -v2c -c G4axLE69 192.168.10.253 1.3.6.1.2.1.1.1
+SNMPv2-MIB::sysDescr.0 = STRING: S5735-L24T4S-A1
+FutureMatrix Versatile Routing Platform Software 
+ VRP (R) software,Version 5.170 (S5735-L24T4S-A1 V200R022C00SPC500) 
+ Copyright (C) 2015 by FutureMatrix Co., Ltd.
+```
+
+
+
+##### 3. 配置prometheus
+
+```bash
+# 应用新生成的snmp.yaml
+[root@prometheus generator]# cp snmp.yml /usr/local/snmp_exporter/
+[root@prometheus generator]# systemctl restart snmp_exporter.service
+
+# 配置prometheus
+[root@prometheus prometheus]# vim prometheus.yml
+- job_name: 'consul-snmp_exporter'
+    scrape_interval: 30s
+    metrics_path: /snmp
+    params:
+      module: [huawei-switch]
+      community: [G4axLE69]
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_tags]
+        regex: .*snmp_exporter.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - source_labels: [__address__]
+        regex: (.*):(.*)
+        target_label: __param_target
+        replacement: ${1}
+      - source_labels: [__param_target]
+        target_label: instance
+      - source_labels: [community]
+        target_label: __param_community
+      - source_labels: [module]
+        target_label: __param_module
+      - target_label: __address__
+        replacement: 192.168.13.236:9116
+# 重新加载prometheus
+[root@prometheus prometheus]# curl -X POST http://localhost:9090/-/reload
+```
+
+##### 
+
+##### 4. snmp报错
+
+```
+An error has occurred while serving metrics:
+
+355 error(s) occurred:
+* collected metric "atNetAddress" { label:<name:"atIfIndex" value:"34" > label:<name:"atNetAddress" value:"1.192.168.10" > gauge:<value:1 > } was collected before with the same name and label values
+* collected metric "atNetAddress" { label:<name:"atIfIndex" value:"34" > label:<name:"atNetAddress" value:"1.192.168.10" > gauge:<value:1 > } was collected before with the same name and label values
+* collected metric "atIfIndex" { label:<name:"atIfIndex" value:"34" > label:<name:"atNetAddress" value:"1.192.168.10" > gauge:<value:34 > } was collected before with the same name and label values
+* collected metric "atIfIndex" { label:<name:"atIfIndex" value:"37" > label:<name:"atNetAddress" value:"1.172.168.2" > gauge:<value:37 > } was collected before with the same name and label values
+* collected metric "atNetAddress" { label:<name:"atIfIndex" value:"34" > label:<name:"atNetAddress" value:"1.192.168.10" > gauge:<value:1 > } was collected before with the same name and label values
+* collected metric "atIfIndex" { label:<name:"atIfIndex" value:"37" > label:<name:"atNetAddress" value:"1.172.168.2" > gauge:<value:37 > } was collected before with the same name and label values
+* collected metric "atIfIndex" { label:<name:"atIfIndex" value:"37" > label:<name:"atNetAddress" value:"1.172.168.2" > gauge:<value:37 > } was collected before with the same name and label values
+* collected metric "atNetAddress" { label:<name:"atIfIndex" value:"34" > label:<name:"atNetAddress" value:"1.192.168.10" > gauge:<value:1 > } was collected before with the same name and label values
+* collected metric "atIfIndex" { label:<name:"atIfIndex" value:"37" > label:<name:"atNetAddress" value:"1.172.168.2" > gauge:<value:37 > } was collected before with the same name and label values
+* collected metric "atNetAddress" { label:<name:"atIfIndex" value:"37" > label:<name:"atNetAddress" value:"1.172.168.2" > gauge:<value:1 > } was collected before with the same name and label values
+* collected metric "atIfIndex" { label:<name:"atIfIndex" value:"37" > label:<name:"atNetAddress" value:"1.172.168.2" > gauge:<value:37 > } was collected before with the same name and label values
+* collected metric "atIfIndex" { label:<name:"atIfIndex" value:"37" > label:<name:"atNetAddress" value:"1.172.168.2" > gauge:<value:37 > } was collected before with the same name and label values
+```
+
+
+
+**原因是`"atNetAddress" { label:<name:"atIfIndex" value:"34" > label:<name:"atNetAddress" value:"1.192.168.10" > gauge:<value:1 > }`有重复值，根本原因是生成snmp.yaml时有个目录oid生成的指标有重复。**
+
+**解决办法：删除生成snmp.yaml时重复目录的oid，这里为`at`1.3.6.1.2.1.3**
+
+
+
+
+
+
+
 ### 安装SQL_EXPORTER
 
 ```bash
@@ -1493,6 +1727,8 @@ EOF
 */1 * * * * sleep 30; /root/ping.sh
 */1 * * * * sleep 45; /root/ping.sh
 ```
+
+
 
 #### pushgateway的优缺点
 
