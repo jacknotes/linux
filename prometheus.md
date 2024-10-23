@@ -1080,7 +1080,7 @@ WantedBy=multi-user.target
 -----------------
 ```
 
-####  snmp_exporter监控DELL idrac
+###  snmp_exporter监控DELL idrac
 
 ```bash
 # 下载idrac MIB，在驱动下载中搜索MIB
@@ -1185,7 +1185,22 @@ cp: overwrite ‘/usr/local/snmp_exporter-two/snmp.yml’? y
 
 
 
-#### snmp_exporter监控华为交换机
+### snmp_exporter监控网络设备
+
+**SNMPv2、SNMPv3**
+
+```bash
+# SNMPv2
+[root@prometheus generator]# snmpwalk -v2c -c G4axLE69 192.168.101.1 1.3.6.1.2.1.1.1.0 
+SNMPv2-MIB::sysDescr.0 = STRING: Linux sfos-x86_64.localdomain 4.18.0-240.el8.x86_64 #1 SMP Fri Sep 25 19:48:47 UTC 2020 x86_64
+# SNMPv3,不需要配置NMS，只需要配置被监控的设备
+[root@prometheus generator]# snmpwalk -v3 -l authPriv -a MD5 -u prometheus -A eNEowSW5 -x DES -X AqmJJj68 192.168.101.1 1.3.6.1.2.1.1.1.0 
+SNMPv2-MIB::sysDescr.0 = STRING: Linux sfos-x86_64.localdomain 4.18.0-240.el8.x86_64 #1 SMP Fri Sep 25 19:48:47 UTC 2020 x86_64
+```
+
+
+
+#### **snmp_exporter监控华为交换机**
 
 华为交换机型号：S5735-L24T4S-A1 S5735 V200R022C00SPC500
 
@@ -1328,6 +1343,10 @@ FutureMatrix Versatile Routing Platform Software
  VRP (R) software,Version 5.170 (S5735-L24T4S-A1 V200R022C00SPC500) 
  Copyright (C) 2015 by FutureMatrix Co., Ltd.
 ```
+
+
+
+
 
 
 
