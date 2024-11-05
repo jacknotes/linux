@@ -1542,8 +1542,6 @@ COMMIT
 
 ### 1. 配置数据盘
 
-
-
 #### 1.1 创建LVM分区
 
 ```bash
@@ -1765,8 +1763,6 @@ tmpfs                          tmpfs     3.4G     0  3.4G   0% /run/user/1000
 
 ### 2. 单节点部署Elasticsearch
 
-
-
 #### 2.1 下载
 
 ```bash
@@ -1792,8 +1788,6 @@ total 579508
 
 
 #### 2.2 Elasticsearch
-
-
 
 ##### 2.2.1 安装服务
 
@@ -1962,7 +1956,7 @@ ES中内置了几个管理其他集成组件的账号，在使用之前，需要
 **为集成组件账号设置密码**
 
 ```bash
-# 密码一定存储保存好
+# 手动配置密码-方式一
 [opsuser@elasticsearch001 /usr/local/elasticsearch]$ sudo /usr/local/elasticsearch/bin/elasticsearch-setup-passwords interactive
 Initiating the setup of passwords for reserved users elastic,apm_system,kibana,logstash_system,beats_system,remote_monitoring_user.
 You will be prompted to enter passwords as the process progresses.
@@ -1987,6 +1981,33 @@ Changed password for user [logstash_system]
 Changed password for user [beats_system]
 Changed password for user [remote_monitoring_user]
 Changed password for user [elastic]
+###
+
+# 自动随机生成密码-方式二
+[root@jenkins /usr/local]# /usr/local/elasticsearch7/bin/elasticsearch-setup-passwords auto --batch
+Changed password for user apm_system
+PASSWORD apm_system = LlqWxVcNDOLYKrYFkvYN
+
+Changed password for user kibana_system
+PASSWORD kibana_system = fQd1NkCemHVhhnYH9Ruy
+
+Changed password for user kibana
+PASSWORD kibana = fQd1NkCemHVhhnYH9Ruy
+
+Changed password for user logstash_system
+PASSWORD logstash_system = UIhrv3Yip3Fi9mMz6ASh
+
+Changed password for user beats_system
+PASSWORD beats_system = Yr4f87Mut81lT1VEWaQk
+
+Changed password for user remote_monitoring_user
+PASSWORD remote_monitoring_user = DDR6oMAjgTgIIQQuKULu
+
+Changed password for user elastic
+PASSWORD elastic = IYlnnaX1x4nnpMInthgy
+###
+
+
 
 # 访问elasticsearch进行服务测试
 # 因为开启了xpack，所以这里无法直接访问
@@ -2020,9 +2041,7 @@ Enter host password for user 'elastic':
 
 #### 2.3 Kibana
 
-
-
-##### 1.3.1 安装服务
+##### 2.3.1 安装服务
 
 ```bash
 [opsuser@elasticsearch001 /usr/local/elasticsearch]$ cd /download/
@@ -2031,7 +2050,6 @@ elasticsearch-7.7.1-linux-x86_64.tar.gz  kibana-7.7.1-linux-x86_64.tar.gz
 [opsuser@elasticsearch001 /download]$ sudo tar xf kibana-7.7.1-linux-x86_64.tar.gz -C /usr/local/
 [opsuser@elasticsearch001 /download]$ cd /usr/local/
 [opsuser@elasticsearch001 /usr/local]$ sudo ln -sv kibana-7.7.1-linux-x86_64/ kibana
-‘kibana’ -> ‘kibana-7.7.1-linux-x86_64/’
 [opsuser@elasticsearch001 /usr/local]$ sudo chown -R elasticsearch.elasticsearch /usr/local/kibana-7.7.1-linux-x86_64/
 ```
 
@@ -2095,7 +2113,7 @@ xpack.security.encryptionKey: "yZr7lNijpHFb310qaEY5cp7MjVoyXw0C"   #如果不配
 ##### 2.3.3 启动服务
 
 ```bash
-[opsuser@elasticsearch001 /usr/local/kibana]$ cat /usr/lib/systemd/system/kibana.service
+[opsuser@elasticsearch001 /usr/local/kibana]$ sudo cat /usr/lib/systemd/system/kibana.service
 [Unit]
 Description=https://elastic.co
 After=network-online.target
@@ -2112,6 +2130,8 @@ LimitNOFILE=1000000
 
 [Install]
 WantedBy=multi-user.target
+
+
 [opsuser@elasticsearch001 /usr/local/kibana]$ sudo systemctl daemon-reload
 [opsuser@elasticsearch001 /usr/local/kibana]$ sudo systemctl start kibana.service
 [opsuser@elasticsearch001 /usr/local/kibana]$ sudo systemctl status kibana.service
@@ -2147,6 +2167,9 @@ PUT _snapshot/restore_repo/snapshot_202407111348?wait_for_completion=true
 {
     "indices": "interexpedia_region_ali_pro,interexpedia_regionen_ali_pro,interexpedia_hotelstatic_ali_pro_zhcn,interexpedia_hotelstatic_ali_pro_enus,interdaolvv2_facilities_db_ali_pro,interdaolvv2_hoteldescription_db_ali_pro,interdaolvv2_hotelareaattraction_db_ali_pro,interdaolvv2_policy_db_ali_pro,interdaolvv2_hotelstatic_db_ali_pro,interdaolvv2_roomtypeattribute_db_ali_pro,interdaolvv2_roomtype_db_ali_pro,interdaolvv2_hotelimage_db_ali_pro,interdaolvv2_roomimage_db_ali_pro,intercorev2_hotel_db_ali_pro,intercorev2_hotel_en_db_ali_pro,intercorev2_room_db_ali_pro,intercorev2_room_en_db_ali_pro,intercorev2_search_ali_pro,intercorev2_cityrelationchain_ali_pro,intercorev2_cityrelationbrand_ali_pro,intercorev2_cityrelationcategory_ali_pro,intercorev2_hotel_db_ali_pro_expedia,intercorev2_hotel_db_ali_pro_interdaolvv2"
 }
+
+# 备份所有索引
+PUT _snapshot/restore_repo/snapshot_202410251420?wait_for_completion=true
 ```
 
 
@@ -2367,7 +2390,7 @@ POST /_snapshot/restore_repo/snapshot_1/_restore
 # 或者用此配置恢复除隐藏索引外的所有索引
 POST /_snapshot/restore_repo/snapshot_1/_restore
 {
-  "indices":"*,-.monitoring*,-.security*,-.kibana*,-.apm*",
+  "indices":"*,-.reporting*,-.security*,-.kibana*,-.apm*,-.async*",
   "ignore_unavailable":"true",
   "index_settings": {
     "index.number_of_replicas": 0
