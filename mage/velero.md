@@ -724,10 +724,7 @@ velero-default-pspcv         Ready    2024-10-10 14:20:33 +0800 CST
 
 # 最后删除velero名称空间下所有资源，使其重建，否则后续创建backup时会报restic的错
 kubectl get pods -n velero | grep -v NAME | awk '{print $1}' | xargs -I {} kubectl delete pods -n velero {}
-
 ```
-
-
 
 
 
@@ -1688,8 +1685,8 @@ $ velero backup logs mybackup-001
 $ velero restore create --from-backup mybackup-001
 $ velero restore get 
 
-# 使用cron表达式备份
-$ velero schedule create nginx-daily --schedule="0 1 */1 * *" --include-namespaces nginx-example
+# 配置凌晨1点进行备份，我们是东8区，所以需要加8小时
+$ velero schedule create nginx-daily --schedule="0 17 * * *" --include-namespaces nginx-example
 $ velero create schedule NAME --schedule="0 */6 * * *"
 $ velero create schedule NAME --schedule="@every 6h"
 # 使用一些非标准的速记 cron 表达式
@@ -1697,6 +1694,212 @@ $ velero schedule create nginx-daily --schedule="@daily" --include-namespaces ng
 # 手动触发定时任务
 $ velero backup create --from-schedule nginx-daily
 ```
+
+
+
+**备份集群并且不备份卷数据**
+
+```bash
+# 备份k8s集群，排除ns: velero， 默认卷数据到restic备份不启用
+[root@prometheus ~]# velero schedule create pre-pro-cluster-daily --schedule="0 18 * * *" --default-volumes-to-restic=false --exclude-namespaces velero 
+[root@prometheus ~]# velero backup create --from-schedule pre-pro-cluster-daily
+[root@prometheus ~]# velero backup describe pre-pro-cluster-daily-20241112030004 
+Name:         pre-pro-cluster-daily-20241112030004
+Namespace:    velero
+Labels:       velero.io/schedule-name=pre-pro-cluster-daily
+              velero.io/storage-location=default
+Annotations:  velero.io/source-cluster-k8s-gitversion=v1.23.7
+              velero.io/source-cluster-k8s-major-version=1
+              velero.io/source-cluster-k8s-minor-version=23
+
+Phase:  Completed
+
+Errors:    0
+Warnings:  0
+
+Namespaces:
+  Included:  *
+  Excluded:  velero
+
+Resources:
+  Included:        *
+  Excluded:        <none>
+  Cluster-scoped:  auto
+
+Label selector:  <none>
+
+Storage Location:  default
+
+Velero-Native Snapshot PVs:  auto
+
+TTL:  720h0m0s
+
+Hooks:  <none>
+
+Backup Format Version:  1.1.0
+
+Started:    2024-11-12 11:00:04 +0800 CST
+Completed:  2024-11-12 11:00:16 +0800 CST
+
+Expiration:  2024-12-12 11:00:04 +0800 CST
+
+Total items to be backed up:  2693
+Items backed up:              2693
+
+Velero-Native Snapshots: <none included>
+```
+
+
+
+**velero1.14版本支持资源策略，可以排除特定的卷类型，例如卷类型为emptyDir的不进行年轻人**
+
+通过 VolumePolicy 功能支持三种操作：
+
+- skip：不备份与操作匹配的卷的数据。
+- 快照：以快照的方式备份动作匹配卷的数据。
+- fs-backup：通过fs-backup方式备份动作匹配的卷的数据。
+
+```bash
+# 创建资源策略配置图
+kubectl create cm <configmap-name> --from-file <yaml-file> -n velero
+# 创建对已定义资源策略的备份引用
+velero backup create --resource-policies-configmap <configmap-name>
+```
+
+```bash
+# currently only supports v1 version
+version: v1
+volumePolicies:
+# each policy consists of a list of conditions and an action
+# we could have lots of policies, but if the resource matched the first policy, the latter will be ignored
+# each key in the object is one condition, and one policy will apply to resources that meet ALL conditions
+# NOTE: capacity or storageClass is suited for [Persistent Volumes](https://kubernetes.io/docs/concepts/storage/persistent-volumes), and pod [Volume](https://kubernetes.io/docs/concepts/storage/volumes) not support it.
+- conditions:
+    # capacity condition matches the volumes whose capacity falls into the range
+    capacity: "10,100Gi"
+    # pv matches specific csi driver
+    csi:
+      driver: ebs.csi.aws.com
+    # pv matches one of the storage class list
+    storageClass:
+      - gp2
+      - standard
+  action:
+    type: skip
+- conditions:
+    capacity: "0,100Gi"
+    # nfs volume source with specific server and path (nfs could be empty or only config server or path)
+    nfs:
+      server: 192.168.200.90
+      path: /mnt/data
+  action:
+    type: skip
+- conditions:
+    nfs:
+      server: 192.168.200.90
+  action:
+    type: fs-backup
+- conditions:
+    # nfs could be empty which matches any nfs volume source
+    nfs: {}
+  action:
+    type: skip
+- conditions:
+    # csi could be empty which matches any csi volume source
+    csi: {}
+  action:
+    type: snapshot
+- conditions:
+    volumeTypes:
+      - emptyDir
+      - downwardAPI
+      - configmap
+      - cinder
+  action:
+    type: skip
+```
+
+
+
+
+
+**从备份中排除特定项目**
+
+* 具有该标签的资源`velero.io/exclude-from-backup=true`不会包含在备份中，即使它包含匹配的选择器标签也不会进行备份。
+
+```bash
+# 例如不备份velero名称空间中的daemonset restic，此资源和卷都不会被备份
+kubectl label -n velero restic daemonset/restic velero.io/exclude-from-backup=true
+```
+
+
+
+**使用以下命令删除 Velero 备份和数据：**
+
+- `kubectl delete backup <backupName> -n <veleroNamespace>`将仅删除备份自定义资源，不会从对象/块存储中删除任何相关数据
+- `velero backup delete <backupName>`将删除备份资源，包括对象/块存储中的所有数据
+
+
+
+**恢复现有资源策略**
+
+**--existing-resource-policy {none | update}**
+
+* 默认情况下--existing-resource-policy none，Velero 在恢复期间配置为非破坏性的。这意味着它永远不会覆盖集群中已存在的数据。默认恢复策略的一个例外是 ServiceAccounts。在恢复目标集群上已存在的 ServiceAccount 时，Velero 将尝试将备份中的 ServiceAccount 的字段合并到现有 ServiceAccount 中。Secrets 和 ImagePullSecrets 将从备份的 ServiceAccount 中附加。Velero 将备份 ServiceAccount 中任何不存在的标签和注释添加到现有资源，同时保留现有标签和注释。
+* --existing-resource-policy update，Velero 将尝试更新现有资源以匹配正在恢复的资源
+
+> 建议使用默认即可，--existing-resource-policy none
+
+
+
+**始终保留 NodePort**
+
+**--preserve-nodeports=true**
+
+* 如果存在此标志，Velero 在恢复服务时不会删除节点端口，但会尝试使用备份中的节点端口。如果失败则会使用随机端口。
+* --preserve-nodeports=false，则会使用随机端口。
+
+
+
+**Velero 将使用 Restic 备份所有 pod 卷，但以下情况除外：**
+
+- default service account 、Kubernetes Secrets 和 ConfigMaps
+- Hostpath volumes
+
+
+
+**使用`backup.velero.io/backup-volumes-excludes`pod 上的注释来排除备份卷**
+
+```bash
+kubectl -n YOUR_POD_NAMESPACE annotate pod/YOUR_POD_NAME backup.velero.io/backup-volumes-excludes=YOUR_VOLUME_NAME_1,YOUR_VOLUME_NAME_2,...
+```
+
+
+
+**使用`backup.velero.io/backup-volumes`标注pod volume来使用 Restic 备份**
+
+```bash
+kubectl -n YOUR_POD_NAMESPACE annotate pod/YOUR_POD_NAME backup.velero.io/backup-volumes=YOUR_VOLUME_NAME_1,YOUR_VOLUME_NAME_2,...
+```
+
+
+
+**如果您计划使用 Velero 的 Restic 集成来备份 100GB 或更多的数据，则可能需要`自定义资源限制`以确保备份成功完成。**
+
+```bash
+kubectl patch deployment velero -n velero --patch \
+'{"spec":{"template":{"spec":{"containers":[{"name": "velero", "resources": {"limits":{"cpu": "1", "memory": "512Mi"}, "requests": {"cpu": "1", "memory": "128Mi"}}}]}}}}'
+```
+
+> - Velero 的 Restic 集成通过访问运行 Pod 的节点文件系统来备份卷中的数据。因此，Velero 的 Restic 集成只能备份由 Pod 挂载的卷，而不能直接从 PVC 备份。对于孤立的 PVC/PV 对（没有运行 Pod），一些 Velero 用户通过运行暂存 Pod（即具有无限睡眠的 busybox 或 alpine 容器）来克服这一限制，以便在进行 Velero 备份之前挂载这些 PVC/PV 对。
+
+
+
+
+
+
+
+
 
 
 
@@ -2448,8 +2651,6 @@ The backup will be fully deleted after all associated data (disk snapshots, back
 
 ### 8.1 集群信息
 
-
-
 #### 8.1 旧集群信息
 
 ```bash
@@ -2458,98 +2659,27 @@ root@ansible:~# kubectl get nodes -o wide
 NAME           STATUS                     ROLES    AGE    VERSION   INTERNAL-IP    EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION       CONTAINER-RUNTIME
 172.168.2.41   Ready,SchedulingDisabled   master   319d   v8.23.7   172.168.2.41   <none>        Ubuntu 18.04.6 LTS   4.15.0-213-generic   docker://19.3.15
 172.168.2.42   Ready                      node     319d   v8.23.7   172.168.2.42   <none>        Ubuntu 18.04.6 LTS   4.15.0-213-generic   docker://19.3.15
-
-# 集群所有资源
-root@k8s02-master01:~# kubectl get all -o wide -A
-NAMESPACE     NAME                                             READY   STATUS    RESTARTS          AGE    IP               NODE           NOMINATED NODE   READINESS GATES
-default       pod/myapp-deployment-865b6b5b89-kmp55            1/1     Running   1 (5h30m ago)     27d    172.20.172.97    172.168.2.42   <none>           <none>
-default       pod/myapp-deployment-865b6b5b89-rr5qz            1/1     Running   1 (5h30m ago)     27d    172.20.172.101   172.168.2.42   <none>           <none>
-kube-system   pod/calico-kube-controllers-754966f84c-6xbhh     1/1     Running   4 (5h30m ago)     56d    172.168.2.42     172.168.2.42   <none>           <none>
-kube-system   pod/calico-node-6h4z6                            1/1     Running   160 (7m10s ago)   319d   172.168.2.42     172.168.2.42   <none>           <none>
-kube-system   pod/calico-node-8nkvp                            1/1     Running   96 (5h31m ago)    319d   172.168.2.41     172.168.2.41   <none>           <none>
-kube-system   pod/coredns-596755dbff-pb98p                     1/1     Running   3 (5h30m ago)     56d    172.20.172.99    172.168.2.42   <none>           <none>
-kube-system   pod/dashboard-metrics-scraper-799d786dbf-7hkm9   1/1     Running   3 (5h30m ago)     56d    172.20.172.100   172.168.2.42   <none>           <none>
-kube-system   pod/kubernetes-dashboard-9f8c8b989-wbnc5         1/1     Running   9 (5h27m ago)     56d    172.20.172.96    172.168.2.42   <none>           <none>
-kube-system   pod/metrics-server-5d648558d9-grsdt              1/1     Running   10 (5h28m ago)    56d    172.20.172.98    172.168.2.42   <none>           <none>
-kube-system   pod/node-local-dns-5kvh2                         1/1     Running   4 (5h30m ago)     319d   172.168.2.42     172.168.2.42   <none>           <none>
-kube-system   pod/node-local-dns-qmcjn                         1/1     Running   4 (5h31m ago)     319d   172.168.2.41     172.168.2.41   <none>           <none>
-velero        pod/restic-cw4sc                                 1/1     Running   0                 45m    172.20.172.104   172.168.2.42   <none>           <none>
-velero        pod/restic-tmwrd                                 1/1     Running   0                 45m    172.20.201.71    172.168.2.41   <none>           <none>
-velero        pod/velero-5cd4ff75bc-2txk6                      1/1     Running   0                 45m    172.20.172.105   172.168.2.42   <none>           <none>
-
-NAMESPACE     NAME                                TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                  AGE    SELECTOR
-default       service/kubernetes                  ClusterIP   10.68.0.1       <none>        443/TCP                  319d   <none>
-default       service/myapp                       NodePort    10.68.218.15    <none>        80:30080/TCP             319d   app=myapp,release=canary
-kube-system   service/dashboard-metrics-scraper   ClusterIP   10.68.150.219   <none>        8000/TCP                 319d   k8s-app=dashboard-metrics-scraper
-kube-system   service/kube-dns                    ClusterIP   10.68.0.2       <none>        53/UDP,53/TCP,9153/TCP   319d   k8s-app=kube-dns
-kube-system   service/kube-dns-upstream           ClusterIP   10.68.40.110    <none>        53/UDP,53/TCP            319d   k8s-app=kube-dns
-kube-system   service/kubernetes-dashboard        NodePort    10.68.18.48     <none>        443:41252/TCP            319d   k8s-app=kubernetes-dashboard
-kube-system   service/metrics-server              ClusterIP   10.68.120.3     <none>        443/TCP                  319d   k8s-app=metrics-server
-kube-system   service/node-local-dns              ClusterIP   None            <none>        9253/TCP                 319d   k8s-app=node-local-dns
-
-NAMESPACE     NAME                            DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR            AGE    CONTAINERS    IMAGES                              SELECTOR
-kube-system   daemonset.apps/calico-node      2         2         2       2            2           kubernetes.io/os=linux   319d   calico-node   docker.io/calico/node:v3.19.3       k8s-app=calico-node
-kube-system   daemonset.apps/node-local-dns   2         2         2       2            2           <none>                   319d   node-cache    easzlab/k8s-dns-node-cache:1.21.1   k8s-app=node-local-dns
-velero        daemonset.apps/restic           2         2         2       2            2           <none>                   27d    restic        velero/velero:v1.9.7                name=restic
-
-NAMESPACE     NAME                                        READY   UP-TO-DATE   AVAILABLE   AGE    CONTAINERS                  IMAGES                                      SELECTOR
-default       deployment.apps/myapp-deployment            2/2     2            2           27d    myapp-container             ikubernetes/myapp:v2                        app=myapp,release=canary
-kube-system   deployment.apps/calico-kube-controllers     1/1     1            1           319d   calico-kube-controllers     docker.io/calico/kube-controllers:v3.19.3   k8s-app=calico-kube-controllers
-kube-system   deployment.apps/coredns                     1/1     1            1           319d   coredns                     coredns/coredns:1.8.6                       k8s-app=kube-dns
-kube-system   deployment.apps/dashboard-metrics-scraper   1/1     1            1           319d   dashboard-metrics-scraper   kubernetesui/metrics-scraper:v1.0.7         k8s-app=dashboard-metrics-scraper
-kube-system   deployment.apps/kubernetes-dashboard        1/1     1            1           319d   kubernetes-dashboard        kubernetesui/dashboard:v2.4.0               k8s-app=kubernetes-dashboard
-kube-system   deployment.apps/metrics-server              1/1     1            1           319d   metrics-server              easzlab/metrics-server:v0.5.2               k8s-app=metrics-server
-velero        deployment.apps/velero                      1/1     1            1           27d    velero                      velero/velero:v1.9.7                        deploy=velero
-
-NAMESPACE     NAME                                                   DESIRED   CURRENT   READY   AGE    CONTAINERS                  IMAGES                                      SELECTOR
-default       replicaset.apps/myapp-deployment-865b6b5b89            2         2         2       27d    myapp-container             ikubernetes/myapp:v2                        app=myapp,pod-template-hash=865b6b5b89,release=canary
-kube-system   replicaset.apps/calico-kube-controllers-754966f84c     1         1         1       319d   calico-kube-controllers     docker.io/calico/kube-controllers:v3.19.3   k8s-app=calico-kube-controllers,pod-template-hash=754966f84c
-kube-system   replicaset.apps/coredns-596755dbff                     1         1         1       319d   coredns                     coredns/coredns:1.8.6                       k8s-app=kube-dns,pod-template-hash=596755dbff
-kube-system   replicaset.apps/dashboard-metrics-scraper-799d786dbf   1         1         1       319d   dashboard-metrics-scraper   kubernetesui/metrics-scraper:v1.0.7         k8s-app=dashboard-metrics-scraper,pod-template-hash=799d786dbf
-kube-system   replicaset.apps/kubernetes-dashboard-9f8c8b989         1         1         1       319d   kubernetes-dashboard        kubernetesui/dashboard:v2.4.0               k8s-app=kubernetes-dashboard,pod-template-hash=9f8c8b989
-kube-system   replicaset.apps/metrics-server-5d648558d9              1         1         1       319d   metrics-server              easzlab/metrics-server:v0.5.2               k8s-app=metrics-server,pod-template-hash=5d648558d9
-velero        replicaset.apps/velero-5cd4ff75bc                      1         1         1       27d    velero                      velero/velero:v1.9.7                        deploy=velero,pod-template-hash=5cd4ff75bc
-
 ```
+
+**集群所有资源**
+
+![](../image/velero/01.png)
+
+
 
 
 
 #### 8.2 新集群信息
 
 ```bash
-# 节点信息
+# 节点信息，全新安装的集群，
 root@ansible:~/ansible# kubectl get nodes -o wide
 NAME           STATUS                     ROLES    AGE    VERSION   INTERNAL-IP    EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION       CONTAINER-RUNTIME
 172.168.2.46   Ready,SchedulingDisabled   master   4m1s   v1.23.7   172.168.2.46   <none>        Ubuntu 18.04.6 LTS   4.15.0-213-generic   docker://19.3.15
 172.168.2.47   Ready                      node     3m3s   v1.23.7   172.168.2.47   <none>        Ubuntu 18.04.6 LTS   4.15.0-213-generic   docker://19.3.15
-
-
-# 集群所有资源
-root@ansible:~/ansible# kubectl get all -A -o wide
-NAMESPACE     NAME                                           READY   STATUS    RESTARTS   AGE   IP              NODE           NOMINATED NODE   READINESS GATES
-kube-system   pod/calico-kube-controllers-754966f84c-xwgnv   1/1     Running   0          77s   172.168.2.47    172.168.2.47   <none>           <none>
-kube-system   pod/calico-node-7dddl                          1/1     Running   0          78s   172.168.2.47    172.168.2.47   <none>           <none>
-kube-system   pod/calico-node-wjtlw                          1/1     Running   0          78s   172.168.2.46    172.168.2.46   <none>           <none>
-kube-system   pod/coredns-596755dbff-c95jr                   1/1     Running   0          31s   172.20.53.193   172.168.2.47   <none>           <none>
-
-NAMESPACE     NAME                 TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)                  AGE     SELECTOR
-default       service/kubernetes   ClusterIP   10.68.0.1    <none>        443/TCP                  4m56s   <none>
-kube-system   service/kube-dns     ClusterIP   10.68.0.2    <none>        53/UDP,53/TCP,9153/TCP   31s     k8s-app=kube-dns
-
-NAMESPACE     NAME                         DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR            AGE   CONTAINERS    IMAGES                          SELECTOR
-kube-system   daemonset.apps/calico-node   2         2         2       2            2           kubernetes.io/os=linux   78s   calico-node   docker.io/calico/node:v3.19.3   k8s-app=calico-node
-
-NAMESPACE     NAME                                      READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS                IMAGES                                      SELECTOR
-kube-system   deployment.apps/calico-kube-controllers   1/1     1            1           78s   calico-kube-controllers   docker.io/calico/kube-controllers:v3.19.3   k8s-app=calico-kube-controllers
-kube-system   deployment.apps/coredns                   1/1     1            1           31s   coredns                   coredns/coredns:1.8.6                       k8s-app=kube-dns
-
-NAMESPACE     NAME                                                 DESIRED   CURRENT   READY   AGE   CONTAINERS                IMAGES                                      SELECTOR
-kube-system   replicaset.apps/calico-kube-controllers-754966f84c   1         1         1       78s   calico-kube-controllers   docker.io/calico/kube-controllers:v3.19.3   k8s-app=calico-kube-controllers,pod-template-hash=754966f84c
-kube-system   replicaset.apps/coredns-596755dbff                   1         1         1       31s   coredns                   coredns/coredns:1.8.6                       k8s-app=kube-dns,pod-template-hash=596755dbff
-
 ```
 
-
+![](../image/velero/01-2.png) 
 
 
 
@@ -2586,15 +2716,631 @@ cluster-daily-20241105075743   Completed   0        0          2024-11-05 15:57:
 
 ```bash
 # 结果显示未安装server端
-root@ansible:~/ansible# velero version
+root@ansible:~# kubectl get nodes
+NAME           STATUS                     ROLES    AGE   VERSION
+172.168.2.46   Ready,SchedulingDisabled   master   17h   v1.23.7
+172.168.2.47   Ready                      node     17h   v1.23.7
+root@ansible:~# velero version
 Client:
         Version: v1.9.7
         Git commit: 9ace4ecbdc08d57415786ab9c896f86dbb6dc0b7
 <error getting server version: no matches for kind "ServerStatusRequest" in version "velero.io/v1">
 
 
+
 # 安装server端
+root@ansible:~/k8s/addons/velero# cat credentials-velero
+[default]
+aws_access_key_id=ACCESS_KEY
+aws_secret_access_key=SECRET_KEY
+# bucket名称为旧集群备份的bucket，因为恢复时需要从这里读取恢复
+root@ansible:~/k8s/addons/velero# cat velero-server-install-k8s04.sh
+#!/bin/bash
+velero install \
+--provider aws \
+--bucket k8s-opstest-velero \
+--image harborrepo.hs.com/k8s/velero:v1.9.7 \
+--plugins harborrepo.hs.com/k8s/velero-plugin-for-aws:v1.5.5 \
+--namespace velero \
+--secret-file /root/k8s/addons/velero/credentials-velero \
+--use-volume-snapshots=false \
+--use-restic \
+--default-volumes-to-restic=true \
+--kubeconfig=/root/.kube/config \
+--backup-location-config region=minio,s3ForcePathStyle="true",s3Url=http://minio-api.hs.com
+# 执行安装
+root@ansible:~/k8s/addons/velero# ./velero-server-install-k8s04.sh
+# 查看状态
+root@ansible:~/k8s/addons/velero# kubectl  get pods -o wide -n velero
+NAME                      READY   STATUS    RESTARTS   AGE     IP              NODE           NOMINATED NODE   READINESS GATES
+restic-5wlvl              1/1     Running   0          5s      172.20.53.201   172.168.2.47   <none>           <none>
+restic-vhsdj              1/1     Running   0          4m18s   172.20.246.2    172.168.2.46   <none>           <none>
+velero-7fd7b5d4db-sc4rs   1/1     Running   0          23s     172.20.53.200   172.168.2.47   <none>           <none>
+
+# 查看备份存储位置
+root@ansible:~/k8s/addons/velero#  kubectl get backupstoragelocation -n velero default -o yaml
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  creationTimestamp: "2024-11-06T02:26:25Z"
+  generation: 2
+  labels:
+    component: velero
+  name: default
+  namespace: velero
+  resourceVersion: "86795"
+  uid: 32ffcb17-fad1-43ab-9130-0ee4462c4777
+spec:
+  config:
+    region: minio
+    s3ForcePathStyle: "true"
+    s3Url: http://minio-api.hs.com
+  default: true
+  objectStorage:
+    bucket: k8s-opstest-velero
+  provider: aws
+status:
+  lastValidationTime: "2024-11-06T02:30:37Z"
+  phase: Available
+
+# 查看服务端版本
+root@ansible:~/k8s/addons/velero# velero version
+Client:
+        Version: v1.9.7
+        Git commit: 9ace4ecbdc08d57415786ab9c896f86dbb6dc0b7
+Server:
+        Version: v1.9.7
 ```
 
 
+
+
+
+### 8.4 恢复数据到新集群
+
+#### 8.4.1 查看备份数据
+
+```bash
+root@ansible:~/k8s/addons/velero# velero backup get
+NAME                           STATUS      ERRORS   WARNINGS   CREATED                         EXPIRES   STORAGE LOCATION   SELECTOR
+cluster-daily-20241105170037   Completed   0        0          2024-11-06 01:00:37 +0800 CST   29d       default            <none>
+cluster-daily-20241105075743   Completed   0        0          2024-11-05 15:57:43 +0800 CST   29d       default            <none>
+
+# 查看备份数据详情，确定无问题后进行恢复
+root@ansible:~/k8s/addons/velero# velero backup describe cluster-daily-20241105170037 --details
+```
+
+
+
+#### 8.4.2 恢复备份数据到新集群
+
+```bash
+root@ansible:~/k8s/addons/velero# velero restore create --from-backup cluster-daily-20241105170037
+
+# 查看恢复情况
+root@ansible:~/k8s/addons/velero# velero restore get
+NAME                                          BACKUP                         STATUS       STARTED                         COMPLETED   ERRORS   WARNINGS   CREATED                         SELECTOR
+cluster-daily-20241105170037-20241106103721   cluster-daily-20241105170037   InProgress   2024-11-06 10:37:21 +0800 CST   <nil>       0        0          2024-11-06 10:37:21 +0800 CST   <none>
+
+root@ansible:~/k8s/addons/velero# velero restore describe cluster-daily-20241105170037-20241106103721
+Name:         cluster-daily-20241105170037-20241106103721
+Namespace:    velero
+Labels:       <none>
+Annotations:  <none>
+
+Phase:                                 InProgress
+Estimated total items to be restored:  391
+Items restored so far:                 199
+
+Started:    2024-11-06 10:37:21 +0800 CST
+Completed:  <n/a>
+
+Backup:  cluster-daily-20241105170037
+
+Namespaces:
+  Included:  all namespaces found in the backup
+  Excluded:  <none>
+
+Resources:
+  Included:        *
+  Excluded:        nodes, events, events.events.k8s.io, backups.velero.io, restores.velero.io, resticrepositories.velero.io, csinodes.storage.k8s.io, volumeattachments.storage.k8s.io
+  Cluster-scoped:  auto
+
+Namespace mappings:  <none>
+
+Label selector:  <none>
+
+Restore PVs:  auto
+
+Restic Restores (specify --details for more information):
+  New:  7
+
+Existing Resource Policy:   <none>
+
+Preserve Service NodePorts:  auto
+```
+
+
+
+下图镜像获取失败，需要手工介入解决
+
+![](../image/velero/02.png)
+
+
+
+```bash
+root@ansible:~/k8s/addons/velero# kubectl get deployments
+NAME               READY   UP-TO-DATE   AVAILABLE   AGE
+myapp-deployment   0/2     2            0           7m43s
+
+root@ansible:~/k8s/addons/velero# kubectl describe pod/myapp-deployment-865b6b5b89-kmp55  | grep -A 10 Events
+Events:
+  Type     Reason          Age                    From               Message
+  ----     ------          ----                   ----               -------
+  Normal   Scheduled       5m32s                  default-scheduler  Successfully assigned default/myapp-deployment-865b6b5b89-kmp55 to 172.168.2.47
+  Normal   SandboxChanged  4m39s (x4 over 5m6s)   kubelet            Pod sandbox changed, it will be killed and re-created.
+  Normal   Pulling         4m20s (x3 over 5m21s)  kubelet            Pulling image "ikubernetes/myapp:v2"
+  Warning  Failed          4m14s (x3 over 5m8s)   kubelet            Failed to pull image "ikubernetes/myapp:v2": rpc error: code = Unknown desc = Error response from daemon: Get https://registry-1.docker.io/v2/: dial tcp 128.121.146.109:443: connect: connection timed out
+  Warning  Failed          4m14s (x3 over 5m8s)   kubelet            Error: ErrImagePull
+  Warning  Failed          4m1s (x6 over 5m1s)    kubelet            Error: ImagePullBackOff
+  Normal   BackOff         16s (x21 over 5m1s)    kubelet            Back-off pulling image "ikubernetes/myapp:v2"
+
+# 从旧集群或者其它方式获取镜像，并导入到私有仓库
+root@k8s02-node01:~# docker tag ikubernetes/myapp:v2 harborrepo.hs.com/test/myapp:v2
+root@k8s02-node01:~# docker push harborrepo.hs.com/test/myapp:v2
+
+# 更改新集群镜像地址
+root@ansible:~/k8s/addons/velero# kubectl edit deploy myapp-deployment
+# 再次查看，已经成功
+root@ansible:~/k8s/addons/velero# kubectl get deployments
+NAME               READY   UP-TO-DATE   AVAILABLE   AGE
+myapp-deployment   2/2     2            2           8m49s
+root@ansible:~/k8s/addons/velero# kubectl get pods
+NAME                                READY   STATUS    RESTARTS   AGE
+myapp-deployment-67cd865ddf-62lg9   1/1     Running   0          18s
+myapp-deployment-67cd865ddf-txls6   1/1     Running   0          15s
+
+# 通过patch方式来更改镜像
+root@ansible:~/k8s/addons/velero# kubectl -n kube-system patch deploy dashboard-metrics-scraper --type='json' --patch '[{"op": "replace", "path": "/spec/template/spec/containers/0/image", "value": "harborrepo.hs.com/k8s/metrics-scraper:v1.0.7"}]'
+
+root@ansible:~/k8s/addons/velero# kubectl get deploy -n kube-system | grep dashboard-metrics-scraper
+dashboard-metrics-scraper   1/1     1            1           23m
+
+```
+
+> 其它镜像失败问题也是如此解决
+
+
+
+**集群恢复成功**
+
+![](../image/velero/03.png)
+
+**访问服务也是正常的**
+
+![](../image/velero/04.png)
+
+
+
+
+
+**查看velero恢复信息时却一直是InProgress**
+
+```bash
+# 恢复状态一直是InProgress
+root@ansible:~/k8s/addons/velero# velero restore get
+NAME                                          BACKUP                         STATUS       STARTED                         COMPLETED   ERRORS   WARNINGS   CREATED                         SELECTOR
+cluster-daily-20241105170037-20241106103721   cluster-daily-20241105170037   InProgress   2024-11-06 10:37:21 +0800 CST   <nil>       0        0          2024-11-06 10:37:21 +0800 CST   <none>
+
+# 删除恢复任务并重启velero
+root@ansible:~# velero restore delete cluster-daily-20241105170037-20241106141931 --confirm
+root@ansible:~# kubectl delete pods -n velero velero-7fd7b5d4db-5j2mg restic-ll972 restic-wzrwv
+
+
+## 重新创建恢复任务
+# 查看存储库
+root@ansible:~# kubectl get backupstoragelocation default -n velero -o yaml
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  creationTimestamp: "2024-11-06T02:26:25Z"
+  generation: 299
+  labels:
+    component: velero
+  name: default
+  namespace: velero
+  resourceVersion: "113168"
+  uid: 32ffcb17-fad1-43ab-9130-0ee4462c4777
+spec:
+  config:
+    region: minio
+    s3ForcePathStyle: "true"
+    s3Url: http://minio-api.hs.com
+  default: true
+  objectStorage:
+    bucket: k8s-opstest-velero
+  provider: aws
+status:
+  lastValidationTime: "2024-11-06T07:29:36Z"
+  phase: Available
+
+# 将存储库置为只读
+kubectl patch backupstoragelocation default \
+    --namespace velero \
+    --type merge \
+    --patch '{"spec":{"accessMode":"ReadOnly"}}'
+    
+root@ansible:~# kubectl get backupstoragelocation default -n velero -o jsonpath='{.spec.accessMode}';echo
+ReadOnly
+root@ansible:~# velero backup-location get
+NAME       PROVIDER   BUCKET/PREFIX        PHASE       LAST VALIDATED                  ACCESS MODE   DEFAULT
+default    aws        k8s-opstest-velero   Available   2024-11-06 16:32:50 +0800 CST   ReadOnly      true
+k8s-test   aws        k8s-test             Available   2024-11-06 16:32:50 +0800 CST   ReadWrite
+
+
+# 再次恢复并经过4个小时的等待，最终有成功或失败状态了，restic默认超时时间为4小时
+root@ansible:~# velero restore create --from-backup cluster-daily-20241105170037
+Restore request "cluster-daily-20241105170037-20241106155019" submitted successfully.
+Run `velero restore describe cluster-daily-20241105170037-20241106155019` or `velero root@ansible:~# velero restore get
+NAME                                          BACKUP                         STATUS            STARTED                         COMPLETED                       ERRORS   WARNINGS   CREATED                         SELECTOR
+cluster-daily-20241105170037-20241106155019   cluster-daily-20241105170037   PartiallyFailed   2024-11-06 15:50:19 +0800 CST   2024-11-06 19:50:20 +0800 CST   6        58         2024-11-06 15:50:19 +0800 CST   <none>
+```
+
+> 1. 等待过程中，状态依然是InProgress，原因是在等待所有PodVolumeRestores恢复完成，需要时间，最终等待4个小时超时后返回了错误。
+> 2. 有6个ERRORS: 是在等待所有PodVolumeRestores恢复完成，结果等待超时，所以报了Errors
+> 3. 有58个WARNINGS：查看日志得出`集群`和`名称空间`已经存在此对象，所以报了Warnning
+
+![](../image/velero/05.png)
+
+
+
+> restic超时解决办法：
+>
+> 1. 调高restic的limit限制值 ，使resitc有充足的性能恢复卷数据
+> 2. 配置超时时间，
+
+
+
+
+
+
+
+## 9. 迁移k8s
+
+### 9.1 备份集群(忽略特定pod的数据卷)
+
+```bash
+# 对特定pod的卷进行忽略，即不备份
+root@ansible:~# kubectl -n kube-system annotate pod/dashboard-metrics-scraper-fdc558d9d-8bzcw backup.velero.io/backup-volumes-excludes=tmp-volume
+root@ansible:~# kubectl -n kube-system annotate pod/kubernetes-dashboard-656bbc8c98-jqrbz backup.velero.io/backup-volumes-excludes=tmp-volume
+root@ansible:~# kubectl -n kube-system annotate pod/metrics-server-5895bbf59d-mbljs backup.velero.io/backup-volumes-excludes=tmp-dir
+root@ansible:~# kubectl get pods -n kube-system metrics-server-5895bbf59d-mbljs -o yaml | grep -A 5 annota
+  annotations:
+    backup.velero.io/backup-volumes-excludes: tmp-dir
+  creationTimestamp: "2024-11-07T05:36:27Z"
+  generateName: metrics-server-5895bbf59d-
+  labels:
+    k8s-app: metrics-server
+    
+
+# 对特定pod的卷进行忽略，即不备份
+root@ansible:~# kubectl -n velero annotate pod/restic-57tsr backup.velero.io/backup-volumes-excludes=scratch
+root@ansible:~# kubectl -n velero annotate pod/restic-g9pc4 backup.velero.io/backup-volumes-excludes=scratch
+root@ansible:~# kubectl -n velero annotate pod/velero-857b4fbfd9-xjxc4 backup.velero.io/backup-volumes-excludes=plugins,scratch
+root@ansible:~# kubectl get pods -n velero restic-57tsr -o yaml | grep -A 5 annota
+  annotations:
+    backup.velero.io/backup-volumes-excludes: scratch
+  creationTimestamp: "2024-11-07T05:46:35Z"
+  generateName: restic-
+  labels:
+    component: velero
+
+root@ansible:~# kubectl get pods -n velero restic-g9pc4 -o yaml | grep -A 5 annota
+  annotations:
+    backup.velero.io/backup-volumes-excludes: scratch
+  creationTimestamp: "2024-11-07T05:34:08Z"
+  generateName: restic-
+  labels:
+    component: velero
+
+root@ansible:~# kubectl get pods -n velero velero-857b4fbfd9-xjxc4 -o yaml | grep -A 5 annota
+  annotations:
+    backup.velero.io/backup-volumes-excludes: plugins,scratch
+    prometheus.io/path: /metrics
+    prometheus.io/port: "8085"
+    prometheus.io/scrape: "true"
+  creationTimestamp: "2024-11-07T05:32:18Z"
+  
+
+
+# 备份并查看是不是没有备份特定的pod卷
+root@ansible:~# velero backup create --from-schedule cluster-daily
+INFO[0000] No Schedule.template.metadata.labels set - using Schedule.labels for backup object  backup=velero/cluster-daily-20241107055433 labels="map[]"
+Creating backup from schedule, all other filters are ignored.
+Backup request "cluster-daily-20241107055433" submitted successfully.
+Run `velero backup describe cluster-daily-20241107055433` or `velero backup logs cluster-daily-20241107055433` for more details.
+
+root@ansible:~# velero backup get
+NAME                           STATUS      ERRORS   WARNINGS   CREATED                         EXPIRES   STORAGE LOCATION   SELECTOR
+cluster-daily-20241107055433   Completed   0        0          2024-11-07 13:54:33 +0800 CST   29d       default            <none>
+cluster-daily-20241107053048   Completed   0        0          2024-11-07 13:30:48 +0800 CST   29d       default            <none>
+cluster-daily-20241105170037   Completed   0        0          2024-11-06 01:00:37 +0800 CST   28d       default            <none>
+cluster-daily-20241105075743   Completed   0        0          2024-11-05 15:57:43 +0800 CST   28d       default            <none>
+
+# 经过查看确实未进行备份，结果为空
+root@ansible:~# velero backup describe cluster-daily-20241107055433 | grep -i Restic
+
+```
+
+
+
+### 9.2 恢复集群
+
+```bash
+root@ansible:~# velero restore create --from-backup cluster-daily-20241107055433 --existing-resource-policy none --preserve-nodeports=true
+Restore request "cluster-daily-20241107055433-20241107140243" submitted successfully.
+Run `velero restore describe cluster-daily-20241107055433-20241107140243` or `velero restore logs cluster-daily-20241107055433-20241107140243` for more details.
+
+root@ansible:~# velero restore get
+NAME                                          BACKUP                         STATUS            STARTED                         COMPLETED                       ERRORS   WARNINGS   CREATED                         SELECTOR
+cluster-daily-20241107055433-20241107140243   cluster-daily-20241107055433   PartiallyFailed   2024-11-07 14:02:43 +0800 CST   2024-11-07 14:03:32 +0800 CST   1        60         2024-11-07 14:02:43 +0800 CST   <none>
+```
+
+![](../image/velero/06.png)
+
+
+
+
+
+### 9.3 集群验证
+
+```bash
+root@ansible:~# kubectl get nodes
+NAME           STATUS                     ROLES    AGE    VERSION
+172.168.2.46   Ready,SchedulingDisabled   master   134m   v1.23.7
+172.168.2.47   Ready                      node     133m   v1.23.7
+root@ansible:~# kubectl get all -A
+NAMESPACE     NAME                                            READY   STATUS    RESTARTS        AGE
+default       pod/myapp-deployment-67cd865ddf-bgssz           1/1     Running   0               6m46s
+default       pod/myapp-deployment-67cd865ddf-cxc69           1/1     Running   0               6m46s
+kube-system   pod/calico-kube-controllers-754966f84c-44wz2    1/1     Running   0               132m
+kube-system   pod/calico-node-dqzg6                           1/1     Running   1 (5m53s ago)   132m
+kube-system   pod/calico-node-jnbsm                           1/1     Running   0               132m
+kube-system   pod/coredns-596755dbff-n9x5j                    1/1     Running   0               131m
+kube-system   pod/dashboard-metrics-scraper-fdc558d9d-8bzcw   1/1     Running   0               6m42s
+kube-system   pod/kubernetes-dashboard-656bbc8c98-jqrbz       1/1     Running   0               6m41s
+kube-system   pod/metrics-server-5895bbf59d-mbljs             1/1     Running   0               6m41s
+kube-system   pod/node-local-dns-b7px5                        1/1     Running   0               131m
+kube-system   pod/node-local-dns-jgwfz                        1/1     Running   0               131m
+velero        pod/restic-26c4f                                1/1     Running   0               127m
+velero        pod/restic-nk2gp                                1/1     Running   0               127m
+velero        pod/velero-7fd7b5d4db-ld6xx                     1/1     Running   0               127m
+
+NAMESPACE     NAME                                TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                  AGE
+default       service/kubernetes                  ClusterIP   9. 68.0.1       <none>        443/TCP                  135m
+default       service/myapp                       NodePort    10.68.165.211   <none>        80:30080/TCP             6m10s
+kube-system   service/dashboard-metrics-scraper   ClusterIP   10.68.29.207    <none>        8000/TCP                 6m12s
+kube-system   service/kube-dns                    ClusterIP   10.68.0.2       <none>        53/UDP,53/TCP,9153/TCP   131m
+kube-system   service/kube-dns-upstream           ClusterIP   10.68.163.93    <none>        53/UDP,53/TCP            131m
+kube-system   service/metrics-server              ClusterIP   10.68.246.89    <none>        443/TCP                  6m11s
+kube-system   service/node-local-dns              ClusterIP   None            <none>        9253/TCP                 131m
+
+NAMESPACE     NAME                            DESIRED   CURRENT   READY   UP-TO-DATE   AVAILABLE   NODE SELECTOR            AGE
+kube-system   daemonset.apps/calico-node      2         2         2       2            2           kubernetes.io/os=linux   132m
+kube-system   daemonset.apps/node-local-dns   2         2         2       2            2           <none>                   131m
+velero        daemonset.apps/restic           2         2         2       2            2           <none>                   127m
+
+NAMESPACE     NAME                                        READY   UP-TO-DATE   AVAILABLE   AGE
+default       deployment.apps/myapp-deployment            2/2     2            2           6m20s
+kube-system   deployment.apps/calico-kube-controllers     1/1     1            1           132m
+kube-system   deployment.apps/coredns                     1/1     1            1           131m
+kube-system   deployment.apps/dashboard-metrics-scraper   1/1     1            1           6m20s
+kube-system   deployment.apps/kubernetes-dashboard        1/1     1            1           6m20s
+kube-system   deployment.apps/metrics-server              1/1     1            1           6m20s
+velero        deployment.apps/velero                      1/1     1            1           127m
+
+NAMESPACE     NAME                                                   DESIRED   CURRENT   READY   AGE
+default       replicaset.apps/myapp-deployment-67cd865ddf            2         2         2       6m38s
+default       replicaset.apps/myapp-deployment-865b6b5b89            0         0         0       6m38s
+kube-system   replicaset.apps/calico-kube-controllers-754966f84c     1         1         1       132m
+kube-system   replicaset.apps/coredns-596755dbff                     1         1         1       131m
+kube-system   replicaset.apps/dashboard-metrics-scraper-799d786dbf   0         0         0       6m39s
+kube-system   replicaset.apps/dashboard-metrics-scraper-fdc558d9d    1         1         1       6m39s
+kube-system   replicaset.apps/kubernetes-dashboard-656bbc8c98        1         1         1       6m39s
+kube-system   replicaset.apps/kubernetes-dashboard-9f8c8b989         0         0         0       6m39s
+kube-system   replicaset.apps/metrics-server-5895bbf59d              1         1         1       6m39s
+kube-system   replicaset.apps/metrics-server-5d648558d9              0         0         0       6m38s
+velero        replicaset.apps/velero-5cd4ff75bc                      0         0         0       6m38s
+velero        replicaset.apps/velero-7fd7b5d4db                      1         1         1       127m
+velero        replicaset.apps/velero-857b4fbfd9                      0         0         0       6m38s
+```
+
+![](../image/velero/07.png)
+
+
+
+> 经过对比，差的是上面那个错误导致的service，为解决这个问题，重新恢复一次，并去掉参数
+
+```bash
+Errors:
+  Velero:     <none>
+  Cluster:    <none>
+  Namespaces:
+    kube-system:  error restoring services/kube-system/kubernetes-dashboard: Service "kubernetes-dashboard" is invalid: spec.ports[0].nodePort: Invalid value: 41252: provided port is not in the valid range. The range of valid ports is 30000-32767
+```
+
+
+
+> 重新再次恢复后，经过对比是OK的
+
+```bash
+root@ansible:~# velero restore create --from-backup cluster-daily-20241107055433 --existing-resource-policy none
+Restore request "cluster-daily-20241107055433-20241107141433" submitted successfully.
+Run `velero restore describe cluster-daily-20241107055433-20241107141433` or `velero restore logs cluster-daily-20241107055433-20241107141433` for more details.
+
+root@ansible:~# velero restore get
+NAME                                          BACKUP                         STATUS            STARTED                         COMPLETED                       ERRORS   WARNINGS   CREATED                         SELECTOR
+cluster-daily-20241107055433-20241107140243   cluster-daily-20241107055433   PartiallyFailed   2024-11-07 14:02:43 +0800 CST   2024-11-07 14:03:32 +0800 CST   1        60         2024-11-07 14:02:43 +0800 CST   <none>
+cluster-daily-20241107055433-20241107141433   cluster-daily-20241107055433   Completed         2024-11-07 14:14:33 +0800 CST   2024-11-07 14:15:14 +0800 CST   0        70         2024-11-07 14:14:33 +0800 CST   <none>
+
+root@ansible:~# kubectl get service/kubernetes-dashboard -n kube-system
+NAME                   TYPE       CLUSTER-IP     EXTERNAL-IP   PORT(S)         AGE
+kubernetes-dashboard   NodePort   10.68.31.120   <none>        443:30502/TCP   4m40s
+
+```
+
+![](../image/velero/08.png)
+
+
+
+**访问服务进行测试**
+
+![](../image/velero/04.png)
+
+![](../image/velero/09.png)
+
+
+
+
+
+### 9.4 附生产环境备份任务
+
+```bash
+# k8s-test 不备份卷数据到restic，只备份集群中的所有资源对象
+velero schedule create test-cluster-daily --schedule="0 17 * * *" --default-volumes-to-restic=false --exclude-namespaces velero  
+velero backup create --from-schedule test-cluster-daily
+
+# k8s-pre-pro 不备份卷数据到restic，只备份集群中的所有资源对象
+velero schedule create pre-pro-cluster-daily --schedule="0 18 * * *" --default-volumes-to-restic=false --exclude-namespaces velero  
+velero backup create --from-schedule pre-pro-cluster-daily
+
+# k8s-pro 不备份卷数据到restic，只备份集群中的所有资源对象
+velero schedule create pro-cluster-daily --schedule="0 19 * * *" --default-volumes-to-restic=false --exclude-namespaces velero  
+velero backup create --from-schedule pro-cluster-daily
+```
+
+
+
+
+
+
+
+
+
+
+
+## 10. velero升级
+
+[velero升级](https://velero.io/docs/v1.11/upgrade-to-1.11/)
+
+**从 v1.10 或更高版本升级**
+
+```bash
+# 下载
+root@ansible:/download# curl -OL https://github.com/vmware-tanzu/velero/releases/download/v1.11.1/velero-v1.11.1-linux-amd64.tar.gz
+root@ansible:/download# cp velero-v1.11.1-linux-amd64/velero /usr/local/bin/
+# 查看客户端版本
+root@ansible:/download# velero version --client-only
+Client:
+        Version: v1.11.1
+        Git commit: bdbe7eb242b0f64d5b04a7fea86d1edbb3a3587c
+
+# 更新 Velero 自定义资源定义 (CRD)，以包含此版本中新功能核心的所有 CRD 的架构更改
+root@ansible:/download# velero install --crds-only --dry-run -o yaml | kubectl apply -f -
+
+# set the container and image of the init container for plugin accordingly,
+# if you are using other plugin
+kubectl set image deployment/velero \
+    velero=velero/velero:v1.12.0 \
+    velero-plugin-for-aws=velero/velero-plugin-for-aws:v1.8.0 \
+    --namespace velero
+
+# optional, if using the node agent daemonset
+kubectl set image daemonset/node-agent \
+    node-agent=velero/velero:v1.12.0 \
+    --namespace velero
+
+# 查看版本
+velero version
+```
+
+
+
+
+
+
+
+
+
+## 11. velero错误汇总
+
+
+
+### 11.1 k8s集群快照回滚后获取备份集出错 
+
+```bash
+root@ansible:~# velero backup get
+NAME                           STATUS      ERRORS   WARNINGS   CREATED                         EXPIRES   STORAGE LOCATION   SELECTOR
+cluster-daily-20241107053048   Completed   0        0          2024-11-07 13:30:48 +0800 CST   29d       default            <none>
+cluster-daily-20241105170037   Completed   0        0          2024-11-06 01:00:37 +0800 CST   28d       default            <none>
+cluster-daily-20241105075743   Completed   0        0          2024-11-05 15:57:43 +0800 CST   27d       default            <none>
+root@ansible:~# velero backup describe cluster-daily-20241105170037
+Resource List:  <error getting backup resource list: request failed: <?xml version="1.0" encoding="UTF-8"?>
+<Error><Code>AccessDenied</Code><Message>Request has expired</Message><Key>backups/cluster-daily-20241105170037/cluster-daily-20241105170037-resource-list.json.gz</Key><BucketName>k8s-opstest-velero</BucketName><Resource>/k8s-opstest-velero/backups/cluster-daily-20241105170037/cluster-daily-20241105170037-resource-list.json.gz</Resource><RequestId>1805A4C7A55DEE4F</RequestId><HostId>dd9025bab4ad464b049177c95eb6ebf374d3b3fd1af9251148b658df7ac2e3e8</HostId></Error>>
+
+# 从上得知访问拒绝，于是查看存储位置
+root@ansible:~# velero backup-location get
+NAME      PROVIDER   BUCKET/PREFIX        PHASE         LAST VALIDATED                  ACCESS MODE   DEFAULT
+default   aws        k8s-opstest-velero   Unavailable   2024-11-07 14:03:56 +0800 CST   ReadWrite     true
+root@ansible:~# kubectl get BackupStorageLocation -n velero
+NAME      PHASE         LAST VALIDATED   AGE    DEFAULT
+default   Unavailable   30s              123m   true
+
+# 从上得知存储不可用，于是通过k8s查看状态
+root@ansible:~# kubectl get BackupStorageLocation -n velero  -o yaml
+root@ansible:~# velero backup-location get -o yaml
+status:
+  lastValidationTime: "2024-11-07T06:04:56Z"
+  message: "BackupStorageLocation \"default\" is unavailable: rpc error: code = Unknown
+    desc = RequestTimeTooSkewed: The difference between the request time and the server's
+    time is too large.\n\tstatus code: 403, request id: 1805A4DD062576A1, host id:
+    dd9025bab4ad464b049177c95eb6ebf374d3b3fd1af9251148b658df7ac2e3e8"
+
+# 得出k8s跟minio时间不一致，跨度太大导致
+root@ansible:~# date
+Thu Nov  7 19:04:15 CST 2024
+root@ansible:~# ansible k8s03 -m shell -a 'date'
+172.168.2.47 | SUCCESS | rc=0 >>
+Thu Nov  7 15:54:20 CST 2024
+
+172.168.2.46 | SUCCESS | rc=0 >>
+Thu Nov  7 15:54:34 CST 2024
+
+# 修复时间问题
+root@ansible:~# ansible k8s03 -m shell -a 'apt install -y ntpdate && echo "*/5 * * * * ntpdate ntp.aliyun.com" >> /var/spool/cron/crontabs/root && ntpdate ntp.aliyun.com && crontab -l'
+# 验证已经正常
+root@ansible:~# ansible k8s03 -m shell -a 'date'
+172.168.2.46 | SUCCESS | rc=0 >>
+Thu Nov  7 19:08:24 CST 2024
+
+172.168.2.47 | SUCCESS | rc=0 >>
+Thu Nov  7 19:08:24 CST 2024
+
+root@ansible:~# date
+Thu Nov  7 19:08:25 CST 2024
+root@ansible:~# kubectl get BackupStorageLocation -n velero
+NAME      PHASE       LAST VALIDATED   AGE    DEFAULT
+default   Available   12s              7h6m   true
+
+root@ansible:~# kubectl get nodes
+NAME           STATUS                     ROLES    AGE     VERSION
+172.168.2.46   Ready,SchedulingDisabled   master   7h13m   v1.23.7
+172.168.2.47   Ready                      node     7h12m   v1.23.7
+root@ansible:~# velero backup get
+NAME                           STATUS      ERRORS   WARNINGS   CREATED                         EXPIRES   STORAGE LOCATION   SELECTOR
+cluster-daily-20241107055433   Completed   0        0          2024-11-07 13:54:33 +0800 CST   29d       default            <none>
+cluster-daily-20241107053048   Completed   0        0          2024-11-07 13:30:48 +0800 CST   29d       default            <none>
+cluster-daily-20241105170037   Completed   0        0          2024-11-06 01:00:37 +0800 CST   28d       default            <none>
+cluster-daily-20241105075743   Completed   0        0          2024-11-05 15:57:43 +0800 CST   27d       default            <none>
+```
 
