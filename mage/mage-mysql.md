@@ -1,4 +1,4 @@
-# Mysql数据库
+# Mysql
 
 
 ## 1. 关系型数据体系结构
@@ -5480,13 +5480,13 @@ aliyun
 # 旧192.168.13.116：
 [root@devmysql ~]# mysqldump -uroot -p --all-databases --triggers --routines --events --set-gtid-purged=OFF --flush-logs --master-data=2 --single-transaction > alldatabases.sql
 [root@devmysql ~]# scp alldatabases.sql root@192.168.13.202:/root/
-新192.168.13.202：
+#新192.168.13.202：
 [root@devmysql ~]# mysql -uroot -p < alldatabases.sql 
 #将新节点做为旧节点的从进行同步
-旧192.168.13.116：
+#旧192.168.13.116：
 grant replication slave on *.* to 'dev-repluser'@'192.168.13.%' identified by 'homsom';
 show grants for 'dev-repluser'@'192.168.13.%';
-新192.168.13.202：
+#新192.168.13.202：
 change master to master_host='192.168.13.116',master_user='dev-repluser',master_password='homsom',master_log_file='master-bin.000057',MASTER_LOG_POS=194;
 (
 start slave io_thread;
@@ -5497,7 +5497,7 @@ start slave;
 #同步状态：
 1. 开始slave线程后，同步状态显示如下
 Slave_IO_State: System lock
-表示从线程正在大量的复制的回话binlog.
+表示从线程正在大量的复制会话binlog.
 2. 等待一段时间后，如下：
 Slave_IO_State: Waiting for master to send event
 3. 如果同步慢可增加同步线程
@@ -5694,5 +5694,768 @@ source /restore-mysql/feishu_selfbuilt-000402.sql
 
 
 
+### 7.停止和删除channel为空的channel
 
+```bash
+# 停止和删除channel为空的channel
+mysql> stop slave FOR CHANNEL '';
+# 此步骤不会重置io_thread和sql_thread是运行状态的channel，只会重置状态是停止的channel
+mysql> reset slave all;
+```
+
+
+
+### 8. 配置主主同步
+
+#### 8.1 测试环境
+
+```bash
+# master01
+mysql> grant replication slave on *.* to repluser@'172.168.2.%' identified by 'jcemcilmbpVCm2JO';
+
+mysql> show grants for repluser@'172.168.2.%';
++------------------------------------------------------------+
+| Grants for repluser@172.168.2.%                            |
++------------------------------------------------------------+
+| GRANT REPLICATION SLAVE ON *.* TO 'repluser'@'172.168.2.%' |
++------------------------------------------------------------+
+
+mysql> flush binary logs;
+
+mysql> show binary logs;
++-------------------+-----------+
+| Log_name          | File_size |
++-------------------+-----------+
+| master-bin.000005 |      1430 |
+| master-bin.000006 |       194 |
++-------------------+-----------+
+
+mysql> purge binary logs to 'master-bin.000006';
+
+mysql> show master status;
++-------------------+----------+--------------+------------------+------------------------------------------+
+| File              | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set                        |
++-------------------+----------+--------------+------------------+------------------------------------------+
+| master-bin.000006 |      194 |              |                  | cced45a5-a028-11ef-bf55-000c298e491d:1-5 |
++-------------------+----------+--------------+------------------+------------------------------------------+
+
+
+# master02
+mysql> grant replication slave on *.* to repluser@'172.168.2.%' identified by 'jcemcilmbpVCm2JO';
+
+mysql> show grants for repluser@'172.168.2.%';
++------------------------------------------------------------+
+| Grants for repluser@172.168.2.%                            |
++------------------------------------------------------------+
+| GRANT REPLICATION SLAVE ON *.* TO 'repluser'@'172.168.2.%' |
++------------------------------------------------------------+
+
+mysql> flush binary logs;
+
+mysql> show binary logs;
++-------------------+-----------+
+| Log_name          | File_size |
++-------------------+-----------+
+| master-bin.000005 |      1430 |
+| master-bin.000006 |       194 |
++-------------------+-----------+
+
+mysql> purge binary logs to 'master-bin.000006';
+
+mysql> show master status;
++-------------------+----------+--------------+------------------+------------------------------------------+
+| File              | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set                        |
++-------------------+----------+--------------+------------------+------------------------------------------+
+| master-bin.000006 |      194 |              |                  | cd0bd321-a028-11ef-bf6b-000c29271638:1-2 |
++-------------------+----------+--------------+------------------+------------------------------------------+
+
+
+
+# master01 config
+mysql> change master to master_host='172.168.2.44',master_user='repluser',master_password='jcemcilmbpVCm2JO',master_log_file='master-bin.000006',MASTER_LOG_POS=194 for CHANNEL 'g2-mysql02-to-mysql01';
+
+mysql> show slave status\G
+*************************** 1. row ***************************
+               Slave_IO_State:
+                  Master_Host: 172.168.2.44
+                  Master_User: repluser
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: master-bin.000006
+          Read_Master_Log_Pos: 194
+               Relay_Log_File: relay-master.000001
+                Relay_Log_Pos: 4
+        Relay_Master_Log_File: master-bin.000006
+             Slave_IO_Running: No
+            Slave_SQL_Running: No
+              Replicate_Do_DB:
+          Replicate_Ignore_DB:
+           Replicate_Do_Table:
+       Replicate_Ignore_Table:
+      Replicate_Wild_Do_Table:
+  Replicate_Wild_Ignore_Table:
+                   Last_Errno: 0
+                   Last_Error:
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 194
+              Relay_Log_Space: 154
+              Until_Condition: None
+               Until_Log_File:
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File:
+           Master_SSL_CA_Path:
+              Master_SSL_Cert:
+            Master_SSL_Cipher:
+               Master_SSL_Key:
+        Seconds_Behind_Master: NULL
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error:
+               Last_SQL_Errno: 0
+               Last_SQL_Error:
+  Replicate_Ignore_Server_Ids:
+             Master_Server_Id: 0
+                  Master_UUID:
+             Master_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State:
+           Master_Retry_Count: 86400
+                  Master_Bind:
+      Last_IO_Error_Timestamp:
+     Last_SQL_Error_Timestamp:
+               Master_SSL_Crl:
+           Master_SSL_Crlpath:
+           Retrieved_Gtid_Set:
+            Executed_Gtid_Set: cced45a5-a028-11ef-bf55-000c298e491d:1-5
+                Auto_Position: 0
+         Replicate_Rewrite_DB:
+                 Channel_Name: g2-mysql02-to-mysql01
+           Master_TLS_Version:
+
+mysql> start slave;
+Query OK, 0 rows affected (0.01 sec)
+
+mysql> show slave status\G
+*************************** 1. row ***************************
+               Slave_IO_State: Waiting for master to send event
+                  Master_Host: 172.168.2.44
+                  Master_User: repluser
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: master-bin.000006
+          Read_Master_Log_Pos: 194
+               Relay_Log_File: relay-master.000002
+                Relay_Log_Pos: 321
+        Relay_Master_Log_File: master-bin.000006
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+              Replicate_Do_DB:
+          Replicate_Ignore_DB:
+           Replicate_Do_Table:
+       Replicate_Ignore_Table:
+      Replicate_Wild_Do_Table:
+  Replicate_Wild_Ignore_Table:
+                   Last_Errno: 0
+                   Last_Error:
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 194
+              Relay_Log_Space: 525
+              Until_Condition: None
+               Until_Log_File:
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File:
+           Master_SSL_CA_Path:
+              Master_SSL_Cert:
+            Master_SSL_Cipher:
+               Master_SSL_Key:
+        Seconds_Behind_Master: 0
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error:
+               Last_SQL_Errno: 0
+               Last_SQL_Error:
+  Replicate_Ignore_Server_Ids:
+             Master_Server_Id: 2
+                  Master_UUID: cd0bd321-a028-11ef-bf6b-000c29271638
+             Master_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+           Master_Retry_Count: 86400
+                  Master_Bind:
+      Last_IO_Error_Timestamp:
+     Last_SQL_Error_Timestamp:
+               Master_SSL_Crl:
+           Master_SSL_Crlpath:
+           Retrieved_Gtid_Set:
+            Executed_Gtid_Set: cced45a5-a028-11ef-bf55-000c298e491d:1-5
+                Auto_Position: 0
+         Replicate_Rewrite_DB:
+                 Channel_Name: g2-mysql02-to-mysql01
+           Master_TLS_Version:
+
+
+
+# master02 config
+mysql> change master to master_host='172.168.2.43',master_user='repluser',master_password='jcemcilmbpVCm2JO',master_log_file='master-bin.000006',MASTER_LOG_POS=194 for CHANNEL 'g2-mysql01-to-mysql02';
+
+mysql> show slave status\G
+*************************** 1. row ***************************
+               Slave_IO_State:
+                  Master_Host: 172.168.2.43
+                  Master_User: repluser
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: master-bin.000006
+          Read_Master_Log_Pos: 194
+               Relay_Log_File: relay-master-g2@002dmysql01@002dto@002dmysql02.000001
+                Relay_Log_Pos: 4
+        Relay_Master_Log_File: master-bin.000006
+             Slave_IO_Running: No
+            Slave_SQL_Running: No
+              Replicate_Do_DB:
+          Replicate_Ignore_DB:
+           Replicate_Do_Table:
+       Replicate_Ignore_Table:
+      Replicate_Wild_Do_Table:
+  Replicate_Wild_Ignore_Table:
+                   Last_Errno: 0
+                   Last_Error:
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 194
+              Relay_Log_Space: 154
+              Until_Condition: None
+               Until_Log_File:
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File:
+           Master_SSL_CA_Path:
+              Master_SSL_Cert:
+            Master_SSL_Cipher:
+               Master_SSL_Key:
+        Seconds_Behind_Master: NULL
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error:
+               Last_SQL_Errno: 0
+               Last_SQL_Error:
+  Replicate_Ignore_Server_Ids:
+             Master_Server_Id: 0
+                  Master_UUID:
+             Master_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State:
+           Master_Retry_Count: 86400
+                  Master_Bind:
+      Last_IO_Error_Timestamp:
+     Last_SQL_Error_Timestamp:
+               Master_SSL_Crl:
+           Master_SSL_Crlpath:
+           Retrieved_Gtid_Set:
+            Executed_Gtid_Set: cd0bd321-a028-11ef-bf6b-000c29271638:1-2
+                Auto_Position: 0
+         Replicate_Rewrite_DB:
+                 Channel_Name: g2-mysql01-to-mysql02
+           Master_TLS_Version:
+
+mysql> start slave;
+
+mysql> show slave status\G
+*************************** 1. row ***************************
+               Slave_IO_State: Waiting for master to send event
+                  Master_Host: 172.168.2.43
+                  Master_User: repluser
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: master-bin.000006
+          Read_Master_Log_Pos: 194
+               Relay_Log_File: relay-master-g2@002dmysql01@002dto@002dmysql02.000002
+                Relay_Log_Pos: 321
+        Relay_Master_Log_File: master-bin.000006
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+              Replicate_Do_DB:
+          Replicate_Ignore_DB:
+           Replicate_Do_Table:
+       Replicate_Ignore_Table:
+      Replicate_Wild_Do_Table:
+  Replicate_Wild_Ignore_Table:
+                   Last_Errno: 0
+                   Last_Error:
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 194
+              Relay_Log_Space: 559
+              Until_Condition: None
+               Until_Log_File:
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File:
+           Master_SSL_CA_Path:
+              Master_SSL_Cert:
+            Master_SSL_Cipher:
+               Master_SSL_Key:
+        Seconds_Behind_Master: 0
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error:
+               Last_SQL_Errno: 0
+               Last_SQL_Error:
+  Replicate_Ignore_Server_Ids:
+             Master_Server_Id: 1
+                  Master_UUID: cced45a5-a028-11ef-bf55-000c298e491d
+             Master_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+           Master_Retry_Count: 86400
+                  Master_Bind:
+      Last_IO_Error_Timestamp:
+     Last_SQL_Error_Timestamp:
+               Master_SSL_Crl:
+           Master_SSL_Crlpath:
+           Retrieved_Gtid_Set:
+            Executed_Gtid_Set: cd0bd321-a028-11ef-bf6b-000c29271638:1-2
+                Auto_Position: 0
+         Replicate_Rewrite_DB:
+                 Channel_Name: g2-mysql01-to-mysql02
+           Master_TLS_Version:
+
+
+# 测试主主
+# master01 
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+4 rows in set (0.00 sec)
+
+mysql> create database test;
+
+# master02
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
+| test               |
++--------------------+
+
+mysql> drop database test;
+
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+
+# master01
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+```
+
+
+
+#### 8.2 生产环境
+
+```bash
+# master01
+mysql> grant replication slave on *.* to repluser@'192.168.13.%' identified by 'ALbx93RAYDZQd5pa';
+
+mysql> show grants for repluser@'192.168.13.%';
++------------------------------------------------------------+
+| Grants for repluser@192.168.13.%                            |
++------------------------------------------------------------+
+| GRANT REPLICATION SLAVE ON *.* TO 'repluser'@'192.168.13.%' |
++------------------------------------------------------------+
+
+mysql> flush binary logs;
+
+mysql> show binary logs;
++-------------------+-----------+
+| Log_name          | File_size |
++-------------------+-----------+
+| master-bin.000005 |      1430 |
+| master-bin.000006 |       194 |
++-------------------+-----------+
+
+mysql> purge binary logs to 'master-bin.000006';
+
+mysql> show master status;
++-------------------+----------+--------------+------------------+------------------------------------------+
+| File              | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set                        |
++-------------------+----------+--------------+------------------+------------------------------------------+
+| master-bin.000006 |      194 |              |                  | 608bbf72-a0d4-11ef-9140-0050569c6862:1-2 |
++-------------------+----------+--------------+------------------+------------------------------------------+
+
+
+
+# master02
+mysql> grant replication slave on *.* to repluser@'192.168.13.%' identified by 'ALbx93RAYDZQd5pa';
+
+mysql> show grants for repluser@'192.168.13.%';
++------------------------------------------------------------+
+| Grants for repluser@192.168.13.%                            |
++------------------------------------------------------------+
+| GRANT REPLICATION SLAVE ON *.* TO 'repluser'@'192.168.13.%' |
++------------------------------------------------------------+
+
+mysql> flush binary logs;
+
+mysql> show binary logs;
++-------------------+-----------+
+| Log_name          | File_size |
++-------------------+-----------+
+| master-bin.000005 |      1430 |
+| master-bin.000006 |       194 |
++-------------------+-----------+
+
+mysql> purge binary logs to 'master-bin.000006';
+
+mysql> show master status;
++-------------------+----------+--------------+------------------+------------------------------------------+
+| File              | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set                        |
++-------------------+----------+--------------+------------------+------------------------------------------+
+| master-bin.000006 |      194 |              |                  | 60a3d850-a0d4-11ef-b3d1-0050569c92f9:1-2 |
++-------------------+----------+--------------+------------------+------------------------------------------+
+
+
+
+
+# master01 config
+mysql> change master to master_host='192.168.13.166',master_user='repluser',master_password='ALbx93RAYDZQd5pa',master_log_file='master-bin.000006',MASTER_LOG_POS=194 for CHANNEL 'g2-mysql02-sync-to-mysql01';
+
+mysql> show slave status\G
+*************************** 1. row ***************************
+               Slave_IO_State: 
+                  Master_Host: 192.168.13.166
+                  Master_User: repluser
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: master-bin.000006
+          Read_Master_Log_Pos: 194
+               Relay_Log_File: relay-master-g2@002dmysql02@002dsync@002dto@002dmysql01.000001
+                Relay_Log_Pos: 4
+        Relay_Master_Log_File: master-bin.000006
+             Slave_IO_Running: No
+            Slave_SQL_Running: No
+              Replicate_Do_DB: 
+          Replicate_Ignore_DB: 
+           Replicate_Do_Table: 
+       Replicate_Ignore_Table: 
+      Replicate_Wild_Do_Table: 
+  Replicate_Wild_Ignore_Table: 
+                   Last_Errno: 0
+                   Last_Error: 
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 194
+              Relay_Log_Space: 154
+              Until_Condition: None
+               Until_Log_File: 
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File: 
+           Master_SSL_CA_Path: 
+              Master_SSL_Cert: 
+            Master_SSL_Cipher: 
+               Master_SSL_Key: 
+        Seconds_Behind_Master: NULL
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error: 
+               Last_SQL_Errno: 0
+               Last_SQL_Error: 
+  Replicate_Ignore_Server_Ids: 
+             Master_Server_Id: 0
+                  Master_UUID: 
+             Master_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: 
+           Master_Retry_Count: 86400
+                  Master_Bind: 
+      Last_IO_Error_Timestamp: 
+     Last_SQL_Error_Timestamp: 
+               Master_SSL_Crl: 
+           Master_SSL_Crlpath: 
+           Retrieved_Gtid_Set: 
+            Executed_Gtid_Set: 608bbf72-a0d4-11ef-9140-0050569c6862:1-2
+                Auto_Position: 0
+         Replicate_Rewrite_DB: 
+                 Channel_Name: g2-mysql02-sync-to-mysql01
+           Master_TLS_Version: 
+
+
+mysql> start slave;
+
+mysql> show slave status\G
+*************************** 1. row ***************************
+               Slave_IO_State: Waiting for master to send event
+                  Master_Host: 192.168.13.166
+                  Master_User: repluser
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: master-bin.000006
+          Read_Master_Log_Pos: 194
+               Relay_Log_File: relay-master-g2@002dmysql02@002dsync@002dto@002dmysql01.000002
+                Relay_Log_Pos: 321
+        Relay_Master_Log_File: master-bin.000006
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+              Replicate_Do_DB: 
+          Replicate_Ignore_DB: 
+           Replicate_Do_Table: 
+       Replicate_Ignore_Table: 
+      Replicate_Wild_Do_Table: 
+  Replicate_Wild_Ignore_Table: 
+                   Last_Errno: 0
+                   Last_Error: 
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 194
+              Relay_Log_Space: 568
+              Until_Condition: None
+               Until_Log_File: 
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File: 
+           Master_SSL_CA_Path: 
+              Master_SSL_Cert: 
+            Master_SSL_Cipher: 
+               Master_SSL_Key: 
+        Seconds_Behind_Master: 0
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error: 
+               Last_SQL_Errno: 0
+               Last_SQL_Error: 
+  Replicate_Ignore_Server_Ids: 
+             Master_Server_Id: 2
+                  Master_UUID: 60a3d850-a0d4-11ef-b3d1-0050569c92f9
+             Master_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+           Master_Retry_Count: 86400
+                  Master_Bind: 
+      Last_IO_Error_Timestamp: 
+     Last_SQL_Error_Timestamp: 
+               Master_SSL_Crl: 
+           Master_SSL_Crlpath: 
+           Retrieved_Gtid_Set: 
+            Executed_Gtid_Set: 608bbf72-a0d4-11ef-9140-0050569c6862:1-2
+                Auto_Position: 0
+         Replicate_Rewrite_DB: 
+                 Channel_Name: g2-mysql02-sync-to-mysql01
+           Master_TLS_Version: 
+
+
+
+
+# master02 config
+mysql> change master to master_host='192.168.13.165',master_user='repluser',master_password='ALbx93RAYDZQd5pa',master_log_file='master-bin.000006',MASTER_LOG_POS=194 for CHANNEL 'g2-mysql01-sync-to-mysql02';
+
+mysql> show slave status\G
+*************************** 1. row ***************************
+               Slave_IO_State: 
+                  Master_Host: 192.168.13.165
+                  Master_User: repluser
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: master-bin.000006
+          Read_Master_Log_Pos: 194
+               Relay_Log_File: relay-master-g2@002dmysql01@002dsync@002dto@002dmysql02.000001
+                Relay_Log_Pos: 4
+        Relay_Master_Log_File: master-bin.000006
+             Slave_IO_Running: No
+            Slave_SQL_Running: No
+              Replicate_Do_DB: 
+          Replicate_Ignore_DB: 
+           Replicate_Do_Table: 
+       Replicate_Ignore_Table: 
+      Replicate_Wild_Do_Table: 
+  Replicate_Wild_Ignore_Table: 
+                   Last_Errno: 0
+                   Last_Error: 
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 194
+              Relay_Log_Space: 154
+              Until_Condition: None
+               Until_Log_File: 
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File: 
+           Master_SSL_CA_Path: 
+              Master_SSL_Cert: 
+            Master_SSL_Cipher: 
+               Master_SSL_Key: 
+        Seconds_Behind_Master: NULL
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error: 
+               Last_SQL_Errno: 0
+               Last_SQL_Error: 
+  Replicate_Ignore_Server_Ids: 
+             Master_Server_Id: 0
+                  Master_UUID: 
+             Master_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: 
+           Master_Retry_Count: 86400
+                  Master_Bind: 
+      Last_IO_Error_Timestamp: 
+     Last_SQL_Error_Timestamp: 
+               Master_SSL_Crl: 
+           Master_SSL_Crlpath: 
+           Retrieved_Gtid_Set: 
+            Executed_Gtid_Set: 60a3d850-a0d4-11ef-b3d1-0050569c92f9:1-2
+                Auto_Position: 0
+         Replicate_Rewrite_DB: 
+                 Channel_Name: g2-mysql01-sync-to-mysql02
+           Master_TLS_Version: 
+
+
+mysql> start slave;
+
+mysql> show slave status\G
+*************************** 1. row ***************************
+               Slave_IO_State: Waiting for master to send event
+                  Master_Host: 192.168.13.165
+                  Master_User: repluser
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: master-bin.000006
+          Read_Master_Log_Pos: 194
+               Relay_Log_File: relay-master-g2@002dmysql01@002dsync@002dto@002dmysql02.000002
+                Relay_Log_Pos: 321
+        Relay_Master_Log_File: master-bin.000006
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+              Replicate_Do_DB: 
+          Replicate_Ignore_DB: 
+           Replicate_Do_Table: 
+       Replicate_Ignore_Table: 
+      Replicate_Wild_Do_Table: 
+  Replicate_Wild_Ignore_Table: 
+                   Last_Errno: 0
+                   Last_Error: 
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 194
+              Relay_Log_Space: 568
+              Until_Condition: None
+               Until_Log_File: 
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File: 
+           Master_SSL_CA_Path: 
+              Master_SSL_Cert: 
+            Master_SSL_Cipher: 
+               Master_SSL_Key: 
+        Seconds_Behind_Master: 0
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error: 
+               Last_SQL_Errno: 0
+               Last_SQL_Error: 
+  Replicate_Ignore_Server_Ids: 
+             Master_Server_Id: 1
+                  Master_UUID: 608bbf72-a0d4-11ef-9140-0050569c6862
+             Master_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+           Master_Retry_Count: 86400
+                  Master_Bind: 
+      Last_IO_Error_Timestamp: 
+     Last_SQL_Error_Timestamp: 
+               Master_SSL_Crl: 
+           Master_SSL_Crlpath: 
+           Retrieved_Gtid_Set: 
+            Executed_Gtid_Set: 60a3d850-a0d4-11ef-b3d1-0050569c92f9:1-2
+                Auto_Position: 0
+         Replicate_Rewrite_DB: 
+                 Channel_Name: g2-mysql01-sync-to-mysql02
+           Master_TLS_Version: 
+
+
+# 测试主主
+# master01 
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+
+mysql> create database test;
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+
+# master02
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
+| test               |
++--------------------+
+
+mysql> drop database test;
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+
+# master01
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+
+```
 

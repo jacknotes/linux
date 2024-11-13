@@ -2987,6 +2987,9 @@ cluster-daily-20241105170037-20241106155019   cluster-daily-20241105170037   Par
 ```
 
 > 1. 等待过程中，状态依然是InProgress，原因是在等待所有PodVolumeRestores恢复完成，需要时间，最终等待4个小时超时后返回了错误。
+>    * 可通过配置deploy/velero的参数来调整--restic-timeout 86400s时间
+>    * restic服务启动命令：velero restic server --features=
+>    * velero服务启动命令：velero server --restic-timeout 86400s --features=
 > 2. 有6个ERRORS: 是在等待所有PodVolumeRestores恢复完成，结果等待超时，所以报了Errors
 > 3. 有58个WARNINGS：查看日志得出`集群`和`名称空间`已经存在此对象，所以报了Warnning
 

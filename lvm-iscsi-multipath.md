@@ -1,10 +1,17 @@
-﻿#lvm
-<pre>
-centos7添加一块新硬盘，可使用命令让电脑无需重启即可读取硬盘：
+﻿# 1. lvm
+
+## 1.1 centos7在线添加硬盘
+centos7添加一块新硬盘，可使用命令让电脑无需重启即可读取硬盘
+```bash
 [root@salt-server /sys/class/scsi_host]# echo "- - -" > /sys/class/scsi_host/host0/scan
 [root@salt-server /sys/class/scsi_host]# echo "- - -" > /sys/class/scsi_host/host1/scan
 [root@salt-server /sys/class/scsi_host]# echo "- - -" > /sys/class/scsi_host/host2/scan
-扫描SCSI总线添加设备，有多少条SCSI总线就扫描多少次，脚本如下：
+
+echo "- - -" > /sys/class/scsi_host/host0/scan
+echo "- - -" > /sys/class/scsi_host/host1/scan
+echo "- - -" > /sys/class/scsi_host/host2/scan
+
+# 扫描SCSI总线添加设备，有多少条SCSI总线就扫描多少次，脚本如下：
 ---------------
 #!/usr/bin/bash
 
@@ -16,7 +23,12 @@ do
 
 done
 -------------------
+```
 
+
+
+## 1.2 配置lvm磁盘
+```bash
 1.新建分区并更改分区类型为lvm
 2.新建物理卷（physical volume）
 [root@salt-server /sys/class/scsi_host]# pvcreate /dev/sdb{1,2}
@@ -95,8 +107,8 @@ done
   Read ahead sectors     auto
   - currently set to     8192
     Block device           253:0
-    8.查看新添加的逻辑卷
-    [root@salt-server /sys/class/scsi_host]# fdisk -l
+8.查看新添加的逻辑卷
+[root@salt-server /sys/class/scsi_host]# fdisk -l
 
 Disk /dev/sda: 107.4 GB, 107374182400 bytes, 209715200 sectors
 Units = sectors of 1 * 512 = 512 bytes
@@ -187,22 +199,22 @@ tmpfs                  1.9G     0  1.9G   0% /sys/fs/cgroup
 /dev/sda1             1014M  140M  875M  14% /boot
 /dev/mapper/myvg-mylv   59G   52M   56G   1% /lvm
 tmpfs                  380M     0  380M   0% /run/user/0
+```
 
-新增硬盘扩容：
-14.对新增硬盘进行分一个区，并指定类型为8e
-15.新建物理卷：
+
+
+## 1.3 新增硬盘扩容
+
+对新增硬盘进行分一个区，并指定类型为8e，并配置lvm
+```bash
 [root@salt-server /sys/class/scsi_host]# pvcreate /dev/sdc1
   Physical volume "/dev/sdc1" successfully created.
-16.扩展卷组容量：
 [root@salt-server /sys/class/scsi_host]# vgextend myvg /dev/sdc1
   Volume group "myvg" successfully extended
-17.扩展逻辑卷容量：
 [root@salt-server /sys/class/scsi_host]# lvextend -l +100%FREE /dev/myvg/mylv
   Size of logical volume myvg/mylv changed from <59.97 GiB (3838 extents) to 109.95 GiB (7037 extents).
   Logical volume myvg/mylv successfully resized.
-18.写入文件系统：
 [root@salt-server /sys/class/scsi_host]# resize2fs  /dev/myvg/mylv
-19.对比查看：
 [root@salt-server /sys/class/scsi_host]# df -h
 Filesystem             Size  Used Avail Use% Mounted on
 /dev/sda2               99G  2.0G   97G   3% /
@@ -213,7 +225,6 @@ tmpfs                  1.9G     0  1.9G   0% /sys/fs/cgroup
 /dev/sda1             1014M  140M  875M  14% /boot
 /dev/mapper/myvg-mylv  148G   60M  141G   1% /lvm
 tmpfs                  380M     0  380M   0% /run/user/0
-
 [root@salt-server /sys/class/scsi_host]# fdisk -l
 
 Disk /dev/sda: 107.4 GB, 107374182400 bytes, 209715200 sectors
@@ -256,8 +267,12 @@ Disk identifier: 0xb3b4092e
 /dev/sdc1            2048   104857599    52427776   8e  Linux LVM
 
 注意：sdb和sdc两个实际容量为100G和50G，我这里是虚拟机所以读取有误差，LVM只持在线扩展，不支持在线压缩
+```
 
-#压缩容量：
+
+
+## 1.4 压缩容量
+```bash
 1.[root@salt-server /]# umount /lvm/
 2.[root@salt-server /]# resize2fs /dev/myvg/mylv 30000M
 resize2fs 1.42.9 (28-Dec-2013)
@@ -321,13 +336,16 @@ lvresize -size 120G /dev/vg0/foo
 如果不经意地减小卷的大小而没有先减小其中包含的文件系统的大小，则该文件系统很可能会受到不可挽回的损害。
 对于与此处描述的情况类似的情况，lvextend建议使用此方法，因为这样就不可能出现这种类型的错误。
 lvresize -l	--指定逻辑卷的大小（lv的LE数=vg的PE数）
+```
 
-</pre>
 
 
-#iscsi
-<pre>
-#服务端（target）：
+
+
+# 2. iscsi
+
+## 2.1 服务端配置（target）
+```bash
 1. [root@salt-server ~]# yum install targetd targetcli -y
 2. [root@salt-server ~]# systemctl start target
 3. [root@salt-server ~]# systemctl enable target
@@ -417,8 +435,12 @@ Created network portal 192.168.1.235:3206.
 23. 可以查看/etc/target/saveconfig.json配置文件，该配置文件保存着ISCSI的配置。/> exit
 Global pref auto_save_on_exit=true
 Configuration saved to /etc/target/saveconfig.json
+```
 
-#客户端(initiator端)
+
+
+## 2.2 客户端配置(initiator端)
+```bash
 1. [root@salt-server ~]# yum install -y iscsi-initiator-utils
 2. [root@salt-server ~]# cat /etc/iscsi/initiatorname.iscsi
 InitiatorName=iqn.2019-01.com.jack:client2
@@ -457,8 +479,12 @@ tmpfs                  380M     0  380M   0% /run/user/0
 [root@salt-server /]# iscsiadm -m node -p 192.168.1.235 -u
 --断开连接iscsi
 注：-l表示连接ISCSI目标；-u表示断开和ISCSI目标的连接，isaci不支持多连接
+```
 
-#####parted工具
+
+
+# 3. parted工具
+```bash
 [root@lamp-zabbix ~]# parted  #进入parted模式
 GNU Parted 3.1
 Using /dev/sda
@@ -624,9 +650,13 @@ Number  Start   End     Size    File system  Name   Flags
 [root@lamp-zabbix ~]# mount /dev/sdb2 /mnt
 [root@lamp-zabbix ~]# ls /mnt/  #数据还在
 111  lost+found
+```
 
 
-###Linux下multipath多路径配置
+
+
+# 4. Linux下multipath多路径配置
+```bash
 多路径的主要功能就是和存储设备一起配合实现如下功能：
 1.故障的切换和恢复
 2.IO流量的负载均衡
@@ -647,7 +677,7 @@ device-mapper-libs-1.02.149-8.el7.x86_64
 3. dm-multipath.ko和dm.ko：dm.ko是device mapper驱动。它是实现multipath的基础。dm-multipath其实是dm的一个target驱动.
 4. scsi_id：包含在udev程序包中，可以在multipath.conf中配置该程序来获取scsi设备的序号。通过序号，便可以判断多个路径 对应了同一设备。这个是多路径实现的关键。scsi_id是通过sg驱动，向设备发送EVPD page80或page83 的inquery命令来查询scsi设备的标识。但一些设备并不支持EVPD 的inquery命令，所以他们无法被用来生成multipath设备。但可以改写scsi_id，为不能提供scsi设备标识的设备虚拟一个标识符，并 输出到标准输出。multipath程序在创建multipath设备时，会调用scsi_id，从其标准输出中获得该设备的scsi id。在改写时，需要修改scsi_id程序的返回值为0。因为在multipath程序中，会检查该直来确定scsi id是否已经成功得到。
 
-##multipath在Redhat中的基本配置过程：
+## multipath在Redhat中的基本配置过程：
 1. 安装和加载多路径软件包
 # rpm -ivh device-mapper-1.02.39-1.el5.rpm #安装映射包
 # rpm -ivh device-mapper-multipath-0.4.7-34.el5.rpm #安装多路径包
@@ -751,9 +781,13 @@ sdd             243.28     11580.15      1522.88 38909963105 5116947563
 sde              18.97       418.36      7890.97 1405719960 26514122646
 dm-2            487.03     22994.62      3023.55 77263239080 10159292535
 dm-3             37.80       834.30     15756.05 2803280833 52941234639
+```
 
-------------------------------------------------------------------------------------------
-####用iscsi来模块IPSAN实战：
+
+
+
+# 5. 用iscsi来实现IPSAN实战
+```bash
 环境介绍：
 node1:两个网卡：ip1:192.168.1.31,ip2:192.168.1.232,两块盘
 node2:一个网卡：ip：192.168.1.37，一块盘
@@ -1473,21 +1507,8 @@ Configuration saved to /etc/target/saveconfig.json
 
 #windows挂载iscsi
 iscsicpl.exe打开iscsi客户端
-在‘配置’中输入服务端设置的initialName，然后在‘目标’中输入服务端IP，然后进行连接即可使用块设备。
+在'配置'中输入服务端设置的initialName，然后在'目标'中输入服务端IP，然后进行连接即可使用块设备。
 
-#WSUS服务
---安装wsus服务
-在服务器管理器中勾选wsus更新服务，并默认安装iis，并安装指定.netframwork版本，安装完后设置是做为主wsus，
-还是自治wsus或者副本wsus，要看更新报告，需要安装两个插件：1.ReportViewer.msi(可在wsus更新服务中点击
-查看更新报告时会弹出链接下载)，2.SQLSysClrTypes.msi(这个软件在安装ReportViewer.msi时提示依赖此软件，必须先安装，
-地址可google或百度出来下载)
-
---更换存储位置
-PS C:\Program Files\Update Services\Tools> .\WsusUtil.exe movecontent D:\WSUSData d:\wsusMove.log
-正在移动内容位置。请不要终止该程序。
-已成功完成内容移动。
-
-----2021-01-12
 Disk /dev/xvdj: 107.4 GB, 107374182400 bytes, 209715200 sectors  ok
 Disk /dev/xvdf: 107.4 GB, 107374182400 bytes, 209715200 sectors ok  Usage
 Disk /dev/xvdi: 107.4 GB, 107374182400 bytes, 209715200 sectors ok
@@ -1506,12 +1527,8 @@ pvcreate /dev/xvdj1
 vgextend iis_13_72 /dev/xvdj1
 lvextend -l +100%FREE /dev/iis_13_72/iis_13_72_lv
 lvresize -L -100G /dev/iis_13_72/iis_13_72_lv
-注：当在iscsi的100G基础上扩展逻辑卷到200G，iscsi自己会增加，此时windows客户端需要打开磁盘管理工具----重新扫描磁盘，
-当磁盘扫描完会，磁盘大小加增加100G，为未分区，此时可以在同磁盘上选择扩展分区进行增加磁盘可使用是。
-注：当iscsi服务器lvm进行lvresize进行容量缩小100G时，iscsi容量会变成100G，windows客户端重新扫描，此时硬盘缩小成100G，
-windows客户端提示格式化硬盘方可使用，此时千万不能格式化，否则里面数据全部丢失，所以说lvm千万不能缩小，只能增大。
-经过后面的测试，将100G的iscsi通过lvm再次增大100G变成200G（之前可用容量），此会windows再次重新扫描磁盘后，硬盘
-变成可用了，不用格式化。在生产环境中千万不能缩小硬盘容量，切记。
+> 1. 当在iscsi的100G基础上扩展逻辑卷到200G，iscsi自己会增加，此时windows客户端需要打开磁盘管理工具----重新扫描磁盘，当磁盘扫描完会，磁盘大小加增加100G，为未分区，此时可以在同磁盘上选择扩展分区进行增加磁盘可使用是。
+2. 当iscsi服务器lvm进行lvresize进行容量缩小100G时，iscsi容量会变成100G，windows客户端重新扫描，此时硬盘缩小成100G，windows客户端提示格式化硬盘方可使用，此时千万不能格式化，否则里面数据全部丢失，所以说lvm千万不能缩小，只能增大。经过后面的测试，将100G的iscsi通过lvm再次增大100G变成200G（之前可用容量），此会windows再次重新扫描磁盘后，硬盘变成可用了，不用格式化。在生产环境中千万不能缩小硬盘容量，切记。
 
 --移除PV
 注：vg使用空间一定要为0，如果不为0，需要移动数据到同一个vg中的其它PV
@@ -1545,5 +1562,4 @@ windows客户端提示格式化硬盘方可使用，此时千万不能格式化�
   /dev/xvdc1 wsus02_disk lvm2 a--  <1000.00g     0  <1000.00g
   /dev/xvde1 wsus01_disk lvm2 a--  <1000.00g     0  <1000.00g
   /dev/xvdf1 iis_13_72   lvm2 a--   <100.00g  4.00m    99.99g
-
-</pre>
+```

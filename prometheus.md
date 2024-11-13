@@ -1219,6 +1219,26 @@ snmp-agent trap enable
 snmp-agent target-host trap address udp-domain 192.168.13.236 params securityname G4axLE69 v2c
 ```
 
+> 华三交换机(H3C S5120-52P-LI)
+>
+> ```bash
+> snmp-agent
+> snmp-agent sys-info version v2c
+> snmp-agent community read G4axLE69
+> snmp-agent trap enable
+> snmp-agent target-host trap address udp-domain 192.168.13.236 params securityname G4axLE69 v2c
+> 
+> 
+> [UA-ASW01]display current-configuration | inclu snmp
+>  snmp-agent
+>  snmp-agent local-engineid 800063A203586AB17554DD
+>  snmp-agent community read G4axLE69
+>  snmp-agent sys-info version v2c v3
+>  snmp-agent target-host trap address udp-domain 192.168.13.236 params securityname G4axLE69 v2c
+> ```
+
+
+
 
 
 ##### 2. pometheus生成snmp.yaml
@@ -1344,7 +1364,7 @@ FutureMatrix Versatile Routing Platform Software
  Copyright (C) 2015 by FutureMatrix Co., Ltd.
 ```
 
-
+> 华三交换机(H3C S5120-52P-LI)跟华为交换机通用mib，可直接使用华为的module
 
 
 
