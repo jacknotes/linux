@@ -18,6 +18,7 @@ Rocky Linux release 9.2 (Blue Onyx)
 ## 网卡名称更改
 
 ```bash
+# RockyLinux9
 [root@prometheus02 ~]# cat /etc/default/grub 
 GRUB_TIMEOUT=5
 GRUB_DISTRIBUTOR="$(sed 's, release .*$,,g' /etc/system-release)"
@@ -61,6 +62,7 @@ id=eth0						# connection id
 uuid=31bbdaf8-a3d4-456c-b93e-3b608abaa28b
 type=ethernet				# device type为ethernet
 autoconnect-priority=-999
+autoconnect=yes
 interface-name=eth0			# device名称
 
 [ethernet]
@@ -81,6 +83,8 @@ method=auto
 [root@prometheus02 system-connections]# nmcli c load /etc/NetworkManager/system-connections/eth0.nmconnection 
 # 激活连接
 [root@prometheus02 system-connections]# nmcli c up /etc/NetworkManager/system-connections/eth0.nmconnection
+# 重载网络
+[root@prometheus02 system-connections]# nmcli c down eth0; nmcli c up eth0;
 
 # 查看状态信息
 [root@prometheus02 system-connections]# nmcli d status
@@ -101,6 +105,51 @@ lo    30af657b-b6f3-4460-a9e3-497eb0900fe9  loopback  lo
     inet6 fe80::250:56ff:fe84:a784/64 scope link noprefixroute 
        valid_lft forever preferred_lft forever
 ```
+
+
+
+**IPv6地址**
+
+```bash
+# 全球单播地址（类似IPv4公网IP地址）
+2000::/3 
+
+# 唯一本地地址（类似IPv4私网IP地址）
+FC00::/7，也可以细分为以下两个范围： 
+* 随机分配的 ULA: FD00::/8，通用情况下会使用这个范围，通过随机生成的方式保证在局部网络内的唯一性。 
+* 原始分配的 ULA: FC00::/8，目前未正式广泛使用。
+
+# 链路本地地址
+这些地址只能用于单个网络链路的节点之间，不能路由到其他链路。所有 IPv6 接口在启动时都会自动生成一个链路本地地址以支持邻居发现协议。其地址范围是 FE80::/10 
+
+# 特殊用途地址
+多播地址: FF00::/8，用于多播通信。 
+组播地址: FF00::/8，用于组播通信。 
+```
+
+
+
+**刷新DNS方法**
+
+```bash
+# Windows 
+ifconfig /flushdns 
+# macOS Sierra 及以后版本（不同的 macOS 版本不同） 
+sudo dscacheutil -flushcache; sudo killall -HUP mDNSResponder 
+# Linux（不同 DNS 管理工具操作命令有所不同） 
+# Rocky Linux 
+systemctl restart NetworkManager 
+# ubuntu 18.04 及以后版本 
+systemd-resolve --flush-caches 
+# 使用 dnsmasq 
+systemctl restart dnsmasq 
+# 使用 nscd 
+systemctl restart nscd 
+```
+
+
+
+
 
 
 
