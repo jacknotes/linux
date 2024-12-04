@@ -2,9 +2,13 @@
 
 
 
-## 系统安装
+## 1. 系统安装
 
 跟安装CentOS7一样，步骤略
+
+> /boot分区最小为300M，否则会安装失败
+>
+> ![](./image/rockylinux01.png)
 
 ```bash
 [root@prometheus02 yum.repos.d]# cat /etc/rocky-release
@@ -15,7 +19,9 @@ Rocky Linux release 9.2 (Blue Onyx)
 
 
 
-## 网卡名称更改
+
+
+## 2. 网卡名称更改
 
 ```bash
 # RockyLinux9
@@ -50,7 +56,9 @@ GRUB_DISABLE_RECOVERY="true"
 
 
 
-## 网络配置
+
+
+## 3. 网络配置
 
 ```bash
 [root@prometheus02 system-connections]# systemctl enable NetworkManager
@@ -151,9 +159,7 @@ systemctl restart nscd
 
 
 
-
-
-## yum源配置
+## 4. yum源配置
 
 ```bash
 # 配置rocky源使用阿里云
@@ -185,7 +191,9 @@ total 44
 
 
 
-## 安装docker
+
+
+## 5. 安装docker
 
 rocky linux 安装docker建议最新版，老版本会有问题
 ```bash
@@ -270,7 +278,9 @@ Server:
 
 
 
-## 安装配置openvpn 
+
+
+## 6. 安装配置openvpn 
 
 ```bash
 [root@prometheus02 ~]# dnf install -y openvpn 
@@ -290,7 +300,9 @@ EOF
 
 
 
-## 迁移prometheus
+
+
+## 7. 迁移prometheus
 
 ```bash
 groupadd -r prometheus && useradd -r -s /sbin/nologin -g prometheus prometheus
@@ -335,9 +347,7 @@ systemctl enable prometheus
 
 
 
-## 迁移grafana-server
-
-
+## 8. 迁移grafana-server
 
 安装二进制版本grafana-enterprise-7.1.4
 
@@ -431,9 +441,7 @@ systemctl enable grafana-server
 
 
 
-## 配置alertmanager集群
-
-
+## 9. 配置alertmanager集群
 
 ```bash
 [root@prometheus02 kubeasz]# systemctl cat alertmanager.service 
@@ -471,8 +479,7 @@ alerting:
 ......
 ```
 
-
-## 配置时间显示24小时制
+**配置时间显示24小时制**
 
 ```bash
 192.168.13.237 | CHANGED | rc=0 >>
@@ -486,3 +493,477 @@ LC_TIME='en_DK.UTF-8'		#增加此行并重启服务器
 192.168.13.237 | CHANGED | rc=0 >>
 2023-08-28T16:41:33 CST
 ```
+
+
+
+
+
+## 10. journalctl清理日志
+
+**这将删除超过30天的日志文件**
+sudo journalctl --vacuum-time=30d
+
+
+**这将删除旧日志，直到总日志大小小于1GB**
+sudo journalctl --vacuum-size=1G
+
+**保留最多1000个日志文件**
+sudo journalctl --vacuum-files=1000
+
+
+**更改配置**
+
+```bash
+root@ansible:~# grep -Ev '#|^$' /etc/systemd/journald.conf
+[Journal]
+SystemMaxUse=500M
+SystemKeepFree=100M
+SystemMaxFileSize=100M
+SystemMaxFiles=5
+
+systemctl restart systemd-journald
+```
+
+
+
+
+
+
+
+## 11. cobbler部署
+
+### 11.1 配置aliyun镜像源
+
+```bash
+[root@localhost ~]# sed -e 's|^mirrorlist=|#mirrorlist=|g' \
+    -e 's|^#baseurl=http://dl.rockylinux.org/$contentdir|baseurl=https://mirrors.aliyun.com/rockylinux|g' \
+    -i.bak \
+    /etc/yum.repos.d/rocky-*.repo
+
+[root@localhost ~]# dnf makecache
+```
+
+
+
+### 11.2 安装
+
+```bash
+[root@localhost ~]# dnf install -y https://mirrors.aliyun.com/epel/epel-release-latest-9.noarch.rpm
+[root@localhost ~]# dnf -y install cobbler dhcp-server
+[root@localhost ~]# systemctl enable --now cobblerd tftp.service httpd dhcpd tftp
+[root@localhost ~]# cobbler --version
+Cobbler 3.3.4
+  source: ?, ?
+  build time: Mon Feb 26 00:00:00 2024
+  
+# 停止防火墙
+[root@localhost ~]# systemctl stop  firewalld
+[root@localhost ~]# systemctl disable firewalld
+```
+
+
+
+### 11.3 配置cobbler
+
+```bash
+# 检查cobbler
+[root@localhost ~]# cobbler check
+The following are potential configuration items that you may want to fix:
+
+1: The 'server' field in /etc/cobbler/settings.yaml must be set to something other than localhost, or automatic installation features will not work.  This should be a resolvable hostname or IP for the boot server as reachable by all machines that will use it.
+2: For PXE to be functional, the 'next_server_v4' field in /etc/cobbler/settings.yaml must be set to something other than 127.0.0.1, and should match the IP of the boot server on the PXE network.
+3: For PXE to be functional, the 'next_server_v6' field in /etc/cobbler/settings.yaml must be set to something other than ::1, and should match the IP of the boot server on the PXE network.
+4: some network boot-loaders are missing from /var/lib/cobbler/loaders. If you only want to handle x86/x86_64 netbooting, you may ensure that you have installed a *recent* version of the syslinux package installed and can ignore this message entirely. Files in this directory, should you want to support all architectures, should include pxelinux.0, andmenu.c32.
+5: reposync is not installed, install yum-utils or dnf-plugins-core
+6: yumdownloader is not installed, install yum-utils or dnf-plugins-core
+7: debmirror package is not installed, it will be required to manage debian deployments and repositories
+8: ksvalidator was not found, install pykickstart
+9: The default password used by the sample templates for newly installed machines (default_password_crypted in /etc/cobbler/settings.yaml) is still set to 'cobbler' and should be changed, try: "openssl passwd -1 -salt 'random-phrase-here' 'your-password-here'" to generate new one
+10: fencing tools were not found, and are required to use the (optional) power management features. install cman or fence-agents to use them
+
+Restart cobblerd and then run 'cobbler sync' to apply changes.
+
+
+# 配置cobbler
+[root@localhost ~]# openssl passwd -1 -salt 'cobbler' 'cobbler888'
+$1$cobbler$QtaubkTmRyxdkgvijM9JQ0
+
+[root@localhost ~]# vim /etc/cobbler/settings.yaml
+default_password_crypted: "$1$cobbler$QtaubkTmRyxdkgvijM9JQ0"
+next_server_v4: 172.168.2.51
+server: 172.168.2.51
+manage_dhcp: true
+manage_dhcp_v4: true
+manage_tftpd: true
+pxe_just_once: true
+yum_post_install_mirror: false
+
+# 配置dhcp
+[root@localhost ~]# vim /etc/cobbler/dhcp.template
+subnet 172.168.2.0 netmask 255.255.255.0 {
+     option routers             172.168.2.254;
+     option domain-name-servers 192.168.13.186,192.168.13.251,192.168.10.110;
+     option subnet-mask         255.255.255.0;
+     range dynamic-bootp        172.168.2.49 172.168.2.50;
+     default-lease-time         21600;
+     max-lease-time             43200;
+     next-server                $next_server_v4;
+
+
+# 同步配置，并重新启动相关服务
+[root@localhost ~]# cobbler sync
+task started: 2024-11-22_234715_sync
+task started (id=Sync, time=Fri Nov 22 23:47:15 2024)
+syncing all
+running pre-sync triggers
+cleaning trees
+removing: /var/lib/tftpboot/grub/system
+removing: /var/lib/tftpboot/grub/system_link
+removing: /var/lib/tftpboot/grub/images
+copying bootloaders
+running: ['rsync', '-rpt', '--copy-links', '--exclude=.cobbler_postun_cleanup', '/var/lib/cobbler/loaders/', '/var/lib/tftpboot']
+received on stdout:
+running: ['rsync', '-rpt', '--copy-links', '--exclude=README.grubconfig', '/var/lib/cobbler/grub_config/', '/var/lib/tftpboot']
+received on stdout:
+copying distros to tftpboot
+copying images
+generating PXE configuration files
+generating PXE menu structure
+rendering DHCP files
+generating /etc/dhcp/dhcpd.conf
+cleaning link caches
+running post-sync triggers
+running: ['dhcpd', '-t', '-q']
+received on stdout:
+running: ['systemctl', 'restart', 'dhcpd']
+received on stdout:
+*** TASK COMPLETE ***
+# 支持更多系统架构
+[root@localhost ~]# dnf -y install syslinux syslinux-extlinux syslinux-tftpboot pykickstart yum-utils
+[root@localhost ~]# systemctl restart cobblerd httpd tftp.service dhcpd
+[root@localhost ~]# cobbler sync
+
+# 再次检查，以下告警可以忽略
+[root@localhost ~]# cobbler check
+1: some network boot-loaders are missing from /var/lib/cobbler/loaders. If you only want to handle x86/x86_64 netbooting, you may ensure that you have installed a *recent* version of the syslinux package installed and can ignore this message entirely. Files in this directory, should you want to support all architectures, should include pxelinux.0, andmenu.c32.
+2: debmirror package is not installed, it will be required to manage debian deployments and repositories
+3: fencing tools were not found, and are required to use the (optional) power management features. install cman or fence-agents to use them
+
+
+# 修改启动菜单模板
+# MENU MASTER PASSWD: 添加安装系统时的密码
+[root@localhost ~]# grub2-mkpasswd-pbkdf2
+Enter password:
+Reenter password:
+PBKDF2 hash of your password is grub.pbkdf2.sha512.10000.52A65F5202F77C9CE50F43D71AC1980109405A2AAA4C29B3893F059A50F0E99EB53D9622E756080B3105C9BE94CFB677747D9EDDE565DEEC86AD3DD6060FE703.51B604E5311AE8125DF3FE68DA8D97DB7C54FE6E4031C9D80BE17420D2CDCCACA89E1B4B7AEC04E80460A4012974DE1635EBD7139EE27F3EE7F7C0BB7F42787C
+
+DEFAULT menu
+PROMPT 0
+MENU TITLE Cobbler | https://homsom.com
+MENU PASSWORD --md5 "grub.pbkdf2.sha512.10000.52A65F5202F77C9CE50F43D71AC1980109405A2AAA4C29B3893F059A50F0E99EB53D9622E756080B3105C9BE94CFB677747D9EDDE565DEEC86AD3DD6060FE703.51B604E5311AE8125DF3FE68DA8D97DB7C54FE6E4031C9D80BE17420D2CDCCACA89E1B4B7AEC04E80460A4012974DE1635EBD7139EE27F3EE7F7C0BB7F42787C"
+TIMEOUT 200
+TOTALTIMEOUT 6000
+ONTIMEOUT $pxe_timeout_profile
+
+LABEL local
+        MENU LABEL (local)
+        MENU DEFAULT
+        LOCALBOOT -1
+$menu_items
+MENU end
+
+
+
+[root@localhost ~]# openssl passwd -1 -salt 'homsom' 'jackli'
+$1$homsom$oWsW1QF8cEyRzolABzsLC/
+[root@localhost ~]# cat /etc/cobbler/boot_loader_conf/pxe_menu.template
+DEFAULT menu
+PROMPT 0
+MENU TITLE Cobbler | https://homsom.com
+MENU MASTER PASSWD $1$homsom$oWsW1QF8cEyRzolABzsLC/
+TIMEOUT 200
+TOTALTIMEOUT 6000
+ONTIMEOUT $pxe_timeout_profile
+
+LABEL local
+        MENU LABEL (local)
+        MENU DEFAULT
+        LOCALBOOT -1
+$menu_items
+MENU end
+```
+
+
+
+### 11.4 导入镜像RockyLinux9.5
+
+```bash
+[root@localhost ~]# cobbler import --path=/mnt --name=Rocky-9.5-x86_64 --arch=x86_64
+task started: 2024-11-23_000320_import
+task started (id=Media import, time=Sat Nov 23 00:03:20 2024)
+import_tree; ['/mnt', 'Rocky-9.5-x86_64', None, None, None]
+importing from a network location, running rsync to fetch the files first
+running: rsync -a  '/mnt/' /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64 --progress
+received on stdout: sending incremental file list
+Adding distros from path /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64:
+creating new distro: Rocky-9.5-x86_64
+trying symlink: /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64 -> /var/www/cobbler/links/Rocky-9.5-x86_64
+add_item(distro); ['Rocky-9.5-x86_64']
+trying symlink /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64/images/pxeboot/vmlinuz -> /var/www/cobbler/images/Rocky-9.5-x86_64/vmlinuz
+trying symlink /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64/images/pxeboot/initrd.img -> /var/www/cobbler/images/Rocky-9.5-x86_64/initrd.img
+running: /usr/bin/sha1sum /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64/images/pxeboot/vmlinuz
+received on stdout: e121cf5529af928fe7c1dc5b42bef5be9e542109  /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64/images/pxeboot/vmlinuz
+trying to create cache file /var/lib/tftpboot/images/.link_cache/e121cf5529af928fe7c1dc5b42bef5be9e542109
+copying: /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64/images/pxeboot/vmlinuz -> /var/lib/tftpboot/images/.link_cache/e121cf5529af928fe7c1dc5b42bef5be9e542109
+running: /usr/bin/sha1sum /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64/images/pxeboot/initrd.img
+received on stdout: 0d2a08150b1f1e34497bcc2885dc976e785c6021  /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64/images/pxeboot/initrd.img
+trying to create cache file /var/lib/tftpboot/images/.link_cache/0d2a08150b1f1e34497bcc2885dc976e785c6021
+copying: /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64/images/pxeboot/initrd.img -> /var/lib/tftpboot/images/.link_cache/0d2a08150b1f1e34497bcc2885dc976e785c6021
+processing boot_files for distro: Rocky-9.5-x86_64
+skipping symlink, destination (/var/www/cobbler/links/Rocky-9.5-x86_64) exists
+Writing template files for Rocky-9.5-x86_64
+creating new profile: Rocky-9.5-x86_64
+add_item(profile); ['Rocky-9.5-x86_64']
+Writing template files for Rocky-9.5-x86_64
+sync_systems
+associating repos
+checking for rsync repo(s)
+add_item(distro); ['Rocky-9.5-x86_64']
+copying: /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64/images/pxeboot/vmlinuz -> /var/lib/tftpboot/images/Rocky-9.5-x86_64/vmlinuz
+copying: /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64/images/pxeboot/initrd.img -> /var/lib/tftpboot/images/Rocky-9.5-x86_64/initrd.img
+processing boot_files for distro: Rocky-9.5-x86_64
+skipping symlink, destination (/var/www/cobbler/links/Rocky-9.5-x86_64) exists
+Writing template files for Rocky-9.5-x86_64
+Writing template files for Rocky-9.5-x86_64
+checking for rhn repo(s)
+add_item(distro); ['Rocky-9.5-x86_64']
+copying: /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64/images/pxeboot/vmlinuz -> /var/lib/tftpboot/images/Rocky-9.5-x86_64/vmlinuz
+copying: /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64/images/pxeboot/initrd.img -> /var/lib/tftpboot/images/Rocky-9.5-x86_64/initrd.img
+processing boot_files for distro: Rocky-9.5-x86_64
+skipping symlink, destination (/var/www/cobbler/links/Rocky-9.5-x86_64) exists
+Writing template files for Rocky-9.5-x86_64
+Writing template files for Rocky-9.5-x86_64
+checking for yum repo(s)
+starting descent into /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64 for Rocky-9.5-x86_64
+processing repo at : /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64/AppStream
+directory /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64/AppStream is missing xml comps file, skipping
+processing repo at : /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64/BaseOS
+directory /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64/BaseOS is missing xml comps file, skipping
+add_item(distro); ['Rocky-9.5-x86_64']
+copying: /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64/images/pxeboot/vmlinuz -> /var/lib/tftpboot/images/Rocky-9.5-x86_64/vmlinuz
+copying: /var/www/cobbler/distro_mirror/Rocky-9.5-x86_64/images/pxeboot/initrd.img -> /var/lib/tftpboot/images/Rocky-9.5-x86_64/initrd.img
+processing boot_files for distro: Rocky-9.5-x86_64
+skipping symlink, destination (/var/www/cobbler/links/Rocky-9.5-x86_64) exists
+Writing template files for Rocky-9.5-x86_64
+Writing template files for Rocky-9.5-x86_64
+*** TASK COMPLETE ***
+
+[root@localhost ~]# ls /var/www/cobbler/distro_mirror
+config  Rocky-9.5-x86_64
+[root@localhost ~]# cobbler distro list
+   Rocky-9.5-x86_64
+[root@localhost ~]# cobbler profile list
+   Rocky-9.5-x86_64
+[root@localhost ~]# systemctl restart cobblerd
+[root@localhost ~]# cobbler sync
+
+# 查看生成的启动菜单
+[root@localhost ~]# cat /var/lib/tftpboot/pxelinux.cfg/default
+DEFAULT menu
+PROMPT 0
+MENU TITLE Cobbler | https://homsom.com
+TIMEOUT 200
+TOTALTIMEOUT 6000
+ONTIMEOUT local
+
+LABEL local
+        MENU LABEL (local)
+        MENU DEFAULT
+        LOCALBOOT -1
+
+LABEL Rocky-9.5-x86_64
+        MENU LABEL Rocky-9.5-x86_64
+        kernel /images/Rocky-9.5-x86_64/vmlinuz
+        append initrd=/images/Rocky-9.5-x86_64/initrd.img  inst.ks.sendmac inst.ks=http://172.168.2.51/cblr/svc/op/autoinstall/profile/Rocky-9.5-x86_64 inst.repo=http://172.168.2.51/cblr/links/Rocky-9.5-x86_64
+        ipappend 2
+MENU end
+
+
+# 生成引导加载程序,cobbler mkloaders 此命令适用cobblerV3.3.1及之后的版本。
+# 此命令不执行的话新建虚拟机(无cd/dvd)开机会提示pxe-T01:file not found
+[root@localhost ~]# cobbler mkloaders
+task started: 2024-11-23_001423_mkloaders
+task started (id=Create bootable bootloader images, time=Sat Nov 23 00:14:23 2024)
+Unable to find "shim.efi" file. Please adjust "bootloaders_shim_file" regex. Bailing out of linking the shim!
+ipxe directory did not exist. Please adjust the "bootloaders_ipxe_folder". Bailing out of iPXE setup!
+GRUB2 modules directory for arch "aarch64" did no exist. Skipping GRUB2 creation
+GRUB2 modules directory for arch "arm" did no exist. Skipping GRUB2 creation
+GRUB2 modules directory for arch "arm64-efi" did no exist. Skipping GRUB2 creation
+GRUB2 modules directory for arch "i386-efi" did no exist. Skipping GRUB2 creation
+Successfully built bootloader for arch "i386-pc-pxe"!
+GRUB2 modules directory for arch "i686" did no exist. Skipping GRUB2 creation
+GRUB2 modules directory for arch "IA64" did no exist. Skipping GRUB2 creation
+GRUB2 modules directory for arch "powerpc-ieee1275" did no exist. Skipping GRUB2 creation
+GRUB2 modules directory for arch "x86_64-efi" did no exist. Skipping GRUB2 creation
+*** TASK COMPLETE ***
+[root@localhost ~]# ls /var/lib/cobbler/loaders/
+grub  ldlinux.c32  libcom32.c32  libutil.c32  linux.c32  memdisk  menu.c32  pxelinux.0
+```
+
+
+
+### 11.5 自定义kickstart文件
+
+```bash
+[root@localhost ~]# cat /var/lib/cobbler/templates/Rocky-9.5-x86_64.ks
+lang en_US
+keyboard us
+timezone Asia/Shanghai
+rootpw --iscrypted $default_password_crypted
+text
+install
+url --url=$tree
+bootloader --location=mbr
+zerombr
+clearpart --all --initlabel
+part /boot --fstype xfs --size 3072 --ondisk sda
+part / --fstype xfs --size 1 --grow --ondisk sda
+auth --useshadow --enablemd5
+$SNIPPET('network_config')
+reboot
+firewall --disabled
+selinux --disabled
+skipx
+%pre
+$SNIPPET('log_ks_pre')
+$SNIPPET('kickstart_start')
+$SNIPPET('pre_install_network_config')
+$SNIPPET('pre_anamon')
+%end
+
+%packages
+@base
+@core
+tree
+sysstat
+iptraf
+ntp
+lrzsz
+ncurses-devel
+openssl-devel
+zlib-devel
+OpenIPMI-tools
+mysql
+nmap
+screen
+%end
+%post
+systemctl disable postfix.service
+
+rm -f /etc/yum.repos.d/*
+cat >>/etc/yum.repos.d/epel.repo<<eof
+[epel]
+name=Extra Packages for Enterprise Linux \$releasever - \$basearch
+#baseurl=https://download.example/pub/epel/\$releasever/Everything/\$basearch/
+metalink=https://mirrors.fedoraproject.org/metalink?repo=epel-\$releasever&arch=\$basearch&infra=\$infra&content=\$contentdir
+enabled=1
+gpgcheck=1
+countme=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-\$releasever
+
+eof
+
+$yum_config_stanza
+%end
+
+
+
+# 查看profile
+[root@localhost ~]# cobbler profile list
+   Rocky-9.5-x86_64
+[root@localhost ~]# cobbler profile report
+Name                           : Rocky-9.5-x86_64
+Automatic Installation Template : sample.ks
+Automatic Installation Metadata : <<inherit>>
+TFTP Boot Files                : <<inherit>>
+Boot loaders                   : <<inherit>>
+Comment                        :
+DHCP Tag                       :
+Distribution                   : Rocky-9.5-x86_64
+Enable iPXE?                   : False
+Enable PXE Menu?               : True
+Fetchable Files                : <<inherit>>
+DHCP Filename Override         :
+Kernel Options                 : <<inherit>>
+Kernel Options (Post Install)  : <<inherit>>
+Parent boot menu               :
+Management Classes             : <<inherit>>
+Management Parameters          : <<inherit>>
+Name Servers                   : []
+Name Servers Search Path       : []
+Next Server (IPv4) Override    : <<inherit>>
+Next Server (IPv6) Override    : <<inherit>>
+Owners                         : <<inherit>>
+Parent Profile                 :
+Proxy                          : <<inherit>>
+Red Hat Management Key         : <<inherit>>
+Repos                          : []
+Server Override                : <<inherit>>
+Template Files                 : {}
+Virt Auto Boot                 : True
+Virt Bridge                    : <<inherit>>
+Virt CPUs                      : 1
+Virt Disk Driver Type          : raw
+Virt File Size(GB)             : <<inherit>>
+Virt Path                      :
+Virt RAM (MB)                  : <<inherit>>
+Virt Type                      : kvm
+# 配置profile
+[root@localhost ~]# cobbler profile edit --name=Rocky-9.5-x86_64 --distro=Rocky-9.5-x86_64 --autoinstall=Rocky-9.5-x86_64.ks
+[root@localhost ~]# cobbler profile report --name=Rocky-9.5-x86_64
+Name                           : Rocky-9.5-x86_64
+Automatic Installation Template : Rocky-9.5-x86_64.ks
+Automatic Installation Metadata : <<inherit>>
+TFTP Boot Files                : <<inherit>>
+Boot loaders                   : <<inherit>>
+Comment                        :
+DHCP Tag                       :
+Distribution                   : Rocky-9.5-x86_64
+Enable iPXE?                   : False
+Enable PXE Menu?               : True
+Fetchable Files                : <<inherit>>
+DHCP Filename Override         :
+Kernel Options                 : <<inherit>>
+Kernel Options (Post Install)  : <<inherit>>
+Parent boot menu               :
+Management Classes             : <<inherit>>
+Management Parameters          : <<inherit>>
+Name Servers                   : []
+Name Servers Search Path       : []
+Next Server (IPv4) Override    : <<inherit>>
+Next Server (IPv6) Override    : <<inherit>>
+Owners                         : <<inherit>>
+Parent Profile                 :
+Proxy                          : <<inherit>>
+Red Hat Management Key         : <<inherit>>
+Repos                          : []
+Server Override                : <<inherit>>
+Template Files                 : {}
+Virt Auto Boot                 : True
+Virt Bridge                    : <<inherit>>
+Virt CPUs                      : 1
+Virt Disk Driver Type          : raw
+Virt File Size(GB)             : <<inherit>>
+Virt Path                      :
+Virt RAM (MB)                  : <<inherit>>
+Virt Type                      : xenpv
+[root@localhost ~]# cobbler sync
+[root@localhost ~]# systemctl restart cobbler
+```
+
+
+
+
+
+
+

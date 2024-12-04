@@ -1970,6 +1970,34 @@ fi
 #输出备份过程结束的提醒消息  
 echo “Backup Process Done >> $LOGFILE 
 ---------------
+
+
+---------------
+# 差异备份
+# 全量+差异
+
+# 1. 全量备份：
+mysqldump -h${HOSTNAME} -u${USER} -p${PASSWORD} --single-transaction --master-data=2 all-databases > /root/alldatabases.sql
+
+# 2. 差异备份
+# 这个是--master-data=2参数开启记录的文件及位置
+[root@lnmp ~]# less alldatabases.sql 
+CHANGE MASTER TO MASTER_LOG_FILE='mysql-bin.000012', MASTER_LOG_POS=107; 
+
+mysql> show binary logs;
++------------------+-----------+
+| Log_name         | File_size |
++------------------+-----------+
+| mysql-bin.000012 |       150 |
+| mysql-bin.000013 |       352 |
+| mysql-bin.000014 |       107 |
++------------------+-----------+
+
+# 差异备份方式一 
+[root@lnmp ~]# mysqlbinlog --no-defaults --start-position=107 /data/mysql/mysql-bin.000012 /data/mysql/mysql-bin.000013 /data/mysql/mysql-bin.000014 > /root/diff.sql
+# 差异备份方式二 
+[root@lnmp ~]# mysqlbinlog --no-defaults --start-position=107 /data/mysql/mysql-bin.* > /root/diff.sql
+---------------
 ```
 
 
@@ -2425,6 +2453,67 @@ mysql5.6+：配置较复杂，引入gtid（全局事务号）机制，multi-thre
 半同步：只需要从服务器其中一台响应主服务器复制成功或超时，这就是半同步模式。并且要设超时时间间隔。
 异步：当超时时间间隔到达后主服务器与从服务器断开，并且降级为异步模式
 ```
+
+```
+# 小记：20241202
+# 半同步复制环境下主主集群下线一台主节点操作
+
+## 禁用半同步复制：
+SET GLOBAL rpl_semi_sync_master_enabled = 0;
+SET GLOBAL rpl_semi_sync_slave_enabled = 0;
+
+## 检查半同步复制是否已禁用：
+SHOW VARIABLES LIKE 'rpl_semi_sync%';
+
+## 检查复制状态
+在停止主节点之前，确保数据库的复制状态是健康的，即所有的数据已经同步到从节点。
+* 在主节点上查看复制状态：
+SHOW MASTER STATUS;
+* 确保没有任何待处理的事务。然后，检查从节点的状态，确认它已经接收到最新的事务。确保 Slave_IO_Running 和 Slave_SQL_Running 都是 Yes，且没有复制延迟。
+SHOW SLAVE STATUS\G
+
+## 准备主节点停止
+在主节点切换为异步复制模式后，您可以安全地停止该节点进行维护，不会影响到其他节点的操作。
+sudo systemctl stop mysql
+或者：
+mysqladmin -u root -p shutdown
+
+
+
+
+# 恢复半同步复制
+
+## 在维护完成并且主节点已经恢复后，可以重新启用半同步复制。
+SET GLOBAL rpl_semi_sync_master_enabled = 1;
+SET GLOBAL rpl_semi_sync_slave_enabled = 1;
+
+## 检查半同步复制状态：
+SHOW VARIABLES LIKE 'rpl_semi_sync%';
+
+## 检查复制状态
+当主节点恢复后，检查复制状态，并确保数据同步完成。
+* 检查主节点状态：：
+SHOW MASTER STATUS;
+* 检查从节点状态，确认它已经接收到最新的事务。确保 Slave_IO_Running 和 Slave_SQL_Running 都是 Yes，且没有复制延迟。
+SHOW SLAVE STATUS\G
+
+## 切换回主主复制
+当主节点恢复并且所有数据同步后，您可以恢复正常的主主复制模式，两个主节点将继续互相同步数据。
+
+
+
+# 备选方案：使用 MySQL Group Replication 或其他高可用架构
+除了主主复制和半同步复制外，还可以考虑使用 MySQL Group Replication，这是一个更为现代的解决方案，它提供了更高的自动化、数据一致性和故障恢复能力。
+1. MySQL Group Replication：它支持自动故障转移，能够处理节点之间的复制冲突，并且能够在节点故障时自动恢复。
+
+2. MHA（MySQL High Availability）：MHA 是一个 MySQL 高可用性工具，支持自动故障转移，避免了手动干预。
+```
+
+
+
+
+
+
 
 
 
@@ -5098,6 +5187,1095 @@ DELETE FROM `dingtalk_selfbuilt`.`user_info` WHERE `id`=1730063375908392961 AND 
 
 
 
+## 27. mysql5.7半同步主主集群
+
+
+
+### 27.1 配置半同步复制
+
+
+
+#### 27.1.1 查看mysql插件文件
+
+```bash
+[root@g2-pro-mysql01 ~]# ls /usr/local/mysql/lib/plugin/semisync_{master,slave}.so 
+/usr/local/mysql/lib/plugin/semisync_master.so  /usr/local/mysql/lib/plugin/semisync_slave.so
+[root@g2-pro-mysql02 ~]# ls /usr/local/mysql/lib/plugin/semisync_{master,slave}.so 
+/usr/local/mysql/lib/plugin/semisync_master.so  /usr/local/mysql/lib/plugin/semisync_slave.so
+```
+
+
+
+#### 27.1.2 查看动态加载是否为true
+```sql
+mysql> show variables like "have_dynamic_loading";
++----------------------+-------+
+| Variable_name        | Value |
++----------------------+-------+
+| have_dynamic_loading | YES   |
++----------------------+-------+
+```
+
+
+
+
+
+
+
+### 27.2 安装半同步插件
+
+```sql
+# g2-pro-mysql01安装master半同步插件
+mysql> INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so'; 
+# g2-pro-mysql01安装slave半同步插件
+mysql> INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so';
+# 查看插件状态
+mysql> SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME LIKE '%semi%';
++----------------------+---------------+
+| PLUGIN_NAME          | PLUGIN_STATUS |
++----------------------+---------------+
+| rpl_semi_sync_master | ACTIVE        |
+| rpl_semi_sync_slave  | ACTIVE        |
++----------------------+---------------+
+
+
+# g2-pro-mysql02安装master半同步插件
+mysql> INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so';
+# g2-pro-mysql02安装slave半同步插件
+mysql> INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so';
+# 查看插件状态
+mysql> SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME LIKE '%semi%';
++----------------------+---------------+
+| PLUGIN_NAME          | PLUGIN_STATUS |
++----------------------+---------------+
+| rpl_semi_sync_master | ACTIVE        |
+| rpl_semi_sync_slave  | ACTIVE        |
++----------------------+---------------+
+```
+> 如需卸载半同步插件：
+>
+> ```
+> UNINSTALL PLUGIN rpl_semi_sync_master;
+> UNINSTALL PLUGIN rpl_semi_sync_slave;
+> ```
+
+
+
+
+### 27.3 开启半同步
+
+MySQL主从集群默认是异步方式同步数据的
+```sql
+# g2-pro-mysql01
+mysql> show status like 'Rpl_semi_sync_%_status'; 
++-----------------------------+-------+
+| Variable_name               | Value |
++-----------------------------+-------+
+| Rpl_semi_sync_master_status | OFF   |
+| Rpl_semi_sync_slave_status  | OFF   |
++-----------------------------+-------+
+
+# g2-pro-mysql02
+mysql> show status like 'Rpl_semi_sync_%_status'; 
++-----------------------------+-------+
+| Variable_name               | Value |
++-----------------------------+-------+
+| Rpl_semi_sync_master_status | OFF   |
+| Rpl_semi_sync_slave_status  | OFF   |
++-----------------------------+-------+
+
+
+# g2-pro-mysql01和g2-pro-mysql02开启主从的半同步功能
+SET GLOBAL rpl_semi_sync_master_enabled = 1;
+SET GLOBAL rpl_semi_sync_slave_enabled = 1;
+
+# 查看半同步功能是否开启，Rpl_semi_sync_slave_status未成功开启
+mysql> show status like 'Rpl_semi_sync_%_status'; 
++-----------------------------+-------+
+| Variable_name               | Value |
++-----------------------------+-------+
+| Rpl_semi_sync_master_status | ON   |
+| Rpl_semi_sync_slave_status  | OFF   |
++-----------------------------+-------+
+
+
+# 写入/etc/my.cnf配置文件并重启mysqld服务
+[root@g2-pro-mysql02 /data/mysql]# cat /etc/my.cnf
+[mysqld]
+# Rpl_semi_sync
+rpl_semi_sync_master_enabled=1
+rpl_semi_sync_slave_enabled=1
+[root@g2-pro-mysql01 ~]# service mysqld restart 
+[root@g2-pro-mysql02 ~]# service mysqld restart 
+
+# 再次查看半同步复制功能是否开启，此时成功开启
+mysql> show status like 'Rpl_semi_sync_%_status';
++-----------------------------+-------+
+| Variable_name               | Value |
++-----------------------------+-------+
+| Rpl_semi_sync_master_status | ON    |
+| Rpl_semi_sync_slave_status  | ON    |
++-----------------------------+-------+
+```
+
+
+
+### 27.4 半同步配置优化
+
+```sql
+# 查看半同步复制状态
+mysql> show status like 'Rpl_semi_sync%';
++--------------------------------------------+-------+
+| Variable_name                              | Value |
++--------------------------------------------+-------+
+| Rpl_semi_sync_master_clients               | 1     |
+| Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+| Rpl_semi_sync_master_net_wait_time         | 0     |
+| Rpl_semi_sync_master_net_waits             | 0     |
+| Rpl_semi_sync_master_no_times              | 0     |
+| Rpl_semi_sync_master_no_tx                 | 0     |
+| Rpl_semi_sync_master_status                | ON    |
+| Rpl_semi_sync_master_timefunc_failures     | 0     |
+| Rpl_semi_sync_master_tx_avg_wait_time      | 0     |
+| Rpl_semi_sync_master_tx_wait_time          | 0     |
+| Rpl_semi_sync_master_tx_waits              | 0     |
+| Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+| Rpl_semi_sync_master_wait_sessions         | 0     |
+| Rpl_semi_sync_master_yes_tx                | 0     |
+| Rpl_semi_sync_slave_status                 | ON    |
++--------------------------------------------+-------+
+
+# 查看半同步复制配置
+mysql> SHOW GLOBAL VARIABLES LIKE 'rpl_semi_sync%';
++-------------------------------------------+------------+
+| Variable_name                             | Value      |
++-------------------------------------------+------------+
+| rpl_semi_sync_master_enabled              | ON         |
+| rpl_semi_sync_master_timeout              | 10000      |
+| rpl_semi_sync_master_trace_level          | 32         |
+| rpl_semi_sync_master_wait_for_slave_count | 1          |
+| rpl_semi_sync_master_wait_no_slave        | ON         |
+| rpl_semi_sync_master_wait_point           | AFTER_SYNC |
+| rpl_semi_sync_slave_enabled               | ON         |
+| rpl_semi_sync_slave_trace_level           | 32         |
++-------------------------------------------+------------+
+# rpl_semi_sync_master_enabled：master半同步功能是否开启
+# rpl_semi_sync_slave_enabled：slave半同步功能是否开启
+# rpl_semi_sync_master_timeout：master配置的半同步超时时间为10s，slave连接此master超过此值时将降级为默认的异步复制
+# rpl_semi_sync_master_wait_for_slave_count：slave数量配置，用于控制主服务器在执行写操作时等待多少个slave服务器确认接收到数据。
+# rpl_semi_sync_master_wait_no_slave：默认为 0，表示当没有从服务器连接时，主服务器不会等待确认，操作会立即返回。如果为1时会增加主服务器的等待时间，因为主服务器会在没有从服务器时保持等待状态。此选项在主服务器没有从服务器或在一个从服务器离线时将其关闭，值为0
+# rpl_semi_sync_master_wait_point：控制主服务器在等待从服务器确认数据已接收到的时机，是在事务提交后（AFTER_SYNC，默认值）等待确认还是在事务提交前（BEFORE_SYNC）就开始等待确认。
+
+# 可调整半同步超时时间为5s（建议）
+mysql> SET GLOBAL rpl_semi_sync_master_timeout=5000;
+mysql> SHOW GLOBAL VARIABLES LIKE 'rpl_semi_sync%';
++-------------------------------------------+------------+
+| Variable_name                             | Value      |
++-------------------------------------------+------------+
+| rpl_semi_sync_master_enabled              | ON         |
+| rpl_semi_sync_master_timeout              | 5000       |
+| rpl_semi_sync_master_trace_level          | 32         |
+| rpl_semi_sync_master_wait_for_slave_count | 1          |
+| rpl_semi_sync_master_wait_no_slave        | ON         |
+| rpl_semi_sync_master_wait_point           | AFTER_SYNC |
+| rpl_semi_sync_slave_enabled               | ON         |
+| rpl_semi_sync_slave_trace_level           | 32         |
++-------------------------------------------+------------+
+```
+
+
+
+### 27.5 半同步测试
+
+#### 27.5.1 测试客户端连接
+
+```sql
+# g2-pro-mysql02停止IO_THREAD
+mysql> stop slave IO_THREAD for channel 'g2-mysql01-sync-to-mysql02';
+
+# g2-pro-mysql01查看同步状态
+mysql> show status like 'Rpl_semi%';
++--------------------------------------------+-------+
+| Variable_name                              | Value |
++--------------------------------------------+-------+
+| Rpl_semi_sync_master_clients               | 0     |
+| Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+| Rpl_semi_sync_master_net_wait_time         | 0     |
+| Rpl_semi_sync_master_net_waits             | 0     |
+| Rpl_semi_sync_master_no_times              | 0     |
+| Rpl_semi_sync_master_no_tx                 | 0     |
+| Rpl_semi_sync_master_status                | ON    |
+| Rpl_semi_sync_master_timefunc_failures     | 0     |
+| Rpl_semi_sync_master_tx_avg_wait_time      | 0     |
+| Rpl_semi_sync_master_tx_wait_time          | 0     |
+| Rpl_semi_sync_master_tx_waits              | 0     |
+| Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+| Rpl_semi_sync_master_wait_sessions         | 0     |
+| Rpl_semi_sync_master_yes_tx                | 0     |
+| Rpl_semi_sync_slave_status                 | ON    |
++--------------------------------------------+-------+
+
+# g2-pro-mysql02启动IO_THREAD
+mysql> start slave IO_THREAD for channel 'g2-mysql01-sync-to-mysql02';
+
+# g2-pro-mysql01查看同步状态
+mysql> show status like 'Rpl_semi%';
++--------------------------------------------+-------+
+| Variable_name                              | Value |
++--------------------------------------------+-------+
+| Rpl_semi_sync_master_clients               | 1     |
+| Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+| Rpl_semi_sync_master_net_wait_time         | 0     |
+| Rpl_semi_sync_master_net_waits             | 0     |
+| Rpl_semi_sync_master_no_times              | 0     |
+| Rpl_semi_sync_master_no_tx                 | 0     |
+| Rpl_semi_sync_master_status                | ON    |
+| Rpl_semi_sync_master_timefunc_failures     | 0     |
+| Rpl_semi_sync_master_tx_avg_wait_time      | 0     |
+| Rpl_semi_sync_master_tx_wait_time          | 0     |
+| Rpl_semi_sync_master_tx_waits              | 0     |
+| Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+| Rpl_semi_sync_master_wait_sessions         | 0     |
+| Rpl_semi_sync_master_yes_tx                | 0     |
+| Rpl_semi_sync_slave_status                 | ON    |
++--------------------------------------------+-------+
+```
+
+
+
+#### 27.5.2 半同步测试操作
+```sql
+# g2-pro-mysql01操作
+mysql> create database mydb;
+mysql> use mydb;
+mysql> create table tb1 (id int);
+# g2-pro-mysql02操作
+mysql> stop slave IO_THREAD for channel 'g2-mysql01-sync-to-mysql02'; # 从服务器停止IO线程
+# g2-pro-mysql01操作
+mysql> create table tb2 (id int); # 主服务器半同步时间为10秒，会等待超时时间走完，而后会降级为异步
+Query OK, 0 rows affected (10.01 sec)
+mysql> create table tb3 (id int); # 现在为异步，不会再等待slave的IO线程了
+Query OK, 0 rows affected (0.01 sec)
+
+# g2-pro-mysql01查看半同步状态，重启mysql服务后值将归零
+mysql> show status like 'Rpl_semi_sync%';
++--------------------------------------------+-------+
+| Variable_name                              | Value |
++--------------------------------------------+-------+
+| Rpl_semi_sync_master_clients               | 0     |
+| Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+| Rpl_semi_sync_master_net_wait_time         | 0     |
+| Rpl_semi_sync_master_net_waits             | 3     |
+| Rpl_semi_sync_master_no_times              | 1     |
+| Rpl_semi_sync_master_no_tx                 | 2     |
+| Rpl_semi_sync_master_status                | OFF   |
+| Rpl_semi_sync_master_timefunc_failures     | 0     |
+| Rpl_semi_sync_master_tx_avg_wait_time      | 2427  |
+| Rpl_semi_sync_master_tx_wait_time          | 4855  |
+| Rpl_semi_sync_master_tx_waits              | 2     |
+| Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+| Rpl_semi_sync_master_wait_sessions         | 0     |
+| Rpl_semi_sync_master_yes_tx                | 2     |
+| Rpl_semi_sync_slave_status                 | ON    |
++--------------------------------------------+-------+
+# Rpl_semi_sync_master_clients：当前连接到主服务器并参与半同步复制的客户端（从服务器）数量。
+# Rpl_semi_sync_master_net_avg_wait_time：主服务器在网络中等待从服务器确认的平均时间（单位：微秒）。
+# Rpl_semi_sync_master_net_wait_time：主服务器在当前状态下的总网络等待时间（单位：微秒）。
+# Rpl_semi_sync_master_net_waits：主服务器等待从服务器确认的总次数。
+# Rpl_semi_sync_master_no_times: 主服务器没有从服务器时的次数。
+# Rpl_semi_sync_master_no_tx：主服务器在没有提交事务时发生的次数。
+# Rpl_semi_sync_master_status：半同步复制在主服务器上的当前状态。
+# Rpl_semi_sync_master_timefunc_failures：主服务器等待确认时遇到的时间函数错误次数（例如，超时）。
+# Rpl_semi_sync_master_tx_avg_wait_time：主服务器等待从服务器确认的事务的平均时间（单位：微秒）。
+# Rpl_semi_sync_master_tx_wait_time：主服务器等待从服务器确认事务的总时间（单位：微秒）。
+# Rpl_semi_sync_master_tx_waits：主服务器等待从服务器确认事务的总次数。
+# Rpl_semi_sync_master_wait_pos_backtraverse：主服务器回溯等待位置的次数。当主服务器在等待从服务器确认时，如果等待位置发生回退，则记录此事件。
+# Rpl_semi_sync_master_wait_sessions：当前主服务器正在等待的会话数。每个等待的会话都对应着至少一个从服务器。
+# Rpl_semi_sync_master_yes_tx：主服务器确认的事务次数。在这些事务中，主服务器成功接收到从服务器的确认。
+# Rpl_semi_sync_slave_status：从服务器的半同步复制状态。
+
+
+
+# g2-pro-mysql02操作
+mysql> start slave IO_THREAD for channel 'g2-mysql01-sync-to-mysql02';
+# g2-pro-mysql01查看半同步状态
+mysql> show status like 'Rpl_semi_sync%';
++--------------------------------------------+-------+
+| Variable_name                              | Value |
++--------------------------------------------+-------+
+| Rpl_semi_sync_master_clients               | 1     |
+| Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+| Rpl_semi_sync_master_net_wait_time         | 0     |
+| Rpl_semi_sync_master_net_waits             | 4     |
+| Rpl_semi_sync_master_no_times              | 1     |
+| Rpl_semi_sync_master_no_tx                 | 2     |
+| Rpl_semi_sync_master_status                | ON    |
+| Rpl_semi_sync_master_timefunc_failures     | 0     |
+| Rpl_semi_sync_master_tx_avg_wait_time      | 2427  |
+| Rpl_semi_sync_master_tx_wait_time          | 4855  |
+| Rpl_semi_sync_master_tx_waits              | 2     |
+| Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+| Rpl_semi_sync_master_wait_sessions         | 0     |
+| Rpl_semi_sync_master_yes_tx                | 2     |
+| Rpl_semi_sync_slave_status                 | ON    |
++--------------------------------------------+-------+
+# g2-pro-mysql01操作
+mysql> create table tb4 (id int); # 主服务器半同步时间为10秒，会等待超时时间走完，而后会降级为异步
+mysql> show status like 'Rpl_semi_sync%';
++--------------------------------------------+-------+
+| Variable_name                              | Value |
++--------------------------------------------+-------+
+| Rpl_semi_sync_master_clients               | 1     |
+| Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+| Rpl_semi_sync_master_net_wait_time         | 0     |
+| Rpl_semi_sync_master_net_waits             | 5     |
+| Rpl_semi_sync_master_no_times              | 1     |
+| Rpl_semi_sync_master_no_tx                 | 2     |
+| Rpl_semi_sync_master_status                | ON    |
+| Rpl_semi_sync_master_timefunc_failures     | 0     |
+| Rpl_semi_sync_master_tx_avg_wait_time      | 2702  |
+| Rpl_semi_sync_master_tx_wait_time          | 8106  |
+| Rpl_semi_sync_master_tx_waits              | 3     |
+| Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+| Rpl_semi_sync_master_wait_sessions         | 0     |
+| Rpl_semi_sync_master_yes_tx                | 3     |
+| Rpl_semi_sync_slave_status                 | ON    |
++--------------------------------------------+-------+
+```
+
+
+
+
+
+### 27.6 半同步主主集群下线主节点
+
+半同步复制环境下主主集群下线一台主节点操作，例如下线主节点`g2-pro-mysql02`
+
+
+
+#### 27.6.1 禁用半同步复制
+
+```sql
+# g2-pro-mysql01
+# 主主模式下，不停机的那台千万不能关闭slave半同步功能
+mysql> SET GLOBAL rpl_semi_sync_master_enabled = 0;
+mysql> SHOW GLOBAL VARIABLES LIKE 'rpl_semi_sync%';
++-------------------------------------------+------------+
+| Variable_name                             | Value      |
++-------------------------------------------+------------+
+| rpl_semi_sync_master_enabled              | OFF        |
+| rpl_semi_sync_master_timeout              | 10000      |
+| rpl_semi_sync_master_trace_level          | 32         |
+| rpl_semi_sync_master_wait_for_slave_count | 1          |
+| rpl_semi_sync_master_wait_no_slave        | ON         |
+| rpl_semi_sync_master_wait_point           | AFTER_SYNC |
+| rpl_semi_sync_slave_enabled               | ON         |
+| rpl_semi_sync_slave_trace_level           | 32         |
++-------------------------------------------+------------+
+# 万一停止rpl_semi_sync_slave_enabled可通过此方式不停机恢复:
+# mysql> start slave IO_THREAD for channel 'g2-mysql01-sync-to-mysql02';
+# SET GLOBAL rpl_semi_sync_slave_enabled = 1;
+
+
+# g2-pro-mysql02
+# 主主模式下，停机的那台可以关闭master和slave半同步功能
+mysql> SET GLOBAL rpl_semi_sync_master_enabled = 0;
+mysql> SET GLOBAL rpl_semi_sync_slave_enabled = 0;
+mysql> SHOW GLOBAL VARIABLES LIKE 'rpl_semi_sync%';
++-------------------------------------------+------------+
+| Variable_name                             | Value      |
++-------------------------------------------+------------+
+| rpl_semi_sync_master_enabled              | OFF        |
+| rpl_semi_sync_master_timeout              | 10000      |
+| rpl_semi_sync_master_trace_level          | 32         |
+| rpl_semi_sync_master_wait_for_slave_count | 1          |
+| rpl_semi_sync_master_wait_no_slave        | OFF        |
+| rpl_semi_sync_master_wait_point           | AFTER_SYNC |
+| rpl_semi_sync_slave_enabled               | OFF        |
+| rpl_semi_sync_slave_trace_level           | 32         |
++-------------------------------------------+------------+
+```
+
+
+
+#### 27.6.2 检查半同步复制状态
+
+```sql
+# g2-pro-mysql01
+mysql> show status like 'Rpl_semi_sync%';
++--------------------------------------------+-------+
+| Variable_name                              | Value |
++--------------------------------------------+-------+
+| Rpl_semi_sync_master_clients               | 0     |
+| Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+| Rpl_semi_sync_master_net_wait_time         | 0     |
+| Rpl_semi_sync_master_net_waits             | 0     |
+| Rpl_semi_sync_master_no_times              | 1     |
+| Rpl_semi_sync_master_no_tx                 | 0     |
+| Rpl_semi_sync_master_status                | OFF   |
+| Rpl_semi_sync_master_timefunc_failures     | 0     |
+| Rpl_semi_sync_master_tx_avg_wait_time      | 0     |
+| Rpl_semi_sync_master_tx_wait_time          | 0     |
+| Rpl_semi_sync_master_tx_waits              | 0     |
+| Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+| Rpl_semi_sync_master_wait_sessions         | 0     |
+| Rpl_semi_sync_master_yes_tx                | 0     |
+| Rpl_semi_sync_slave_status                 | ON    |
++--------------------------------------------+-------+
+
+# g2-pro-mysql02
+mysql> show status like 'Rpl_semi_sync%';
++--------------------------------------------+-------+
+| Variable_name                              | Value |
++--------------------------------------------+-------+
+| Rpl_semi_sync_master_clients               | 1     |
+| Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+| Rpl_semi_sync_master_net_wait_time         | 0     |
+| Rpl_semi_sync_master_net_waits             | 0     |
+| Rpl_semi_sync_master_no_times              | 1     |
+| Rpl_semi_sync_master_no_tx                 | 0     |
+| Rpl_semi_sync_master_status                | OFF   |
+| Rpl_semi_sync_master_timefunc_failures     | 0     |
+| Rpl_semi_sync_master_tx_avg_wait_time      | 0     |
+| Rpl_semi_sync_master_tx_wait_time          | 0     |
+| Rpl_semi_sync_master_tx_waits              | 0     |
+| Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+| Rpl_semi_sync_master_wait_sessions         | 0     |
+| Rpl_semi_sync_master_yes_tx                | 0     |
+| Rpl_semi_sync_slave_status                 | ON    |
++--------------------------------------------+-------+
+```
+
+
+
+#### 27.6.3 检查复制状态
+
+在停止主节点之前，确保数据库的复制状态是健康的，即所有的数据已经同步到从节点。
+
+##### 27.6.3 .1 在g2-pro-mysql01主节点上查看复制状态
+
+```sql
+# g2-pro-mysql01
+mysql> SHOW MASTER STATUS\G
+*************************** 1. row ***************************
+             File: master-bin.000015
+         Position: 234
+     Binlog_Do_DB: 
+ Binlog_Ignore_DB: 
+Executed_Gtid_Set: 608bbf72-a0d4-11ef-9140-0050569c6862:1-22,
+60a3d850-a0d4-11ef-b3d1-0050569c92f9:3-16
+
+# 检查从节点的状态，确认它已经接收到最新的事务，确保 Slave_IO_Running 和 Slave_SQL_Running 都是 Yes，且没有复制延迟。
+mysql> show slave status\G
+*************************** 1. row ***************************
+               Slave_IO_State: Waiting for master to send event
+                  Master_Host: 192.168.13.166
+                  Master_User: repluser
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: master-bin.000015
+          Read_Master_Log_Pos: 234
+               Relay_Log_File: relay-master-g2@002dmysql02@002dsync@002dto@002dmysql01.000033
+                Relay_Log_Pos: 409
+        Relay_Master_Log_File: master-bin.000015
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+              Replicate_Do_DB: 
+          Replicate_Ignore_DB: 
+           Replicate_Do_Table: 
+       Replicate_Ignore_Table: 
+      Replicate_Wild_Do_Table: 
+  Replicate_Wild_Ignore_Table: 
+                   Last_Errno: 0
+                   Last_Error: 
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 234
+              Relay_Log_Space: 863
+              Until_Condition: None
+               Until_Log_File: 
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File: 
+           Master_SSL_CA_Path: 
+              Master_SSL_Cert: 
+            Master_SSL_Cipher: 
+               Master_SSL_Key: 
+        Seconds_Behind_Master: 0
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error: 
+               Last_SQL_Errno: 0
+               Last_SQL_Error: 
+  Replicate_Ignore_Server_Ids: 
+             Master_Server_Id: 2
+                  Master_UUID: 60a3d850-a0d4-11ef-b3d1-0050569c92f9
+             Master_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+           Master_Retry_Count: 86400
+                  Master_Bind: 
+      Last_IO_Error_Timestamp: 
+     Last_SQL_Error_Timestamp: 
+               Master_SSL_Crl: 
+           Master_SSL_Crlpath: 
+           Retrieved_Gtid_Set: 60a3d850-a0d4-11ef-b3d1-0050569c92f9:3-16
+            Executed_Gtid_Set: 608bbf72-a0d4-11ef-9140-0050569c6862:1-22,
+60a3d850-a0d4-11ef-b3d1-0050569c92f9:3-16
+                Auto_Position: 0
+         Replicate_Rewrite_DB: 
+                 Channel_Name: g2-mysql02-sync-to-mysql01
+           Master_TLS_Version: 
+
+```
+
+
+
+##### 27.6.3 .2 在g2-pro-mysql02主节点上查看复制状态
+
+```sql
+mysql> SHOW MASTER STATUS\G
+*************************** 1. row ***************************
+             File: master-bin.000015
+         Position: 234
+     Binlog_Do_DB: 
+ Binlog_Ignore_DB: 
+Executed_Gtid_Set: 608bbf72-a0d4-11ef-9140-0050569c6862:3-22,
+60a3d850-a0d4-11ef-b3d1-0050569c92f9:1-16
+1 row in set (0.00 sec)
+
+# 检查从节点的状态，确认它已经接收到最新的事务，确保 Slave_IO_Running 和 Slave_SQL_Running 都是 Yes，且没有复制延迟。
+mysql> show slave status\G
+*************************** 1. row ***************************
+               Slave_IO_State: Waiting for master to send event
+                  Master_Host: 192.168.13.165
+                  Master_User: repluser
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: master-bin.000015
+          Read_Master_Log_Pos: 234
+               Relay_Log_File: relay-master-g2@002dmysql01@002dsync@002dto@002dmysql02.000034
+                Relay_Log_Pos: 409
+        Relay_Master_Log_File: master-bin.000015
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+              Replicate_Do_DB: 
+          Replicate_Ignore_DB: 
+           Replicate_Do_Table: 
+       Replicate_Ignore_Table: 
+      Replicate_Wild_Do_Table: 
+  Replicate_Wild_Ignore_Table: 
+                   Last_Errno: 0
+                   Last_Error: 
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 234
+              Relay_Log_Space: 863
+              Until_Condition: None
+               Until_Log_File: 
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File: 
+           Master_SSL_CA_Path: 
+              Master_SSL_Cert: 
+            Master_SSL_Cipher: 
+               Master_SSL_Key: 
+        Seconds_Behind_Master: 0
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error: 
+               Last_SQL_Errno: 0
+               Last_SQL_Error: 
+  Replicate_Ignore_Server_Ids: 
+             Master_Server_Id: 1
+                  Master_UUID: 608bbf72-a0d4-11ef-9140-0050569c6862
+             Master_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+           Master_Retry_Count: 86400
+                  Master_Bind: 
+      Last_IO_Error_Timestamp: 
+     Last_SQL_Error_Timestamp: 
+               Master_SSL_Crl: 
+           Master_SSL_Crlpath: 
+           Retrieved_Gtid_Set: 608bbf72-a0d4-11ef-9140-0050569c6862:3-22
+            Executed_Gtid_Set: 608bbf72-a0d4-11ef-9140-0050569c6862:3-22,
+60a3d850-a0d4-11ef-b3d1-0050569c92f9:1-16
+                Auto_Position: 0
+         Replicate_Rewrite_DB: 
+                 Channel_Name: g2-mysql01-sync-to-mysql02
+           Master_TLS_Version: 
+```
+
+
+
+
+
+#### 27.6.4 主节点下线操作
+
+##### 27.6.4.1 停止主节点
+
+在主节点切换为异步复制模式后，您可以安全地停止该节点进行维护，不会影响到其他节点的操作。
+
+```bash
+# g2-pro-mysql02
+mysql> stop slave IO_THREAD for channel 'g2-mysql01-sync-to-mysql02';
+# 经过停止IO_THREAD后Rpl_semi_sync_slave_status状态变为OFF了
+mysql> show status like 'Rpl_semi_sync%';
++--------------------------------------------+-------+
+| Variable_name                              | Value |
++--------------------------------------------+-------+
+| Rpl_semi_sync_master_clients               | 1     |
+| Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+| Rpl_semi_sync_master_net_wait_time         | 0     |
+| Rpl_semi_sync_master_net_waits             | 0     |
+| Rpl_semi_sync_master_no_times              | 1     |
+| Rpl_semi_sync_master_no_tx                 | 0     |
+| Rpl_semi_sync_master_status                | OFF   |
+| Rpl_semi_sync_master_timefunc_failures     | 0     |
+| Rpl_semi_sync_master_tx_avg_wait_time      | 0     |
+| Rpl_semi_sync_master_tx_wait_time          | 0     |
+| Rpl_semi_sync_master_tx_waits              | 0     |
+| Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+| Rpl_semi_sync_master_wait_sessions         | 0     |
+| Rpl_semi_sync_master_yes_tx                | 0     |
+| Rpl_semi_sync_slave_status                 | OFF   |
++--------------------------------------------+-------+
+mysql> SHOW GLOBAL VARIABLES LIKE 'rpl_semi_sync%';
++-------------------------------------------+------------+
+| Variable_name                             | Value      |
++-------------------------------------------+------------+
+| rpl_semi_sync_master_enabled              | OFF        |
+| rpl_semi_sync_master_timeout              | 10000      |
+| rpl_semi_sync_master_trace_level          | 32         |
+| rpl_semi_sync_master_wait_for_slave_count | 1          |
+| rpl_semi_sync_master_wait_no_slave        | ON         |
+| rpl_semi_sync_master_wait_point           | AFTER_SYNC |
+| rpl_semi_sync_slave_enabled               | OFF        |
+| rpl_semi_sync_slave_trace_level           | 32         |
++-------------------------------------------+------------+
+[root@g2-pro-mysql02 ~]# service mysqld stop 
+Shutting down MySQL............. SUCCESS! 
+
+
+# g2-pro-mysql01
+mysql> create table tb5 (id int);
+mysql> create table tb6 (id int);
+mysql> show status like 'Rpl_semi_sync%';
++--------------------------------------------+-------+
+| Variable_name                              | Value |
++--------------------------------------------+-------+
+| Rpl_semi_sync_master_clients               | 0     |
+| Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+| Rpl_semi_sync_master_net_wait_time         | 0     |
+| Rpl_semi_sync_master_net_waits             | 0     |
+| Rpl_semi_sync_master_no_times              | 1     |
+| Rpl_semi_sync_master_no_tx                 | 0     |
+| Rpl_semi_sync_master_status                | OFF   |
+| Rpl_semi_sync_master_timefunc_failures     | 0     |
+| Rpl_semi_sync_master_tx_avg_wait_time      | 0     |
+| Rpl_semi_sync_master_tx_wait_time          | 0     |
+| Rpl_semi_sync_master_tx_waits              | 0     |
+| Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+| Rpl_semi_sync_master_wait_sessions         | 0     |
+| Rpl_semi_sync_master_yes_tx                | 0     |
+| Rpl_semi_sync_slave_status                 | ON    |
++--------------------------------------------+-------+
+```
+
+
+
+##### 27.6.4.2 恢复半同步复制
+
+###### 27.6.4.2.1 g2-pro-mysql02节点操作
+
+`g2-pro-mysql02`维护完成后启动mysqld服务
+
+```bash
+[root@g2-pro-mysql02 ~]# service mysqld start 
+```
+
+重新启用半同步复制
+
+```sql
+mysql> SET GLOBAL rpl_semi_sync_master_enabled = 1;
+mysql> SET GLOBAL rpl_semi_sync_slave_enabled = 1;
+mysql> show status like 'Rpl_semi_sync%';
++--------------------------------------------+-------+
+| Variable_name                              | Value |
++--------------------------------------------+-------+
+| Rpl_semi_sync_master_clients               | 0     |
+| Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+| Rpl_semi_sync_master_net_wait_time         | 0     |
+| Rpl_semi_sync_master_net_waits             | 0     |
+| Rpl_semi_sync_master_no_times              | 0     |
+| Rpl_semi_sync_master_no_tx                 | 0     |
+| Rpl_semi_sync_master_status                | ON    |
+| Rpl_semi_sync_master_timefunc_failures     | 0     |
+| Rpl_semi_sync_master_tx_avg_wait_time      | 0     |
+| Rpl_semi_sync_master_tx_wait_time          | 0     |
+| Rpl_semi_sync_master_tx_waits              | 0     |
+| Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+| Rpl_semi_sync_master_wait_sessions         | 0     |
+| Rpl_semi_sync_master_yes_tx                | 0     |
+| Rpl_semi_sync_slave_status                 | OFF   |
++--------------------------------------------+-------+
+```
+
+> `SET GLOBAL rpl_semi_sync_slave_enabled = 1;` 无法在sql命令行生效，原因是`IO_THREAD`已经停止，需要先开启`IO_THREAD`才能配置此参数。
+>
+> 方法一：开启`IO_THREAD`线程
+>
+> ```sql
+> mysql> show slave status\G
+> *************************** 1. row ***************************
+>                Slave_IO_State: 
+>                   Master_Host: 192.168.13.165
+>                   Master_User: repluser
+>                   Master_Port: 3306
+>                 Connect_Retry: 60
+>               Master_Log_File: master-bin.000016
+>           Read_Master_Log_Pos: 1081
+>                Relay_Log_File: relay-master-g2@002dmysql01@002dsync@002dto@002dmysql02.000046
+>                 Relay_Log_Pos: 701
+>         Relay_Master_Log_File: master-bin.000016
+>              Slave_IO_Running: No
+>             Slave_SQL_Running: Yes
+>               Replicate_Do_DB: 
+>           Replicate_Ignore_DB: 
+>            Replicate_Do_Table: 
+>        Replicate_Ignore_Table: 
+>       Replicate_Wild_Do_Table: 
+>   Replicate_Wild_Ignore_Table: 
+>                    Last_Errno: 0
+>                    Last_Error: 
+>                  Skip_Counter: 0
+>           Exec_Master_Log_Pos: 1081
+>               Relay_Log_Space: 1879
+>               Until_Condition: None
+>                Until_Log_File: 
+>                 Until_Log_Pos: 0
+>            Master_SSL_Allowed: No
+>            Master_SSL_CA_File: 
+>            Master_SSL_CA_Path: 
+>               Master_SSL_Cert: 
+>             Master_SSL_Cipher: 
+>                Master_SSL_Key: 
+>         Seconds_Behind_Master: NULL
+> Master_SSL_Verify_Server_Cert: No
+>                 Last_IO_Errno: 0
+>                 Last_IO_Error: 
+>                Last_SQL_Errno: 0
+>                Last_SQL_Error: 
+>   Replicate_Ignore_Server_Ids: 
+>              Master_Server_Id: 1
+>                   Master_UUID: 608bbf72-a0d4-11ef-9140-0050569c6862
+>              Master_Info_File: mysql.slave_master_info
+>                     SQL_Delay: 0
+>           SQL_Remaining_Delay: NULL
+>       Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+>            Master_Retry_Count: 86400
+>                   Master_Bind: 
+>       Last_IO_Error_Timestamp: 
+>      Last_SQL_Error_Timestamp: 
+>                Master_SSL_Crl: 
+>            Master_SSL_Crlpath: 
+>            Retrieved_Gtid_Set: 608bbf72-a0d4-11ef-9140-0050569c6862:3-29
+>             Executed_Gtid_Set: 608bbf72-a0d4-11ef-9140-0050569c6862:3-29,
+> 60a3d850-a0d4-11ef-b3d1-0050569c92f9:1-16
+>                 Auto_Position: 0
+>          Replicate_Rewrite_DB: 
+>                  Channel_Name: g2-mysql01-sync-to-mysql02
+>            Master_TLS_Version: 
+> 
+> mysql> start slave IO_THREAD for channel 'g2-mysql01-sync-to-mysql02';
+> mysql> show slave status\G
+> *************************** 1. row ***************************
+>                Slave_IO_State: Waiting for master to send event
+>                   Master_Host: 192.168.13.165
+>                   Master_User: repluser
+>                   Master_Port: 3306
+>                 Connect_Retry: 60
+>               Master_Log_File: master-bin.000016
+>           Read_Master_Log_Pos: 1421
+>                Relay_Log_File: relay-master-g2@002dmysql01@002dsync@002dto@002dmysql02.000047
+>                 Relay_Log_Pos: 701
+>         Relay_Master_Log_File: master-bin.000016
+>              Slave_IO_Running: Yes
+>             Slave_SQL_Running: Yes
+>               Replicate_Do_DB: 
+>           Replicate_Ignore_DB: 
+>            Replicate_Do_Table: 
+>        Replicate_Ignore_Table: 
+>       Replicate_Wild_Do_Table: 
+>   Replicate_Wild_Ignore_Table: 
+>                    Last_Errno: 0
+>                    Last_Error: 
+>                  Skip_Counter: 0
+>           Exec_Master_Log_Pos: 1421
+>               Relay_Log_Space: 1495
+>               Until_Condition: None
+>                Until_Log_File: 
+>                 Until_Log_Pos: 0
+>            Master_SSL_Allowed: No
+>            Master_SSL_CA_File: 
+>            Master_SSL_CA_Path: 
+>               Master_SSL_Cert: 
+>             Master_SSL_Cipher: 
+>                Master_SSL_Key: 
+>         Seconds_Behind_Master: 0
+> Master_SSL_Verify_Server_Cert: No
+>                 Last_IO_Errno: 0
+>                 Last_IO_Error: 
+>                Last_SQL_Errno: 0
+>                Last_SQL_Error: 
+>   Replicate_Ignore_Server_Ids: 
+>              Master_Server_Id: 1
+>                   Master_UUID: 608bbf72-a0d4-11ef-9140-0050569c6862
+>              Master_Info_File: mysql.slave_master_info
+>                     SQL_Delay: 0
+>           SQL_Remaining_Delay: NULL
+>       Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+>            Master_Retry_Count: 86400
+>                   Master_Bind: 
+>       Last_IO_Error_Timestamp: 
+>      Last_SQL_Error_Timestamp: 
+>                Master_SSL_Crl: 
+>            Master_SSL_Crlpath: 
+>            Retrieved_Gtid_Set: 608bbf72-a0d4-11ef-9140-0050569c6862:3-31
+>             Executed_Gtid_Set: 608bbf72-a0d4-11ef-9140-0050569c6862:3-31,
+> 60a3d850-a0d4-11ef-b3d1-0050569c92f9:1-16
+>                 Auto_Position: 0
+>          Replicate_Rewrite_DB: 
+>                  Channel_Name: g2-mysql01-sync-to-mysql02
+>            Master_TLS_Version: 
+> 
+> # Rpl_semi_sync_slave_status状态自动变为ON
+> mysql> show status like 'Rpl_semi_sync%'; 
+> +--------------------------------------------+-------+
+> | Variable_name                              | Value |
+> +--------------------------------------------+-------+
+> | Rpl_semi_sync_master_clients               | 1     |
+> | Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+> | Rpl_semi_sync_master_net_wait_time         | 0     |
+> | Rpl_semi_sync_master_net_waits             | 3     |
+> | Rpl_semi_sync_master_no_times              | 1     |
+> | Rpl_semi_sync_master_no_tx                 | 2     |
+> | Rpl_semi_sync_master_status                | ON    |
+> | Rpl_semi_sync_master_timefunc_failures     | 0     |
+> | Rpl_semi_sync_master_tx_avg_wait_time      | 1676  |
+> | Rpl_semi_sync_master_tx_wait_time          | 3352  |
+> | Rpl_semi_sync_master_tx_waits              | 2     |
+> | Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+> | Rpl_semi_sync_master_wait_sessions         | 0     |
+> | Rpl_semi_sync_master_yes_tx                | 2     |
+> | Rpl_semi_sync_slave_status                 | ON    |
+> +--------------------------------------------+-------+
+> 
+> mysql> SHOW GLOBAL VARIABLES LIKE 'rpl_semi_sync%'; 
+> +-------------------------------------------+------------+
+> | Variable_name                             | Value      |
+> +-------------------------------------------+------------+
+> | rpl_semi_sync_master_enabled              | ON         |
+> | rpl_semi_sync_master_timeout              | 10000      |
+> | rpl_semi_sync_master_trace_level          | 32         |
+> | rpl_semi_sync_master_wait_for_slave_count | 1          |
+> | rpl_semi_sync_master_wait_no_slave        | ON         |
+> | rpl_semi_sync_master_wait_point           | AFTER_SYNC |
+> | rpl_semi_sync_slave_enabled               | ON         |
+> | rpl_semi_sync_slave_trace_level           | 32         |
+> +-------------------------------------------+------------+
+> ```
+>
+> 
+>
+> 方法二：在/etc/my.cnf配置，并重启mysqld服务后生效
+>
+> ```bash
+> [root@g2-pro-mysql02 ~]# cat /etc/my.cnf 
+> [mysqld]
+> ....
+> # Rpl_semi_sync
+> rpl_semi_sync_master_enabled=1
+> rpl_semi_sync_slave_enabled=1
+> 
+> [root@g2-pro-mysql02 ~]# service mysqld restart 
+> Shutting down MySQL..... SUCCESS! 
+> Starting MySQL..... SUCCESS! 
+> ```
+>
+> 以下是启用的正常状态，启动mysqld服务后需要等待1分钟左右时间才可看到Rpl_semi_sync_master_status状态变为ON
+>
+> ```sql
+> mysql> show status like 'Rpl_semi_sync%';
+> +--------------------------------------------+-------+
+> | Variable_name                              | Value |
+> +--------------------------------------------+-------+
+> | Rpl_semi_sync_master_clients               | 0     |
+> | Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+> | Rpl_semi_sync_master_net_wait_time         | 0     |
+> | Rpl_semi_sync_master_net_waits             | 0     |
+> | Rpl_semi_sync_master_no_times              | 0     |
+> | Rpl_semi_sync_master_no_tx                 | 0     |
+> | Rpl_semi_sync_master_status                | ON    |
+> | Rpl_semi_sync_master_timefunc_failures     | 0     |
+> | Rpl_semi_sync_master_tx_avg_wait_time      | 0     |
+> | Rpl_semi_sync_master_tx_wait_time          | 0     |
+> | Rpl_semi_sync_master_tx_waits              | 0     |
+> | Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+> | Rpl_semi_sync_master_wait_sessions         | 0     |
+> | Rpl_semi_sync_master_yes_tx                | 0     |
+> | Rpl_semi_sync_slave_status                 | ON    |
+> +--------------------------------------------+-------+
+> ```
+
+
+
+###### **27.6.4.2.2 g2-pro-mysql01节点操作**
+
+```sql
+mysql> SET GLOBAL rpl_semi_sync_master_enabled = 1;
+mysql> SHOW GLOBAL VARIABLES LIKE 'rpl_semi_sync%';
++-------------------------------------------+------------+
+| Variable_name                             | Value      |
++-------------------------------------------+------------+
+| rpl_semi_sync_master_enabled              | ON         |
+| rpl_semi_sync_master_timeout              | 10000      |
+| rpl_semi_sync_master_trace_level          | 32         |
+| rpl_semi_sync_master_wait_for_slave_count | 1          |
+| rpl_semi_sync_master_wait_no_slave        | ON         |
+| rpl_semi_sync_master_wait_point           | AFTER_SYNC |
+| rpl_semi_sync_slave_enabled               | ON         |
+| rpl_semi_sync_slave_trace_level           | 32         |
++-------------------------------------------+------------+
+
+mysql> show status like 'Rpl_semi_sync%';
++--------------------------------------------+-------+
+| Variable_name                              | Value |
++--------------------------------------------+-------+
+| Rpl_semi_sync_master_clients               | 1     |
+| Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+| Rpl_semi_sync_master_net_wait_time         | 0     |
+| Rpl_semi_sync_master_net_waits             | 0     |
+| Rpl_semi_sync_master_no_times              | 1     |
+| Rpl_semi_sync_master_no_tx                 | 0     |
+| Rpl_semi_sync_master_status                | ON    |
+| Rpl_semi_sync_master_timefunc_failures     | 0     |
+| Rpl_semi_sync_master_tx_avg_wait_time      | 0     |
+| Rpl_semi_sync_master_tx_wait_time          | 0     |
+| Rpl_semi_sync_master_tx_waits              | 0     |
+| Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+| Rpl_semi_sync_master_wait_sessions         | 0     |
+| Rpl_semi_sync_master_yes_tx                | 0     |
+| Rpl_semi_sync_slave_status                 | ON    |
++--------------------------------------------+-------+
+```
+
+
+
+
+
+#### 27.7 检查半同步复制状态
+```sql
+mysql> show master status\G
+*************************** 1. row ***************************
+             File: master-bin.000018
+         Position: 234
+     Binlog_Do_DB: 
+ Binlog_Ignore_DB: 
+Executed_Gtid_Set: 608bbf72-a0d4-11ef-9140-0050569c6862:3-24,
+60a3d850-a0d4-11ef-b3d1-0050569c92f9:1-16
+
+mysql> show slave status\G
+*************************** 1. row ***************************
+               Slave_IO_State: Waiting for master to send event
+                  Master_Host: 192.168.13.165
+                  Master_User: repluser
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: master-bin.000015
+          Read_Master_Log_Pos: 572
+               Relay_Log_File: relay-master-g2@002dmysql01@002dsync@002dto@002dmysql02.000040
+                Relay_Log_Pos: 361
+        Relay_Master_Log_File: master-bin.000015
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+              Replicate_Do_DB: 
+          Replicate_Ignore_DB: 
+           Replicate_Do_Table: 
+       Replicate_Ignore_Table: 
+      Replicate_Wild_Do_Table: 
+  Replicate_Wild_Ignore_Table: 
+                   Last_Errno: 0
+                   Last_Error: 
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 572
+              Relay_Log_Space: 1032
+              Until_Condition: None
+               Until_Log_File: 
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File: 
+           Master_SSL_CA_Path: 
+              Master_SSL_Cert: 
+            Master_SSL_Cipher: 
+               Master_SSL_Key: 
+        Seconds_Behind_Master: 0
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error: 
+               Last_SQL_Errno: 0
+               Last_SQL_Error: 
+  Replicate_Ignore_Server_Ids: 
+             Master_Server_Id: 1
+                  Master_UUID: 608bbf72-a0d4-11ef-9140-0050569c6862
+             Master_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+           Master_Retry_Count: 86400
+                  Master_Bind: 
+      Last_IO_Error_Timestamp: 
+     Last_SQL_Error_Timestamp: 
+               Master_SSL_Crl: 
+           Master_SSL_Crlpath: 
+           Retrieved_Gtid_Set: 608bbf72-a0d4-11ef-9140-0050569c6862:3-24
+            Executed_Gtid_Set: 608bbf72-a0d4-11ef-9140-0050569c6862:3-24,
+60a3d850-a0d4-11ef-b3d1-0050569c92f9:1-16
+                Auto_Position: 0
+         Replicate_Rewrite_DB: 
+                 Channel_Name: g2-mysql01-sync-to-mysql02
+           Master_TLS_Version: 
+```
+
+
+
+#### 27.8 切回主主复制
+当主节点`g2-pro-mysql02`恢复并且所有数据同步后，您可以恢复正常的主主复制模式（例如调整mysql的流量到2台主节点之上，实现slb，可通过mycat读写分离中间件、四层负载均衡等方式），两个主节点将继续互相同步数据。
+
+
+
+#### 27.9 备选方案
+
+除了主主复制和半同步复制外，还可以考虑使用 MySQL Group Replication，这是一个更为现代的解决方案，它提供了更高的自动化、数据一致性和故障恢复能力。
+1. MySQL Group Replication：它支持自动故障转移，能够处理节点之间的复制冲突，并且能够在节点故障时自动恢复。
+
+2. MHA（MySQL High Availability）：MHA 是一个 MySQL 高可用性工具，支持自动故障转移，避免了手动干预。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ## 笔记
@@ -6459,3 +7637,1044 @@ mysql> show databases;
 
 ```
 
+
+
+
+
+
+
+## mysql调优
+
+在 `SHOW ENGINE INNODB STATUS` 的输出中，查看缓冲池使用情况是评估数据库性能的关键步骤之一。下面是如何根据缓冲池的使用情况做出调整：
+
+**innodb status**
+
+```
+=====================================
+2024-12-02 15:43:10 0x7f60c3ef7700 INNODB MONITOR OUTPUT
+=====================================
+Per second averages calculated from the last 28 seconds
+-----------------
+BACKGROUND THREAD
+-----------------
+srv_master_thread loops: 13396724 srv_active, 0 srv_shutdown, 21909 srv_idle
+srv_master_thread log flush and writes: 13418633
+----------
+SEMAPHORES
+----------
+OS WAIT ARRAY INFO: reservation count 193593675573
+--Thread 140053527312128 has waited at buf0buf.cc line 4040 for 0  seconds the semaphore:
+S-lock on RW-latch at 0x7f621d35cbe8 created in file buf0buf.cc line 1468
+a writer (thread id 140053536773888) has reserved it in mode  exclusive
+number of readers 0, waiters flag 1, lock_word: 0
+Last time read locked in file row0sel.cc line 3766
+Last time write locked in file /export/home/pb2/build/sb_0-39489236-1591101761.33/mysql-5.7.31/storage/innobase/buf/buf0buf.cc line 5210
+OS WAIT ARRAY INFO: signal count 66482489263
+RW-shared spins 0, rounds 413022330814, OS waits 192340138320
+RW-excl spins 0, rounds 220272496510, OS waits 884730441
+RW-sx spins 86157096, rounds 1742951978, OS waits 25614492
+Spin rounds per wait: 413022330814.00 RW-shared, 220272496510.00 RW-excl, 20.23 RW-sx
+------------
+TRANSACTIONS
+------------
+Trx id counter 20422525725
+Purge done for trx's n:o < 20422510918 undo n:o < 0 state: running but idle
+History list length 4705
+LIST OF TRANSACTIONS FOR EACH SESSION:
+---TRANSACTION 421537104098000, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104015920, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104173696, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104120800, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104092528, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104108944, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537103994944, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104133568, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104129008, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104115328, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104000416, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104128096, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104073376, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104065168, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104051488, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104263984, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104263072, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104262160, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104258512, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104260336, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104259424, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104257600, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104049664, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104251216, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104209264, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104188288, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104130832, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104003152, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104050576, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537103993120, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104162752, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104089792, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104047840, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104068816, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104201968, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104181904, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104087968, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104007712, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537103999504, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537103996768, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104215648, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104250304, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104249392, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104247568, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104246656, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104245744, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104240272, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104239360, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104236624, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104078848, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104234800, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104230240, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104014096, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104123536, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104225680, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104222944, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104222032, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104220208, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104216560, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104199232, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104191024, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104170048, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104150896, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104149072, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104066080, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104010448, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104009536, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104112592, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104023216, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104001328, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104190112, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104187376, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104180080, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104147248, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104046016, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104099824, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104100736, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104093440, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104171872, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104118064, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104219296, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104218384, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104214736, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104170960, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104141776, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104139040, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104057872, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104136304, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104132656, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104111680, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104105296, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104098912, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104082496, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104069728, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104061520, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537103995856, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104032336, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104164576, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104152720, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104079760, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104067904, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104064256, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104035072, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537103994032, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104122624, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104241184, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104233888, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104232976, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104229328, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104228416, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104226592, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104213824, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104224768, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104223856, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104221120, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104198320, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104197408, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104195584, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104194672, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104137216, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104124448, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104090704, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104087056, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104084320, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104063344, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104037808, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104036896, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104008624, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104186464, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104178256, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104172784, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104166400, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104126272, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104109856, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104060608, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104029600, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104004064, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104025952, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104149984, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104125360, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104018656, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104095264, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537103998592, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104016832, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104156368, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104131744, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104169136, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104167312, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104165488, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104158192, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104153632, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104146336, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104080672, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104106208, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104097088, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104077936, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104138128, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104121712, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104119888, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104039632, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104024128, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104107120, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104056960, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104021392, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104256688, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104255776, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104085232, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104038720, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104006800, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104252128, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104243920, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104242096, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104180992, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104135392, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104110768, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104077024, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104154544, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104053312, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104238448, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104237536, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104235712, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104231152, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104012272, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104227504, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104040544, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104055136, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104168224, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104081584, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104022304, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104142688, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104127184, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104070640, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104011360, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104004976, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104056048, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104217472, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104177344, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104139952, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104113504, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104076112, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104145424, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104072464, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104212912, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104211088, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104071552, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104208352, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104206528, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104205616, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104204704, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104202880, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104200144, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104185552, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104148160, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104086144, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104088880, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104052400, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537103997680, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104160928, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104034160, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104192848, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104028688, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104140864, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104114416, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104144512, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104129920, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104013184, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104134480, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104019568, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104182816, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104043280, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104203792, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104031424, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104054224, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104044192, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104161840, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104232064, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104059696, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104157280, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104183728, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104174608, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104075200, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104045104, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104048752, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104096176, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104058784, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104248480, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104102560, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104163664, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104035984, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104243008, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104155456, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104025040, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104160016, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104315056, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104325088, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104033248, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104017744, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104365216, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104002240, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537103992208, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104015008, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104254864, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104294080, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104541232, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104151808, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104509312, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104442736, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104436352, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104494720, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104493808, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104490160, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104042368, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104415376, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104261248, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104482864, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104332384, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104425408, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104175520, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104005888, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104046928, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104438176, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104265808, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104176432, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104210176, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104117152, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104030512, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104091616, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104026864, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104159104, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104104384, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104083408, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104103472, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104094352, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104020480, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104191936, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104074288, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104184640, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104108032, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104041456, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104189200, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104143600, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104193760, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104118976, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104062432, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104116240, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104027776, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104101648, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537104264896, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537103991296, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537103990384, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537103989472, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+---TRANSACTION 421537103988560, not started
+0 lock struct(s), heap size 1136, 0 row lock(s)
+--------
+FILE I/O
+--------
+I/O thread 0 state: waiting for completed aio requests (insert buffer thread)
+I/O thread 1 state: waiting for completed aio requests (log thread)
+I/O thread 2 state: waiting for completed aio requests (read thread)
+I/O thread 3 state: waiting for completed aio requests (read thread)
+I/O thread 4 state: waiting for completed aio requests (read thread)
+I/O thread 5 state: waiting for completed aio requests (read thread)
+I/O thread 6 state: waiting for completed aio requests (write thread)
+I/O thread 7 state: waiting for completed aio requests (write thread)
+I/O thread 8 state: waiting for completed aio requests (write thread)
+I/O thread 9 state: waiting for completed aio requests (write thread)
+Pending normal aio reads: [0, 0, 0, 0] , aio writes: [0, 0, 0, 0] ,
+ ibuf aio reads:, log i/o's:, sync i/o's:
+Pending flushes (fsync) log: 0; buffer pool: 0
+55966884361 OS file reads, 2648295107 OS file writes, 2057089994 OS fsyncs
+1 pending preads, 0 pending pwrites
+4321.52 reads/s, 16384 avg bytes/read, 190.96 writes/s, 142.82 fsyncs/s
+-------------------------------------
+INSERT BUFFER AND ADAPTIVE HASH INDEX
+-------------------------------------
+Ibuf: size 1, free list len 62231, seg size 62233, 151864864 merges
+merged operations:
+ insert 325494220, delete mark 303361986, delete 4340936
+discarded operations:
+ insert 136, delete mark 0, delete 0
+Hash table size 796871, node heap has 1268 buffer(s)
+Hash table size 796871, node heap has 15 buffer(s)
+Hash table size 796871, node heap has 2 buffer(s)
+Hash table size 796871, node heap has 2 buffer(s)
+Hash table size 796871, node heap has 3 buffer(s)
+Hash table size 796871, node heap has 4 buffer(s)
+Hash table size 796871, node heap has 18 buffer(s)
+Hash table size 796871, node heap has 208 buffer(s)
+3741.65 hash searches/s, 3111.39 non-hash searches/s
+---
+LOG
+---
+Log sequence number 3507184143569
+Log flushed up to   3507184143569
+Pages flushed up to 3507109533747
+Last checkpoint at  3507099075084
+0 pending log flushes, 0 pending chkp writes
+1899316448 log i/o's done, 130.59 log i/o's/second
+----------------------
+BUFFER POOL AND MEMORY
+----------------------
+Total large memory allocated 3298295808
+Dictionary memory allocated 5762760
+Buffer pool size   196584
+Free buffers       4659
+Database pages     190405
+Old database pages 70442
+Modified db pages  2239
+Pending reads      1
+Pending writes: LRU 0, flush list 0, single page 0
+Pages made young 28317847741, not young 1906159094595
+0.00 youngs/s, 0.00 non-youngs/s
+Pages read 55967639681, created 411344665, written 689380059
+0.00 reads/s, 0.00 creates/s, 0.00 writes/s
+Buffer pool hit rate 940 / 1000, young-making rate 7 / 1000 not 343 / 1000
+Pages read ahead 0.00/s, evicted without access 0.00/s, Random read ahead 0.00/s
+LRU len: 190405, unzip_LRU len: 0
+I/O sum[2099200]:cur[16008], unzip sum[0]:cur[0]
+----------------------
+INDIVIDUAL BUFFER POOL INFO
+----------------------
+---BUFFER POOL 0
+Buffer pool size   24573
+Free buffers       585
+Database pages     23804
+Old database pages 8807
+Modified db pages  333
+Pending reads      1
+Pending writes: LRU 0, flush list 0, single page 0
+Pages made young 3502764571, not young 230809434771
+0.00 youngs/s, 0.00 non-youngs/s
+Pages read 7089307381, created 57728632, written 91750312
+0.00 reads/s, 0.00 creates/s, 0.00 writes/s
+Buffer pool hit rate 933 / 1000, young-making rate 8 / 1000 not 349 / 1000
+Pages read ahead 0.00/s, evicted without access 0.00/s, Random read ahead 0.00/s
+LRU len: 23804, unzip_LRU len: 0
+I/O sum[262400]:cur[2001], unzip sum[0]:cur[0]
+---BUFFER POOL 1
+Buffer pool size   24573
+Free buffers       536
+Database pages     23843
+Old database pages 8821
+Modified db pages  242
+Pending reads      0
+Pending writes: LRU 0, flush list 0, single page 0
+Pages made young 3533709865, not young 204798884083
+0.00 youngs/s, 0.00 non-youngs/s
+Pages read 7129829083, created 52354408, written 87390895
+0.00 reads/s, 0.00 creates/s, 0.00 writes/s
+Buffer pool hit rate 917 / 1000, young-making rate 9 / 1000 not 392 / 1000
+Pages read ahead 0.00/s, evicted without access 0.00/s, Random read ahead 0.00/s
+LRU len: 23843, unzip_LRU len: 0
+I/O sum[262400]:cur[2001], unzip sum[0]:cur[0]
+---BUFFER POOL 2
+Buffer pool size   24573
+Free buffers       393
+Database pages     23996
+Old database pages 8877
+Modified db pages  162
+Pending reads      0
+Pending writes: LRU 0, flush list 0, single page 0
+Pages made young 3525340339, not young 254711421490
+0.00 youngs/s, 0.00 non-youngs/s
+Pages read 7075240756, created 48760256, written 81890892
+0.00 reads/s, 0.00 creates/s, 0.00 writes/s
+Buffer pool hit rate 920 / 1000, young-making rate 8 / 1000 not 405 / 1000
+Pages read ahead 0.00/s, evicted without access 0.00/s, Random read ahead 0.00/s
+LRU len: 23996, unzip_LRU len: 0
+I/O sum[262400]:cur[2001], unzip sum[0]:cur[0]
+---BUFFER POOL 3
+Buffer pool size   24573
+Free buffers       384
+Database pages     23995
+Old database pages 8877
+Modified db pages  331
+Pending reads      0
+Pending writes: LRU 0, flush list 0, single page 0
+Pages made young 3530033608, not young 273231823280
+0.00 youngs/s, 0.00 non-youngs/s
+Pages read 6981359911, created 49273054, written 85043694
+0.00 reads/s, 0.00 creates/s, 0.00 writes/s
+Buffer pool hit rate 940 / 1000, young-making rate 6 / 1000 not 331 / 1000
+Pages read ahead 0.00/s, evicted without access 0.00/s, Random read ahead 0.00/s
+LRU len: 23995, unzip_LRU len: 0
+I/O sum[262400]:cur[2001], unzip sum[0]:cur[0]
+---BUFFER POOL 4
+Buffer pool size   24573
+Free buffers       641
+Database pages     23740
+Old database pages 8783
+Modified db pages  129
+Pending reads      0
+Pending writes: LRU 0, flush list 0, single page 0
+Pages made young 3622087338, not young 218918745733
+0.00 youngs/s, 0.00 non-youngs/s
+Pages read 6545549615, created 49882197, written 87187000
+0.00 reads/s, 0.00 creates/s, 0.00 writes/s
+Buffer pool hit rate 964 / 1000, young-making rate 4 / 1000 not 200 / 1000
+Pages read ahead 0.00/s, evicted without access 0.00/s, Random read ahead 0.00/s
+LRU len: 23740, unzip_LRU len: 0
+I/O sum[262400]:cur[2001], unzip sum[0]:cur[0]
+---BUFFER POOL 5
+Buffer pool size   24573
+Free buffers       800
+Database pages     23575
+Old database pages 8722
+Modified db pages  292
+Pending reads      0
+Pending writes: LRU 0, flush list 0, single page 0
+Pages made young 3572500313, not young 212843803272
+0.00 youngs/s, 0.00 non-youngs/s
+Pages read 6886746235, created 51032030, written 86116329
+0.00 reads/s, 0.00 creates/s, 0.00 writes/s
+Buffer pool hit rate 921 / 1000, young-making rate 11 / 1000 not 400 / 1000
+Pages read ahead 0.00/s, evicted without access 0.00/s, Random read ahead 0.00/s
+LRU len: 23575, unzip_LRU len: 0
+I/O sum[262400]:cur[2001], unzip sum[0]:cur[0]
+---BUFFER POOL 6
+Buffer pool size   24573
+Free buffers       617
+Database pages     23763
+Old database pages 8791
+Modified db pages  329
+Pending reads      0
+Pending writes: LRU 0, flush list 0, single page 0
+Pages made young 3535652675, not young 253150304747
+0.00 youngs/s, 0.00 non-youngs/s
+Pages read 7038859994, created 52461566, written 87559680
+0.00 reads/s, 0.00 creates/s, 0.00 writes/s
+Buffer pool hit rate 952 / 1000, young-making rate 6 / 1000 not 405 / 1000
+Pages read ahead 0.00/s, evicted without access 0.00/s, Random read ahead 0.00/s
+LRU len: 23763, unzip_LRU len: 0
+I/O sum[262400]:cur[2001], unzip sum[0]:cur[0]
+---BUFFER POOL 7
+Buffer pool size   24573
+Free buffers       703
+Database pages     23689
+Old database pages 8764
+Modified db pages  421
+Pending reads      0
+Pending writes: LRU 0, flush list 0, single page 0
+Pages made young 3495759032, not young 257694677219
+0.00 youngs/s, 0.00 non-youngs/s
+Pages read 7220746706, created 49852522, written 82441257
+0.00 reads/s, 0.00 creates/s, 0.00 writes/s
+Buffer pool hit rate 933 / 1000, young-making rate 10 / 1000 not 384 / 1000
+Pages read ahead 0.00/s, evicted without access 0.00/s, Random read ahead 0.00/s
+LRU len: 23689, unzip_LRU len: 0
+I/O sum[262400]:cur[2001], unzip sum[0]:cur[0]
+--------------
+ROW OPERATIONS
+--------------
+2 queries inside InnoDB, 0 queries in queue
+2 read views open inside InnoDB
+Process ID=2108, Main thread ID=140058535225088, state: sleeping
+Number of rows inserted 53669677428, updated 2060125221, deleted 408123861, read 5520108629530
+3582.59 inserts/s, 133.50 updates/s, 0.11 deletes/s, 211021.14 reads/s
+----------------------------
+END OF INNODB MONITOR OUTPUT
+============================
+```
+
+
+
+
+
+### 1. **Free buffers 数量较少**
+
+在 `SHOW ENGINE INNODB STATUS` 输出中的 `Buffer Pool and Memory` 部分，您会看到如下信息：
+
+```
+----------------------
+BUFFER POOL AND MEMORY
+----------------------
+Total large memory allocated 3298295808
+Dictionary memory allocated 5762760
+Buffer pool size   196584
+Free buffers       4659
+Database pages     190405
+Old database pages 70442
+Modified db pages  2239
+Pending reads      1
+Pending writes: LRU 0, flush list 0, single page 0
+Pages made young 28317847741, not young 1906159094595
+0.00 youngs/s, 0.00 non-youngs/s
+Pages read 55967639681, created 411344665, written 689380059
+0.00 reads/s, 0.00 creates/s, 0.00 writes/s
+Buffer pool hit rate 940 / 1000, young-making rate 7 / 1000 not 343 / 1000
+Pages read ahead 0.00/s, evicted without access 0.00/s, Random read ahead 0.00/s
+LRU len: 190405, unzip_LRU len: 0
+I/O sum[2099200]:cur[16008], unzip sum[0]:cur[0]
+```
+
+- **`Buffer pool size`**：缓冲池的总大小（单位通常为页），通常建议设置为服务器总内存的 60%-70%。
+- **`Free buffers`**：当前缓冲池中空闲的缓冲页数量。
+- **`Database pages`**：缓冲池中已经加载的数据库页的数量。
+- **`Modified db pages`**：被修改但尚未写回磁盘的脏页数量。
+
+**如果 `Free buffers` 数量较少，意味着缓冲池正在使用大部分内存。可能的原因包括：**
+
+```powershell
+# `Free buffers` 数量为2%，比例少，建议增加innodb_buffer_pool_size
+PS C:\Users\user> 4659/196584 * 100
+2.36997924551337
+```
+
+- **`innodb_buffer_pool_size` 配置过小**：如果缓冲池过小，MySQL就需要频繁从磁盘加载数据，导致I/O瓶颈，影响性能。
+- **工作集较大**：如果您的数据库非常大，或者有大量活跃数据集，可能需要更大的缓冲池。
+
+**解决方案：**
+
+- **增加 `innodb_buffer_pool_size`**：您可以通过增大 `innodb_buffer_pool_size` 来提供更多内存用于缓冲池。例如，如果服务器有 64GB 内存，可以考虑将缓冲池大小设置为 40GB 到 45GB。
+
+  ```
+  innodb_buffer_pool_size = 45G
+  ```
+
+  增加缓冲池大小后，`Free buffers` 数量应当增加，表示有更多的空间可以用来缓存数据。
+
+  
+
+### 2. **Database pages 和 Modified db pages 的比例**
+
+- **`Database pages`**：表示缓冲池中加载的页数。
+- **`Modified db pages`**：表示已经被修改但尚未刷写回磁盘的脏页。
+
+如果 `Modified db pages` 的比例过高，可能会影响数据库的性能，尤其是：
+
+- **增加磁盘I/O**：脏页需要定期刷写回磁盘，过多的脏页可能会导致I/O延迟。
+- **崩溃恢复时间长**：在崩溃恢复时，未写回磁盘的脏页需要重新写入，这会增加恢复时间。
+
+```powershell
+# Modified db pages的比例为1%，比例不高
+PS C:\Users\user> 2239/190405 * 100
+1.17591449804364
+```
+
+**解决方案：**
+
+- **调整 `innodb_flush_log_at_trx_commit`**：此参数控制 InnoDB 如何将日志刷写到磁盘。默认值为 `1`，意味着每次事务提交时都会将日志写入磁盘。如果系统中 `Modified db pages` 比较多，且 `innodb_flush_log_at_trx_commit` 设置为 `1`，可以考虑将其设置为 `2` 或 `0` 来减少磁盘I/O的频率：
+
+  - **`innodb_flush_log_at_trx_commit = 1`**：每次事务提交时，日志都会写入磁盘，提供最强的数据持久性保证（适用于高事务一致性要求的场景）。
+  - **`innodb_flush_log_at_trx_commit = 2`**：日志缓冲区每秒刷新一次，而不是每次事务提交时刷新。这会减少磁盘I/O的次数，但在崩溃时可能会丢失最近的事务。
+  - **`innodb_flush_log_at_trx_commit = 0`**：日志缓冲区仅在事务提交时刷新，但只有当日志刷新到磁盘时，才会保证数据一致性。这是最快的选项，但风险较高。
+
+  示例：
+
+  ```
+  innodb_flush_log_at_trx_commit = 2
+  ```
+
+- **调整 `innodb_flush_method`**：使用 `O_DIRECT` 刷写日志可以减少操作系统缓存的干扰，改善性能。默认情况下，InnoDB使用操作系统的缓存来写入日志。如果I/O瓶颈明显，可以考虑设置：
+
+  ```
+  innodb_flush_method = O_DIRECT
+  ```
+
+- **调整 `innodb_log_file_size` 和 `innodb_log_files_in_group`**：增大日志文件大小和日志文件数量有助于减少频繁的日志刷新操作，从而降低磁盘I/O负载。您可以考虑增大这些值：
+
+  ```
+  innodb_log_file_size = 512M
+  innodb_log_files_in_group = 3
+  ```
+
+
+
+### 3. **调优缓冲池的其他参数**
+
+除了 `innodb_buffer_pool_size`，还有一些其他参数可以帮助调优缓冲池的表现：
+
+- **`innodb_buffer_pool_instances`**：当 `innodb_buffer_pool_size` 较大时，启用多个缓冲池实例可以提高并发性能。通常，每个实例的大小不应超过 1GB。
+
+  ```
+  innodb_buffer_pool_instances = 8
+  ```
+
+- **`innodb_buffer_pool_chunk_size`**：决定每个缓冲池实例分配的内存块大小。大内存块可以减少内存碎片，但可能会影响内存的管理效率。
+
+  ```
+  innodb_buffer_pool_chunk_size = 128M
+  ```
+
+
+
+###  **4. 监控和优化**
+
+- **监控缓冲池命中率**：使用 `SHOW STATUS LIKE 'Innodb_buffer_pool_read%'` 可以查看缓冲池的命中率：
+
+  ```sql
+  SHOW STATUS LIKE 'Innodb_buffer_pool_read%';
+  ```
+
+  - `Innodb_buffer_pool_reads`：从磁盘读取的数据页数量。
+  - `Innodb_buffer_pool_read_requests`：缓冲池的读取请求数量。
+
+  通过比较这两个指标，您可以估算出缓冲池的命中率。如果命中率较低，表示缓冲池的大小不足，可能需要增大 `innodb_buffer_pool_size`。
+
+  ```sql
+  Variable_name	Value
+  Innodb_buffer_pool_read_ahead_rnd	0
+  Innodb_buffer_pool_read_ahead	1503497106
+  Innodb_buffer_pool_read_ahead_evicted	1963700
+  Innodb_buffer_pool_read_requests	4349996785073
+  Innodb_buffer_pool_reads	54330211073
+  ```
+
+  ```powershell
+  # 读请求命中率为1.24%，应该增加innodb_buffer_pool_size大小
+  PS C:\Users\user> 54328830364/4349900219578 * 100
+  1.24896727790392
+  ```
+
+- **`SHOW STATUS LIKE 'Innodb_buffer_pool_wait%'`**：可以查看缓冲池的等待情况。如果等待过多，可能意味着缓冲池的内存过小。
+
+  ```sql
+  Variable_name	Value
+  Innodb_buffer_pool_wait_free	299524
+  ```
+
+  
+
+### 总结
+
+- 如果 `Free buffers` 数量较少，可能需要增加 `innodb_buffer_pool_size`，以提供更多的缓冲池内存，减少磁盘I/O。
+- 如果 `Modified db pages` 比例过高，可以调整 `innodb_flush_log_at_trx_commit` 等参数来减少磁盘I/O压力，平衡性能和数据一致性。
+- 适当增加 `innodb_log_file_size`、`innodb_log_files_in_group` 和调整缓冲池实例数，能进一步优化缓冲池的性能。
