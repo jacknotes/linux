@@ -6868,6 +6868,13 @@ mysql -uroot -p < Pro_Full_20230316_010451_feishu_selfbuilt.sql
 source /restore-mysql/feishu_selfbuilt-000400.sql
 source /restore-mysql/feishu_selfbuilt-000401.sql
 source /restore-mysql/feishu_selfbuilt-000402.sql
+
+
+
+# 差异备份方式一 
+[root@lnmp ~]# mysqlbinlog --no-defaults --start-position=107 /data/mysql/mysql-bin.000012 /data/mysql/mysql-bin.000013 /data/mysql/mysql-bin.000014 > /root/diff.sql
+# 差异备份方式二 
+[root@lnmp ~]# mysqlbinlog --no-defaults --start-position=107 /data/mysql/mysql-bin.* > /root/diff.sql
 ```
 
 

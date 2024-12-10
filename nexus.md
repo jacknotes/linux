@@ -430,3 +430,77 @@ Login Succeeded
 
 ```
 
+
+
+
+
+
+
+# nexus清理jar包脚本
+
+```bash
+#!/bin/bash
+#nexus-3.24.0-02-unix 测试通过
+
+#待清理的项目列表
+PROJECTS='XXX XXXX XXXXX'
+#Nexus地址
+HOST=nexus.XXXX.com
+#用户名
+USER=XXXXX
+#密码
+PASSWORD=XXXXXXX
+#Repository
+REPO=maven-releases-XXX
+#分组
+GROUP=com.XXX
+#保留最近3个版本
+RESERVE=3
+#临时文件
+TMP_FILE=/tmp/nexus.ver.tmp
+
+function GetVersion()
+{
+
+    GROUP_PATH=`echo $GROUP|sed s'/\./\//'`
+    PROJECT_NAME=$1
+    curl -s http://$USER:$PASSWORD@$HOST/repository/${REPO}/${GROUP_PATH}/${PROJECT_NAME}/maven-metadata.xml > $TMP_FILE
+}
+
+function GetComponentID()
+{
+    PROJECT_NAME=$1
+    VER=$2
+    #echo curl -H "accept: application/json" "http://$USER:$PASSWORD@$HOST/service/rest/v1/search?sort=group&repository=${REPO}&format=maven2&group=${GROUP}&name=${PROJECT_NAME}&version=$VER"
+    ID=`curl -s -H "accept: application/json" "http://$USER:$PASSWORD@$HOST/service/rest/v1/search?sort=group&repository=${REPO}&format=maven2&group=${GROUP}&name=${PROJECT_NAME}&version=$VER"|jq  '.items[].id'|sed  -e's/"//g'`
+    echo $ID
+}
+
+function DeleteComponent()
+{
+    ID=$1
+    #echo $ID
+    curl -H "accept: application/json" -X DELETE "http://$USER:$PASSWORD@$HOST/service/rest/v1/components/${ID}"
+}
+
+for p in $PROJECTS
+do
+    GetVersion $p
+    #grep "<version>" /tmp/nexus.tmp |head -n -2|tr -cd "[0-9]"
+    #VER=`grep "<version>" $TMP_FILE |head -n -3|sed -r 's/.*>([0-9.]*)<.*/\1/g'`
+    VER=`grep "<version>" $TMP_FILE |head -n -${RESERVE}| sed 's/<version>//g'|sed 's/<\/version>//'|sed 's/^[ \t]*//g'`
+    for v in $VER
+    do
+        echo $p $v
+        ID=`GetComponentID $p $v`
+        if [ ! -z $ID ]
+        then
+            echo $ID
+            DeleteComponent $ID
+        fi
+    done
+done
+
+echo "OK!"
+```
+
