@@ -18,25 +18,25 @@ DBMS:
 	1. 层次模型
 	2. 网关模型
 	3. 关系模型
-RDBMS：
+	RDBMS：
 	1. 关系模型
 	2. 实体-关系模型
 	3. 对象关系模型：基于对象的数据模型
 	4. 半结构化数据模型：使用XML(扩展标记语言)例：<name>Jerry</name>,<age>50</age>
-关系：关系代数运算
+	关系：关系代数运算
 	1. 交集：重合的部分
 	2. 并集：属于A或属于B
 	3. 差集：属于A不属于B
 	4. 补集：全集减去集合等于补集
-SQL:Structure Qurey Language
-1970年IBM研发了System R数据库系统
-Ingres：世界上第一款成熟的数据库系统。Oracle,sybase商业数据库系统。
-美国标准委员会定义了sql标准：ansi-sql
-DML:数据操作语言
+	SQL:Structure Qurey Language
+	1970年IBM研发了System R数据库系统
+	Ingres：世界上第一款成熟的数据库系统。Oracle,sybase商业数据库系统。
+	美国标准委员会定义了sql标准：ansi-sql
+	DML:数据操作语言
 	INSERT,DELETE,UPDATE,SELECT
-DDL:数据定义语言
+	DDL:数据定义语言
 	CREATE,DROP,ALTER
-DCL:数据控制语言(用于设置访问权限的)
+	DCL:数据控制语言(用于设置访问权限的)
 	GRANT
 	REVOKE
 
@@ -2454,6 +2454,8 @@ mysql5.6+：配置较复杂，引入gtid（全局事务号）机制，multi-thre
 异步：当超时时间间隔到达后主服务器与从服务器断开，并且降级为异步模式
 ```
 
+**半同步复制环境下主主集群下线一台主节点操作**
+
 ```
 # 小记：20241202
 # 半同步复制环境下主主集群下线一台主节点操作
@@ -3035,6 +3037,80 @@ pt-fk-error-logger        pt-slave-delay
 pt-heartbeat              pt-slave-find        
 #pt-ioprofile  #评估io的能力
 ```
+
+
+
+### 17.4 什么是GTID
+
+```
+在 MySQL 主主集群中，GTID（Global Transaction Identifier） 是一种重要的机制，用于确保事务在多个主服务器之间的正确复制。GTID 使得复制系统更加稳健，特别是在主主复制中，它能够有效地避免数据冲突、重复执行事务、丢失事务等问题。下面是 GTID 在主主复制中的工作原理及其如何应用于防止数据冲突和重复插入的解释。
+
+1. 什么是 GTID？
+GTID（全局事务标识符）是 MySQL 为每个事务分配的唯一标识符。每个事务在提交时会被分配一个全局唯一的 ID。GTID 的格式通常是 server_id:transaction_id，其中：
+
+server_id 是 MySQL 服务器的唯一标识符。
+transaction_id 是该服务器上的事务 ID。
+例如，1-1001 表示在服务器 1 上的事务 1001。
+
+2. GTID 的工作原理
+2.1 事务提交时生成 GTID
+当事务在某个 MySQL 主服务器上提交时，系统会为该事务分配一个 GTID。这个 GTID 包含了该事务的唯一标识，保证了每个事务都有唯一的 ID，即使在多个 MySQL 实例之间复制，GTID 仍然能够保证事务的唯一性。
+
+假设服务器 A 的 server_id 是 1，当它执行一个事务时，该事务就会被分配一个 GTID，例如 1-1001。
+然后，这个事务会被记录到服务器 A 的 binlog 中，并且该事务的 GTID 会随 binlog 事件一起被复制到其他服务器。
+2.2 复制过程中的 GTID 使用
+在主主复制环境中，两个主服务器都同时执行读写操作，并且会将这些操作复制到对方。
+
+假设服务器 A 执行了一个事务并分配了 GTID 1-1001，并将该事务写入其 binlog。
+服务器 B 读取服务器 A 的 binlog，并根据 binlog 中的事件执行相同的操作（例如插入数据）。在执行完这个操作后，服务器 B 会记录已经处理过的 GTID（1-1001）到自己的 gtid_executed 列表中。
+2.3 GTID 保证了不重复执行
+通过 GTID，MySQL 可以保证即使同一个事务在多个主服务器之间进行复制和回放，也不会被重复执行。关键的点是：
+
+唯一性：每个事务都有唯一的 GTID 标识。即使在多个服务器之间复制时，每个事务都有唯一的标识符，防止了事务被复制多次或重复执行。
+有序性：在复制过程中，GTID 记录了事务的执行顺序。这样，当从服务器回放某个主服务器的 binlog 时，可以确保事务按正确的顺序执行。
+3. GTID 在主主复制中的应用
+在主主复制环境中，每个 MySQL 实例都作为主服务器同时处理数据修改，并将这些修改传播到另一个主服务器。GTID 的引入主要解决了以下问题：
+
+3.1 避免数据丢失
+在没有 GTID 的情况下，如果复制链路中断或者某个事务丢失，可能会导致数据丢失或不一致。而使用 GTID 后，MySQL 会确保每个事务都有唯一标识，并且确保所有的事务在复制过程中不会丢失。即使某个事务没有成功被复制到从服务器，它会在之后的复制过程中重新尝试执行。
+
+3.2 避免重复执行
+GTID 保证了同一个事务不会在主主复制环境中被重复执行。例如，服务器 A 执行了事务 1-1001，然后将该事务复制到服务器 B。服务器 B 执行完后会记下 GTID 1-1001。即使服务器 A 也将该事务再次发送给服务器 B，服务器 B 会检查 gtid_executed 列表，发现已经执行过该事务，因此不会重复执行该事务。
+
+3.3 冲突检测
+在主主复制的场景下，两个主服务器都可能同时执行相同的事务，导致冲突。GTID 可以帮助检测和解决这些冲突。每个事务都有一个唯一的 GTID，复制过程中，通过比对 GTID 来判断是否已经执行过某个事务，从而避免了冲突或重复执行。
+
+3.4 事务隔离
+在主主复制中，GTID 的一个关键优势是，它能帮助 MySQL 确保每个事务的执行顺序和唯一性。即使发生了服务器宕机或网络分区，GTID 仍然能够确保数据一致性。例如，如果服务器 A 执行了事务 1-1001，然后崩溃，重启后它可以根据 GTID 确定哪些事务已经执行，哪些没有，从而避免事务丢失或冲突。
+
+4. GTID 与主主复制中的常见问题
+4.1 循环复制
+主主复制的一个常见问题是循环复制，即服务器 A 执行事务并将其复制到服务器 B，之后服务器 B 又将同样的事务复制回服务器 A。GTID 通过唯一标识事务来避免这一问题。服务器 A 在收到来自 B 的复制事件时，能够知道自己已经执行过该事务，从而避免了循环复制。
+
+4.2 服务器 ID 冲突
+在主主复制中，如果两个服务器的 server_id 配置相同，可能会导致复制异常。为避免这种情况，通常会为每个主服务器设置不同的 server_id，并确保它们唯一。
+
+4.3 故障恢复
+GTID 使得故障恢复变得更加容易。当主服务器发生故障时，GTID 可以帮助从服务器准确地恢复已执行的事务，确保不会丢失或重复执行事务。
+
+5. GTID 与传统基于日志的复制的对比
+传统的 MySQL 复制是基于 binlog 的，复制过程中依赖于日志的顺序执行。这个方法在某些情况下可能会出现 事务丢失、顺序错误或重复执行 的问题，而 GTID 在这方面做了改进：
+
+GTID 使得复制更具容错性，因为它记录了事务的唯一 ID，不依赖于 binlog 顺序。
+GTID 使得复制更加可靠和高效，避免了手动处理复制冲突、重放或丢失事务等问题。
+总结
+GTID 是 MySQL 主主复制中的关键技术，它通过为每个事务分配一个唯一标识符来确保事务的顺序和一致性。在主主复制架构中，GTID 主要用于：
+
+确保事务不重复执行。
+防止数据丢失和冲突。
+简化故障恢复。
+提高复制系统的容错能力。
+通过正确使用 GTID，MySQL 能够提供更强的事务一致性和数据完整性，尤其是在主主复制的高并发写场景下
+```
+
+
+
+
 
 
 
@@ -5189,11 +5265,11 @@ DELETE FROM `dingtalk_selfbuilt`.`user_info` WHERE `id`=1730063375908392961 AND 
 
 ## 27. mysql5.7半同步主主集群
 
+一台mysql集群节点如果有2个主时，不能启用`半同步slave`的功能，否则会出错，只能为异步
+
 
 
 ### 27.1 配置半同步复制
-
-
 
 #### 27.1.1 查看mysql插件文件
 
@@ -5297,17 +5373,9 @@ mysql> show status like 'Rpl_semi_sync_%_status';
 | Rpl_semi_sync_master_status | ON   |
 | Rpl_semi_sync_slave_status  | OFF   |
 +-----------------------------+-------+
-
-
-# 写入/etc/my.cnf配置文件并重启mysqld服务
-[root@g2-pro-mysql02 /data/mysql]# cat /etc/my.cnf
-[mysqld]
-# Rpl_semi_sync
-rpl_semi_sync_master_enabled=1
-rpl_semi_sync_slave_enabled=1
-[root@g2-pro-mysql01 ~]# service mysqld restart 
-[root@g2-pro-mysql02 ~]# service mysqld restart 
-
+# 原因是需要重启下slave进程
+mysql> stop slave; 
+mysql> start slave;
 # 再次查看半同步复制功能是否开启，此时成功开启
 mysql> show status like 'Rpl_semi_sync_%_status';
 +-----------------------------+-------+
@@ -5557,8 +5625,8 @@ mysql> show status like 'Rpl_semi_sync%';
 
 ```sql
 # g2-pro-mysql01
-# 主主模式下，不停机的那台千万不能关闭slave半同步功能
 mysql> SET GLOBAL rpl_semi_sync_master_enabled = 0;
+mysql> SET GLOBAL rpl_semi_sync_slave_enabled = 0;
 mysql> SHOW GLOBAL VARIABLES LIKE 'rpl_semi_sync%';
 +-------------------------------------------+------------+
 | Variable_name                             | Value      |
@@ -5569,16 +5637,11 @@ mysql> SHOW GLOBAL VARIABLES LIKE 'rpl_semi_sync%';
 | rpl_semi_sync_master_wait_for_slave_count | 1          |
 | rpl_semi_sync_master_wait_no_slave        | ON         |
 | rpl_semi_sync_master_wait_point           | AFTER_SYNC |
-| rpl_semi_sync_slave_enabled               | ON         |
+| rpl_semi_sync_slave_enabled               | OFF        |
 | rpl_semi_sync_slave_trace_level           | 32         |
 +-------------------------------------------+------------+
-# 万一停止rpl_semi_sync_slave_enabled可通过此方式不停机恢复:
-# mysql> start slave IO_THREAD for channel 'g2-mysql01-sync-to-mysql02';
-# SET GLOBAL rpl_semi_sync_slave_enabled = 1;
-
 
 # g2-pro-mysql02
-# 主主模式下，停机的那台可以关闭master和slave半同步功能
 mysql> SET GLOBAL rpl_semi_sync_master_enabled = 0;
 mysql> SET GLOBAL rpl_semi_sync_slave_enabled = 0;
 mysql> SHOW GLOBAL VARIABLES LIKE 'rpl_semi_sync%';
@@ -6135,6 +6198,7 @@ mysql> show status like 'Rpl_semi_sync%';
 
 ```sql
 mysql> SET GLOBAL rpl_semi_sync_master_enabled = 1;
+mysql> SET GLOBAL rpl_semi_sync_slave_enabled = 1;
 mysql> SHOW GLOBAL VARIABLES LIKE 'rpl_semi_sync%';
 +-------------------------------------------+------------+
 | Variable_name                             | Value      |
@@ -6265,6 +6329,987 @@ Master_SSL_Verify_Server_Cert: No
 
 
 
+
+
+
+## 28. mysql集群迁移至新集群
+
+**目的：**
+从source_mysql_master节点迁移数据库到`新mysql集群`
+
+
+
+### 28.1 环境
+
+ip: 172.168.2.17  	role: source_mysql_master	config: enable gtid		domain_name: mysql.hs.com
+ip: 172.168.2.18	role: new_mysql_master01	config: enable gtid
+ip: 172.168.2.19	role: new_mysql_master02	config: enable gtid
+> 1. 确保所有节点server_id不同、gtid开启、多级复制开启。
+> 2. 除开第1点和个性化配置外，确保所有节点配置一样。
+
+
+
+### 28.2 备份172.168.2.17数据库
+```bash
+# 172.168.2.17上备份数据库
+[root@source ~]# mysqldump -uroot -p --all-databases --triggers --routines --events --set-gtid-purged=OFF --flush-logs --master-data=2 --single-transaction > alldatabases-`date +'%Y%m%d%H%M%S'`.sql
+Enter password:
+# 复制备份数据到172.168.2.18
+[root@source ~]# scp alldatabases-20241212145939.sql root@172.168.2.18:/root/alldatabases-20241212145939-172.168.2.17.sql
+```
+
+
+
+### 28.3 在172.168.2.18上恢复数据库
+```bash
+mysql> set session sql_log_bin=0;
+mysql> source /root/alldatabases-20241212145939-172.168.2.17.sql;
+mysql> set session sql_log_bin=1;
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
+| test               |
++--------------------+
+mysql> show master status;
++-------------------+----------+--------------+------------------+-------------------+
+| File              | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set |
++-------------------+----------+--------------+------------------+-------------------+
+| master-bin.000001 |      154 |              |                  |                   |
++-------------------+----------+--------------+------------------+-------------------+
+
+[root@master ~]# service mysqld restart
+Shutting down MySQL.... SUCCESS!
+Starting MySQL. SUCCESS!
+```
+
+
+
+### 28.4 备份172.168.2.18数据库
+此步骤假设172.168.2.18数据库太大，例如达到10G以上，则需要使用此备份步骤，否则在172.168.2.19上可直接使用`chang master`命令
+
+```bash
+[root@master ~]# mysqldump -uroot -p --all-databases --triggers --routines --events --set-gtid-purged=OFF --flush-logs --master-data=2 --single-transaction > alldatabases-`date +'%Y%m%d%H%M%S'`.sql
+Enter password:
+[root@master ~]# scp alldatabases-20241212150856.sql root@172.168.2.19:/root/alldatabases-20241212150856-172.168.2.18.sql
+```
+
+
+
+### 28.5 在172.168.2.19上恢复数据库
+```bash
+mysql> set session sql_log_bin=0;
+mysql> source /root/alldatabases-20241212150856-172.168.2.18.sql;
+mysql> set session sql_log_bin=1;
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
+| test               |
++--------------------+
+mysql> show master status;
++-------------------+----------+--------------+------------------+-------------------+
+| File              | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set |
++-------------------+----------+--------------+------------------+-------------------+
+| master-bin.000001 |      154 |              |                  |                   |
++-------------------+----------+--------------+------------------+-------------------+
+
+[root@slave1 ~]# service mysqld restart
+Shutting down MySQL.... SUCCESS!
+Starting MySQL. SUCCESS!
+```
+
+
+
+### 28.6 配置172.168.2.18的主为172.168.2.17
+
+在172.168.2.17上配置mysql集群用户
+```sql
+mysql> grant replication slave on *.* to repluser@'172.168.2.%' identified by 'homsom';
+```
+
+配置172.168.2.18
+```bash
+[root@master ~]# head -n 100 /root/alldatabases-20241212145939-172.168.2.17.sql | grep -i 'change master'
+-- CHANGE MASTER TO MASTER_LOG_FILE='master-bin.000002', MASTER_LOG_POS=154;
+```
+```sql
+mysql> change master to master_host='172.168.2.17',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000002',MASTER_LOG_POS=154 for channel 'channel_17';
+mysql> show binary logs;
++-------------------+-----------+
+| Log_name          | File_size |
++-------------------+-----------+
+| master-bin.000001 |       177 |
+| master-bin.000002 |       202 |
+| master-bin.000003 |       154 |
++-------------------+-----------+
+mysql> start slave for channel 'channel_17';
+mysql> show slave status\G
+*************************** 1. row ***************************
+               Slave_IO_State: Waiting for master to send event
+                  Master_Host: 172.168.2.17
+                  Master_User: repluser
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: master-bin.000002
+          Read_Master_Log_Pos: 456
+               Relay_Log_File: relay-master-channel_17.000002
+                Relay_Log_Pos: 623
+        Relay_Master_Log_File: master-bin.000002
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+              Replicate_Do_DB:
+          Replicate_Ignore_DB:
+           Replicate_Do_Table:
+       Replicate_Ignore_Table:
+      Replicate_Wild_Do_Table:
+  Replicate_Wild_Ignore_Table:
+                   Last_Errno: 0
+                   Last_Error:
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 456
+              Relay_Log_Space: 838
+              Until_Condition: None
+               Until_Log_File:
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File:
+           Master_SSL_CA_Path:
+              Master_SSL_Cert:
+            Master_SSL_Cipher:
+               Master_SSL_Key:
+        Seconds_Behind_Master: 0
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error:
+               Last_SQL_Errno: 0
+               Last_SQL_Error:
+  Replicate_Ignore_Server_Ids:
+             Master_Server_Id: 17
+                  Master_UUID: d2639a01-b7b7-11ef-be27-000c298c385b
+             Master_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+           Master_Retry_Count: 86400
+                  Master_Bind:
+      Last_IO_Error_Timestamp:
+     Last_SQL_Error_Timestamp:
+               Master_SSL_Crl:
+           Master_SSL_Crlpath:
+           Retrieved_Gtid_Set: d2639a01-b7b7-11ef-be27-000c298c385b:1
+            Executed_Gtid_Set: d2639a01-b7b7-11ef-be27-000c298c385b:1
+                Auto_Position: 0
+         Replicate_Rewrite_DB:
+                 Channel_Name: channel_17
+           Master_TLS_Version:
+mysql> show binary logs;
++-------------------+-----------+
+| Log_name          | File_size |
++-------------------+-----------+
+| master-bin.000001 |       177 |
+| master-bin.000002 |       202 |
+| master-bin.000003 |       456 |
++-------------------+-----------+
+```
+
+
+
+**查看172.168.2.17和172.168.2.18的同步方式**
+
+```sql
+# 172.168.2.17
+mysql> show status like 'Rpl_semi_sync_%_status';
+Empty set (0.01 sec)
+
+# 172.168.2.18
+mysql> show status like 'Rpl_semi_sync_%_status';
+Empty set (0.00 sec)
+```
+> 从上面结果中可以看出来，并没有半同步设置，所以默认是异步复制的。
+
+
+
+### 28.7 配置172.168.2.18和172.168.2.19互为主主
+
+#### 28.7.1 配置172.168.2.19的主为172.168.2.18
+
+**配置172.168.2.19**
+
+```bash
+[root@slave1 ~]# head -n 100 /root/alldatabases-20241212150856-172.168.2.18.sql | grep -i 'change master'
+-- CHANGE MASTER TO MASTER_LOG_FILE='master-bin.000003', MASTER_LOG_POS=154;
+```
+```sql
+mysql> change master to master_host='172.168.2.18',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000003',MASTER_LOG_POS=154 for channel 'channel_18';
+mysql> start slave;
+mysql> show slave status\G
+*************************** 1. row ***************************
+               Slave_IO_State: Waiting for master to send event
+                  Master_Host: 172.168.2.18
+                  Master_User: repluser
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: master-bin.000003
+          Read_Master_Log_Pos: 456
+               Relay_Log_File: relay-master-channel_18.000002
+                Relay_Log_Pos: 623
+        Relay_Master_Log_File: master-bin.000003
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+              Replicate_Do_DB:
+          Replicate_Ignore_DB:
+           Replicate_Do_Table:
+       Replicate_Ignore_Table:
+      Replicate_Wild_Do_Table:
+  Replicate_Wild_Ignore_Table:
+                   Last_Errno: 0
+                   Last_Error:
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 456
+              Relay_Log_Space: 838
+              Until_Condition: None
+               Until_Log_File:
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File:
+           Master_SSL_CA_Path:
+              Master_SSL_Cert:
+            Master_SSL_Cipher:
+               Master_SSL_Key:
+        Seconds_Behind_Master: 0
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error:
+               Last_SQL_Errno: 0
+               Last_SQL_Error:
+  Replicate_Ignore_Server_Ids:
+             Master_Server_Id: 18
+                  Master_UUID: 6a46703e-0798-11ee-af59-000c29c7acb7
+             Master_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+           Master_Retry_Count: 86400
+                  Master_Bind:
+      Last_IO_Error_Timestamp:
+     Last_SQL_Error_Timestamp:
+               Master_SSL_Crl:
+           Master_SSL_Crlpath:
+           Retrieved_Gtid_Set: d2639a01-b7b7-11ef-be27-000c298c385b:1
+            Executed_Gtid_Set: d2639a01-b7b7-11ef-be27-000c298c385b:1
+                Auto_Position: 0
+         Replicate_Rewrite_DB:
+                 Channel_Name: channel_18
+           Master_TLS_Version:
+mysql> show binary logs;
++-------------------+-----------+
+| Log_name          | File_size |
++-------------------+-----------+
+| master-bin.000001 |       177 |
+| master-bin.000002 |       456 |
++-------------------+-----------+
+mysql> select * from t3;
++------+
+| id   |
++------+
+|    1 |
+|    2 |
+|    1 |
+|    2 |
+|    1 |
+|    2 |
+|    3 |
+|    4 |
+|    3 |
+|    4 |
+|    5 |
+|    6 |
+|    7 |
+|    8 |
+|    9 |
+|    9 |
+|   10 |
+|   13 |
++------+
+mysql> show master status;
++-------------------+----------+--------------+------------------+----------------------------------------+
+| File              | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set                      |
++-------------------+----------+--------------+------------------+----------------------------------------+
+| master-bin.000002 |      456 |              |                  | d2639a01-b7b7-11ef-be27-000c298c385b:1 |
++-------------------+----------+--------------+------------------+----------------------------------------+
+```
+
+
+
+#### 28.7.2 测试172.168.2.17插入数据
+```sql
+# 操作172.168.2.17
+mysql> show create table test.t3\G
+*************************** 1. row ***************************
+       Table: t3
+Create Table: CREATE TABLE `t3` (
+  `id` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+
+mysql> delete from t3 where id not in (13);
+mysql> insert into t3 values (14);
+mysql> select * from t3;
++------+
+| id   |
++------+
+|   13 |
+|   14 |
++------+
+mysql> show master status\G
+*************************** 1. row ***************************
+             File: master-bin.000002
+         Position: 1052
+     Binlog_Do_DB:
+ Binlog_Ignore_DB:
+Executed_Gtid_Set: d2639a01-b7b7-11ef-be27-000c298c385b:1-3
+
+# 操作172.168.2.18
+mysql> select * from t3;
++------+
+| id   |
++------+
+|   13 |
+|   14 |
++------+
+mysql> show master status\G
+*************************** 1. row ***************************
+             File: master-bin.000003
+         Position: 1034
+     Binlog_Do_DB:
+ Binlog_Ignore_DB:
+Executed_Gtid_Set: d2639a01-b7b7-11ef-be27-000c298c385b:1-3
+
+
+# 操作172.168.2.19
+mysql> select * from t3;
++------+
+| id   |
++------+
+|   13 |
+|   14 |
++------+
+mysql> show master status\G
+*************************** 1. row ***************************
+             File: master-bin.000002
+         Position: 1034
+     Binlog_Do_DB:
+ Binlog_Ignore_DB:
+Executed_Gtid_Set: d2639a01-b7b7-11ef-be27-000c298c385b:1-3
+```
+
+
+
+#### 28.7.3 将生产域名解析指向172.168.2.18
+
+配置域名mysql.hs.com -> 172.168.2.18
+> 1. 需要观察172.168.2.18同步172.168.17的情况，等待2个节点同步position到最新状态(不能存在大量sql未同步)时才能切换域名指向
+> 2. 此时应用连接的是新的主机172.168.2.18
+> 3. 观察应用是否连接正常，如若不正常则需要回滚（回滚则是将172.168.2.17的主指向172.168.2.18），回滚sql如下：
+> ```sql
+> mysql> change master to master_host='172.168.2.18',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000002',MASTER_LOG_POS=1034 for channel 'channel_18';
+> ```
+> 等待2个节点同步position到最新状态(不能存在大量sql未同步)时才能切换域名指向回`172.168.2.17`
+> 4. 如若正常则继续以下步骤
+
+
+
+#### 28.7.4 配置172.168.2.18的主为172.168.2.19
+这里选择172.168.2.19的master文件和position为master_log_file='master-bin.000002',MASTER_LOG_POS=456
+> 为什么不是master_log_file='master-bin.000002',MASTER_LOG_POS=1034?
+> 因为真实环境中，binlog是在不断的增长的，所以你无法确定最新的position，可以选取最近的postion即可，slave线程会重新应用binlog，你可能会担心数据会重复执行两遍，经过多次测试，不会存在重复执行，因为有GTID 来标记已经执行的操作，以便在执行时进行冲突检测和处理，可参考`17.4 什么是GTID`
+```sql
+mysql> change master to master_host='172.168.2.19',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000002',MASTER_LOG_POS=154 for channel 'channel_19';
+mysql> start slave;
+mysql> show slave status\G
+*************************** 1. row ***************************
+               Slave_IO_State: Waiting for master to send event
+                  Master_Host: 172.168.2.17
+                  Master_User: repluser
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: master-bin.000002
+          Read_Master_Log_Pos: 1052
+               Relay_Log_File: relay-master-channel_17.000002
+                Relay_Log_Pos: 1219
+        Relay_Master_Log_File: master-bin.000002
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+              Replicate_Do_DB:
+          Replicate_Ignore_DB:
+           Replicate_Do_Table:
+       Replicate_Ignore_Table:
+      Replicate_Wild_Do_Table:
+  Replicate_Wild_Ignore_Table:
+                   Last_Errno: 0
+                   Last_Error:
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 1052
+              Relay_Log_Space: 1434
+              Until_Condition: None
+               Until_Log_File:
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File:
+           Master_SSL_CA_Path:
+              Master_SSL_Cert:
+            Master_SSL_Cipher:
+               Master_SSL_Key:
+        Seconds_Behind_Master: 0
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error:
+               Last_SQL_Errno: 0
+               Last_SQL_Error:
+  Replicate_Ignore_Server_Ids:
+             Master_Server_Id: 17
+                  Master_UUID: d2639a01-b7b7-11ef-be27-000c298c385b
+             Master_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+           Master_Retry_Count: 86400
+                  Master_Bind:
+      Last_IO_Error_Timestamp:
+     Last_SQL_Error_Timestamp:
+               Master_SSL_Crl:
+           Master_SSL_Crlpath:
+           Retrieved_Gtid_Set: d2639a01-b7b7-11ef-be27-000c298c385b:1-3
+            Executed_Gtid_Set: d2639a01-b7b7-11ef-be27-000c298c385b:1-3
+                Auto_Position: 0
+         Replicate_Rewrite_DB:
+                 Channel_Name: channel_17
+           Master_TLS_Version:
+*************************** 2. row ***************************
+               Slave_IO_State: Waiting for master to send event
+                  Master_Host: 172.168.2.19
+                  Master_User: repluser
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: master-bin.000002
+          Read_Master_Log_Pos: 1034
+               Relay_Log_File: relay-master-channel_19.000002
+                Relay_Log_Pos: 1201
+        Relay_Master_Log_File: master-bin.000002
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+              Replicate_Do_DB:
+          Replicate_Ignore_DB:
+           Replicate_Do_Table:
+       Replicate_Ignore_Table:
+      Replicate_Wild_Do_Table:
+  Replicate_Wild_Ignore_Table:
+                   Last_Errno: 0
+                   Last_Error:
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 1034
+              Relay_Log_Space: 1416
+              Until_Condition: None
+               Until_Log_File:
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File:
+           Master_SSL_CA_Path:
+              Master_SSL_Cert:
+            Master_SSL_Cipher:
+               Master_SSL_Key:
+        Seconds_Behind_Master: 0
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error:
+               Last_SQL_Errno: 0
+               Last_SQL_Error:
+  Replicate_Ignore_Server_Ids:
+             Master_Server_Id: 19
+                  Master_UUID: 6a3dda9b-0798-11ee-89f5-000c29089177
+             Master_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+           Master_Retry_Count: 86400
+                  Master_Bind:
+      Last_IO_Error_Timestamp:
+     Last_SQL_Error_Timestamp:
+               Master_SSL_Crl:
+           Master_SSL_Crlpath:
+           Retrieved_Gtid_Set: d2639a01-b7b7-11ef-be27-000c298c385b:1-3
+            Executed_Gtid_Set: d2639a01-b7b7-11ef-be27-000c298c385b:1-3
+                Auto_Position: 0
+         Replicate_Rewrite_DB:
+                 Channel_Name: channel_19
+           Master_TLS_Version:
+```
+
+
+
+**测试**
+172.168.2.17(主) -> 172.168.2.18(从)
+172.168.2.18(主) -> 172.168.2.19(主)
+
+```sql
+## 第一次
+# 172.168.2.19 
+mysql> insert into t3 values(15);
+mysql> select * from t3;
++------+
+| id   |
++------+
+|   13 |
+|   14 |
+|   15 |
++------+
+
+# 172.168.2.18
+mysql> select * from t3;
++------+
+| id   |
++------+
+|   13 |
+|   14 |
+|   15 |
++------+
+
+# 172.168.2.17
+mysql> select * from t3;
++------+
+| id   |
++------+
+|   13 |
+|   14 |
++------+
+
+
+## 第二次
+# 172.168.2.18
+mysql> insert into t3 values (16);
+mysql> select * from t3;
++------+
+| id   |
++------+
+|   13 |
+|   14 |
+|   15 |
+|   16 |
++------+
+
+# 172.168.2.19
+mysql> select * from t3;
++------+
+| id   |
++------+
+|   13 |
+|   14 |
+|   15 |
+|   16 |
++------+
+
+# 172.168.2.17
+mysql> select * from t3;
++------+
+| id   |
++------+
+|   13 |
+|   14 |
++------+
+
+
+## 第三次
+# 172.168.2.17
+mysql> insert into t3 values (16);
+mysql> select * from t3;
++------+
+| id   |
++------+
+|   13 |
+|   14 |
+|   16 |
++------+
+
+# 172.168.2.18
+mysql> select * from t3;
++------+
+| id   |
++------+
+|   13 |
+|   14 |
+|   15 |
+|   16 |
+|   16 |
++------+
+
+# 172.168.2.19
+mysql> select * from t3;
++------+
+| id   |
++------+
+|   13 |
+|   14 |
+|   15 |
+|   16 |
+|   16 |
++------+
+```
+
+
+
+#### 28.7.5 在172.168.2.18上去除172.168.2.17主的配置
+```sql
+mysql> stop slave for channel 'channel_17';
+mysql> reset slave all for channel 'channel_17';
+mysql> show slave status\G
+*************************** 1. row ***************************
+               Slave_IO_State: Waiting for master to send event
+                  Master_Host: 172.168.2.19
+                  Master_User: repluser
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: master-bin.000002
+          Read_Master_Log_Pos: 1780
+               Relay_Log_File: relay-master-channel_19.000002
+                Relay_Log_Pos: 1703
+        Relay_Master_Log_File: master-bin.000002
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+              Replicate_Do_DB:
+          Replicate_Ignore_DB:
+           Replicate_Do_Table:
+       Replicate_Ignore_Table:
+      Replicate_Wild_Do_Table:
+  Replicate_Wild_Ignore_Table:
+                   Last_Errno: 0
+                   Last_Error:
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 1780
+              Relay_Log_Space: 1918
+              Until_Condition: None
+               Until_Log_File:
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File:
+           Master_SSL_CA_Path:
+              Master_SSL_Cert:
+            Master_SSL_Cipher:
+               Master_SSL_Key:
+        Seconds_Behind_Master: 0
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error:
+               Last_SQL_Errno: 0
+               Last_SQL_Error:
+  Replicate_Ignore_Server_Ids:
+             Master_Server_Id: 19
+                  Master_UUID: 6a3dda9b-0798-11ee-89f5-000c29089177
+             Master_Info_File: mysql.slave_master_info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+           Master_Retry_Count: 86400
+                  Master_Bind:
+      Last_IO_Error_Timestamp:
+     Last_SQL_Error_Timestamp:
+               Master_SSL_Crl:
+           Master_SSL_Crlpath:
+           Retrieved_Gtid_Set: 6a3dda9b-0798-11ee-89f5-000c29089177:1,
+d2639a01-b7b7-11ef-be27-000c298c385b:1-4
+            Executed_Gtid_Set: 6a3dda9b-0798-11ee-89f5-000c29089177:1,
+6a46703e-0798-11ee-af59-000c29c7acb7:1,
+d2639a01-b7b7-11ef-be27-000c298c385b:1-4
+                Auto_Position: 0
+         Replicate_Rewrite_DB:
+                 Channel_Name: channel_19
+           Master_TLS_Version:
+```
+
+
+
+#### 28.7.6 在172.168.2.18和172.168.2.19开启半同步复制
+##### 28.7.6.1 安装半同步插件
+```sql
+# 172.168.2.18
+mysql> show variables like "have_dynamic_loading";
++----------------------+-------+
+| Variable_name        | Value |
++----------------------+-------+
+| have_dynamic_loading | YES   |
++----------------------+-------+
+mysql> INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so'; 
+mysql> INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so';
+mysql> SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME LIKE '%semi%';
++----------------------+---------------+
+| PLUGIN_NAME          | PLUGIN_STATUS |
++----------------------+---------------+
+| rpl_semi_sync_master | ACTIVE        |
+| rpl_semi_sync_slave  | ACTIVE        |
++----------------------+---------------+
+
+# 172.168.2.19
+mysql> show variables like "have_dynamic_loading";
++----------------------+-------+
+| Variable_name        | Value |
++----------------------+-------+
+| have_dynamic_loading | YES   |
++----------------------+-------+
+mysql> INSTALL PLUGIN rpl_semi_sync_master SONAME 'semisync_master.so'; 
+mysql> INSTALL PLUGIN rpl_semi_sync_slave SONAME 'semisync_slave.so';
+mysql> SELECT PLUGIN_NAME, PLUGIN_STATUS FROM INFORMATION_SCHEMA.PLUGINS WHERE PLUGIN_NAME LIKE '%semi%';
++----------------------+---------------+
+| PLUGIN_NAME          | PLUGIN_STATUS |
++----------------------+---------------+
+| rpl_semi_sync_master | ACTIVE        |
+| rpl_semi_sync_slave  | ACTIVE        |
++----------------------+---------------+
+```
+
+
+
+##### 28.7.6.2 开启半同步功能
+```sql
+# 172.168.2.18
+mysql> show status like 'Rpl_semi_sync%';
++--------------------------------------------+-------+
+| Variable_name                              | Value |
++--------------------------------------------+-------+
+| Rpl_semi_sync_master_clients               | 0     |
+| Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+| Rpl_semi_sync_master_net_wait_time         | 0     |
+| Rpl_semi_sync_master_net_waits             | 0     |
+| Rpl_semi_sync_master_no_times              | 0     |
+| Rpl_semi_sync_master_no_tx                 | 0     |
+| Rpl_semi_sync_master_status                | OFF   |
+| Rpl_semi_sync_master_timefunc_failures     | 0     |
+| Rpl_semi_sync_master_tx_avg_wait_time      | 0     |
+| Rpl_semi_sync_master_tx_wait_time          | 0     |
+| Rpl_semi_sync_master_tx_waits              | 0     |
+| Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+| Rpl_semi_sync_master_wait_sessions         | 0     |
+| Rpl_semi_sync_master_yes_tx                | 0     |
+| Rpl_semi_sync_slave_status                 | OFF   |
++--------------------------------------------+-------+
+mysql> SET GLOBAL rpl_semi_sync_master_enabled = 1;
+mysql> SET GLOBAL rpl_semi_sync_slave_enabled = 1;
+mysql> SHOW GLOBAL VARIABLES LIKE 'rpl_semi_sync_%_enabled';
++------------------------------+-------+
+| Variable_name                | Value |
++------------------------------+-------+
+| rpl_semi_sync_master_enabled | ON    |
+| rpl_semi_sync_slave_enabled  | ON    |
++------------------------------+-------+
+mysql> show status like 'Rpl_semi_sync%';
++--------------------------------------------+-------+
+| Variable_name                              | Value |
++--------------------------------------------+-------+
+| Rpl_semi_sync_master_clients               | 0     |
+| Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+| Rpl_semi_sync_master_net_wait_time         | 0     |
+| Rpl_semi_sync_master_net_waits             | 0     |
+| Rpl_semi_sync_master_no_times              | 0     |
+| Rpl_semi_sync_master_no_tx                 | 0     |
+| Rpl_semi_sync_master_status                | ON    |
+| Rpl_semi_sync_master_timefunc_failures     | 0     |
+| Rpl_semi_sync_master_tx_avg_wait_time      | 0     |
+| Rpl_semi_sync_master_tx_wait_time          | 0     |
+| Rpl_semi_sync_master_tx_waits              | 0     |
+| Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+| Rpl_semi_sync_master_wait_sessions         | 0     |
+| Rpl_semi_sync_master_yes_tx                | 0     |
+| Rpl_semi_sync_slave_status                 | OFF   |
++--------------------------------------------+-------+
+
+# 172.168.2.19
+mysql> SET GLOBAL rpl_semi_sync_master_enabled = 1;
+mysql> SET GLOBAL rpl_semi_sync_slave_enabled = 1;
+mysql> SHOW GLOBAL VARIABLES LIKE 'rpl_semi_sync_%_enabled';
++------------------------------+-------+
+| Variable_name                | Value |
++------------------------------+-------+
+| rpl_semi_sync_master_enabled | ON    |
+| rpl_semi_sync_slave_enabled  | ON    |
++------------------------------+-------+
+mysql> show status like 'Rpl_semi_sync%';
++--------------------------------------------+-------+
+| Variable_name                              | Value |
++--------------------------------------------+-------+
+| Rpl_semi_sync_master_clients               | 0     |
+| Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+| Rpl_semi_sync_master_net_wait_time         | 0     |
+| Rpl_semi_sync_master_net_waits             | 0     |
+| Rpl_semi_sync_master_no_times              | 0     |
+| Rpl_semi_sync_master_no_tx                 | 0     |
+| Rpl_semi_sync_master_status                | ON    |
+| Rpl_semi_sync_master_timefunc_failures     | 0     |
+| Rpl_semi_sync_master_tx_avg_wait_time      | 0     |
+| Rpl_semi_sync_master_tx_wait_time          | 0     |
+| Rpl_semi_sync_master_tx_waits              | 0     |
+| Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+| Rpl_semi_sync_master_wait_sessions         | 0     |
+| Rpl_semi_sync_master_yes_tx                | 0     |
+| Rpl_semi_sync_slave_status                 | OFF   |
++--------------------------------------------+-------+
+```
+
+
+
+##### 28.7.6.3 配置半同步超时时间
+```sql
+# 172.168.2.18
+mysql> SET GLOBAL rpl_semi_sync_master_timeout=5000;
+mysql> SHOW GLOBAL VARIABLES LIKE 'rpl_semi_sync_master_timeout';
++------------------------------+-------+
+| Variable_name                | Value |
++------------------------------+-------+
+| rpl_semi_sync_master_timeout | 5000  |
++------------------------------+-------+
+
+# 172.168.2.19
+mysql> SET GLOBAL rpl_semi_sync_master_timeout=5000;
+mysql> SHOW GLOBAL VARIABLES LIKE 'rpl_semi_sync_master_timeout';
++------------------------------+-------+
+| Variable_name                | Value |
++------------------------------+-------+
+| rpl_semi_sync_master_timeout | 5000  |
++------------------------------+-------+
+```
+
+
+
+##### 7.6.4 应用半同步复制
+**先应用172.168.2.18的slave功能**，成功后172.168.2.18将和172.168.2.19进行半同步复制。
+
+如果异常，也只导致172.168.2.19的写有延迟，不会影响已经投入生产使用的域名mysql.hs.com的使用
+
+```sql
+# 172.168.2.18
+mysql> stop slave for channel 'channel_19';
+mysql> start slave for channel 'channel_19';
+# 此时172.168.2.18的Rpl_semi_sync_slave_status状态为ON，表示跟172.168.2.19的半同步复制已经正常工作
+mysql> show status like 'Rpl_semi_sync%';
++--------------------------------------------+-------+
+| Variable_name                              | Value |
++--------------------------------------------+-------+
+| Rpl_semi_sync_master_clients               | 0     |
+| Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+| Rpl_semi_sync_master_net_wait_time         | 0     |
+| Rpl_semi_sync_master_net_waits             | 0     |
+| Rpl_semi_sync_master_no_times              | 0     |
+| Rpl_semi_sync_master_no_tx                 | 0     |
+| Rpl_semi_sync_master_status                | ON    |
+| Rpl_semi_sync_master_timefunc_failures     | 0     |
+| Rpl_semi_sync_master_tx_avg_wait_time      | 0     |
+| Rpl_semi_sync_master_tx_wait_time          | 0     |
+| Rpl_semi_sync_master_tx_waits              | 0     |
+| Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+| Rpl_semi_sync_master_wait_sessions         | 0     |
+| Rpl_semi_sync_master_yes_tx                | 0     |
+| Rpl_semi_sync_slave_status                 | ON    |
++--------------------------------------------+-------+
+
+
+# 在172.168.2.19进行数据插入测试，在半同步复制模式下，插入时间为0.01秒
+mysql> insert into t3 values (17);
+Query OK, 1 row affected (0.01 sec)
+
+mysql> select * from t3;
++------+
+| id   |
++------+
+|   13 |
+|   14 |
+|   15 |
+|   16 |
+|   16 |
+|   17 |
++------+
+
+
+# 在172.168.2.18上查询
+mysql> select * from t3;
++------+
+| id   |
++------+
+|   13 |
+|   14 |
+|   15 |
+|   16 |
+|   16 |
+|   17 |
++------+
+```
+
+
+
+**应用172.168.2.19的slave功能**
+
+```sql
+# 172.168.2.19
+mysql> stop slave for channel 'channel_18';
+mysql> start slave for channel 'channel_18';
+# 此时172.168.2.19的Rpl_semi_sync_slave_status状态为ON，表示跟172.168.2.18的半同步复制已经正常工作
+mysql> show status like 'Rpl_semi_sync%';
++--------------------------------------------+-------+
+| Variable_name                              | Value |
++--------------------------------------------+-------+
+| Rpl_semi_sync_master_clients               | 1     |
+| Rpl_semi_sync_master_net_avg_wait_time     | 0     |
+| Rpl_semi_sync_master_net_wait_time         | 0     |
+| Rpl_semi_sync_master_net_waits             | 1     |
+| Rpl_semi_sync_master_no_times              | 0     |
+| Rpl_semi_sync_master_no_tx                 | 0     |
+| Rpl_semi_sync_master_status                | ON    |
+| Rpl_semi_sync_master_timefunc_failures     | 0     |
+| Rpl_semi_sync_master_tx_avg_wait_time      | 5456  |
+| Rpl_semi_sync_master_tx_wait_time          | 5456  |
+| Rpl_semi_sync_master_tx_waits              | 1     |
+| Rpl_semi_sync_master_wait_pos_backtraverse | 0     |
+| Rpl_semi_sync_master_wait_sessions         | 0     |
+| Rpl_semi_sync_master_yes_tx                | 1     |
+| Rpl_semi_sync_slave_status                 | ON    |
++--------------------------------------------+-------+
+
+
+# 在172.168.2.18进行数据插入测试，在半同步复制模式下，插入时间为0.01秒
+mysql> insert into t3 values(18);
+Query OK, 1 row affected (0.01 sec)
+
+mysql> select * from t3;
++------+
+| id   |
++------+
+|   13 |
+|   14 |
+|   15 |
+|   16 |
+|   16 |
+|   17 |
+|   18 |
++------+
+
+# 在172.168.2.19上查询
+mysql> select * from t3;
++------+
+| id   |
++------+
+|   13 |
+|   14 |
+|   15 |
+|   16 |
+|   16 |
+|   17 |
+|   18 |
++------+
+```
 
 
 
@@ -6821,7 +7866,7 @@ show slave status\G
     change master to master_host='192.168.13.164',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000005',MASTER_LOG_POS=194 for channel 'channel1';
     5.3 然后配置文件/etc/my.cnf开启多级复制，log-slave-updates = 1，并重启服务
 ------------------------------------------------------------------------------------
-注：其实可以省略log-slave-updates的配置，直接配置change master,只需要查看本地binlog文件执行哪个位置，可以从早期位置同步，但是上面步骤更稳妥。例如
+注：5.1和5.3其实可以省略log-slave-updates的配置，直接配置change master,只需要查看本地binlog文件执行哪个位置，可以从早期位置同步，mysql不会重复插入，得益于gtid的作用，但是上面步骤更稳妥。例如
 mysql> show master status\G
 *************************** 1. row ***************************
              File: master-bin.000004
@@ -6886,6 +7931,10 @@ source /restore-mysql/feishu_selfbuilt-000402.sql
 mysql> stop slave FOR CHANNEL '';
 # 此步骤不会重置io_thread和sql_thread是运行状态的channel，只会重置状态是停止的channel
 mysql> reset slave all;
+
+# 当有多个channel时,重置特定的channel
+mysql> stop slave for channel 'channel_19';
+mysql> reset slave all for channel 'channel_19';
 ```
 
 

@@ -17,6 +17,7 @@ test-nginx02		172.168.2.35
 ```
 
 
+
 ## 更新系统
 
 ```bash
@@ -50,6 +51,7 @@ Linux test-lvs02 3.10.0-1160.95.1.el7.x86_64 #1 SMP Mon Jul 24 13:59:37 UTC 2023
 172.168.2.34 | SUCCESS | rc=0 >>
 Linux test-nginx01 3.10.0-1160.95.1.el7.x86_64 #1 SMP Mon Jul 24 13:59:37 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux
 ```
+
 
 
 ## 查看内核是否支持IPVS
@@ -109,6 +111,7 @@ CONFIG_MAX_RAW_DEVS=8192
 # CONFIG_POWER_AVS is not set
 CONFIG_USB_SEVSEG=m
 ```
+
 
 
 ## 初始化各节点配置
@@ -180,6 +183,7 @@ Mon Sep 25 16:51:37 CST 2023
 172.168.2.32 | SUCCESS | rc=0 >>
 Mon Sep 25 16:51:37 CST 2023
 ```
+
 
 
 ## IPVS管理工具安装及常用命令
@@ -413,6 +417,7 @@ root@ansible:/etc/ansible/roles# cat /etc/ansible/playbook/lvs-ha.yml
 root@ansible:/etc/ansible/roles# ansible-playbook /etc/ansible/playbook/lvs-ha.yml 
 
 ```
+
 
 
 ## 查看LVS集群状态
@@ -657,6 +662,7 @@ sorry service.
 ```
 
 
+
 ## 查看nginx集群状态
 
 ```bash
@@ -755,6 +761,7 @@ root@ansible:/etc/ansible/roles/lvs-ha/nginx# ansible nginx -m shell -a "sysctl 
 172.168.2.34 | SUCCESS | rc=0 >>
 1
 ```
+
 
 
 ## lvs上下线操作
@@ -875,6 +882,7 @@ listening on eth0, link-type EN10MB (Ethernet), capture size 262144 bytes
 15:15:01.869980 IP 172.168.2.219.5686 > 172.168.2.36.80: Flags [.], ack 7258, win 8206, length 0
 
 ```
+
 
 
 ## lvs上tcpdump过程解析--物理机抓包
@@ -1401,8 +1409,6 @@ root@ansible:~# ansible lvs -m shell -a 'tail -n 5 /etc/hosts'
 
 ## lvs nginx配置lvs环境脚本
 
-
-
 ### lvs多VIP脚本
 
 ```bash
@@ -1727,7 +1733,7 @@ esac
 #!/bin/bash
 # chekcout lvs RS host.
 # autor: JackLi
-# 20230010
+# 20230910
 
 
 VS_FILE='/etc/keepalived/conf.d/virtual_server/vs_*.conf'
@@ -2010,8 +2016,6 @@ esac
 
 
 ## lvs FAQ
-
-
 
 ### lvs persistent失效问题
 
