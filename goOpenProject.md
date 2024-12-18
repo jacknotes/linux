@@ -887,6 +887,96 @@ server {
 
 # 10. WinMerge
 
-[Download](https://objects.githubusercontent.com/github-production-release-asset-2e65be/26494018/da7d4c62-4c44-4169-b7fa-20f4431c9c2d?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=releaseassetproduction%2F20241031%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20241031T112728Z&X-Amz-Expires=300&X-Amz-Signature=2c5dc13f28ea523e3ca6bf8a357ac89418a889ff8ed4dc4d400cca9a0e130e7e&X-Amz-SignedHeaders=host&response-content-disposition=attachment%3B%20filename%3Dwinmerge-2.16.44-exe.zip&response-content-type=application%2Foctet-stream)
+[Download](https://github.com/WinMerge/winmerge/releases/download/v2.16.44/winmerge-2.16.44-exe.zip)
 
 ![](./image/go-open-project/winmerge/01.png)
+
+
+
+
+
+
+
+
+# 11. RustDesk
+
+[download](https://github.com/rustdesk/rustdesk)
+
+## 运行
+在国内需要使用docker代理，方可运行起来
+```bash
+[root@hw-blog rustdesk]# cat /etc/systemd/system/docker.service.d/http-proxy.conf 
+[Service]
+Environment="HTTP_PROXY=http://127.0.0.1:10809"
+Environment="HTTPS_PROXY=http://127.0.0.1:10809"
+Environment="NO_PROXY=localhost,127.0.0.1"
+[root@hw-blog rustdesk]# systemctl restart docker
+
+root@ansible:~/rustdesk# cat docker-compose.yml
+version: '3'
+services:
+  hbbs:
+    container_name: hbbs
+    image: rustdesk/rustdesk-server:1.1.12
+    environment:
+      - ALWAYS_USE_RELAY=Y
+    command: hbbs
+    volumes:
+      - ./data:/root
+    network_mode: "host"
+
+    depends_on:
+      - hbbr
+    restart: unless-stopped
+
+  hbbr:
+    container_name: hbbr
+    image: rustdesk/rustdesk-server:1.1.12
+    command: hbbr
+    volumes:
+      - ./data:/root
+    network_mode: "host"
+    restart: unless-stopped
+```
+
+
+
+# 端口参数
+* hbbs:
+21114（TCP）：用于 Web 控制台，仅在版本中可用。Pro
+21115（TCP）：用于 NAT 类型测试。
+21116（TCP/UDP）：请注意，TCP 和 UDP 都应该启用 21116。 用于 ID 注册和心跳服务。 用于 TCP 打孔和连接服务。21116/UDP21116/TCP
+21118（TCP）：用于支持 Web 客户端。
+* hbbr:
+21117（TCP）：用于 Relay 服务。
+21119（TCP）：用于支持 Web 客户端。
+
+防火墙开放端口：TCP-21115、21116、21117，UDP-21116
+
+
+
+
+## 查看参数
+key：eNL0rQN0hSxr5TY91IzwBY0TH361QKvRxvf1FqMRwXQ=
+ID服务器：172.168.2.12:21116
+中继服务器：172.168.2.12:21117
+```bash
+root@ansible:~# docker logs -f hbbs
+[2024-12-17 03:36:34.527584 +00:00] INFO [src/common.rs:148] Private/public key written to id_ed25519/id_ed25519.pub
+[2024-12-17 03:36:34.527636 +00:00] INFO [src/rendezvous_server.rs:1205] Key: eNL0rQN0hSxr5TY91IzwBY0TH361QKvRxvf1FqMRwXQ=
+[2024-12-17 03:36:34.527640 +00:00] INFO [src/peer.rs:84] DB_URL=./db_v2.sqlite3
+[2024-12-17 03:36:34.537387 +00:00] INFO [src/rendezvous_server.rs:99] serial=0
+[2024-12-17 03:36:34.537407 +00:00] INFO [src/common.rs:46] rendezvous-servers=[]
+[2024-12-17 03:36:34.537410 +00:00] INFO [src/rendezvous_server.rs:101] Listening on tcp/udp :21116
+[2024-12-17 03:36:34.537412 +00:00] INFO [src/rendezvous_server.rs:102] Listening on tcp :21115, extra port for NAT test
+[2024-12-17 03:36:34.537414 +00:00] INFO [src/rendezvous_server.rs:103] Listening on websocket :21118
+[2024-12-17 03:36:34.538059 +00:00] INFO [libs/hbb_common/src/udp.rs:36] Receive buf size of udp [::]:21116: Ok(8388608)
+[2024-12-17 03:36:34.538110 +00:00] INFO [src/rendezvous_server.rs:138] mask: None
+[2024-12-17 03:36:34.538113 +00:00] INFO [src/rendezvous_server.rs:139] local-ip: ""
+[2024-12-17 03:36:34.538118 +00:00] INFO [src/common.rs:46] relay-servers=[]
+[2024-12-17 03:36:34.538249 +00:00] INFO [src/rendezvous_server.rs:153] ALWAYS_USE_RELAY=Y
+[2024-12-17 03:36:34.538282 +00:00] INFO [src/rendezvous_server.rs:185] Start
+[2024-12-17 03:36:34.538536 +00:00] INFO [libs/hbb_common/src/udp.rs:36] Receive buf size of udp [::]:0: Ok(8388608)
+[2024-12-17 03:36:34.540939 +00:00] INFO [libs/hbb_common/src/udp.rs:36] Receive buf size of udp 0.0.0.0:0: Ok(8388608)
+
+```

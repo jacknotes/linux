@@ -4404,9 +4404,19 @@ sync-binlog = 1  #1表示每有一次事务提交就从内存缓存同步到二�
 log-slave-updates = 1  #multi level copy,多级复制，可以实现多主架构,表示在主1中插入一条数据时，此时主2会通过IO线程从主1上复制二进制日志到relay-log和binlog中，如果不开启这个，则只会同步到relay-log中，这样一台如果主2有一节点为从，则从节点无法同步主1上改变的二进制内容，如果用户请求正好被高度到主2的从节点时，则此请求不会被正确处理。
 ```
 
+> mysql主从复制集群的状态转变信息：
+> Slave_IO_State: System lock
+> 到
+> Slave_IO_State: Waiting for master to send event
+> 	   
+> Slave_SQL_Running_State: Waiting for Slave Worker to release partition
+> 到
+> Slave_SQL_Running_State: Slave has read all relay log; waiting for more updates
+
 
 
 ## 25. Mysql备份恢复
+
 ```
 数据库还原最好不要改数据库名称，因为mysql使用binlog还原时会找最原始的数据库，你改完数据库名称再用binlog还原会失败，
 可以在binlog还原后再改回来，如果执行到一半提示数据库名称不正确，可使用下面脚本改回数据库原始名称：
@@ -6344,6 +6354,7 @@ Master_SSL_Verify_Server_Cert: No
 ip: 172.168.2.17  	role: source_mysql_master	config: enable gtid		domain_name: mysql.hs.com
 ip: 172.168.2.18	role: new_mysql_master01	config: enable gtid
 ip: 172.168.2.19	role: new_mysql_master02	config: enable gtid
+
 > 1. 确保所有节点server_id不同、gtid开启、多级复制开启。
 > 2. 除开第1点和个性化配置外，确保所有节点配置一样。
 

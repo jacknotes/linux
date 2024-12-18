@@ -343,3 +343,223 @@ export http_proxy="http://192.168.1.235:8118/"
 
 
 </pre>
+
+
+## v2ray
+
+### linux客户端安装
+
+config.json，可从windows客户端中选中单个配置，`导出所选服务器为客户端配置`
+```json
+{
+  "log": {
+    "access": "",
+    "error": "",
+    "loglevel": "warning"
+  },
+  "inbounds": [
+    {
+      "tag": "socks",
+      "port": 10808,
+      "listen": "0.0.0.0",
+      "protocol": "socks",
+      "sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls"
+        ]
+      },
+      "settings": {
+        "auth": "noauth",
+        "udp": true,
+        "allowTransparent": false
+      }
+    },
+    {
+      "tag": "http",
+      "port": 10809,
+      "listen": "0.0.0.0",
+      "protocol": "http",
+      "sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls"
+        ]
+      },
+      "settings": {
+        "udp": false,
+        "allowTransparent": false
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "proxy",
+      "protocol": "vmess",
+      "settings": {
+        "vnext": [
+          {
+            "address": "c87s3.test.com",
+            "port": 6579,
+            "users": [
+              {
+                "id": "test-faae-4f18-84d5-test",
+                "alterId": 0,
+                "email": "t@t.tt",
+                "security": "auto"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "tcp"
+      },
+      "mux": {
+        "enabled": true,
+        "concurrency": 8
+      }
+    },
+    {
+      "tag": "direct",
+      "protocol": "freedom",
+      "settings": {}
+    },
+    {
+      "tag": "block",
+      "protocol": "blackhole",
+      "settings": {
+        "response": {
+          "type": "http"
+        }
+      }
+    }
+  ],
+  "routing": {
+    "domainStrategy": "IPIfNonMatch",
+    "rules": [
+      {
+        "type": "field",
+        "inboundTag": [
+          "api"
+        ],
+        "outboundTag": "api"
+      },
+      {
+        "type": "field",
+        "outboundTag": "proxy",
+        "domain": [
+          "cip.cc",
+          "ipinfo.io",
+          "geosite:google"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "domain": [
+          "hs.com",
+          "geosite:cn"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "direct",
+        "ip": [
+          "192.168.15.0/24",
+          "geoip:private",
+          "geoip:cn"
+        ]
+      },
+      {
+        "type": "field",
+        "outboundTag": "block",
+        "domain": [
+          "geosite:category-ads-all"
+        ]
+      }
+    ]
+  }
+}
+```
+
+
+```bash
+[root@hw-blog v2ray]# curl -OL https://github.com/v2fly/v2ray-core/releases/download/v5.22.0/v2ray-linux-64.zip
+[root@hw-blog v2ray]# unzip -d /usr/local/v2ray v2ray-linux-64.zip
+[root@hw-blog v2ray]# /usr/local/v2ray/v2ray -test
+[root@hw-blog v2ray]# systemctl cat v2ray.service 
+# /usr/lib/systemd/system/v2ray.service
+[Unit]
+Description=https://github.com/v2fly/v2ray-core
+After=network-online.target
+
+[Service]
+User=root
+Group=root
+Type=simple
+ExecStart=/usr/local/v2ray/v2ray run
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+---
+[root@hw-blog v2ray]# systemctl daemon-reload
+[root@hw-blog v2ray]# systemctl start v2ray.service
+[root@hw-blog v2ray]# systemctl enable v2ray.service
+```
+
+
+
+http_proxy.sh
+```bash
+#!/bin/bash
+# Description: v2rayN software proxy, default 10808 port is socks proxy, 10809 port is http/https proxy.
+
+HOST='127.0.0.1:10809'
+
+function start(){
+	echo "[INFO] start http proxy......"
+	export HTTP_PROXY="$HOST"
+	export HTTPS_PROXY="$HOST"
+
+	sed -i '/HTTP.*PROXY/d' ~/.bashrc
+	echo 'export HTTP_PROXY="'$HOST'"' >> ~/.bashrc
+	echo 'export HTTPS_PROXY="'$HOST'"' >> ~/.bashrc
+
+	echo "HTTP_PROXY: $HTTP_PROXY" "HTTPS_PROXY: $HTTPS_PROXY"
+	curl -s https://cip.cc
+}
+
+function stop(){
+	echo "[INFO] stop http proxy......"
+	unset HTTPS_PROXY HTTP_PROXY
+
+	sed -i '/HTTP.*PROXY/d' ~/.bashrc
+	echo "HTTP_PROXY: $HTTP_PROXY" "HTTPS_PROXY: $HTTPS_PROXY"
+	curl -s https://cip.cc
+}
+
+function status(){
+	if [ "$HTTP_PROXY" -a "$HTTPS_PROXY" ]; then
+		echo "[INFO] http proxy is running......" 
+	else 
+		echo "[INFO] http proxy is stop......" 
+	fi 
+	echo "HTTP_PROXY: $HTTP_PROXY" "HTTPS_PROXY: $HTTPS_PROXY"
+	curl -s https://cip.cc
+}
+
+case $1 in
+	start)
+		start;;
+	stop)
+		stop;;
+	status)
+		status;;
+	*)
+		echo "Usage: source $0 [ start | stop | status ]"
+esac
+```
