@@ -4330,7 +4330,7 @@ socket=/usr/local/mysql/mysql.sock
 
 
 # 主1：
-grant replication slave on *.* to repluser@'192.168.13.%' identified by 'homsom';
+grant replication slave on *.* to repluser@'192.168.13.%' identified by 'test';
 flush privileges;
 show grants for repluser@'192.168.13.%';
 flush binary logs;
@@ -4341,10 +4341,10 @@ mysql> show master status;
 | master-bin.000012 |      194 |              |                  | 172a28db-ede3-11ea-894c-e619baff355e:1-30,
 84ff5380-ee50-11ea-bbd9-4cd98f3bab94:9-10 |
 +-------------------+----------+--------------+------------------+--------------------------------------------------------------------------------------+
-change master to master_host='192.168.13.116',master_user='repluser',master_password='homsom',master_log_file='master-bin.000012',MASTER_LOG_POS=194;
+change master to master_host='192.168.13.116',master_user='repluser',master_password='test',master_log_file='master-bin.000012',MASTER_LOG_POS=194;
 
 # 主2：
-grant replication slave on *.* to repluser@'192.168.13.%' identified by 'homsom';
+grant replication slave on *.* to repluser@'192.168.13.%' identified by 'test';
 flush privileges;
 show grants for repluser@'192.168.13.%';
 flush binary logs;
@@ -4355,12 +4355,12 @@ mysql> show master status;
 | master-bin.000008 |      194 |              |                  | 172a28db-ede3-11ea-894c-e619baff355e:16-26,
 84ff5380-ee50-11ea-bbd9-4cd98f3bab94:1-12 |
 +-------------------+----------+--------------+------------------+---------------------------------------------------------------------------------------+
-change master to master_host='192.168.13.160',master_user='repluser',master_password='homsom',master_log_file='master-bin.000008',MASTER_LOG_POS=194;
+change master to master_host='192.168.13.160',master_user='repluser',master_password='test',master_log_file='master-bin.000008',MASTER_LOG_POS=194;
 或
 # 主1：
-CHANGE MASTER TO MASTER_HOST='192.168.13.160',MASTER_USER='repluser',MASTER_PASSWORD='homsom',MASTER_AUTO_POSITION=1;
+CHANGE MASTER TO MASTER_HOST='192.168.13.160',MASTER_USER='repluser',MASTER_PASSWORD='test',MASTER_AUTO_POSITION=1;
 # 主2：
-CHANGE MASTER TO MASTER_HOST='192.168.13.116',MASTER_USER='repluser',MASTER_PASSWORD='homsom',MASTER_AUTO_POSITION=1;
+CHANGE MASTER TO MASTER_HOST='192.168.13.116',MASTER_USER='repluser',MASTER_PASSWORD='test',MASTER_AUTO_POSITION=1;
 # 注：无法使用MASTER_AUTO_POSITION=1进行主主集群时，需要使用reset master重置下mysql二进制文件，问题通常出在先手动删除了部分二进制文件，然后进行配置主主集群连接时报错
 change master to master_auto_position=0       表示使用GTID不自动从binlog.000001去找，而是指定文件名及位置同步
 change master to master_auto_position=1        表示使用GTID自动同步，从binlog.000001去找
@@ -4425,7 +4425,7 @@ log-slave-updates = 1  #multi level copy,多级复制，可以实现多主架构
 SDB="'jack123'"
 DDB=jack
 USER=root
-PASSWORD=homsom
+PASSWORD=test
 SQL="select table_name from information_schema.TABLES where TABLE_SCHEMA=${SDB}"
 list_table=$(mysql -u${USER} -p${PASSWORD} -Nse "${SQL}")
 
@@ -4616,7 +4616,7 @@ ENV=Pro
 TYPE=Full
 USER=root  
 HOSTNAME="localhost"  
-PASSWORD="homsom"  
+PASSWORD="test"  
 #DATABASE="jack jackli test1 test2 test3 test4"  
 DATABASE="all-databases"   #所有数据库备份
 IPADDR=`ip add show | grep 192 | awk '{print $2}' | awk -F '/' '{print $1}'`
@@ -4745,7 +4745,7 @@ ENV=Pro
 TYPE=Full
 USER=root  
 HOSTNAME="localhost"  
-PASSWORD="homsom"  
+PASSWORD="test"  
 #DATABASE="jack jackli test1 test2 test3 test4"  
 DATABASE="all-databases"   #所有数据库备份
 IPADDR=`ip add show | grep 192 | awk '{print $2}' | awk -F '/' '{print $1}'`
@@ -6444,7 +6444,7 @@ Starting MySQL. SUCCESS!
 
 在172.168.2.17上配置mysql集群用户
 ```sql
-mysql> grant replication slave on *.* to repluser@'172.168.2.%' identified by 'homsom';
+mysql> grant replication slave on *.* to repluser@'172.168.2.%' identified by 'test';
 ```
 
 配置172.168.2.18
@@ -6453,7 +6453,7 @@ mysql> grant replication slave on *.* to repluser@'172.168.2.%' identified by 'h
 -- CHANGE MASTER TO MASTER_LOG_FILE='master-bin.000002', MASTER_LOG_POS=154;
 ```
 ```sql
-mysql> change master to master_host='172.168.2.17',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000002',MASTER_LOG_POS=154 for channel 'channel_17';
+mysql> change master to master_host='172.168.2.17',master_port=3306,master_user='repluser',master_password='test',master_log_file='master-bin.000002',MASTER_LOG_POS=154 for channel 'channel_17';
 mysql> show binary logs;
 +-------------------+-----------+
 | Log_name          | File_size |
@@ -6560,7 +6560,7 @@ Empty set (0.00 sec)
 -- CHANGE MASTER TO MASTER_LOG_FILE='master-bin.000003', MASTER_LOG_POS=154;
 ```
 ```sql
-mysql> change master to master_host='172.168.2.18',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000003',MASTER_LOG_POS=154 for channel 'channel_18';
+mysql> change master to master_host='172.168.2.18',master_port=3306,master_user='repluser',master_password='test',master_log_file='master-bin.000003',MASTER_LOG_POS=154 for channel 'channel_18';
 mysql> start slave;
 mysql> show slave status\G
 *************************** 1. row ***************************
@@ -6731,7 +6731,7 @@ Executed_Gtid_Set: d2639a01-b7b7-11ef-be27-000c298c385b:1-3
 > 2. 此时应用连接的是新的主机172.168.2.18
 > 3. 观察应用是否连接正常，如若不正常则需要回滚（回滚则是将172.168.2.17的主指向172.168.2.18），回滚sql如下：
 > ```sql
-> mysql> change master to master_host='172.168.2.18',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000002',MASTER_LOG_POS=1034 for channel 'channel_18';
+> mysql> change master to master_host='172.168.2.18',master_port=3306,master_user='repluser',master_password='test',master_log_file='master-bin.000002',MASTER_LOG_POS=1034 for channel 'channel_18';
 > ```
 > 等待2个节点同步position到最新状态(不能存在大量sql未同步)时才能切换域名指向回`172.168.2.17`
 > 4. 如若正常则继续以下步骤
@@ -6743,7 +6743,7 @@ Executed_Gtid_Set: d2639a01-b7b7-11ef-be27-000c298c385b:1-3
 > 为什么不是master_log_file='master-bin.000002',MASTER_LOG_POS=1034?
 > 因为真实环境中，binlog是在不断的增长的，所以你无法确定最新的position，可以选取最近的postion即可，slave线程会重新应用binlog，你可能会担心数据会重复执行两遍，经过多次测试，不会存在重复执行，因为有GTID 来标记已经执行的操作，以便在执行时进行冲突检测和处理，可参考`17.4 什么是GTID`
 ```sql
-mysql> change master to master_host='172.168.2.19',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000002',MASTER_LOG_POS=154 for channel 'channel_19';
+mysql> change master to master_host='172.168.2.19',master_port=3306,master_user='repluser',master_password='test',master_log_file='master-bin.000002',MASTER_LOG_POS=154 for channel 'channel_19';
 mysql> start slave;
 mysql> show slave status\G
 *************************** 1. row ***************************
@@ -7718,10 +7718,10 @@ aliyun
 [root@devmysql ~]# mysql -uroot -p < alldatabases.sql 
 #将新节点做为旧节点的从进行同步
 #旧192.168.13.116：
-grant replication slave on *.* to 'dev-repluser'@'192.168.13.%' identified by 'homsom';
+grant replication slave on *.* to 'dev-repluser'@'192.168.13.%' identified by 'test';
 show grants for 'dev-repluser'@'192.168.13.%';
 #新192.168.13.202：
-change master to master_host='192.168.13.116',master_user='dev-repluser',master_password='homsom',master_log_file='master-bin.000057',MASTER_LOG_POS=194;
+change master to master_host='192.168.13.116',master_user='dev-repluser',master_password='test',master_log_file='master-bin.000057',MASTER_LOG_POS=194;
 (
 start slave io_thread;
 start slave sql_thread;
@@ -7815,7 +7815,9 @@ MySQL [(none)]> set @@GLOBAL.GTID_MODE = OFF_PERMISSIVE;
 ```
 
 
-#### 4.1 问题2
+
+#### 4.2 问题2
+
 ```
 #ubuntu18下apt安装mysql-server更改数据目录失败问题
 root@ubuntu18-node01:/etc/mysql# mysqld --initialize
@@ -7850,6 +7852,114 @@ root@ubuntu18-node01:/etc/mysql# cat /var/log/mysql/error.log | grep -i password
 
 
 
+#### 4.3 问题3
+
+**mysql从旧集群迁移到新集群一定要考虑自增ID，否则数据同步会出错，记一次前一事故于20241219晚8点**
+
+
+
+**环境现状：**
+
+旧集群：主主集群，A1自增ID初始为1，步长为2，A2自增ID初始为2，步长为2，主主模式下无问题。
+
+新集群：主主集群，B1自增ID初始为1，步长为2，B2自增ID初始为2，步长为2，主主模式下无问题。
+
+
+
+**此时需求：**
+
+将A1数据同步到B1，当同步完成后，此时数据还会实时同步，有一部分服务使用新域名promysql.hs.com写入到A1，绝大部分使用旧域名mysql.hs.com写入到B1，要涉及域名的映射变更
+
+
+
+**应对办法：**
+
+将A1和B1做成主主集群
+
+
+
+**此后故障现象：**
+
+A1和B1同步过程出错，报库表中主键重复错误
+
+故障原因： 同一个服务，一号环境的服务写入数据到promysql.hs.com、二号环境的服务写入数据到mysql.hs.com，在DNS缓存失效时间不一致情况下或高并发情况下就可能出现如上情况，所以致使promysql.hs.com和mysql.hs.com`同一个库表同一个主键`都已经存在，最后A1和B1数据在同步时就会冲突，导致数据不能正常回放同步而故障。
+
+```
+2024-12-19T14:22:11.056614+08:00 22246920 [Warning] Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
+2024-12-19T20:33:12.520523+08:00 22246923 [ERROR] Slave SQL for channel 'channel_165': Worker 2 failed executing transaction '608bbf72-a0d4-11ef-9140-0050569c6862:958' at master log master-bin.000024, end_log_pos 810686885; Could not execute Write_rows event on table trip_management.trip_event_msg; Duplicate entry '2828933' for key 'PRIMARY', Error_code: 1062; handler error HA_ERR_FOUND_DUPP_KEY; the event's master log master-bin.000024, end_log_pos 810686885, Error_code: 1062
+2024-12-19T20:33:12.551226+08:00 22246921 [Warning] Slave SQL for channel 'channel_165': ... The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state. A restart should restore consistency automatically, although using non-transactional storage for data or info tables or DDL queries could lead to problems. In such cases you have to examine your data (see documentation for details). Error_code: 1756
+2024-12-19T20:37:29.994475+08:00 22317066 [ERROR] Slave SQL for channel 'channel_165': Worker 2 failed executing transaction '608bbf72-a0d4-11ef-9140-0050569c6862:958' at master log master-bin.000024, end_log_pos 810686885; Could not execute Write_rows event on table trip_management.trip_event_msg; Duplicate entry '2828933' for key 'PRIMARY', Error_code: 1062; handler error HA_ERR_FOUND_DUPP_KEY; the event's master log FIRST, end_log_pos 810686885, Error_code: 1062
+2024-12-19T20:37:29.994503+08:00 22317064 [Warning] Slave SQL for channel 'channel_165': ... The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state. A restart should restore consistency automatically, although using non-transactional storage for data or info tables or DDL queries could lead to problems. In such cases you have to examine your data (see documentation for details). Error_code: 1756
+2024-12-19T20:37:30.025503+08:00 22317065 [ERROR] Slave SQL for channel 'channel_165': Worker 1 failed executing transaction '608bbf72-a0d4-11ef-9140-0050569c6862:981' at master log master-bin.000024, end_log_pos 811262540; Could not execute Update_rows event on table email_sms_tmpl.qrtz_scheduler_state; Can't find record in 'qrtz_scheduler_state', Error_code: 1032; handler error HA_ERR_KEY_NOT_FOUND; the event's master log master-bin.000024, end_log_pos 811262540, Error_code: 1032
+[root@pro-mysql02 /data/mysql]# tail mysql.err
+2024-12-19T14:22:11.056614+08:00 22246920 [Warning] Storing MySQL user name or password information in the master info repository is not secure and is therefore not recommended. Please consider using the USER and PASSWORD connection options for START SLAVE; see the 'START SLAVE Syntax' in the MySQL Manual for more information.
+2024-12-19T20:33:12.520523+08:00 22246923 [ERROR] Slave SQL for channel 'channel_165': Worker 2 failed executing transaction '608bbf72-a0d4-11ef-9140-0050569c6862:958' at master log master-bin.000024, end_log_pos 810686885; Could not execute Write_rows event on table trip_management.trip_event_msg; Duplicate entry '2828933' for key 'PRIMARY', Error_code: 1062; handler error HA_ERR_FOUND_DUPP_KEY; the event's master log master-bin.000024, end_log_pos 810686885, Error_code: 1062
+2024-12-19T20:33:12.551226+08:00 22246921 [Warning] Slave SQL for channel 'channel_165': ... The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state. A restart should restore consistency automatically, although using non-transactional storage for data or info tables or DDL queries could lead to problems. In such cases you have to examine your data (see documentation for details). Error_code: 1756
+2024-12-19T20:37:29.994475+08:00 22317066 [ERROR] Slave SQL for channel 'channel_165': Worker 2 failed executing transaction '608bbf72-a0d4-11ef-9140-0050569c6862:958' at master log master-bin.000024, end_log_pos 810686885; Could not execute Write_rows event on table trip_management.trip_event_msg; Duplicate entry '2828933' for key 'PRIMARY', Error_code: 1062; handler error HA_ERR_FOUND_DUPP_KEY; the event's master log FIRST, end_log_pos 810686885, Error_code: 1062
+2024-12-19T20:37:29.994503+08:00 22317064 [Warning] Slave SQL for channel 'channel_165': ... The slave coordinator and worker threads are stopped, possibly leaving data in inconsistent state. A restart should restore consistency automatically, although using non-transactional storage for data or info tables or DDL queries could lead to problems. In such cases you have to examine your data (see documentation for details). Error_code: 1756
+2024-12-19T20:37:30.025503+08:00 22317065 [ERROR] Slave SQL for channel 'channel_165': Worker 1 failed executing transaction '608bbf72-a0d4-11ef-9140-0050569c6862:981' at master log master-bin.000024, end_log_pos 811262540; Could not execute Update_rows event on table email_sms_tmpl.qrtz_scheduler_state; Can't find record in 'qrtz_scheduler_state', Error_code: 1032; handler error HA_ERR_KEY_NOT_FOUND; the event's master log master-bin.000024, end_log_pos 811262540, Error_code: 1032
+```
+
+
+
+**临时跳过**
+
+```sql
+# show slave status\G 错误：
+Coordinator stopped because there were error(s) in the worker(s). The most recent failure being: Worker 1 failed executing transaction '608bbf72-a0d4-11ef-9140-0050569c6862:981' at master log master-bin.000024, end_log_pos 811262540. See error log and/or performance_schema.replication_applier_status_by_worker table for more details about this failure or others, if any.
+
+
+# 1. 跳过此次事务ID
+set @@session.gtid_next='608bbf72-a0d4-11ef-9140-0050569c6862:981';
+begin;commit;
+set @@session.gtid_next=automatic;
+start slave SQL_THREAD for channel 'channel_165';
+
+# 2. 或者更改position位置
+stop slave for channel 'channel_165';
+reset slave all for channel 'channel_165';
+change master to master_host='192.168.13.165',master_port=3306,master_user='repluser',master_password='test',master_log_file='master-bin.000024',MASTER_LOG_POS=811262540 for channel 'channel_165';
+start slave for channel 'channel_165';
+show slave status\G
+```
+
+
+
+**最终解决办法：**
+
+因为A1和B1表中都存在同一个主键ID，而且有好多行，一个一个跳过不太现实。而绝大部分服务写入的是B1(mysql.hs.com)，所以**将B1视为主要的数据库**，步骤如下：
+
+1. 观察A1(promysql.hs.com)的连接状态，通过用户连接的数据库找到对应的服务，将服务重启，使其连接到B1(mysql.hs.com)，直至服务都连接至B1(mysql.hs.com)。
+2. 查看B1的slave线程同步情况，通过`show slave status\G`看出同步到`file master-bin.001633, end_log_pos 100743590`这个位置时错误，并且查看A1的master状态，通过`show master status\G`看出当前的position为`master-bin.001633，370715282`，得到开始和结束的file、position。
+3. 通过`binlog2sql`工具将binlog备份成sql，然后分析sql语句来被数据。
+
+```
+python3 binlog2sql/binlog2sql.py -h192.168.13.164 -P3306 -uadmin -p'test'  --start-file='master-bin.001633' --start-position=100743590 --stop-file='master-bin.001633' --stop-position=370715282 > ./mysql_164.sql
+```
+
+
+
+**什么是主主集群：就是2个节点现在和将来要进行写入数据的节点，上面A1现在写入数据，B1现在不写入数据，但是B1将来要写入数据，所以A1和B1也是主主集群。**
+
+
+
+**结论：**
+
+**主主集群自增ID一定不能冲突，如果是两个集群组成主从，这里共4节点，要考虑到所有节点的自增ID，这里应为：**
+
+1. A1自增ID初始为1，步长为4，
+2. A2自增ID初始为2，步长为4，
+3. B1自增ID初始为3，步长为4，
+4. B2自增ID初始为4，步长为4。
+
+
+
+
+
+
+
+
+
 ### 5. 生产mysql主主集群节点迁移
 ```
 master01: 192.168.13.160
@@ -7869,12 +7979,12 @@ head -n 1000 alldatabases.sql | grep -i 'change master'
 set session sql_log_bin=0;
 source /root/alldatabases.sql;
 set session sql_log_bin=1;
-change master to master_host='192.168.13.160',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000157',MASTER_LOG_POS=111047299 for channel 'channel1';
+change master to master_host='192.168.13.160',master_port=3306,master_user='repluser',master_password='test',master_log_file='master-bin.000157',MASTER_LOG_POS=111047299 for channel 'channel1';
 show slave status\G
 5. 需要实现主主集群，还需要在192.168.13.160上把192.168.13.164设置为主
     5.1 将192.168.13.164的配置文件/etc/my.cnf关闭多级复制，log-slave-updates = 0，并重启服务。观察192.168.13.164 binlog文件确定是否未变化(本机未执行DML语句时)
     5.2 在192.168.13.160上将192.168.13.164设置为主
-    change master to master_host='192.168.13.164',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000005',MASTER_LOG_POS=194 for channel 'channel1';
+    change master to master_host='192.168.13.164',master_port=3306,master_user='repluser',master_password='test',master_log_file='master-bin.000005',MASTER_LOG_POS=194 for channel 'channel1';
     5.3 然后配置文件/etc/my.cnf开启多级复制，log-slave-updates = 1，并重启服务
 ------------------------------------------------------------------------------------
 注：5.1和5.3其实可以省略log-slave-updates的配置，直接配置change master,只需要查看本地binlog文件执行哪个位置，可以从早期位置同步，mysql不会重复插入，得益于gtid的作用，但是上面步骤更稳妥。例如
@@ -7886,7 +7996,7 @@ mysql> show master status\G
 *************************** 1. row ***************************
              File: master-bin.000004
          Position: 115947139
-change master to master_host='192.168.13.164',master_port=3306,master_user='repluser',master_password='homsom',master_log_file='master-bin.000004',MASTER_LOG_POS=115946474 for channel 'channel1';
+change master to master_host='192.168.13.164',master_port=3306,master_user='repluser',master_password='test',master_log_file='master-bin.000004',MASTER_LOG_POS=115946474 for channel 'channel1';
 ------------------------------------------------------------------------------------
 6. 测试master01和new master02是否可以互写同步即可
 
