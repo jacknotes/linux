@@ -2413,3 +2413,151 @@ target_redis_proto_max_bulk_len = 512_000_000
 {"level":"info","time":"2023-08-29T16:23:03+08:00","message":"syncing aof. allowOps=[0.20], disallowOps=[0.00], entryId=[57], InQueueEntriesCount=[0], unansweredBytesCount=[0]bytes, diff=[0], aofReceivedOffset=[638], aofAppliedOffset=[638]"}
 ```
 
+
+
+
+
+
+
+
+
+## redis命令跟踪
+
+
+### 1.服务器配置及测试
+```shell
+# 参数列表
+字符	含义
+K	键空间事件：涉及到键的生命周期变化，通常包括键的创建、删除、过期等。
+E	过期事件：键的生存时间（TTL）到期后删除的事件。
+g	普通命令事件：这些是通过普通命令（如 SET, HSET, LPUSH 等）对键进行修改时触发的事件。
+$	字符串类型的事件：仅与字符串类型的键相关。
+l	列表类型的事件：仅与列表类型的键相关。
+s	集合类型的事件：仅与集合类型的键相关。
+h	哈希类型的事件：仅与哈希类型的键相关。
+z	有序集合类型的事件：仅与有序集合类型的键相关。
+x	删除事件：当键被删除时触发的事件。
+X	失效（过期）事件：键过期时触发的事件。
+a	所有类型的事件：包括键的设置、删除、过期等所有事件。
+
+# 配置键空间事件通知
+CONFIG SET notify-keyspace-events Ex	# x不生效
+CONFIG SET notify-keyspace-events KEA	# KEA才生效
+
+# 连接redis
+redis-cli -h 192.168.13.220 -p 30210
+
+# 查看当前键空间事件配置
+192.168.13.220:30210> config get notify-keyspace-events
+1) "notify-keyspace-events"
+2) ""
+
+# 配置键空间事件
+192.168.13.220:30210> CONFIG SET notify-keyspace-events KEA
+OK
+192.168.13.220:30210> config get notify-keyspace-events
+1) "notify-keyspace-events"
+2) "KEA"
+
+## 取消键空间事件
+192.168.13.220:30210> CONFIG SET notify-keyspace-events ""
+OK
+192.168.13.220:30210> config get notify-keyspace-events
+1) "notify-keyspace-events"
+2) ""
+##
+
+
+# 选择数据库
+select 15
+
+# 添加一个key
+set ops:UAEcnnfuscWlR38246ApGeeCbfWRYywQ 1
+set ops:UAEcnnfuscWlR38246ApGeeCbfWRYywA 2
+set ops:UAEcnnfuscWlR38246ApGeeCbfWRYywB 3
+# 获取一个key
+get ops:UAEcnnfuscWlR38246ApGeeCbfWRYywQ
+# 配置过期时间60秒
+expire ops:UAEcnnfuscWlR38246ApGeeCbfWRYywQ 10
+
+# 新起2个客户端监听
+redis-cli -h 192.168.13.220 -p 30210 SUBSCRIBE '__keyevent@15__:del'
+redis-cli -h 192.168.13.220 -p 30210 SUBSCRIBE '__keyevent@15__:expired'
+
+# 删除一个key
+del ops:UAEcnnfuscWlR38246ApGeeCbfWRYywQ
+
+
+# 客户端监听del的事件
+[root@prometheus ~]# redis-cli -h fat-redis.test.com -p 6002 SUBSCRIBE '__keyevent@15__:del' 
+Reading messages... (press Ctrl-C to quit)
+1) "subscribe"
+2) "__keyevent@15__:del"
+3) (integer) 1
+1) "message"
+2) "__keyevent@15__:del"
+3) "ops:UAEcnnfuscWlR38246ApGeeCbfWRYywA"
+
+# 客户端监听expired的事件
+[root@prometheus k8s-test-env]# redis-cli -h fat-redis.test.com -p 6002 SUBSCRIBE '__keyevent@15__:expired' 
+Reading messages... (press Ctrl-C to quit)
+1) "subscribe"
+2) "__keyevent@15__:expired"
+3) (integer) 1
+1) "message"
+2) "__keyevent@15__:expired"
+3) "ops:UAEcnnfuscWlR38246ApGeeCbfWRYywQ"
+```
+
+### 2. go客户端测试
+```golang
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+
+	"github.com/go-redis/redis/v8"
+)
+
+var rdb *redis.Client
+var ctx = context.Background()
+var redis_db = 2
+
+func main() {
+	// 创建 Redis 客户端
+	rdb = redis.NewClient(&redis.Options{
+		Addr: "fat-redis.hs.com:6002", // Redis 地址
+		DB:       redis_db, // 默认数据库
+		Password: "pass",
+	})
+
+	// 检查 Redis 连接
+	_, err := rdb.Ping(ctx).Result()
+	if err != nil {
+		log.Fatalf("无法连接 Redis: %v", err)
+	}
+
+	// 订阅键空间通知事件
+	pubsub := rdb.Subscribe(ctx, fmt.Sprintf("__keyevent@%d__:expired", redis_db), fmt.Sprintf("__keyevent@%d__:del", redis_db))
+
+	// 监听事件
+	go listenToKeyspaceEvents(pubsub)
+
+	// 等待退出
+	select {}
+}
+
+// 监听键空间事件
+func listenToKeyspaceEvents(pubsub *redis.PubSub) {
+	for msg := range pubsub.Channel() {
+		currentTime := time.Now().Format("2006-01-02 15:04:05")
+		fmt.Printf("时间: %s, 接收到事件: %s -> %s\n", currentTime, msg.Channel, msg.Payload)
+		// 在这里处理事件，比如记录删除键的时间、执行其他逻辑等
+	}
+}
+
+```
+![](./image/redis/01.png)

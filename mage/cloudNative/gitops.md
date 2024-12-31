@@ -4071,10 +4071,10 @@ spec:
 
 
 ## 部署Notification template和trigger
-Documentation: https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/
+[Documentation](https://argo-cd.readthedocs.io/en/stable/operator-manual/notifications/)
 
 ```bash
-#安装notification template和trigger，会生成ConfigMap argocd-notifications-cm
+# 安装notification template和trigger，会生成ConfigMap argocd-notifications-cm
 root@ansible:~/k8s/argocd# curl -L -o argocd-notification-template https://raw.githubusercontent.com/argoproj/argo-cd/stable/notifications_catalog/install.yaml
 root@ansible:~/k8s/argocd# kubectl apply -n argocd -f argocd-notification-template
 root@k8s-master01:~# argocd admin notifications template get -n argocd	#查看模板
@@ -4087,6 +4087,7 @@ app-sync-failed          {{if eq .serviceType "slack"}}:exclamation:{{end}}  The
 app-sync-running         The sync operation of application {{.app.metadata.name}} has started at {{.app.status.operationStat...
 app-sync-status-unknown  {{if eq .serviceType "slack"}}:exclamation:{{end}} Application {{.app.metadata.name}} sync is 'Unkn...
 app-sync-succeeded       {{if eq .serviceType "slack"}}:white_check_mark:{{end}} Application {{.app.metadata.name}} has been...
+
 root@k8s-master01:~# argocd admin notifications trigger get -n argocd	#查看触发器
 NAME                    TEMPLATE                 CONDITION
 on-created              app-created              true
@@ -4098,7 +4099,7 @@ on-sync-running         app-sync-running         app.status.operationState.phase
 on-sync-status-unknown  app-sync-status-unknown  app.status.sync.status == 'Unknown'
 on-sync-succeeded       app-sync-succeeded       app.status.operationState.phase in ['Succeeded']
 
-#将电子邮件用户名和密码令牌添加到argocd-notifications-secret
+# 将发件电子邮件用户名和密码令牌添加到argocd-notifications-secret
 export EMAIL_USER='test@test.com'
 export PASSWORD='test@123!@#'
 kubectl apply -n argocd -f - << EOF
@@ -4129,7 +4130,7 @@ metadata:
   uid: 1316f48c-9c3e-4f26-ac1a-e70eafdf0715
 type: Opaque
 
-#注册电子邮件通知服务，配置ConfigMap argocd-notifications-cm，自己会默认调用secret argocd-notifications-secret的用户和密码
+# 注册电子邮件通知服务，配置ConfigMap argocd-notifications-cm，自己会默认调用secret argocd-notifications-secret的用户和密码
 root@ansible:~/k8s/argocd# kubectl patch cm argocd-notifications-cm -n argocd --type merge -p '{"data": {"service.email.gmail": "{ username: $email-username, password: $email-password, host: smtp.qiye.163.com, port: 465, from: $email-username }" }}'
 configmap/argocd-notifications-cm patched
 
@@ -4185,14 +4186,14 @@ spec:
     kind: VirtualService
     jsonPointers:
     - /spec/http/0
-      root@k8s-master01:~/git/kubernetes/ops/argocd/04-applicationset# kubectl apply -f application-test.yaml
 
-#通过将注释添加到 Argo CD 应用程序来订阅通知：
+root@k8s-master01:~/git/kubernetes/ops/argocd/04-applicationset# kubectl apply -f application-test.yaml
+
+# 通过将注释添加到 Argo CD 应用程序来订阅通知：
 root@ansible:~/k8s/argocd# kubectl patch app pro-frontend-www-homsom-com-test -n argocd -p '{"metadata": {"annotations": {"notifications.argoproj.io/subscribe.on-sync-succeeded.gmail": "test@test.com"}}}' --type merge
 application.argoproj.io/pro-frontend-www-homsom-com-test patched
 
 # 配置所有项目的所有应用默认订阅信息，也可以针对特定project或特定application在annotations中进行定义
-
 root@ansible:~# kubectl edit cm argocd-notifications-cm -n argocd
 apiVersion: v1
 data:
@@ -4211,7 +4212,7 @@ data:
       triggers:
       - on-deployed
 	  
-#更改argocd notification时区
+# 更改argocd notification时区
 root@ansible:~# kubectl edit deploy argocd-notifications-controller -n argocd
     spec:
       containers:
@@ -5988,11 +5989,11 @@ version 0.9.5
 
 
 
-# 监控argocd
+## 监控argocd
 
 
 
-## 部署prometheus-server并监控argocd
+### 部署prometheus-server并监控argocd
 
 ```bash
 [root@prometheus prometheus]# cat 10-promehteus-server.yaml 
@@ -6859,7 +6860,7 @@ spec:
 
 
 
-# argocd使用问题汇总：
+# ArgoCD使用问题汇总
 
 ```bash
 问题1：

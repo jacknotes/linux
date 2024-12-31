@@ -1,7 +1,9 @@
 # Mysql
 
 
+
 ## 1. 关系型数据体系结构
+
 学习要点：
 	1. sql/mysql
 	2. 事务，隔离，并发控制，锁
@@ -8816,6 +8818,72 @@ mysql> show databases;
 
 
 
+## 常用语句
+
+```sql
+-- 查看进程列表
+show processlist;
+
+-- 查看进程列表，通过条件筛选
+SELECT id as 线程ID,db as 当前进入数据库,user as 用户, host as 客户端,time as 等待时间,state as 执行状态,info as SQL语句 
+FROM INFORMATION_SCHEMA.PROCESSLIST 
+where info !='' -- and db='czndc'
+order by info desc
+
+-- 查看进程列表，通过条件筛选
+SELECT id as 线程ID,db as 当前进入数据库,user as 用户, host as 客户端,time as 等待时间,state as 执行状态,info as SQL语句 
+FROM INFORMATION_SCHEMA.PROCESSLIST 
+where info !='' 
+-- and info like '%interhotelresource_expedia%'
+order by info desc
+
+
+
+-- 查看当前使用的表，缩小死锁相关的数据库范围
+show OPEN TABLES where In_use > 0;
+
+-- kill进程
+-- kill 3980177
+
+
+-- 查看innode锁、等待锁，判断数据库是否有锁
+SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCKS; 
+SELECT * FROM INFORMATION_SCHEMA.INNODB_LOCK_WAITS; 
+
+
+-- 查看表锁等待状态、行锁等待状态
+show status like 'table%';
+show status like 'InnoDB_row_lock%';
+
+
+-- 查看innodb当前状态，查找status中TRANSACTION的locked，判断哪个事务有死锁，再查找`MySQL thread id`，结束线程id
+show engine innodb status;
+
+
+-- 查看innodb事务的线程信息
+select * from INFORMATION_SCHEMA.INNODB_TRX
+
+-- 查看innodb事务特定信息
+select trx_id as 事务ID, trx_mysql_thread_id as mysql线程ID, trx_started as 线程开始时间, trx_tables_in_use as 使用的表数量,
+trx_tables_locked as 锁定的表数量,trx_rows_locked as 锁定的行数量, trx_query as 查询语句
+from INFORMATION_SCHEMA.INNODB_TRX
+
+
+-- 查看告警信息
+show WARNINGS;
+
+
+-- 查看死锁是否写入错误日志文件
+show global variables like 'innodb_print_all_deadlocks';
+SHOW VARIABLES LIKE 'log_error';
+-- 通过错误日志文件中的事务ID查看线程ID
+SELECT id, user, host, db, command, time, state, info, trx_id
+FROM information_schema.processlist
+JOIN information_schema.innodb_trx ON information_schema.processlist.id = information_schema.innodb_trx.trx_mysql_thread_id;
+```
+
+
+
 
 
 
@@ -9855,3 +9923,90 @@ PS C:\Users\user> 2239/190405 * 100
 - 如果 `Free buffers` 数量较少，可能需要增加 `innodb_buffer_pool_size`，以提供更多的缓冲池内存，减少磁盘I/O。
 - 如果 `Modified db pages` 比例过高，可以调整 `innodb_flush_log_at_trx_commit` 等参数来减少磁盘I/O压力，平衡性能和数据一致性。
 - 适当增加 `innodb_log_file_size`、`innodb_log_files_in_group` 和调整缓冲池实例数，能进一步优化缓冲池的性能。
+
+
+
+
+
+## mysql死锁
+
+### 1. innodb status
+
+```sql
+> SHOW ENGINE INNODB STATUS\G
+------------------------
+LATEST DETECTED DEADLOCK
+------------------------
+2024-12-31 12:34:56 0x7f8f8400c700
+*** (1) TRANSACTION:
+TRANSACTION 12345, ACTIVE 5 sec starting index read
+mysql tables in use 1, locked 1
+LOCK WAIT 4 lock struct(s), heap size 1136, 2 row lock(s)
+MySQL thread id 101, OS thread handle 123456789, query id 456 localhost root updating
+UPDATE your_table SET column = value WHERE id = 'A'
+*** (1) WAITING FOR THIS LOCK TO BE GRANTED:
+RECORD LOCKS space id 789 page no 3 n bits 72 index `PRIMARY` of table `your_schema`.`your_table` trx id 12345 lock_mode X locks rec but not gap waiting
+*** (2) TRANSACTION:
+TRANSACTION 67890, ACTIVE 5 sec starting index read
+mysql tables in use 1, locked 1
+4 lock struct(s), heap size 1136, 2 row lock(s)
+MySQL thread id 102, OS thread handle 987654321, query id 789 localhost root updating
+UPDATE your_table SET column = value WHERE id = 'B'
+*** (2) HOLDS THE LOCK(S):
+RECORD LOCKS space id 789 page no 3 n bits 72 index `PRIMARY` of table `your_schema`.`your_table` trx id 67890 lock_mode X locks rec but not gap
+*** (2) WAITING FOR THIS LOCK TO BE GRANTED:
+RECORD LOCKS space id 789 page no 3 n bits 72 index `PRIMARY` of table `your_schema`.`your_table` trx id 67890 lock_mode X locks rec but not gap waiting
+*** WE ROLL BACK TRANSACTION (1)
+```
+
+从上面的输出中，我们可以看到两个事务（TRANSACTION 12345 和 TRANSACTION 67890）互相等待对方持有的锁，从而导致了死锁。
+
+关键部分解释如下：
+
+1. **事务信息**:
+
+   - ```
+     TRANSACTION 12345, ACTIVE 5 sec starting index read
+     ```
+
+     - `TRANSACTION 12345` 是第一个事务的ID。
+     - `TRANSACTION 67890` 是第二个事务的ID。
+
+   - `MySQL thread id 101` 和 `MySQL thread id 102` 分别是与这些事务关联的MySQL线程ID。
+
+   - `OS thread handle` 是操作系统级别的线程句柄，但通常不需要用来手动结束事务。
+
+2. **等待的锁**:
+
+   - 第一个事务在等待锁：`WAITING FOR THIS LOCK TO BE GRANTED`
+   - 第二个事务也在等待锁：`WAITING FOR THIS LOCK TO BE GRANTED`
+   - 描述了两个事务各自持有的锁和等待的锁。
+
+3. **解决方案**:
+
+   - InnoDB 选择回滚第一个事务：`WE ROLL BACK TRANSACTION (1)`
+
+
+
+### 2. 手动结束死锁事务
+
+如果需要手动结束一个死锁事务，可以按照以下步骤进行操作：
+
+1. **获取事务ID**：从 `SHOW ENGINE INNODB STATUS` 的输出中找到死锁的事务ID（如 12345 和 67890）。
+
+2. **查找 MySQL 线程ID**：使用以下查询找到与事务ID对应的 MySQL 线程ID：
+
+   ```sql
+   SELECT trx_id, trx_mysql_thread_id 
+   FROM information_schema.innodb_trx 
+   WHERE trx_id IN (12345, 67890);
+   ```
+
+3. **终止事务**：使用 `KILL` 命令终止相应的 MySQL 线程：
+
+   ```sql
+   KILL 101;  -- 终止事务ID为12345的线程
+   KILL 102;  -- 终止事务ID为67890的线程
+   ```
+
+这样可以手动结束死锁事务。

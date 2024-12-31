@@ -161,3 +161,16 @@ Time: 06:16:27   Date: 01/18/2022   UTC
 00   1    *   *   *   localcli storage core device purge
 0    18   */7 *   *   /vmfs/volumes/datastore1/jackli/snapshot-manager.sh
 ```
+
+
+
+
+
+## 清理/storage/archive/vpostgres数据
+```bash
+service-control --stop vmware-vpostgres
+cd /storage/archive/vpostgres
+find /storage/archive/vpostgres -type f -mtime +30 -exec rm -f {} \;
+service-control --start vmware-vpostgres
+service-control --status
+```
