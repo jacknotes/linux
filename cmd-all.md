@@ -3187,3 +3187,10 @@ set -o pipefail
 另一种办法是在执行 Bash 脚本的时候，从命令行传入这些参数。
 $ bash -euxo pipefail script.sh
 ```
+
+
+
+## 常用命令
+```bash
+root@test-k8s-master:/data# tar --exclude='k8s/fat-elk-data' --exclude='k8s/fat-elk-snapshot' -czvpf k8s.tar.gz -C /data ./k8s
+```

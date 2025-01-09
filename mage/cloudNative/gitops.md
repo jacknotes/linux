@@ -3668,11 +3668,11 @@ root@front-envoy:~/spring-boot-helloworld-deployment/kubernetes# git add -A && g
 ## 配置ArgoCD
 
 1. 进入ArgoCD UI界面-- 'manager your repository,projects,settings' -- 可以添加repository(私用或公有仓库，如果公有仓库这里可不添加)，查看cluster(默认会有in cluster，是argo所属集群)，查看project(默认有一个default，可以创建新project name，用于分类管理项目，实现项目中的名称空间、资源类型等限制) 
-2. 我们添加公有仓库，直接到 'manager your applications,and diagnose health problems' -- 'new app'
+2. 我们添加Application，直接到 'manager your applications,and diagnose health problems' -- 'new app'
 3. 配置app信息：设定'application name'为"spring-boot-helloworld" -- 'project'为default -- 'sync policy'为automatic，并勾选'self heal'(自愈)， 'PRUNE RESOURCES'这个看自己情况是否勾选,作用是当git config repo仓库中没有项目时是否自动删除k8s中已经存在的资源， 'sync options'勾选"AUTO-CREATE NAMESPACE"(自动创建名称空间) -- ‘SOURCE’填入公有仓库地址"https://gitee.com/jacknotes/spring-boot-helloworld-deployment.git"并选择Branch为HEAD，Path为“deploy/kubernetes”(表示此目录下为此项目的yaml配置清单) -- 'DESTINATION'为in-cluster，表示部署在哪个集群，名称空间为'helloworld'(不存在会创建，上面已经勾选自动创建) -- 最后保存
 
 ```bash
-#配置保存即运行
+# 配置保存即运行
 root@k8s-master01:~# kubectl get pods  -n helloworld
 NAME                                      READY   STATUS    RESTARTS   AGE
 spring-boot-helloworld-86d6866454-ldbpl   1/1     Running   0          2m48s
@@ -3715,7 +3715,7 @@ root@k8s-master01:~# argocd app create spring-boot-helloworld --repo https://git
 application 'spring-boot-helloworld' created
 
 --命令行添加其它集群
-root@k8s-master01:~/argocd/cluster# argocd cluster add context-fat-cluster --kubeconfig config --name fat-cluster	#config是k8s管理员用户kubeconfig文件，在~/.kube/config
+root@k8s-master01:~/argocd/cluster# argocd cluster add context-fat-cluster --kubeconfig config --name fat-cluster	#  config是k8s管理员用户的kubeconfig文件，在~/.kube/config
 WARNING: This will create a service account `argocd-manager` on the cluster referenced by context `context-fat-cluster` with full cluster level admin privileges. Do you want to continue [y/N]? y
 INFO[0001] ServiceAccount "argocd-manager" created in namespace "kube-system"
 INFO[0001] ClusterRole "argocd-manager-role" created

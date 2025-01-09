@@ -9909,7 +9909,7 @@ PS C:\Users\user> 2239/190405 * 100
   1.24896727790392
   ```
 
-- **`SHOW STATUS LIKE 'Innodb_buffer_pool_wait%'`**：可以查看缓冲池的等待情况。如果等待过多，可能意味着缓冲池的内存过小。
+- **`SHOW STATUS LIKE 'Innodb_buffer_pool_wait%'`**：可以查看缓冲池的等待情况。如果等待过多，可能意味着缓冲池的内存过小。**此参数有用**
 
   ```sql
   Variable_name	Value

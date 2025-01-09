@@ -994,6 +994,13 @@ msiexec /x windows_exporter-0.20.0-amd64.msi
 
 # install
 msiexec /i windows_exporter-0.20.0-amd64.msi ENABLED_COLLECTORS="cpu,cs,logical_disk,net,os,service,system,tcp,textfile,iis,memory,process"
+
+# 查询iis进程cpu使用耗时指标
+irate(windows_process_cpu_time_total{process=~"w3wp.*", instance="192.168.13.205:9182"}[1m])
+# 结果显示process="w3wp"，并没有显示网站名称
+{app="WebSite", creating_process_id="14920", env="pro", instance="192.168.13.205:9182", ip="192.168.13.205", job="consul-windows_exporter", mode="privileged", process="w3wp", process_id="11608", project="node", team="ops"}
+0
+# 解决办法：重启操作系统解决。
 ```
 
 

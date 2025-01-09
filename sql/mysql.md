@@ -616,3 +616,147 @@ end
 1 row in set (0.00 sec)
 
 </pre>
+
+
+
+
+## mysql查询优化
+
+
+### 避免子查询
+```
+# 未优化语句
+SELECT
+	id,
+	NAME,
+	up_id,
+	mobile,
+	email,
+	ticket_no,
+	segment_id,
+	origin_segment_id,
+	origin_ticket_no,
+	ticket_status,
+	hotel_status,
+	notice_template_language,
+	person_type,
+	create_time,
+	update_time 
+FROM
+	trip_management.trip_person 
+WHERE
+	EXISTS (
+	SELECT
+		trip_person_id AS id 
+	FROM
+		trip_management.trip_person_link l
+		LEFT JOIN trip_management.train_order_trip t ON l.trip_no = t.trip_no 
+	WHERE
+		l.trip_person_id = trip_person.id 
+		AND t.business_order_no = 'TR00318465' 
+	AND l.trip_type = 3 
+	);
+```
+
+```
+# 优化语句
+SELECT
+	p.id,
+	p.NAME,
+	p.up_id,
+	p.mobile,
+	p.email,
+	p.ticket_no,
+	p.segment_id,
+	p.origin_segment_id,
+	p.origin_ticket_no,
+	p.ticket_status,
+	p.hotel_status,
+	p.notice_template_language,
+	p.person_type,
+	p.create_time,
+	p.update_time 
+FROM
+	trip_management.trip_person_link l
+	JOIN trip_management.flight_order_trip t ON l.trip_no = t.trip_no
+	JOIN trip_management.trip_person p ON p.id = l.trip_person_id 
+WHERE
+	t.business_order_id = 'f69d595bf79f4c268b75db5ad4cc1db7' 
+	AND l.trip_type = 1
+```
+
+
+
+### FORCE INDEX()、强制走索引
+```sql
+# 未优化语句
+SELECT
+	`m`.`Id`,
+	`m`.`ArrCode`,
+	`m`.`BusinessType`,
+	`m`.`CompanyCode`,
+	`m`.`Content`,
+	`m`.`ContentType`,
+	`m`.`CreateBy`,
+	`m`.`CreateTime`,
+	`m`.`DepCode`,
+	`m`.`FlightDate`,
+	`m`.`FlightNo`,
+	`m`.`IsDelete`,
+	`m`.`MessageType`,
+	`m`.`OrderIdentity`,
+	`m`.`ReadStatus`,
+	`m`.`RelationId`,
+	`m`.`SubBusinessType`,
+	`m`.`UpdateBy`,
+	`m`.`UpdateTime`,
+	`m`.`UserIdentity` 
+FROM
+	`MessageNotify` AS `m` 
+WHERE
+	((
+			`m`.`UserIdentity` = '7dfbbe0d-23b8-4672-b0c0-d6cc9db6afc2' 
+			) 
+	AND ( `m`.`MessageType` = 2 )) 
+	AND ( `m`.`IsDelete` = FALSE ) 
+ORDER BY
+	`m`.`CreateTime` DESC 
+	LIMIT 20 OFFSET 0;
+```
+
+```
+# 优化语句
+SELECT
+	`m`.`Id`,
+	`m`.`ArrCode`,
+	`m`.`BusinessType`,
+	`m`.`CompanyCode`,
+	`m`.`Content`,
+	`m`.`ContentType`,
+	`m`.`CreateBy`,
+	`m`.`CreateTime`,
+	`m`.`DepCode`,
+	`m`.`FlightDate`,
+	`m`.`FlightNo`,
+	`m`.`IsDelete`,
+	`m`.`MessageType`,
+	`m`.`OrderIdentity`,
+	`m`.`ReadStatus`,
+	`m`.`RelationId`,
+	`m`.`SubBusinessType`,
+	`m`.`UpdateBy`,
+	`m`.`UpdateTime`,
+	`m`.`UserIdentity` 
+FROM
+	`MessageNotify` AS `m` 
+	FORCE INDEX(`IDX_UserIdentity`)
+WHERE
+	
+	`m`.`UserIdentity` = '7dfbbe0d-23b8-4672-b0c0-d6cc9db6afc2' 
+			
+	AND  `m`.`MessageType` = 2 
+	AND `m`.`IsDelete` = FALSE 
+ORDER BY
+	`m`.`CreateTime` DESC 
+	LIMIT 20 OFFSET 0;
+```

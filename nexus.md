@@ -434,6 +434,27 @@ Login Succeeded
 
 
 
+## 4. 手动缓存包
+
+以npm为例
+
+```bash
+# 官方网站下载包
+https://registry.npmmirror.com/esbuild/-/esbuild-0.20.2.tgz
+
+# nexus下载包
+curl -X GET "http://nugetv3.hs.com/repository/npm-proxy/esbuild/0.20.2"
+curl -X GET "http://nugetv3.hs.com/repository/npm-proxy/esbuild/-/esbuild-0.20.2.tgz"
+
+# 去私服中查看搜索包
+路径：Search ->  npm -> Scope -> 输入包名、版本号进行查找即可
+警告：不要在Browse中进行浏览，本人就是在Browse中没有浏览到，一直排查为何不能缓存包，但最后在`Search ->  npm -> Scope -> 输入包名、版本号进行查找即可`中可查询到缓存的包，可能是nexus此版本的BUG
+```
+
+
+
+
+
 
 
 # nexus清理jar包脚本
