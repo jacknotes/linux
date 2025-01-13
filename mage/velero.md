@@ -3208,17 +3208,19 @@ kubernetes-dashboard   NodePort   10.68.31.120   <none>        443:30502/TCP   4
 
 ### 9.4 附生产环境备份任务
 
+> 一定要使用参数`--include-cluster-resources=true`，因为不带此参数将不会备份全部集群资源，只会备份部分资源，我在测试环境中进行恢复测试时，就有自定义的clusterrole角色(pro-clusterrole-homsom-dev)没有备份下来，只备份了系统自带的clusterrole角色
+
 ```bash
 # k8s-test 不备份卷数据到restic，只备份集群中的所有资源对象
-velero schedule create test-cluster-daily --schedule="0 17 * * *" --default-volumes-to-restic=false --exclude-namespaces velero  
+velero schedule create test-cluster-daily --schedule="0 17 * * *" --include-cluster-resources=true --default-volumes-to-restic=false --exclude-namespaces velero  
 velero backup create --from-schedule test-cluster-daily
 
 # k8s-pre-pro 不备份卷数据到restic，只备份集群中的所有资源对象
-velero schedule create pre-pro-cluster-daily --schedule="0 18 * * *" --default-volumes-to-restic=false --exclude-namespaces velero  
+velero schedule create pre-pro-cluster-daily --schedule="0 18 * * *" --include-cluster-resources=true --default-volumes-to-restic=false --exclude-namespaces velero  
 velero backup create --from-schedule pre-pro-cluster-daily
 
 # k8s-pro 不备份卷数据到restic，只备份集群中的所有资源对象
-velero schedule create pro-cluster-daily --schedule="0 19 * * *" --default-volumes-to-restic=false --exclude-namespaces velero  
+velero schedule create pro-cluster-daily --schedule="0 19 * * *" --include-cluster-resources=true --default-volumes-to-restic=false --exclude-namespaces velero  
 velero backup create --from-schedule pro-cluster-daily
 ```
 
