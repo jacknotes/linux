@@ -741,6 +741,9 @@ root@ansible:/etc/kubeasz# ansible k8s -m shell -a 'uptime'
 172.168.2.26 | SUCCESS | rc=0 >>
  21:37:53 up 1 min,  0 users,  load average: 0.49, 0.32, 0.12
 
+> 销毁k8s集群后，在`/etc/kubeasz/clusters/`中仍然存在集群k8s-01，此时将此集群k8s-01目录移动到其它目录即可，后续使用`ezctl list`命令不会再看到集群k8s-01了
+
+
 
 ###重新部署k8s集群
 root@ansible:/etc/kubeasz# ./ezctl setup k8s-01 01

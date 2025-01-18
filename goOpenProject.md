@@ -902,7 +902,7 @@ server {
 
 [download](https://github.com/rustdesk/rustdesk)
 
-## 运行
+## 1. 安装服务端
 在国内需要使用docker代理，方可运行起来
 ```bash
 [root@hw-blog rustdesk]# cat /etc/systemd/system/docker.service.d/http-proxy.conf 
@@ -919,7 +919,8 @@ services:
     container_name: hbbs
     image: rustdesk/rustdesk-server:1.1.12
     environment:
-      - ALWAYS_USE_RELAY=Y
+      - "RELAY=hbbr:21117"
+      - "ENCRYPTED_ONLY=1"
     command: hbbs
     volumes:
       - ./data:/root
@@ -937,13 +938,19 @@ services:
       - ./data:/root
     network_mode: "host"
     restart: unless-stopped
+    
+root@ansible:~/rustdesk# docker-compose -f docker-compose.yml up -d
+[root@hw-blog rustdesk]# docker ps -a | grep rustdesk
+fd8a2b31d7ba   rustdesk/rustdesk-server:1.1.12   "hbbs"                   43 seconds ago   Up 42 seconds                                                      hbbs
+0c2308fa1489   rustdesk/rustdesk-server:1.1.12   "hbbr"                   43 seconds ago   Up 42 seconds                                                      hbbr
+
 ```
 
 
 
-# 端口参数
+## 2. 端口参数
 * hbbs:
-21114（TCP）：用于 Web 控制台，仅在版本中可用。Pro
+21114（TCP）：用于 Web 控制台，仅在Pro版本中可用。
 21115（TCP）：用于 NAT 类型测试。
 21116（TCP/UDP）：请注意，TCP 和 UDP 都应该启用 21116。 用于 ID 注册和心跳服务。 用于 TCP 打孔和连接服务。21116/UDP21116/TCP
 21118（TCP）：用于支持 Web 客户端。
@@ -956,10 +963,11 @@ services:
 
 
 
-## 查看参数
+## 3. 查看参数
 key：eNL0rQN0hSxr5TY91IzwBY0TH361QKvRxvf1FqMRwXQ=
 ID服务器：172.168.2.12:21116
 中继服务器：172.168.2.12:21117
+
 ```bash
 root@ansible:~# docker logs -f hbbs
 [2024-12-17 03:36:34.527584 +00:00] INFO [src/common.rs:148] Private/public key written to id_ed25519/id_ed25519.pub
@@ -979,4 +987,57 @@ root@ansible:~# docker logs -f hbbs
 [2024-12-17 03:36:34.538536 +00:00] INFO [libs/hbb_common/src/udp.rs:36] Receive buf size of udp [::]:0: Ok(8388608)
 [2024-12-17 03:36:34.540939 +00:00] INFO [libs/hbb_common/src/udp.rs:36] Receive buf size of udp 0.0.0.0:0: Ok(8388608)
 
+[root@hw-blog rustdesk]# cat /root/rustdesk/data/id*.pub 
+eNL0rQN0hSxr5TY91IzwBY0TH361QKvRxvf1FqMRwXQ=
+
 ```
+
+
+
+## 4. 安装管理界面
+
+```bash
+[root@hw-blog rustdesk]# cat rustdesk-api.sh 
+docker run -d --name rustdesk-api -p 21114:21114 \
+-v /root/rustdesk/api:/app/data \
+-e TZ=Asia/Shanghai \
+-e RUSTDESK_API_LANG=zh-CN \
+-e RUSTDESK_API_RUSTDESK_ID_SERVER=127.0.0.1:21116 \
+-e RUSTDESK_API_RUSTDESK_RELAY_SERVER=127.0.0.1:21117 \
+-e RUSTDESK_API_RUSTDESK_API_SERVER=http://127.0.0.1:21114 \
+-e RUSTDESK_API_RUSTDESK_KEY='eNL0rQN0hSxr5TY91IzwBY0TH361QKvRxvf1FqMRwXQ=' \
+lejianwen/rustdesk-api:v2.6.2
+
+[root@hw-blog rustdesk]# ./rustdesk-api.sh 
+[root@hw-blog rustdesk]# docker logs -f rustdesk-api 
+migrating.... 260
+2025/01/16 16:26:50 1 0.0.0.0:21114
+
+```
+
+
+
+## 5. 访问管理界面
+
+```
+地址：IP:21114
+默认密码：admin/admin
+```
+
+![](./image/rustdesk/rustdesk-api01.png)
+
+![](./image/rustdesk/rustdesk-api02.png)
+
+![](./image/rustdesk/rustdesk-api03.png)
+
+
+
+## 6. 客户端连接超时解决
+
+[参考链接](https://github.com/lejianwen/rustdesk-api/issues/92)
+
+[下载链接](https://github.com/lejianwen/rustdesk/releases/download/nightly/rustdesk-1.3.6-x86_64.msi)
+
+连接方安装上面链接的客户端即可解决超时问题
+
+![](./image/rustdesk/rustdesk-api04.png)

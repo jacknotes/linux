@@ -2233,6 +2233,22 @@ stream {
 }
 ```
 
+> 可配置tcp日志，但是日志产生会很大，建议调试时开启，配置如下：
+>
+> ```nginx
+> 	stream {
+> 		log_format stream_log '$remote_addr -> $server_addr:$server_port '
+>                          'to $upstream_addr [$protocol] $status '
+>                          '$bytes_sent bytes sent, $bytes_received bytes received, '
+>                          'connection time: $session_time sec';
+> 
+> 		access_log /usr/local/nginx/logs/tcp-access.log stream_log ;
+>         open_log_file_cache off;
+> 	}
+> ```
+
+
+
 
 
 ### 14.5 nginx启动脚本
