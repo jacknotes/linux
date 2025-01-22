@@ -1041,3 +1041,66 @@ migrating.... 260
 连接方安装上面链接的客户端即可解决超时问题
 
 ![](./image/rustdesk/rustdesk-api04.png)
+
+
+
+
+
+
+
+# 12. memos
+
+
+
+## 12.1 关于
+
+[memos](https://github.com/usememos/memos)是开源、轻量级的笔记解决方案。轻松创建有意义的笔记。您的笔记，您的方式。
+
+
+
+## 12.2 运行
+
+```bash
+[root@hw-blog memos]# docker run -d --name memos -p 5230:5230 -v ~/.memos/:/var/opt/memos neosmemo/memos:stable
+[root@hw-blog memos]# docker ps | grep memos
+0b6ef6a85cb6   neosmemo/memos:stable             "./memos"                About an hour ago   Up About an hour       0.0.0.0:5230->5230/tcp, :::5230->5230/tcp       memos
+```
+
+
+
+## 12.3 反向代理
+
+```nginx
+    server {
+        listen       80;
+        server_name  memos.markli.cn;
+        rewrite ^(.*)$ https://${server_name}$1 permanent;
+    }
+    server {
+        listen       443 ssl;
+        server_name  memos.markli.cn;
+        ssl_certificate /etc/letsencrypt/live/markli.cn/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/markli.cn/privkey.pem;
+        ssl_session_timeout 1d;
+        ssl_session_cache shared:MozSSL:10m;  # about 40000 sessions
+        ssl_session_tickets off;
+        ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_prefer_server_ciphers off;
+
+        location / {
+                add_header Strict-Transport-Security "max-age=31536000";
+                proxy_pass http://127.0.0.1:5230;
+                proxy_set_header    Host            $proxy_host;
+                proxy_set_header    X-Real-IP       $remote_addr;
+                proxy_set_header    X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_hide_header   X-Powered-By;
+		}
+    }
+```
+
+
+
+## 12.4 结果展示
+
+![](./image/go-open-project/memos/01.png)
