@@ -3194,3 +3194,49 @@ $ bash -euxo pipefail script.sh
 ```bash
 root@test-k8s-master:/data# tar --exclude='k8s/fat-elk-data' --exclude='k8s/fat-elk-snapshot' -czvpf k8s.tar.gz -C /data ./k8s
 ```
+
+
+
+
+
+## namp
+
+
+### 常用命令
+```bash
+nmap -sP 192.168.10.0/24
+nmap -sS 192.168.10.1
+```
+
+
+### 批量扫描指定IP和指定端口
+```bash
+root@ansible:~/nmap# cat ip_list.txt
+192.168.13.117/32
+192.168.13.118/32
+192.168.13.122/32
+192.168.13.131/32
+192.168.13.132/32
+root@ansible:~/nmap# cat port_list.txt
+6379
+6369
+16369
+3306
+1433
+9200
+9210
+80
+5672
+22
+root@ansible:~/nmap# nmap -iL ip_list.txt -p $(tr '\n' ',' < port_list.txt | sed 's/,$//') -oG scan_results.txt
+root@ansible:~/nmap#  head -n 9 scan_results.txt
+# Nmap 7.60 scan initiated Sat Feb  8 09:33:48 2025 as: nmap -iL ip_list.txt -p 6379,6369,16369,3306,1433,9200,9210,80,5672,22, -oG scan_results.txt
+Host: 192.168.13.117 () Status: Up
+Host: 192.168.13.117 () Ports: 22/open/tcp//ssh///, 80/filtered/tcp//http///, 1433/filtered/tcp//ms-sql-s///, 3306/filtered/tcp//mysql///, 5672/filtered/tcp//amqp///, 6369/filtered/tcp/////, 6379/filtered/tcp//redis///, 9200/filtered/tcp//wap-wsp///, 9210/filtered/tcp//oma-mlp///, 16369/filtered/tcp/////
+Host: 192.168.13.118 () Status: Up
+Host: 192.168.13.118 () Ports: 22/open/tcp//ssh///, 80/closed/tcp//http///, 1433/closed/tcp//ms-sql-s///, 3306/filtered/tcp//mysql///, 5672/closed/tcp//amqp///, 6369/closed/tcp/////, 6379/closed/tcp//redis///, 9200/closed/tcp//wap-wsp///, 9210/closed/tcp//oma-mlp///, 16369/closed/tcp/////
+Host: 192.168.13.122 (srv-dbmirror.hs.com)      Status: Up
+Host: 192.168.13.122 (srv-dbmirror.hs.com)      Ports: 22/closed/tcp//ssh///, 80/closed/tcp//http///, 1433/filtered/tcp//ms-sql-s///, 3306/closed/tcp//mysql///, 5672/closed/tcp//amqp///, 6369/closed/tcp/////, 6379/closed/tcp//redis///, 9200/closed/tcp//wap-wsp///, 9210/closed/tcp//oma-mlp///, 16369/closed/tcp/////
+Host: 192.168.13.131 (srv-db01.hs.com)  Status: Up
+Host: 192.168.13.131 (srv-db01.hs.com)  Ports: 22/closed/tcp//ssh///, 80/closed/tcp//http///, 1433/filtered/tcp//ms-sql-s///, 3306/closed/tcp//mysql///, 5672/closed/tcp//amqp///, 6369/closed/tcp/////, 6379/closed/tcp//redis///, 9200/closed/tcp//wap-wsp///, 9210/closed/tcp//oma-mlp///, 16369/closed/tcp/////
+```
