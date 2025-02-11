@@ -6,7 +6,7 @@
 
 ```
 (umask 0077; openssl genrsa -out newca.key 2048)
-openssl req -new -x509 -key newca.key -out newca.pem -days 36500 -subj "/C=CN/ST=Shanghai/O=HOMSOM Inc/OU=www.homsom.com/CN=HOMSOM RSA CA"
+openssl req -new -x509 -key newca.key -out newca.pem -days 36500 -subj "/C=CN/ST=Shanghai/O=HOMSOM Inc/OU=www.test.com/CN=HOMSOM RSA CA"
 ```
 
 
@@ -14,7 +14,7 @@ openssl req -new -x509 -key newca.key -out newca.pem -days 36500 -subj "/C=CN/ST
 ## 服务端证书申请
 ```
 (umask 0077; openssl genrsa -out goaccess.key 1024)
-openssl req -new -key goaccess.key -out goaccess.csr -subj "/C=CN/ST=Shanghai/O=HOMSOM Inc/OU=www.homsom.com/CN=*.hs.com"
+openssl req -new -key goaccess.key -out goaccess.csr -subj "/C=CN/ST=Shanghai/O=HOMSOM Inc/OU=www.test.com/CN=*.hs.com"
 
 用自己rsa key生成自签名证书
 # openssl x509 -req -in goaccess.csr -signkey goaccess.key -out goaccess.pem -days 18250
@@ -46,7 +46,7 @@ DNS.4 = *.uat.qa.hs.com
 - 用CA签署服务端证书
 [root@salt /tmp/cert]# openssl x509 -req -in goaccess.csr -CAkey newca.key -CA newca.pem -CAcreateserial -out goaccess.pem -days 18250 -extfile ext.ini #需要加此参数-CAcreateserial
 Signature ok
-subject=/C=CN/ST=Shanghai/O=HOMSOM Inc/OU=www.homsom.com/CN=*.hs.com
+subject=/C=CN/ST=Shanghai/O=HOMSOM Inc/OU=www.test.com/CN=*.hs.com
 Getting CA Private Key
 
 - 验证证书信任关系
@@ -61,11 +61,11 @@ Certificate:
         Serial Number:
             9d:12:8e:e6:38:a3:c0:e3
     Signature Algorithm: sha256WithRSAEncryption
-        Issuer: C=CN, ST=Shanghai, O=HOMSOM Inc, OU=www.homsom.com, CN=HOMSOM RSA CA
+        Issuer: C=CN, ST=Shanghai, O=HOMSOM Inc, OU=www.test.com, CN=HOMSOM RSA CA
         Validity
             Not Before: Jun 27 01:22:26 2023 GMT
             Not After : Jun 14 01:22:26 2073 GMT
-        Subject: C=CN, ST=Shanghai, O=HOMSOM Inc, OU=www.homsom.com, CN=*.hs.com
+        Subject: C=CN, ST=Shanghai, O=HOMSOM Inc, OU=www.test.com, CN=*.hs.com
         Subject Public Key Info:
             Public Key Algorithm: rsaEncryption
                 Public-Key: (1024 bit)
@@ -716,10 +716,10 @@ Certificate:
 ```bash
 server {
         listen 443 ssl;
-        server_name www.homsom.com;
+        server_name www.test.com;
 
-        ssl_certificate   cert/homsom.com.pem;
-        ssl_certificate_key  cert/homsom.com.key;
+        ssl_certificate   cert/test.com.pem;
+        ssl_certificate_key  cert/test.com.key;
         ssl_session_timeout 5m;
 		# tls1.2,1.3加密方法，不兼容tls1.0,tls1.1
         ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
@@ -727,7 +727,7 @@ server {
         ssl_prefer_server_ciphers on;
 
         location / {
-				# 告诉浏览器访问http://www.homsom.com的网站初强制走https
+				# 告诉浏览器访问http://www.test.com的网站初强制走https
                 add_header Strict-Transport-Security "max-age=31536000";
                 add_header X-Frame-Options "SAMEORIGIN";
                 add_header X-XSS-Protection "1; mode=block";
@@ -1729,6 +1729,166 @@ grep -E 'tls1_[a-zA-Z]' tls_nook.txt > tls1-nook.txt
 
 # hs.com
 grep 443 -C 6 conf.d/*.conf | grep -E 'server_name ' | awk '{print $3}' | tr -d ';' | grep -Ev 'test.com' | sort | uniq > /tmp/hs.com_443.hostname.txt
+```
+
+```bash
+#!/bin/bash
+# author: jackli
+# date: 20250211
+# description: scan https tls version、display server_name tls version、check server_name is available
+
+# default var
+DOMAIN_NAME='markli.cn'
+NGINX_CONFIG_FILE='./markli.cn.conf'
+OUTPUT_DIR='./output'
+SERVER_NAME_FILE_LIST="${OUTPUT_DIR}/${DOMAIN_NAME}.servername.txt"
+OUTPUT_FILE="${OUTPUT_DIR}/ssl"
+TLS_TRUE="${OUTPUT_DIR}/true.txt"
+TLS_FALSE="${OUTPUT_DIR}/false.txt"
+STATUS_OK='ok'
+STATUS_NOOK='nook'
+# tls version
+CONST_tls1='tls1'
+CONST_tls1_1='tls1_1'
+CONST_tls1_2='tls1_2'
+CONST_tls1_3='tls1_3'
+OUTPUT_RESULT_PREFIX="${OUTPUT_DIR}/tls"
+# date
+DATETIME="date +'%Y%m%d%H%M%S'"
+
+
+clean(){
+	mv $OUTPUT_DIR $OUTPUT_DIR`eval ${DATETIME}`
+}
+
+init(){
+	mkdir -p $OUTPUT_DIR
+}
+
+generate_ServerName_file_list(){
+	grep 443 -C 6 $NGINX_CONFIG_FILE | grep -E 'server_name ' | grep -v '#.*server_name' | awk '{print $2}' | tr -d ';' | sort | uniq > $SERVER_NAME_FILE_LIST
+}
+
+generate_TLSInfo(){
+	for i in `cat $SERVER_NAME_FILE_LIST`;do 
+		for j in tls1 tls1_1 tls1_2 tls1_3;do 
+			echo "--${i}--" >> ${OUTPUT_FILE}_${j}_${i}.txt
+			timeout 3 openssl s_client -connect ${i}:443 -servername ${i} -${j} | tee -a ${OUTPUT_FILE}_${j}_${i}.txt
+		done
+	done
+}
+
+check_tls_version(){
+	for i in ${OUTPUT_FILE}*;do
+		cat $i | grep 'Server certificate' &> /dev/null && \
+		echo $i $STATUS_OK | tee -a ${TLS_TRUE}  || echo $i $STATUS_NOOK | tee -a ${TLS_FALSE}
+	done
+}
+
+filter_func(){
+	if [ $1 == "$CONST_tls1_1" ];then
+		grep -E "$CONST_tls1_1" $2 > $OUTPUT_DIR/${CONST_tls1_1}$3
+	elif [ $1 == "$CONST_tls1_2" ];then
+		grep -E "$CONST_tls1_2" $2> $OUTPUT_DIR/${CONST_tls1_2}$3
+	elif [ $1 == "$CONST_tls1_3" ];then
+		grep -E "$CONST_tls1_3" $2> $OUTPUT_DIR/${CONST_tls1_3}$3
+	elif [ $1 == "$CONST_tls1" ];then
+		grep -E ${CONST_tls1}'_[a-zA-Z]' $2> $OUTPUT_DIR/${CONST_tls1}$3
+	else
+		echo "[ERROR]: filter_func $1 args is error, valid arg is '[ tls1 tls1_1 tls1_2 tls1_3 ]'"
+		exit 1
+	fi
+}
+
+filter_tls(){
+	if [ "$2" == "$TLS_TRUE" ];then
+		prefix="-${STATUS_OK}.txt"
+		filter_func $1 $2 $prefix
+	elif [ "$2" == "$TLS_FALSE" ];then
+		prefix="-${STATUS_NOOK}.txt"
+		filter_func $1 $2 $prefix
+	else
+		echo "[ERROR]: filter_tls $2 args is error, valid arg is ""[ $TLS_TRUE $TLS_FALSE ]"
+		exit 1
+	fi
+}
+
+
+# filter server_name display
+dislpay_ServerName(){
+	if [ $1 = 'all' ];then
+		cat ${OUTPUT_RESULT_PREFIX}*
+	else
+		cat ${OUTPUT_RESULT_PREFIX}* | grep "$1"
+	fi
+}
+
+
+check_output_result_IsExist(){
+	ls ${SERVER_NAME_FILE_LIST} &> /dev/null && \
+	ls ${OUTPUT_RESULT_PREFIX}* &> /dev/null && \
+	echo 'true' || echo 'false'
+}
+
+# check server_name isAvailable
+check_ServerName_Available(){
+	if [ "$(check_output_result_IsExist)" == 'false' ];then
+		echo "[ERROR] server_name list file AND output result files Not Exists!"
+                exit 1
+	fi	
+
+	for i in `cat $SERVER_NAME_FILE_LIST`;do 
+		result_list=(`cat ${OUTPUT_RESULT_PREFIX}* | grep $i | awk '{print $2}' | sort -t 1 | uniq`)
+		if [ "${#result_list[*]}" -eq 1 ];then
+			if [ "${result_list[0]}" == "${STATUS_OK}" ];then
+				echo "[INFO] $i is Available"
+			else
+				echo "[INFO] $i is UnAvailable"
+			fi			
+		elif [ "${#result_list[*]}" -eq 2 ];then
+			echo "[INFO] $i is Available"
+		else
+			echo "[ERROR] parse error, valid value is [ $STATUS_OK $STATUS_NOOK ]"
+			exit 1
+		fi
+	done
+}
+
+main(){
+	clean
+	init
+	generate_ServerName_file_list
+	generate_TLSInfo
+	check_tls_version
+	for i in tls1 tls1_1 tls1_2 tls1_3;do
+		filter_tls $i $TLS_TRUE
+		filter_tls $i $TLS_FALSE
+	done
+}
+
+case $1 in
+	start)
+		main
+	;;
+
+	filter)
+		if [ -z $2 ];then
+			echo -e "[WARN] args ARG1 is null!\n[WARN] Usage: $0 filter ARG1"
+			exit 1
+		fi
+		dislpay_ServerName $2
+	;;
+
+	check)
+		check_ServerName_Available
+	;;
+
+	*)
+		echo "[WARN] To execute the 'check'、'filter' command, the 'start' command must be executed first"
+		echo "Usage: $0 [ start | filter ARG1 | check ]"
+		echo -e "ARG1 = [ SERVER_NAME | all ]	example: $0 filter www.test.com"
+	;;
+esac
 ```
 
 
