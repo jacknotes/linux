@@ -1,8 +1,8 @@
-# CA签署一
+# 1. CA签署一
 
 
 
-## 生成CAkey和CA自签名证书
+## 1.1 生成CAkey和CA自签名证书
 
 ```
 (umask 0077; openssl genrsa -out newca.key 2048)
@@ -11,7 +11,7 @@ openssl req -new -x509 -key newca.key -out newca.pem -days 36500 -subj "/C=CN/ST
 
 
 
-## 服务端证书申请
+## 1.2 服务端证书申请
 ```
 (umask 0077; openssl genrsa -out goaccess.key 1024)
 openssl req -new -key goaccess.key -out goaccess.csr -subj "/C=CN/ST=Shanghai/O=HOMSOM Inc/OU=www.test.com/CN=*.hs.com"
@@ -22,7 +22,7 @@ openssl req -new -key goaccess.key -out goaccess.csr -subj "/C=CN/ST=Shanghai/O=
 
 
 
-## 指定CA签署证书
+## 1.3 指定CA签署证书
 
 `谷歌浏览器报错误信息`
 错误：此服务器无法证实它就是 goaccess.hs.com - 它的安全证书没有指定主题备用名称。这可能是因为某项配置有误或某个攻击者拦截了您的连接。
@@ -119,11 +119,11 @@ windows客户端安装newca.pem证书到`受信息的根证书颁发机构`
 
 
 
-# CA签署二
+# 2. CA签署二
 
 
 
-## 配置CA环境
+## 2.1 配置CA环境
 
 从/etc/pki/tls/openssl.cnf看出`[ CA_default ]`环境配置
 
@@ -134,7 +134,7 @@ cd /etc/pki/CA && touch index.txt serial && echo 01 > serial && (umask 077;opens
 
 
 
-## 生成服务器key和csr
+## 2.2 生成服务器key和csr
 
 ```bash
 [root@salt /etc/pki/CA]# (umask 0077;openssl genrsa -out myrsa/hs.com.key 2048)
@@ -158,7 +158,7 @@ DNS.4 = *.uat.qa.hs.com
 
 
 
-## CA签署证书
+## 2.3 CA签署证书
 
 ```bash
 # 签署服务器发送给CA的csr
@@ -319,11 +319,11 @@ openssl ca -gencrl -out /etc/pki/CA/crl/06.pem.crl
 
 
 
-# 生产CA签署证书
+# 3. 生产CA签署证书
 
 
 
-## 1. 生成CA密钥对
+## 3.1 生成CA密钥对
 
 ```bash
 [root@prometheus linux]# (umask 0077; openssl genrsa -out ca.key 2048)
@@ -354,7 +354,7 @@ Certificate:
 
 
 
-## 2. 生成server key
+## 3.2 生成server key
 
 ```bash
 [root@prometheus ca_signed_server]# (umask 0077; openssl genrsa -out server.key 1024)
@@ -368,7 +368,7 @@ e is 65537 (0x010001)
 
 
 
-## 3. 制作配置文件
+## 3.3 制作配置文件
 
 ```bash
 [root@prometheus server]# cat myssl.conf
@@ -416,7 +416,7 @@ DNS.13 = *.k8s.uat.qa.hs.com
 
 
 
-## 4. 生成证书签署请求
+## 3.4 生成证书签署请求
 
 ```bash
 [root@prometheus ca_signed_server]# ll
@@ -449,7 +449,7 @@ total 12
 
 
 
-## 5. 使用CA签署证书
+## 3.5 使用CA签署证书
 
 ```bash
 [root@prometheus ca_signed_server]# openssl x509 -req -in server.csr -CAkey ../ca/ca.key -CA ../ca/ca.pem -CAcreateserial -out server.pem -days 36500 -extensions req_ext -extfile myssl.conf
@@ -507,11 +507,19 @@ Certificate:
 
 
 
-## 6. 验证证书和CA关系
+## 3.6 验证证书和CA关系
 
 ```bash
 [root@prometheus ca_signed_server]# openssl verify -CAfile ../ca/ca.pem server.pem 
 server.pem: OK
+```
+
+```bash
+# 测试公私钥是否为一对
+[root@pro-nginx02 /usr/local/nginx/conf]# openssl x509 -noout -modulus -in hscert/hs.com/server.pem | openssl md5 
+(stdin)= 1b2120b63fc4b436031cd0db5aaed50c
+[root@pro-nginx02 /usr/local/nginx/conf]# openssl rsa -noout -modulus -in hscert/hs.com/server.key | openssl md5 
+(stdin)= 1b2120b63fc4b436031cd0db5aaed50c
 ```
 
 
@@ -522,11 +530,11 @@ server.pem: OK
 
 
 
-# 自签名证书
+# 4. 自签名证书
 
 
 
-## 1. 生成服务器key
+## 4.1 生成服务器key
 
 ```bash
 # 生成服务器key
@@ -535,7 +543,7 @@ server.pem: OK
 
 
 
-## 2. 制作配置文件
+## 4.2 制作配置文件
 
 ```bash
 # 制作配置文件
@@ -584,7 +592,7 @@ DNS.13 = *.k8s.uat.qa.hs.com
 
 
 
-## 3. 生成证书签署请求
+## 4.3 生成证书签署请求
 
 ```bash
 # 生成证书签署请求，直接Enter完成，使用配置好的默认值
@@ -611,7 +619,7 @@ Common Name (e.g. server FQDN or YOUR name) [hs.com]:
 
 
 
-## 4. 使用自己的key签署自己的csr
+## 4.4 使用自己的key签署自己的csr生成证书
 
 ```bash
 [root@prometheus server]# openssl x509 -req -days 365000 -in server.csr -signkey server.key -out server.crt -extensions req_ext -extfile myssl.conf
@@ -622,7 +630,7 @@ Getting Private key
 
 
 
-## 5. 查看证书信息
+## 4.5 查看证书信息
 
 ```bash
 [root@prometheus server]# ll
@@ -695,20 +703,19 @@ Certificate:
 
 
 
-# 禁用TLS低版本，启用TLS1.2，TLS1.3
+# 5. 禁用TLS低版本，启用TLS1.2，TLS1.3
 
-
-
-## nginx配置Strict Transport Security
+## 5.1 nginx配置Strict Transport Security
 
 * 一个网站接受一个HTTP的请求，然后跳转到HTTPS，用户可能在开始跳转前，通过没有加密的方式和服务器对话，比如，用户输入http://zt.test.com或者直接zt.test.com。这样存在中间人攻击潜在威胁，跳转过程可能被恶意网站利用来直接接触用户信息，而不是原来的加密信息。网站通过HTTP Strict Transport Security通知浏览器，这个网站禁止使用HTTP方式加载，浏览器应该自动把所有尝试使用HTTP的请求自动替换为HTTPS请求。
 * 有的网站开启了https，但为了照顾用户的使用体验（因为用户总是很赖的，一般不会主动键入https，而是直接输入域名, 直接输入域名访问，默认就是http访问）同时也支持http访问，当用户http访问的时候，就会返回给用户一个302重定向，重定向到https的地址，然后后续的访问都使用https传输,这种通信模式看起来貌似没有问题，但细致分析，就会发现种通信模式也存在一个风险，那就是这个302重定向可能会被劫持篡改，如果被改成一个恶意的或者钓鱼的https站点，然后，你懂得，一旦落入钓鱼站点，数据还有安全可言吗？
 * 对于篡改302的攻击，建议服务器开启HTTP Strict Transport Security功能，这个功能的含义是：
-* 当用户已经安全的登录开启过htst功能的网站 (支持hsts功能的站点会在响应头中插入：Strict-Transport-Security) 之后，支持htst的浏览器(比如chrome. firefox)会自动将这个域名加入到HSTS列表，下次即使用户使用http访问这个网站，支持htst功能的浏览器就会自动发送https请求（前提是用户没有清空缓存，如果清空了缓存第一次访问还是明文，后续浏览器接收到服务器响应头中的Strict-Transport-Security，就会把域名加入到hsts缓存中，然后才会在发送请求前将http内部转换成https），而不是先发送http，然后重定向到https，这样就能避免中途的302重定向URL被篡改。进一步提高通信的安全性。
+  * 当用户已经安全的登录开启过htst功能的网站 (支持hsts功能的站点会在响应头中插入：Strict-Transport-Security) 之后，支持htst的浏览器(比如chrome. firefox)会自动将这个域名加入到HSTS列表，下次即使用户使用http访问这个网站，支持htst功能的浏览器就会自动发送https请求（前提是用户没有清空缓存，如果清空了缓存第一次访问还是明文，后续浏览器接收到服务器响应头中的Strict-Transport-Security，就会把域名加入到hsts缓存中，然后才会在发送请求前将http内部转换成https），而不是先发送http，然后重定向到https，这样就能避免中途的302重定向URL被篡改。进一步提高通信的安全性。
+
 * HSTS的作用是强制客户端（如浏览器）使用HTTPS与服务器创建连接。服务器开启HSTS的方法是，当客户端通过HTTPS发出请求时，在服务器返回的超文本传输协议响应头中包含Strict-Transport-Security字段。非加密传输时设置的HSTS字段无效。
 * 比如，https://example.com/ 的响应头含有Strict-Transport-Security: max-age=31536000; includeSubDomains。这意味着两点：
-	* 在接下来的一年（即31536000秒）中，浏览器只要向example.com或其子域名发送HTTP请求时，必须采用HTTPS来发起连接。比如，用户点击超链接或在地址栏输入 http://www.example.com/ ，浏览器应当自动将 http 转写成 https，然后直接向 https://www.example.com/ 发送请求。
-	* 在接下来的一年中，如果 example.com 服务器发送的TLS证书无效，用户不能忽略浏览器警告继续访问网站。
+  * 在接下来的一年（即31536000秒）中，浏览器只要向example.com或其子域名发送HTTP请求时，必须采用HTTPS来发起连接。比如，用户点击超链接或在地址栏输入 http://www.example.com/ ，浏览器应当自动将 http 转写成 https，然后直接向 https://www.example.com/ 发送请求。
+  * 在接下来的一年中，如果 example.com 服务器发送的TLS证书无效，用户不能忽略浏览器警告继续访问网站。
 * tls版本测试网站：[ssllabs](https://www.ssllabs.com/)，[myssl](https://myssl.com/)
 * nginx配置生成网站：[NGINXConfig | DigitalOcean](https://www.digitalocean.com/community/tools/nginx?global.app.lang=zhCN)，[nginxconfig](https://nginxconfig.io)
 * webserer ssl配置生成网站：[ssl-config](https://ssl-config.mozilla.org/)
@@ -747,7 +754,7 @@ server {
 
 
 
-## openssl测试TLS协议版本是否启用
+## 5.2 openssl测试TLS协议版本是否启用
 
 ```bash
 [root@prometheus ~]# openssl s_client -connect alist.markli.cn:443 -servername alist.markli.cn -tls1
@@ -902,13 +909,25 @@ SSL-Session:
 ---
 ```
 
+> ```bash
+> openssl s_client -connect mi.com:443 -tls1_1
+> ```
+>
+> 通过此命令测试公网IP的443端口，并不是vhost的443端口，所以只要此端口下有一个vhost开启了tls1.0，那么此公网IP的443端口就开启了tls1.0协议，导致在公网测试时，明明只启用了tls1.2协议的vhost，但这个vhost还是支持tls1.0协议
+>
+> 例如：test01.com（配置只支持tls1.2）、test02.com（配置支持tls1、tls1.1、tls1.2）
+>
+> 测试结果：test01.com却也支持tls1、tls1.1协议
+>
+> ```bash
+> openssl s_client -connect test01.com:443 -servername test01.com -tls1_1
+> ```
 
 
 
+## 5.3 开启TLS1.3
 
-## 开启TLS1.3
-
-### 升级openssl-1.0.2k到1.1.1t
+### 5.3.1 升级openssl-1.0.2k到1.1.1t
 
 ```BASH
 [root@prometheus download]# curl -OL https://www.openssl.org/source/old/1.1.1/openssl-1.1.1t.tar.gz
@@ -917,18 +936,20 @@ SSL-Session:
 [root@prometheus openssl-1.1.1t]# ./config --prefix=/usr/local/openssl-1.1.1t
 [root@prometheus openssl-1.1.1t]# make -j4 && make install ;echo $?
 ln -sv /usr/local/openssl-1.1.1t/ /usr/local/openssl
+mv /bin/openssl{,.bak}
 mv /usr/bin/openssl{,.bak}
 mv /usr/include/openssl{,.bak}
+ln -sv /usr/local/openssl/bin/openssl  /bin/openssl
 ln -sv /usr/local/openssl/bin/openssl  /usr/bin/openssl
 ln -sv /usr/local/openssl/include/openssl/ /usr/include/openssl
 echo "/usr/local/openssl/lib/" > /etc/ld.so.conf.d/openssl.conf
 ldconfig -v | grep openssl
 openssl version
 
-[root@prometheus conf]# openssl ciphers -tls1_3
+[root@prometheus conf]# openssl ciphers 
 TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:DHE-RSA-AES256-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES256-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES128-SHA:DHE-RSA-AES128-SHA:RSA-PSK-AES256-GCM-SHA384:DHE-PSK-AES256-GCM-SHA384:RSA-PSK-CHACHA20-POLY1305:DHE-PSK-CHACHA20-POLY1305:ECDHE-PSK-CHACHA20-POLY1305:AES256-GCM-SHA384:PSK-AES256-GCM-SHA384:PSK-CHACHA20-POLY1305:RSA-PSK-AES128-GCM-SHA256:DHE-PSK-AES128-GCM-SHA256:AES128-GCM-SHA256:PSK-AES128-GCM-SHA256:AES256-SHA256:AES128-SHA256:ECDHE-PSK-AES256-CBC-SHA384:ECDHE-PSK-AES256-CBC-SHA:SRP-RSA-AES-256-CBC-SHA:SRP-AES-256-CBC-SHA:RSA-PSK-AES256-CBC-SHA384:DHE-PSK-AES256-CBC-SHA384:RSA-PSK-AES256-CBC-SHA:DHE-PSK-AES256-CBC-SHA:AES256-SHA:PSK-AES256-CBC-SHA384:PSK-AES256-CBC-SHA:ECDHE-PSK-AES128-CBC-SHA256:ECDHE-PSK-AES128-CBC-SHA:SRP-RSA-AES-128-CBC-SHA:SRP-AES-128-CBC-SHA:RSA-PSK-AES128-CBC-SHA256:DHE-PSK-AES128-CBC-SHA256:RSA-PSK-AES128-CBC-SHA:DHE-PSK-AES128-CBC-SHA:AES128-SHA:PSK-AES128-CBC-SHA256:PSK-AES128-CBC-SHA
 
-[root@prometheus openssl-1.1.1t]# openssl ciphers -V -tls1_3 | column -t
+[root@prometheus openssl-1.1.1t]# openssl ciphers -V | column -t
 0x13,0x02  -  TLS_AES_256_GCM_SHA384         TLSv1.3  Kx=any       Au=any    Enc=AESGCM(256)             Mac=AEAD
 0x13,0x03  -  TLS_CHACHA20_POLY1305_SHA256   TLSv1.3  Kx=any       Au=any    Enc=CHACHA20/POLY1305(256)  Mac=AEAD
 0x13,0x01  -  TLS_AES_128_GCM_SHA256         TLSv1.3  Kx=any       Au=any    Enc=AESGCM(128)             Mac=AEAD
@@ -993,7 +1014,7 @@ TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:ECDHE
 
 
 
-### 重新编译nginx，使nginx支持TLS1.3和HTTP 2.0
+### 5.3.2 重新编译nginx，使nginx支持TLS1.3和HTTP 2.0
 
 ```bash
 # 原先nginx编译配置
@@ -1048,7 +1069,7 @@ configure arguments: --prefix=/usr/local/nginx --user=nginx --group=nginx --with
 
 
 
-### 支持tls1.2、tls1.3完整配置
+### 5.3.3 支持tls1.2、tls1.3完整配置
 
 ```nginx
 
@@ -1099,13 +1120,16 @@ http {
 	server 127.0.0.1:9115;
     }
 
-	# 如果启用tls1.3，则不能启用listen 443 ssl default_server;，否则tls1.3始终起不来，会降级支持TLS1.2
+	# 如果启用tls1.3，除了ssl_certificate和ssl_certificate_key外，还需要在第一个https vhost中配置ssl_protocols和ssl_ciphers，如果不配ssl_protocols和ssl_ciphers则tls1.3始终起不来，会降级只支持TLS1.2
     server {
         listen 80 default_server;
-	#listen 443 ssl default_server;
-	#ssl_certificate   /etc/letsencrypt/live/markli.cn/fullchain.pem;
-	#ssl_certificate_key  /etc/letsencrypt/live/markli.cn/privkey.pem;
-	return 444;
+        listen 443 ssl default_server;
+        ssl_certificate   /etc/letsencrypt/live/markli.cn/fullchain.pem;
+        ssl_certificate_key  /etc/letsencrypt/live/markli.cn/privkey.pem;
+        ssl_session_tickets off;
+        ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+        ssl_protocols TLSv1.2 TLSv1.3;
+		return 444;
     
         #location / {
         #    return 301 https://$host$request_uri;
@@ -1287,7 +1311,7 @@ http {
 
 
 
-### 支持多个tls版本完整配置
+### 5.3.4 支持多个tls版本完整配置
 
 ```nginx
 worker_processes  1;
@@ -1335,12 +1359,13 @@ http {
     }
 
     server {
-	return 444;
+		return 444;
         listen 80 default_server;
-	#listen 443 ssl default_server;
-	#ssl_certificate   /etc/letsencrypt/live/markli.cn/fullchain.pem;
-	#ssl_certificate_key  /etc/letsencrypt/live/markli.cn/privkey.pem;
-    
+        listen 443 ssl default_server;
+        ssl_certificate   /etc/letsencrypt/live/markli.cn/fullchain.pem;
+        ssl_certificate_key  /etc/letsencrypt/live/markli.cn/privkey.pem;
+		ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;    
         #location / {
         #    return 301 https://$host$request_uri;
         #}
@@ -1361,7 +1386,7 @@ http {
         ssl_session_tickets off;
 	#ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
         #ssl_protocols TLSv1.2 TLSv1.3;
-	ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+		ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
         ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
         ssl_prefer_server_ciphers off;
 
@@ -1525,13 +1550,13 @@ http {
 >
 > 注：如果第一个443 servername（blog.markli.cn）配置只支持tls1.2、tls1.3，那么后续的443 servername（*）都只支持tls1.2、tls1.3，也就是说，第一个443 servername决定了整个nginx服务支持TLS协议版本的情况。
 >
-> 注：listen 443 ssl default_server：默认的443服务不能配置，否则nginx无法启用tls1.3
+> 注：listen 443 ssl default_server：默认的443服务也可以配置支持tls1、tls1.1、tls1.2、tls1.3版本，只是除了ssl_certificate和ssl_certificate_key外，还需要在第一个https vhost中配置ssl_protocols和ssl_ciphers，如果不配ssl_protocols和ssl_ciphers则tls1.3始终起不来，会降级只支持TLS1.2。
 
 
 
 
 
-### 测试tls1.3
+### 5.3.5 测试tls1.3
 
 ```bash
 # openssl s_client命令测试
@@ -1699,7 +1724,9 @@ Strict-Transport-Security: max-age=31536000
 
 
 
-**批量测试脚本**
+### 5.3.6 批量测试脚本
+
+#### 5.3.6.1 批量测试流程
 
 ```bash
 # 生成443文件test.com_443.hostname.txt 
@@ -1730,6 +1757,10 @@ grep -E 'tls1_[a-zA-Z]' tls_nook.txt > tls1-nook.txt
 # hs.com
 grep 443 -C 6 conf.d/*.conf | grep -E 'server_name ' | awk '{print $3}' | tr -d ';' | grep -Ev 'test.com' | sort | uniq > /tmp/hs.com_443.hostname.txt
 ```
+
+
+
+#### 5.3.6.2 批量测试脚本
 
 ```bash
 #!/bin/bash
@@ -1819,7 +1850,7 @@ dislpay_ServerName(){
 	if [ $1 = 'all' ];then
 		cat ${OUTPUT_RESULT_PREFIX}*
 	else
-		cat ${OUTPUT_RESULT_PREFIX}* | grep "$1"
+		cat ${OUTPUT_RESULT_PREFIX}* | grep -i "$1"
 	fi
 }
 
@@ -1895,11 +1926,30 @@ esac
 
 
 
-### 结论
+### 5.3.7 结论
 
-> 1. 未升级openssl前，TLSv1 TLSv1.1 TLSv1.2三个版本可以共存。
-> 2. 升级openssl后，启用了TLSv1.3，则无法配置TLSv1 TLSv1.1，只能配置TLSv1.2、TLSv1.3
-> 3. nginx中TLSv1.3支持取决于openssl版本，经过测试，在支持TLSv1.3的服务器，默认禁用TLSv1 TLSv1.1
+升级openssl前，仅支持TLSv1 TLSv1.1 TLSv1.2三个版本。
+
+升级openssl后，支持TLSv1 TLSv1.1 TLSv1.2 TLSv1.3四个版本。
+
+如果需要实现TLSv1 TLSv1.1 TLSv1.2 TLSv1.3四个版本共存，则需要注意以下用法：
+
+1. 升级openssl后，如果在第2个https vhost及以后的https vhost启用了TLSv1.3，而第1个https vhost只配置了TLSv1.2（未配置TLSv1 TLSv1.1TLSv1.3），则无法使nginx生效TLSv1 TLSv1.1 TLSv1.3，nginx只能支持TLSv1.2版本。
+2. 如果需要nginx支持TLSv1 TLSv1.1 TLSv1.3，则需要先在第1个https vhost中配置TLSv1 TLSv1.1 TLSv1.3，这样第1个https vhost就支持TLSv1 TLSv1.1 TLSv1.3了，但是其它https vhost还是不支持TLSv1 TLSv1.1而只支持TLSv1.3，如果其它https vhost需要支持TLSv1 TLSv1.1，则在其它相应的https vhost中配置TLSv1 TLSv1.1则可以支持TLSv1 TLSv1.1。
+3. 如果需要nginx支持TLSv1 TLSv1.1 TLSv1.2 TLSv1.3，则需要先在第1个https vhost中配置TLSv1 TLSv1.1 TLSv1.2 TLSv1.3，则默认全局启用了TLSv1 TLSv1.1 TLSv1.2 TLSv1.3的开关。后续其它https vhost如果不显示配置TLSv1 TLSv1.1，则默认只支持TLSv1.2 TLSv1.3（不管你显示配置了TLSv1.2或者是TLSv1.3其中的一个时，nginx都支持这2个版本）
+
+> 总结：
+>
+> 1. 如果需要支持哪个tls版本协议，则需要在第一个https vhost中配置这个tls版本协议，表示总开关。
+> 2. 如果其它https vhost需要配置哪个tls版本协议，则在对应的https vhost中配置需要的tls版本协议即可。
+
+```bash
+# 此命令测试的是公网IP的443端口是否开启TLS1.1版本（一般安全扫描的是此IP:PORT类型）
+openssl s_client -connect memos.test.cn:443 -tls1_1
+
+# 此命令测试的是公网IP的443端口下的vhost(blog.markli.cn)是否开启TLS1.1版本
+openssl s_client -connect memos.test.cn:443 -servername blog.markli.cn -tls1_1
+```
 
 
 
@@ -1913,7 +1963,9 @@ esac
 
 
 
-# mkcert
+
+
+# 6. mkcert
 
 [mkcert](https://github.com/FiloSottile/mkcert) 是一个零配置、快速生成本地自签HTTPS|SSL证书的工具
 
@@ -1921,7 +1973,7 @@ esac
 
 
 
-## 安装
+## 6.1 安装
 
 ```bash
 # 安装mkcert
@@ -1982,7 +2034,7 @@ Advanced options:
 
 
 
-## 常用证书命令
+## 6.2 常用证书命令
 
 ```bash
 # 生成example.com证书，证书格式默认为rsa
@@ -2024,7 +2076,7 @@ mkcert -ecdsa btest.com
 
 
 
-## 配置nginx
+## 6.3 配置nginx
 
 ```bash
 root@ansible:~/mkcert# cat /usr/local/nginx/conf/conf.d/mkcert.conf
@@ -2071,11 +2123,11 @@ server {
 
 
 
-# 其它
+# 7. 其它
 
 
 
-## 1. 从windows导出CA并导入到linux
+## 7.1 从windows导出CA并导入到linux
 
 
 
@@ -2158,7 +2210,7 @@ Set-Cookie: JSESSIONID.091f6099=node0mft5t1tiany51uxav5oh9l39a11802324.node0;Pat
 
 
 
-## 2. 手动添加CA证书到根证书颁发机构
+## 7.2 手动添加CA证书到根证书颁发机构
 
 ```bash
 # ubuntu，detian， Alpine Linux ubuntu
@@ -2289,7 +2341,7 @@ Accept-Ranges: bytes
 
 
 
-## 3. 私有证书无法经过私有CA验证
+## 7.3 私有证书无法经过私有CA验证
 
 经过：在docker中(linux环境)，将私有CA打包进去并更新后，在/etc/ssl/certs生成了私有CA，也验证过私有CA和私有证书的关系为OK的，但就是使用curl命令却无法访问https服务，Centos7可以正常访问，而Debian系却无法访问
 
