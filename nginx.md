@@ -429,7 +429,8 @@ kill -USR1 `cat /application/nginx/logs/nginx.pid`
 -------------
 最后将脚本执行命令加入到定时任务来实现自动切割日志
 ##通过USR1信号来控制进程，从而重新生成一个新的日志文件
-nginx对进程的控制功能非常强，可以通过信号指令来控制进程，常用信号如下
+nginx对进程的控制功能非常强，可以通过信号指令来控制进程，常用信号如下：
+WINCH 发送信号给旧Master，使其Worker进程优雅退出，但保留旧Master进程
 QUIT 处理完当前请求后关闭进程
 HUP 重新加载配置，不会中断用户的访问请求
 USR1 用于切割日志
@@ -1143,7 +1144,7 @@ server localhost:8081;
 
 
 
-### 8. HTTP服务器
+## 8. HTTP服务器
 Nginx本身也是一个静态资源的服务器，当只有静态资源的时候，就可以使用Nginx来做服务器，同时现在也很流行动静分离，就可以通过Nginx来实现，首先看看Nginx做静态资源服务器：
 ```bash
 server {
@@ -1191,7 +1192,9 @@ server {
 这样我们就可以吧HTML以及图片和css以及js放到wwwroot目录下，而tomcat只负责处理jsp和请求，例如当我们后缀为gif的时候，Nginx默认会从wwwroot获取到当前请求的动态图文件返回，当然这里的静态文件跟Nginx是同一台服务器，我们也可以在另外一台服务器，然后通过反向代理和负载均衡配置过去就好了，只要搞清楚了最基本的流程，很多配置就很简单了，另外localtion后面其实是一个正则表达式，所以非常灵活。 
 
 
-### 9. 深度总结
+
+## 9. 深度总结
+
 ```
 #Nginx的Master-Worker模式
 nginx进程:启动Nginx后，其实就是在80端口启动了Socket服务进行监听,此时就有master和work两个进程。
@@ -1372,10 +1375,6 @@ nginx-1.10.1
 [root@master-nginx sbin]# ls
 nginx  nginx-1.10.1
 [root@master-nginx sbin]# ps -ef | grep nginx
-root     14010     1  0 17:46 ?        00:00:00 nginx: master process ./nginx
-nginx    14011 14010  0 17:46 ?        00:00:00 nginx: worker process
-root     14106 12408  0 17:47 pts/0    00:00:00 grep nginx
-[root@master-nginx sbin]# ps -ef | grep nginx
 root     21437     1  0 18:07 ?        00:00:00 nginx: master process nginx/sbin/nginx
 nginx    21438 21437  0 18:07 ?        00:00:00 nginx: worker process
 root     21506 12408  0 18:08 pts/0    00:00:00 grep nginx
@@ -1394,8 +1393,57 @@ nginx    21533 21532  0 18:09 ?        00:00:00 nginx: worker process
 root     21554 12408  0 18:09 pts/0    00:00:00 grep nginx
 [root@master-nginx sbin]# ls
 注：如果在版本升级完成后，没有任何问题，需要关闭老的master进程的话，可以使用下面的命令：
-kill -QUIT 14010
+kill -QUIT 21437
 ```
+
+````bash
+# 20250217
+# 前提：将新nginx执行文件替换/usr/local/nginx/sbin/nginx
+
+# 1. 执行以下命令对nginx进行灰度升级，升级后的nginx对外服务是灰度的，也就是用户访问的一会是新nginx一会是旧nginx提供的服务
+kill -USR2 `cat /var/run/nginx.pid`	
+
+# 2. 将最老的nginx的worker进程进行优雅退出，使用户连接的是新nginx，而不在是一会新nginx一会是旧nginx提供的服务
+kill -WINCH `cat /var/run/nginx.pid.oldbin`
+
+# 使用命令(ps -ef | grep nginx)查看只有一个旧master进程并无旧work进程
+# 3. 如果此时是对新的nginx进程进行操作，则此时的效果是回滚，即新nginx的master、worker进程都会退出，经过新nginx的master、worker进程退出后，旧nginx的master自己会自动生成相应的worker进程从而提供nginx服务，整个步骤并不会中断nginx服务
+kill -QUIT `cat /var/run/nginx.pid`
+
+```bash
+[root@test-backend02 sbin]# kill -USR2 45526
+[root@test-backend02 sbin]# ps -ef | grep nginx
+root      45526      1  0 15:02 ?        00:00:00 nginx: master process /usr/local/nginx/sbin/nginx -c /usr/local/nginx/conf/nginx.conf
+www       45563  45526  0 15:04 ?        00:00:00 nginx: worker process
+www       45564  45526  0 15:04 ?        00:00:00 nginx: worker process
+www       45565  45526  0 15:04 ?        00:00:00 nginx: cache manager process
+root      45597  45526 10 15:07 ?        00:00:00 nginx: master process /usr/local/nginx/sbin/nginx -c /usr/local/nginx/conf/nginx.conf
+www       45598  45597  0 15:07 ?        00:00:00 nginx: worker process
+www       45599  45597  1 15:07 ?        00:00:00 nginx: worker process
+www       45600  45597  0 15:07 ?        00:00:00 nginx: cache manager process
+www       45601  45597  0 15:07 ?        00:00:00 nginx: cache loader process
+root      45603   1519  0 15:07 pts/0    00:00:00 grep --color=auto nginx
+[root@test-backend02 sbin]# kill -WINCH 45526
+[root@test-backend02 sbin]# ps -ef | grep nginx
+root      45526      1  0 15:02 ?        00:00:00 nginx: master process /usr/local/nginx/sbin/nginx -c /usr/local/nginx/conf/nginx.conf
+root      45597  45526  0 15:07 ?        00:00:00 nginx: master process /usr/local/nginx/sbin/nginx -c /usr/local/nginx/conf/nginx.conf
+www       45598  45597  0 15:07 ?        00:00:00 nginx: worker process
+www       45599  45597  0 15:07 ?        00:00:00 nginx: worker process
+www       45600  45597  0 15:07 ?        00:00:00 nginx: cache manager process
+root      45605   1519  0 15:08 pts/0    00:00:00 grep --color=auto nginx
+[root@test-backend02 sbin]# kill -QUIT 45597
+[root@test-backend02 sbin]# ps -ef | grep nginx
+root      45526      1  0 15:02 ?        00:00:00 nginx: master process /usr/local/nginx/sbin/nginx -c /usr/local/nginx/conf/nginx.conf
+www       45606  45526  1 15:08 ?        00:00:00 nginx: worker process
+www       45607  45526  1 15:08 ?        00:00:00 nginx: worker process
+www       45608  45526  0 15:08 ?        00:00:00 nginx: cache manager process
+www       45609  45526  0 15:08 ?        00:00:00 nginx: cache loader process
+root      45611   1519  0 15:08 pts/0    00:00:00 grep --color=auto nginx
+```
+
+# 退出nginx的master进程（包括子进程），无论是在centos7还是在ubuntu18系统上进行测试，结果是新master进程和旧master进程都退出了，最终无法进行完整的平滑升级操作（可以不执行此步操作，但是旧的master进程无法退出，虽不影响使用，但是看着怪怪的），结论是：升级过程中必需要重启一次nginx服务
+kill -QUIT `cat /var/run/nginx.pid.oldbin`
+````
 
 
 
@@ -1754,7 +1802,6 @@ http {
 
 ```bash
 # openssl-1.0.1e版本升级OpenSSL 1.1.1f
-
 wget https://www.openssl.org/source/old/1.1.1/openssl-1.1.1f.tar.gz
 tar xf openssl-1.1.1f.tar.gz
 cd openssl-1.1.1f
@@ -1812,10 +1859,11 @@ configure arguments: --prefix=/usr/local/nginx --with-http_stub_status_module --
 [root@ha1 nginx-1.16.1]# ./configure --prefix=/usr/local/nginx --with-http_stub_status_module --with-http_ssl_module --with-http_sub_module --with-http_realip_module --add-module=/git/ngx_http_substitutions_filter_module --with-stream --with-openssl=/usr/local/openssl
 [root@ha1 nginx-1.16.1]# make
 [root@ha1 nginx-1.16.1]# mv /usr/local/nginx/sbin/nginx{,.bak}
-[root@ha1 nginx-1.16.1]# cp  /download/nginx-1.16.1/objs/nginx /usr/local/nginx/sbin/
+[root@ha1 nginx-1.16.1]# cp /download/nginx-1.16.1/objs/nginx /usr/local/nginx/sbin/
 [root@ha1 nginx-1.16.1]# make upgrade
 或者
 kill -USR2 `cat /var/run/nginx.pid`
+kill -WINCH `cat /var/run/nginx.pid.oldbin`
 kill -QUIT `cat /var/run/nginx.pid.oldbin`
 或者  
 [root@ha1 nginx-1.16.1]# pkill -9 nginx   
