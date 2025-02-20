@@ -961,7 +961,27 @@ TLS 1.3 相较之前版本的优化内容有：
 会话复用机制：弃用了 Session ID 方式的会话复用，采用 PSK 机制的会话复用。
 密钥算法：TLSv1.3 只支持 PFS （即完全前向安全）的密钥交换算法，禁用 RSA 这种密钥交换算法。对称密钥算法只采用 AEAD 类型的加密算法，禁用CBC 模式的 AES、RC4 算法。
 密钥导出算法：TLSv1.3 使用新设计的叫做 HKDF 的算法，而 TLSv1.2 是使用PRF算法，稍后我们再来看看这两种算法的差别。
+
 > 总结一下就是在更安全的基础上还做到了更快，目前 TLS 1.3 的重要实现是 OpenSSL 1.1.1 开始支持了，并且 1.1.1 还是一个 LTS 版本，未来的 RHEL8、Debian10  都将其作为主要支持版本。在 Nginx 上的实现需要 Nginx  1.13+。
+
+
+
+**nginx配置https加密套件及协议版本**
+
+```nginx
+# 仅支持TLSv1.2 TLSv1.3协议的密码算法，不支持已弃用的TLS 1.0和TLS 1.1协议
+        ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
+        ssl_protocols TLSv1.2 TLSv1.3;
+
+
+# 支持协议TLS 1.0 TLS 1.1 TLSv1.2 TLSv1.3协议的密码算法
+        ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4;
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
+```
+
+
+
+
 
 
 
@@ -1036,7 +1056,10 @@ nginx: configuration file /usr/local/nginx/conf/nginx.conf test is successful
 [root@master-nginx nginx-1.14.1]# cp /usr/local/nginx/html/index.html /data/wwwroot/default/
 ```
 
-### 7.1 配置
+
+
+### 7.2 配置
+
 ```bash
 # HTTP2，只要在 server{}  下的lisen 443 ssl 后添加  http2 即可。而且从 1.15 开始，只要写了这一句话就不需要再写 ssl on 了，很多小伙伴可能用了 1.15+ 以后衍用原配置文件会报错，就是因为这一点。
 [root@master-nginx nginx]# vim conf/nginx.conf
@@ -1095,7 +1118,7 @@ openssl req -new -sha256 -key master-nginx.jack.com-ecc.key -out master-nginx.ja
 
 
 
-### 7.2 负载均衡
+### 7.3 负载均衡
 ```bash
 # 1. RR（默认）
 每个请求按时间顺序逐一分配到不同的后端服务器，如果后端服务器down掉，能自动剔除。
@@ -2320,10 +2343,6 @@ WantedBy=multi-user.target
 ---
 ```
 
-**nginx开启https TLS 1.2，TLS 1.3, 安全的加密算法 **
-ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE:ECDH:AES:HIGH:!NULL:!aNULL:!MD5:!ADH:!RC4:!DH:!DHE;
-ssl_protocols TLSv1.2 TLSv1.3;
-
 
 
 ### 14.6 goaccess分析nginx日志
@@ -2375,5 +2394,90 @@ log-format { "@timestamp": "%d:%t %^", "remote_addr": "%h", "referer": "%R", "ho
     }
 
 # 原因：后端服务URI为/api/Notice/OrderDataPush，而代理的URI为/hotelrfuxun/DataChangePush，这两个URI最后的参数不一致(OrderDataPush和DataChangePush)，导致代理不成功。
+```
+
+
+
+
+
+### 14.8 nginx限制IP访问
+
+**先定义IP列表**
+
+```
+geo $banned_pro_to_test_iplist {
+			default 0;
+            192.168.10.0/24  0;
+            192.168.10.200  1;
+}
+```
+
+> 在geo配置中IP的配置顺序不重要，引用时会进行最小精细化排序匹配，例如会排序成如下，未匹配IP地址的将设定默认值为0（缺省值为1）
+>
+> ```
+> default 0;
+> 192.168.10.200  1;
+> 192.168.10.0/24  0;
+> ```
+
+
+
+**在server配置块中引入ip列表**
+
+```
+server{
+			listen       80;
+			server_name zabbix.hs.com;
+			
+			if ($banned_pro_to_test_iplist = 0) {
+				return 403;
+			}
+			......
+}
+```
+
+> 通过如上配置，可利用ip列表，减少重复配置
+
+
+
+**完整配置如下**
+
+```nginx
+http{
+		# ip列表不区分先后顺序
+        geo $banned_pro_to_test_iplist {
+        	default 0;
+            172.168.2.0/24  0;
+            172.168.2.219  1;
+            172.168.2.122  1;
+            192.168.13.0/24  0;
+            192.168.13.236  1;
+        }
+		
+		server{
+			listen       80;
+			server_name zabbix.hs.com;
+			
+			if ($banned_pro_to_test_iplist = 0) {
+				return 403;
+			}
+
+			location / {
+				root   /usr/share/nginx/html;
+				index  index.html index.htm;
+				add_header backendIP $upstream_addr;
+				proxy_redirect off;
+				proxy_set_header Host $host;
+				proxy_set_header X-Real-IP $remote_addr;
+				proxy_set_header X-Real-Port $remote_port;
+				proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+				proxy_pass http://zabbix_loop;
+				error_page   500 502 503 504  /50x.html;
+				location = /50x.html {
+						root   /usr/share/nginx/html;
+				}
+			}
+		}
+}
 ```
 
