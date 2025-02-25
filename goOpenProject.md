@@ -4,13 +4,13 @@
 
 [cloudreve文档](https://docs.cloudreve.org/)
 
-## Cloudreve 是什么？
+## 1. Cloudreve 是什么？
 
 Cloudreve 可以让您快速搭建起公私兼备的网盘系统。Cloudreve 在底层支持不同的云存储平台，用户在实际使用时无须关心物理存储方式。你可以使用 Cloudreve 搭建个人用网盘、文件分享系统，亦或是针对大小团体的公有云系统。
 
 
 
-## 安装cloudreve
+## 2. 安装cloudreve
 
 ```bash
 mkdir -vp cloudreve/{uploads,avatar} \
@@ -63,7 +63,7 @@ Hs77wrA8
 
 
 
-## nginx反射代理cloudreve
+## 3. nginx反向代理cloudreve
 
 ```
 docker run -d --privileged --name nginx -p 80:80 -v /root/nginx/default.conf:/etc/nginx/conf.d/default.conf nginx
@@ -112,13 +112,13 @@ server {
 
 [dozzle文档](https://github.com/amir20/dozzle)
 
-## Dozzle是什么
+## 1. Dozzle是什么
 
 Dozzle是一个小型的轻量级应用程序，具有基于Web的界面来监视Docker日志。它不存储任何日志文件。它仅用于实时监视容器日志。
 
 
 
-## 查看主机docker输出日志
+## 2. 查看主机docker输出日志
 
 docker run --name dozzle -d --volume=/var/run/docker.sock:/var/run/docker.sock -p 8888:8080 amir20/dozzle:latest
 
@@ -143,11 +143,11 @@ docker run --name dozzle -d --volume=/var/run/docker.sock:/var/run/docker.sock -
 
 [alist文档](https://alist.nn.ci/zh/guide/)
 
-## alist是什么
+## 1. alist是什么
 
 一个支持多种存储，支持网页浏览和 WebDAV 的文件列表程序，由 gin 和 Solidjs 驱动。
 
-## docker running
+**docker running**
 
 ```bash
 docker run -d --restart=always -v /etc/alist:/opt/alist/data -p 5244:5244 -e PUID=0 -e PGID=0 -e UMASK=022 --name="alist" xhofe/alist:latest
@@ -164,7 +164,7 @@ INFO[2023-06-05 07:10:22] Aria2 not ready.
 
 
 
-## binnary running
+**binnary running**
 
 ```bash
 [root@prometheus download]# curl -OL https://github.com/axel-download-accelerator/axel/releases/download/v2.17.11/axel-2.17.11.tar.gz
@@ -233,7 +233,7 @@ Jun 05 16:38:18 prometheus alist[30144]: INFO[2023-06-05 16:38:18] qbittorrent n
 
 
 
-## 配置nginx
+## 2. 配置nginx
 
 ```bash
 [root@prometheus data]# cat /usr/local/nginx/conf/nginx.conf
@@ -280,17 +280,57 @@ Jun 05 16:38:18 prometheus alist[30144]: INFO[2023-06-05 16:38:18] qbittorrent n
 
 
 
-[kubeshark文档](https://docs.kubeshark.co/en/introduction)
-
-## kubeshark是什么
-
-**Kubeshark** 是 Kubernetes 的 API 流量分析器，提供对 [Kubernetes](https://kubernetes.io/) 内部网络的实时协议级可见性，捕获、剖析和监控进出容器、Pod 和集群的所有流量和有效负载。
 
 
+## 1. kubeshark是什么
 
-https://github.com/kubeshark/kubeshark/releases/download/40.5/kubeshark_40.5_windows_amd64.tar.gz
+**Kubeshark** 是 Kubernetes 的 API 流量分析器，提供对[kubeshark](https://docs.kubeshark.co/en/introduction)内部网络的实时协议级可见性，捕获、剖析和监控进出容器、Pod 和集群的所有流量和有效负载。
+
+**Kubeshark**为 SRE、DevOps 和安全团队提供：
+
+- 集群范围的 API 流量可见性
+- 零接触、全面的分布式跟踪
+- 无限的 GenAI 辅助网络洞察
 
 
+
+**集群范围的可见性**
+
+**Kubeshark**提供实时、身份感知、协议级别的 API 流量可见性，使用户能够直接观察其 K8s 集群中每个（甚至隐藏）部分内的活动。
+
+监控所有流量，包括**加密（TLS）**数据和有效负载，因为它们进入、退出并穿过容器、pod、命名空间、节点和集群。
+
+
+
+**协议支持**
+
+**Kubeshark**利用各种数据包捕获技术（例如[eBPF](https://en.wikipedia.org/wiki/Berkeley_Packet_Filter)、[AF_PACKET](https://manpages.org/af_packet/7)）来捕获集群范围的第 4 层（TCP、UDP、SCTP）流量，并将其分解并重新组装为应用层协议。支持的协议包括：
+
+- [HTTP/1.0](https://datatracker.ietf.org/doc/html/rfc1945)
+- [HTTP/1.1](https://datatracker.ietf.org/doc/html/rfc2616)
+- [HTTP/2](https://datatracker.ietf.org/doc/html/rfc7540)
+- [WebSocket](https://datatracker.ietf.org/doc/html/rfc6455)
+- [AMQP](https://www.rabbitmq.com/amqp-0-9-1-reference.html)
+- [Apache Kafka](https://kafka.apache.org/protocol)
+- [Redis](https://redis.io/topics/protocol)
+- [gRPC over HTTP/2](https://grpc.github.io/grpc/core/md_doc__p_r_o_t_o_c_o_l-_h_t_t_p2.html)
+- [GraphQL over HTTP/1.1](https://graphql.org/learn/serving-over-http/)
+- [GraphQL over HTTP/2](https://graphql.org/learn/serving-over-http/)
+- [LDAP](https://datatracker.ietf.org/doc/html/rfc4511)
+- [RADIUS](https://datatracker.ietf.org/doc/html/rfc2865)
+- [DIAMETER](https://datatracker.ietf.org/doc/html/rfc6733)
+- [ICMP](https://datatracker.ietf.org/doc/html/rfc792)
+- [DNS](https://www.iana.org/assignments/dns-parameters/dns-parameters.xhtml)
+- [UDP](https://datatracker.ietf.org/doc/html/rfc768)
+- [SCTP](https://en.wikipedia.org/wiki/Stream_Control_Transmission_Protocol)
+- [TLS](https://datatracker.ietf.org/doc/html/rfc5246)
+- [TCP](https://datatracker.ietf.org/doc/html/rfc9293)
+
+
+
+## 2. windows使用kubeshark
+
+[下载地址](https://github.com/kubeshark/kubeshark/releases/download/40.5/kubeshark_40.5_windows_amd64.tar.gz)
 
 ![](./image/go-open-project/kubeshark/01.png)
 
@@ -308,6 +348,42 @@ https://github.com/kubeshark/kubeshark/releases/download/40.5/kubeshark_40.5_win
 
 
 
+## 3. Linuxw使用kubeshark
+
+**安装kubeshark**
+
+```bash
+[root@prometheus kubeshark]# export TAG=v52.4.2
+[root@prometheus kubeshark]# curl -L -o kubeshark-install-$TAG.yaml [root@prometheus kubeshark]# https://raw.githubusercontent.com/kubeshark/kubeshark/refs/tags/$TAG/manifests/complete.yaml 
+[root@prometheus kubeshark]# kubectl apply -f kubeshark-install-v52.4.2.yaml
+[root@prometheus kubeshark]# kubectl get svc | grep kubeshark
+kubeshark-front            ClusterIP   10.68.37.70     <none>        80/TCP              26m
+kubeshark-hub              ClusterIP   10.68.194.32    <none>        80/TCP              26m
+kubeshark-hub-metrics      ClusterIP   10.68.114.153   <none>        9100/TCP            26m
+kubeshark-worker-metrics   ClusterIP   10.68.64.117    <none>        49100/TCP           26m
+[root@prometheus kubeshark]# kubectl port-forward --address 0.0.0.0 svc/kubeshark-front 10000:80 
+Forwarding from 0.0.0.0:10000 -> 8080
+Handling connection for 10000
+Handling connection for 10000
+Handling connection for 10000
+```
+
+![](./image/go-open-project/kubeshark/05.png)
+
+![](./image/go-open-project/kubeshark/06.png)
+
+
+
+
+
+**删除kubeshark**
+
+```bash
+[root@prometheus kubeshark]# kubectl delete -f kubeshark-install-v52.4.2.yaml
+```
+
+
+
 
 
 
@@ -319,7 +395,7 @@ https://github.com/kubeshark/kubeshark/releases/download/40.5/kubeshark_40.5_win
 
 [hack-browser-data文档](https://github.com/moonD4rk/HackBrowserData)
 
-## hack-browser-data
+**hack-browser-data**
 
 一款可全平台运行的浏览器数据导出解密工具。
 
@@ -342,7 +418,7 @@ https://github.com/kubeshark/kubeshark/releases/download/40.5/kubeshark_40.5_win
 
 
 
-## hugo简介
+**hugo简介**
 
 世界上最快的网站构建框架
 
@@ -534,7 +610,7 @@ cloudnative  frp.md
 
 
 
-## 以systemd服务启动
+**以systemd服务启动**
 
 ```
 [root@prometheus blog]# systemctl cat hugo.service 
@@ -559,7 +635,7 @@ WantedBy=multi-user.target
 
 
 
-## 通过nginx反向代理
+## 4. 通过nginx反向代理
 
 ```
     server {
@@ -591,7 +667,7 @@ WantedBy=multi-user.target
 
 
 
-## hugo主题更换
+## 5. hugo主题更换
 
 ```
 # 官方主题市场
@@ -1052,13 +1128,13 @@ migrating.... 260
 
 
 
-## 12.1 关于
+## 1. 关于
 
 [memos](https://github.com/usememos/memos)是开源、轻量级的笔记解决方案。轻松创建有意义的笔记。您的笔记，您的方式。
 
 
 
-## 12.2 运行
+## 2. 运行
 
 ```bash
 [root@hw-blog memos]# docker run -d --name memos -p 5230:5230 -v ~/.memos/:/var/opt/memos neosmemo/memos:stable
@@ -1068,7 +1144,7 @@ migrating.... 260
 
 
 
-## 12.3 反向代理
+## 3. 反向代理
 
 ```nginx
     server {
@@ -1101,6 +1177,6 @@ migrating.... 260
 
 
 
-## 12.4 结果展示
+## 4. 结果展示
 
 ![](./image/go-open-project/memos/01.png)

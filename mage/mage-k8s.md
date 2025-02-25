@@ -3786,6 +3786,173 @@ Hello MyApp | Version: v1 | <a href="hostname.html">Pod Name</a>
 ###注：egress跟ingress的配置清单写法一样。而且网络策略可以叠加配置清单应用
 
 
+## NetworkPolicy案例
+
+### 1. 核心配置字段解析
+```yaml
+apiVersion: networking.k8s.io/v1 
+kind: NetworkPolicy 
+metadata:
+  name: example-policy 
+  namespace: default 
+spec:
+  podSelector:      # 目标 Pod 选择器（标签匹配）
+    matchLabels:
+      app: nginx 
+  policyTypes:      # 策略类型（Ingress/Egress）
+  - Ingress 
+  ingress:
+  - from:           # 允许的入站来源 
+    - ipBlock:
+        cidr: 192.168.0.0/16 
+    - namespaceSelector:  # 允许特定命名空间的 Pod 
+        matchLabels:
+          env: prod 
+    ports:           # 允许的端口 
+    - protocol: TCP 
+      port: 80 
+```
+
+### 2. 典型案例与配置
+
+拒绝命名空间所有流量
+```yaml
+apiVersion: networking.k8s.io/v1 
+kind: NetworkPolicy 
+metadata:
+  name: deny-all 
+  namespace: test 
+spec:
+  podSelector: {}    # 匹配所有 Pod 
+  policyTypes:
+  - Ingress 
+  - Egress           # 无具体规则，所有流量被拒绝 
+```
+
+允许同一命名空间内Pod互通
+```yaml
+apiVersion: networking.k8s.io/v1 
+kind: NetworkPolicy 
+metadata:
+  name: allow-same-ns
+  namespace: dev 
+spec:
+  podSelector: {}    # 匹配所有 Pod 
+  policyTypes:
+  - Ingress 
+  ingress:
+  - from:
+    - podSelector: {} # 允许同一命名空间的 Pod 访问 
+```
+
+跨命名空间访问控制
+```yaml
+apiVersion: networking.k8s.io/v1 
+kind: NetworkPolicy 
+metadata:
+  name: cross-ns-access 
+  namespace: dev 
+spec:
+  podSelector:
+    matchLabels:
+      app: web 
+  ingress:
+  - from:
+    - namespaceSelector:  # 允许 prod 命名空间 
+        matchLabels:
+          env: prod 
+    - podSelector:        # 允许其他命名空间中 app=client1 的 Pod 
+        matchLabels:
+          app: client1
+```
+
+限制外部 IP 访问
+```yaml
+apiVersion: networking.k8s.io/v1 
+kind: NetworkPolicy 
+metadata:
+  name: mysql-ip-restrict 
+spec:
+  podSelector:
+    matchLabels:
+      role: db 
+  ingress:
+  - from:
+    - ipBlock:
+        cidr: 10.0.0.0/24 
+        except: 10.0.0.1/32 
+    ports:
+    - protocol: TCP 
+      port: 3306
+```
+> 注意事项:
+> 策略优先级：多个策略叠加时，规则取并集生效(多个并行生效)。
+> 默认拒绝行为：若策略仅定义 Ingress，则 Egress 仍默认允许（除非显式定义）。
+> 命名空间标签匹配：跨命名空间策略需通过 namespaceSelector 实现38。
+> 默认情况下，Pod 是全开放的，没有任何 Network Policy 时，任何 Pod 都可以访问集群中其他所有 Pod。一旦应用了 Network Policy，只有符合该策略的流量才被允许，未明确允许的流量将被拒绝。
+> Network Policy 的设计是通用的，不依赖于特定的网络实现。实际的策略执行依赖于底层的网络插件（如 Calico、Cilium、Weave 等），这些插件负责将高层的策略转换为具体的网络规则。
+
+
+```
+Kubernetes 的 NetworkPolicy 默认规则遵循「默认全开放」原则，但在应用策略后会转为「白名单模式」。以下是核心要点和重点规则说明：
+
+一、默认网络行为（无策略时）
+1. Pod 全互通
+未定义任何 NetworkPolicy 时，集群内所有 Pod 之间允许全流量互通（包括跨命名空间），且 Pod 可与外部网络自由通信。
+
+二、策略应用后的默认规则变化
+2. 白名单模式
+一旦为 Pod 或命名空间应用 NetworkPolicy，则 仅允许规则中明确声明的流量，其他流量默认被拒绝（即策略生效后转为「零信任模型」）。
+3.策略类型（policyTypes）的默认值
+若未指定 policyTypes 字段：默认仅启用 Ingress（即仅控制入站流量），Egress（出站流量）仍默认允许。
+若策略中包含 egress 规则，则自动启用 Egress 类型。
+
+三、重点默认规则场景
+4. 显式拒绝所有流量
+通过空规则实现默认拒绝：应用后，目标 Pod 将无法收发任何流量
+
+spec:
+  podSelector: {}    # 匹配所有 Pod 
+  policyTypes: [Ingress, Egress]  # 无具体规则，拒绝所有出入流量 
+ 
+5. 仅控制入站/出站流量
+若策略仅定义 Ingress 规则，则 Egress 流量仍默认允许；反之同理。
+需显式定义 Egress 规则才能限制出站流量。
+
+四、关键注意事项
+6. 策略叠加效果
+多个 NetworkPolicy 作用于同一 Pod 时，规则取并集生效（任一策略允许即放行）。
+
+7. 命名空间隔离
+默认不隔离命名空间，需通过 namespaceSelector 或命名空间标签显式控制跨命名空间访问。
+
+五、总结
+NetworkPolicy 的默认规则核心是「无策略则全通，有策略则白名单」。重点在于理解策略生效后的流量控制逻辑及 policyTypes 的隐式行为。实际生产环境中，建议通过显式策略（如拒绝所有+白名单例外）强化网络安全。
+
+
+
+# NetworkPolicy的作用范围
+当对某个命名空间内的特定Pod实施NetworkPolicy时，该策略仅作用于被选中的Pod，而不会直接影响同一命名空间内外其他Pod之间的通信。NetworkPolicy通过podSelector选择目标Pod，未匹配到的Pod仍遵循默认的网络规则（即允许所有流量）。例如，若策略仅针对标签为role=db的Pod，则其他Pod的入站和出站流量不受限制。812
+
+# 默认网络行为的影响
+Kubernetes默认允许同一集群内所有Pod跨命名空间直接通信。即使某个命名空间内的部分Pod应用了NetworkPolicy，未配置策略的Pod仍保持默认互通状态。例如，在未配置任何策略时，不同命名空间的Pod可通过IP或Service直接访问，这一规则不会因其他Pod的策略而改变。156
+
+# 策略的隔离性特征
+NetworkPolicy是白名单机制，仅对匹配规则的流量放行。如果策略仅限制特定Pod的流量，其他Pod的通信完全独立。例如，在namespace-a中为Pod-A配置策略后，namespace-a内的Pod-B与namespace-b的Pod-C之间的互访仍遵循原有规则，除非它们自身被策略覆盖。412
+
+# 跨命名空间通信的验证
+通过实验可验证，当仅对某个Pod应用NetworkPolicy时，其他Pod的跨命名空间访问能力保持不变。例如，在secondary命名空间为app=web的Pod设置策略后，同一命名空间内其他未匹配策略的Pod仍能互相通信，且其他命名空间的Pod也能正常访问它们。
+```
+
+
+
+
+
+
+
+
+
+
 #第二十节：调试器、预先策略及优先函数
 Predicate(预选)-->Priority(优先)-->Select(随机选择需求个数)
 对节点进行标签分类：ssd,gpu,

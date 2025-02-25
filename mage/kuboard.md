@@ -1104,3 +1104,108 @@ root@ansible:~/k8s/addons/kuboard# etcdctl get / --prefix --keys-only --endpoint
 
 ```
 
+
+
+
+
+## 5. faq
+
+### 5.1 访问kuboard时报`Failed to connect to the database.`
+
+```
+{
+  "message": "Failed to connect to the database.",
+  "type": "Internal Server Error"
+}
+```
+
+**原因：**是etcd的空间满了，默认的是2g，kuboard开发者对这个应该是没做调整，另外也没做定时清理导致此问题出现的。
+
+```
+# cd data/etcd-data/member
+# du -ah -d 1 
+2.0G	./snap
+367M	./wal
+2.4G	.
+```
+
+**临时解决办法：**
+
+```
+export ETCDCTL_API=3
+rev=$(etcdctl endpoint status --write-out="json" | grep -o '"revision":[0-9]*' | awk -F: '{print $2}')
+etcdctl compaction $rev
+etcdctl --command-timeout=30s defrag 
+etcdctl alarm disarm
+
+# cd data/etcd-data/member
+# du -ah -d 1  
+2.0G	./snap
+367M	./wal
+2.3G	.
+```
+
+```
+# 显式指定 etcdctl 客户端使用 etcd v3 版本的 API。由于 etcd v2 和 v3 的 API 不兼容，此命令确保后续操作（如键值读写、租约管理等）均基于 v3 版本的语法和功能执行。
+export ETCDCTL_API=3
+# 提取当前全局修订版本号
+rev=$(etcdctl endpoint status --write-out="json" | grep -o '"revision":[0-9]*' | awk -F: '{print $2}')
+# 用于压缩历史版本数据，删除指定修订版本之前的所有旧数据以释放存储空间。此操作可防止历史版本无限增长导致性能下降，但压缩后旧版本数据将无法访问
+etcdctl compaction $rev
+# 用于整理 etcd 存储的磁盘碎片，优化数据存储效率，尤其在频繁写入后建议执行以提升性能（需注意此操作可能短暂影响集群响应）
+etcdctl defrag
+# 用于解除所有活跃的 etcd 集群警报，例如因存储空间不足触发的 NOSPACE 告警，确保集群恢复正常状态。
+etcdctl alarm disarm
+```
+
+
+
+**长久解决办法：**
+
+```sh
+# 备份kuboard启动脚本
+$ docker cp kuboard:/entrypoint.sh ./entrypoint.sh.bak
+$ cp ./entrypoint.sh.bak ./entrypoint.sh
+$ vim ./entrypoint.sh
+########原配置段
+  etcd \
+  --name=kuboard-01 \
+  --data-dir=/data/etcd-data \
+  --listen-client-urls=http://0.0.0.0:2379 \
+  --advertise-client-urls=http://0.0.0.0:2379 \
+  --listen-peer-urls=http://0.0.0.0:2380 \
+  --initial-advertise-peer-urls=http://0.0.0.0:2380 \
+  --initial-cluster=kuboard-01=http://0.0.0.0:2380 \
+  --initial-cluster-token=tkn \
+  --initial-cluster-state=new \
+  --snapshot-count=10000 \
+  --log-level=info \
+  --logger=zap \
+  --log-outputs=stderr &
+########新配置段
+  etcd \
+  --name=kuboard-01 \
+  --data-dir=/data/etcd-data \
+  --listen-client-urls=http://0.0.0.0:2379 \
+  --advertise-client-urls=http://0.0.0.0:2379 \
+  --listen-peer-urls=http://0.0.0.0:2380 \
+  --initial-advertise-peer-urls=http://0.0.0.0:2380 \
+  --initial-cluster=kuboard-01=http://0.0.0.0:2380 \
+  --initial-cluster-token=tkn \
+  --initial-cluster-state=new \
+  --snapshot-count=10000 \
+  --quota-backend-bytes=107374182400 \
+  --auto-compaction-mode=revision \
+  --auto-compaction-retention=10 \
+  --log-level=info \
+  --logger=zap \
+  --log-outputs=stderr &
+########
+$ docker cp ./entrypoint.sh kuboard:/entrypoint.sh
+$ docker restart kuboard 
+```
+
+>   --quota-backend-bytes=107374182400 	# 将默认 2GB 提升至 100GB（建议最大值）：
+>   --auto-compaction-mode=revision     		# *按版本压缩*
+>   --auto-compaction-retention=10 				# *保留最新 10 个版本*
+
