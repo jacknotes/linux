@@ -1196,7 +1196,7 @@ COMMIT
 -A POSTROUTING -s 192.168.177.0/24 -j MASQUERADE
 COMMIT
 # Completed on Sat Jul 17 15:33:04 2021
-
+> 上面规则使用 LOG 动作记录日志，匹配后不会中断规则链的继续匹配。数据包会继续进入后续规则链的检查流程，因为LOG是iptables 中的非终止型动作，仅记录日志，不会阻止数据包继续匹配其他规则
 
 
 
