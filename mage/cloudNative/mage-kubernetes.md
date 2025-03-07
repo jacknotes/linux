@@ -10835,13 +10835,13 @@ root@prometheus01:/usr/local/prometheus# systemctl restart prometheus
 
 ####集群部署
 组件介绍：
-vminsert	#写入组件(写)，vminsert 负责接收数据写入并根据对度量名称及其所有标签的一致 hash 结果将数据分散写入不同的后端 vmstorage 节点之间 vmstorage，vminsert 默认端口 8480
-vmstorage 	#存储原始数据并返回给定时间范围内给定标签过滤器的查询数据，默认端口 8482
-vmselect 	#查询组件(读)，连接 vmstorage ，默认端口 8481
+vminsert	# 写入组件(写)，vminsert负责接收数据写入并根据对度量名称及其所有标签的一致hash结果将数据分散写入不同的后端vmstorage节点之间，vminsert默认端口8480
+vmselect 	# 查询组件(读)，连接 vmstorage ，默认端口 8481
+vmstorage 	# 存储原始数据并返回给定时间范围内给定标签过滤器的查询数据，默认端口 8482
 注：远端存储只部署以上3个组件即可
 
 其它可选组件：
-vmagent	#是一个很小但功能强大的代理，它可以从 node_exporter 各种来源收集度量数据，并将它们存 储 在 VictoriaMetrics 或 任 何 其 他 支 持 远 程 写 入 协 议 的 与 prometheus 兼 容 的 存 储 系 统 中 ， 有 替 代prometheus server 的意向。
+vmagent	# 是一个很小但功能强大的代理，它可以从node_exporter各种来源收集度量数据，并将它们存储在VictoriaMetrics或任何其他支持远程写入协议的与prometheus兼容的存储系统中，有替代prometheus server的意向。
 vmalert： 替换 prometheus server，以 VictoriaMetrics 为数据源，基于兼容 prometheus 的告警规则，判断数据是否异常，并将产生的通知发送给 alertermanager
 Vmgateway： 读写 VictoriaMetrics 数据的代理网关，可实现限速和访问控制等功能，目前为企业版组件
 vmctl： VictoriaMetrics 的命令行工具，目前主要用于将 prometheus、opentsdb 等数据源的数据迁移到VictoriaMetrics。
