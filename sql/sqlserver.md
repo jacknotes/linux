@@ -860,24 +860,31 @@ GO
 	2. 如果使用显示存储调用，则可以不按顺序写，但变量名必须和参数变量名一样
 	3. 如果调用存储过程是批处理中的第一个语句，则可以省略EXEC不写
 
-#交叉应用(CROSS APPLY())和外部应用(OUTER APPLY())
-###CROSS APPLY()
-SELECT T1.StudentNo, T1.Name, T2.ExamScore, T2.ExamDate FROM Student AS T1
+### 交叉应用CROSS APPLY()
+```sql
+SELECT T1.StudentNo, T1.Name, T2.ExamScore, T2.ExamDate 
+FROM Student AS T1
 CROSS APPLY(
-    SELECT TOP 2 * FROM Score AS T
+    SELECT TOP 2 * 
+	FROM Score AS T
     WHERE T1.StudentNo = T.StudentNo
     ORDER BY T.ExamDate DESC
 ) AS T2
-注：CROSS APPLY()工作原理是把左表当做目标表，把子集表当做源表，拿源表的每一行去跟目标表的行去比较(字段必须相对应连接),当源表和目标表匹配到时则保留，反则丢弃。子集表中ORDER BY比top优先级高。
+```
+> CROSS APPLY()工作原理是把左表当做目标表，把子集表当做源表，拿源表的每一行去跟目标表的行去比较(字段必须相对应连接)，当源表和目标表匹配到时则保留，反则丢弃。子集表中ORDER BY比top优先级高。
 
-###OUTER APPLY()
-ELECT T1.StudentNo, T1.Name, T2.ExamScore, T2.ExamDate FROM Student AS T1
+### 外部应用OUTER APPLY()
+```sql
+SELECT T1.StudentNo, T1.Name, T2.ExamScore, T2.ExamDate 
+FROM Student AS T1
 OUTER APPLY(
-    SELECT TOP 2 * FROM Score AS T
+    SELECT TOP 2 * 
+	FROM Score AS T
     WHERE T1.StudentNo = T.StudentNo
     ORDER BY T.ExamDate DESC
 ) AS T2
-注：OUTER APPLY()工作原理是把左表当做目标表，把子集表当做源表，拿源表的每一行去>跟目标表的行去比较(字段必须相对应连接),当源表和目标表匹配到时则保留，如果未匹配到，则目标表显示，源表显示为NULL。子集表中ORDER BY比top优先级高。(类似LEFT JOIN，与LEFT JOIN不同的是外部连接是拿子集表的多行跟左表的一行去比较)
+```
+> OUTER APPLY()工作原理是把左表当做目标表，把子集表当做源表，拿源表的每一行去跟目标表的行去比较(字段必须相对应连接)，当源表和目标表匹配到时则保留，如果未匹配到，则目标表显示，源表显示为NULL。子集表中ORDER BY比top优先级高。(类似LEFT JOIN，与LEFT JOIN不同的是OUTER APPLY()是拿子集表的多行跟左表的一行去比较)
 
 
 #常用操作SQL
@@ -1411,6 +1418,10 @@ DBCC LOGINFO([TravelReportDB]);
 
 -- 5. 收缩日志文件
 DBCC SHRINKFILE ([TravelReportDB_log], 1);
+#DBCC SHRINKFILE ([TravelReportDB], 1);			# 此命令为收缩mdf文件，
+# 数据完整性：DBCC SHRINKFILE 不会删除或破坏已有数据，但可能因页移动导致索引碎片化，从而间接影响查询性能
+# 空间释放限制：LDF/MDF文件无法收缩到小于存储当前数据所需的最小空间。例如，若 MDF 文件有 10GB 数据，即使指定更小的 target_size，实际收缩后仍会保留 10GB 空间
+
 
 -- 6. 重复备份和收缩（如果需要）
 BACKUP LOG [TravelReportDB] TO DISK = 'E:\test\TravelReportDB_2024111902.trn';
