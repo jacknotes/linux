@@ -2239,3 +2239,80 @@ java-test-emailto... -> https://argocd.test.k8s.hs.com/api/webhook
 191 webhooks found.
 ```
 
+
+
+
+
+
+
+
+
+## 7.问题汇总
+
+### 问题一：**fatal: the remote end hung up unexpectedly**
+
+git推送项目到gitlab时，报如下错误：
+
+```
+git --no-optional-locks -c color.branch=false -c color.diff=false -c color.status=false -c diff.mnemonicprefix=false -c core.quotepath=false -c credential.helper=sourcetree push -v --tags origin refs/heads/develop:refs/heads/develop 
+Pushing to http://gitlab.hs.com/Homsom/Hosmom.H5Common.git
+POST git-receive-pack (chunked)
+fatal: the remote end hung up unexpectedly
+fatal: the remote end hung up unexpectedly
+Everything up-to-date
+Completed with errors, see above
+```
+
+> 经过重新克隆此项目到新的目录中，pull和push都正常，经过旧目录和新目录大小对比，得出出是旧目录太大，于是排查客户端和服务端大小限制配置
+
+
+
+**解决：**
+
+**服务端（实际配置）**
+
+```
+# 调整GitLab文件大小限制
+登录GitLab管理员账户，进入 Admin Area → Settings → Account and Limit，修改以下参数：
+Maximum attachment size (MB): 1000		# 之前是10MB
+```
+
+服务端**可选配置**（修改Apache配置文件）：
+
+```http
+# 调整请求体大小限制，在虚拟主机配置或全局配置中添加：
+<VirtualHost *:8088>
+    ProxyRequests Off
+    ProxyVia Off
+    ProxyPreserveHost On
+    <Proxy *>
+        Order deny,allow
+        Allow from all
+    </Proxy>
+    <Location />
+        AuthType Basic
+        AuthName "Gerrit Code Review"
+        Require valid-user
+        AuthUserFile /passwords
+    </Location>
+    ProxyPass / http://127.0.0.1:8081/
+    LimitRequestBody 524288000  # 允许500MB请求体
+    Timeout 600 				# 超时时间
+    ProxyTimeout 600 			# 代理超时时间
+</VirtualHost>
+```
+
+
+
+**客户端（实际配置）**
+
+```
+# 进入项目目录，执行如下命令
+# 配置post缓冲内存大小
+git config --local http.postBuffer  1048576000
+# 配置低网速速率限制，0为不限制
+git config --local http.lowSpeedLimit  0 
+# 配置低网速超时时间，999999秒再超时
+git config --local http.lowSpeedTime  999999
+```
+

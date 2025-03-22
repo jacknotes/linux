@@ -172,5 +172,5 @@ service-control --stop vmware-vpostgres
 cd /storage/archive/vpostgres
 find /storage/archive/vpostgres -type f -mtime +30 -exec rm -f {} \;
 service-control --start vmware-vpostgres
-service-control --status
+service-control --status vmware-vpostgres
 ```

@@ -8147,3 +8147,31 @@ $ go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2.0
 $ protoc-gen-go-grpc --version
 protoc-gen-go-grpc 1.2.0
 ```
+
+
+
+
+
+## vscode调试
+
+```
+# .\.vscode\launch.json
+{
+    // 使用 IntelliSense 了解相关属性。 
+    // 悬停以查看现有属性的描述。
+    // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Launch",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",  // 自动识别调试模式（exec或test）
+      "program": "${workspaceFolder}/main.go",  // 入口文件路径 
+      "args": ["start"], // 启动参数（可选）
+      "cwd": "${workspaceFolder}" // 工作目录 
+    }
+  ]
+}
+```
+
