@@ -146,14 +146,18 @@ zip -r zip.name target/*
 unzip -o passwd.linux.zip -d ./passwd.linux.tmp #-d是输出到哪个目录
 
 
-#rsync
+## rsync命令
 -a 归档递归方式传输（相当于rtopgDl）
 -v 显示详细模式
 -z传输时进行压缩（如同传输图片时进行压缩大小提高传输速度）
 -P显示传输进度信息
 --exclude传输时排除指定的文件或目录
 远程备份命令：
+```
 rsync -avzP -e "ssh -p 22" 192.168.1.37:/etc/hostname /tmp/hostname1
+rsync -avPz -e ssh --exclude={'roles/mysql/files/mysql-5.7.33-linux-glibc2.12-x86_64.tar.gz','roles/elasticsearch/files/'} /etc/ansible/roles root@192.168.13.236:`pwd`/
+```
+
 #Linux系统rsync实战操作:
 备份服务器（master-nginx）：
 -------------------

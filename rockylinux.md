@@ -1,4 +1,4 @@
-# RockyLinux
+# 一、RockyLinux
 
 
 
@@ -8,7 +8,7 @@
 
 > /boot分区最小为300M，否则会安装失败
 >
-> ![](./image/rockylinux01.png)
+> ![](./image/rockylinux/rockylinux01.jpg)
 
 ```bash
 [root@prometheus02 yum.repos.d]# cat /etc/rocky-release
@@ -23,22 +23,9 @@ Rocky Linux release 9.2 (Blue Onyx)
 
 ## 2. 网卡名称更改
 
+Centos7
+
 ```bash
-# RockyLinux9
-[root@prometheus02 ~]# cat /etc/default/grub 
-GRUB_TIMEOUT=5
-GRUB_DISTRIBUTOR="$(sed 's, release .*$,,g' /etc/system-release)"
-GRUB_DEFAULT=saved
-GRUB_DISABLE_SUBMENU=true
-GRUB_TERMINAL_OUTPUT="console"
-GRUB_CMDLINE_LINUX="crashkernel=1G-4G:192M,4G-64G:256M,64G-:512M rd.lvm.lv=rl/root net.ifnames=0 biosdevname=0"
-GRUB_DISABLE_RECOVERY="true"
-GRUB_ENABLE_BLSCFG=true
-
-[root@prometheus02 ~]# grub2-mkconfig -o /boot/grub2/grub.cfg
-[root@prometheus02 ~]# reboot
-
-# Centos7网上名称改名为eth0
 [root@syslog ~]# cat /etc/default/grub
 GRUB_TIMEOUT=5
 GRUB_DISTRIBUTOR="$(sed 's, release .*$,,g' /etc/system-release)"
@@ -58,6 +45,76 @@ GRUB_DISABLE_RECOVERY="true"
 
 
 
+RockyLinux9.2
+
+```bash
+[root@prometheus02 ~]# cat /etc/default/grub 
+GRUB_TIMEOUT=5
+GRUB_DISTRIBUTOR="$(sed 's, release .*$,,g' /etc/system-release)"
+GRUB_DEFAULT=saved
+GRUB_DISABLE_SUBMENU=true
+GRUB_TERMINAL_OUTPUT="console"
+GRUB_CMDLINE_LINUX="crashkernel=1G-4G:192M,4G-64G:256M,64G-:512M rd.lvm.lv=rl/root net.ifnames=0 biosdevname=0"
+GRUB_DISABLE_RECOVERY="true"
+GRUB_ENABLE_BLSCFG=true
+[root@prometheus02 ~]# grub2-mkconfig -o /boot/grub2/grub.cfg
+[root@prometheus02 ~]# reboot
+```
+
+
+
+RockyLinux9.5
+
+````bash
+[root@localhost ~]# cat /etc/default/grub  
+GRUB_TIMEOUT=5
+GRUB_DISTRIBUTOR="$(sed 's, release .*$,,g' /etc/system-release)"
+GRUB_DEFAULT=saved
+GRUB_DISABLE_SUBMENU=true
+GRUB_TERMINAL_OUTPUT="console"
+GRUB_CMDLINE_LINUX="crashkernel=1G-4G:192M,4G-64G:256M,64G-:512M rd.lvm.lv=rl/root net.ifnames=0 biosdevname=0"
+GRUB_DISABLE_RECOVERY="true"
+GRUB_ENABLE_BLSCFG=true
+[root@localhost ~]# grub2-mkconfig -o /boot/grub2/grub.cfg
+# 查看网卡MAC地址
+[root@localhost system-connections]# ip a s | grep ether
+    link/ether 90:6f:18:07:c4:57 brd ff:ff:ff:ff:ff:ff
+# 对网卡名称、MAC地址绑定进行配置，无则创建
+[root@localhost ~]# cat /etc/udev/rules.d/eth0-network.rules
+SUBSYSTEM=="net", ACTION=="add", ATTR{address}=="90:6f:18:07:c4:57", NAME="eth0"
+# 创建eth0接口的连接配置文件
+```
+[root@localhost ~]# cat /etc/NetworkManager/system-connections/eth0.nmconnection 
+[connection]
+id=eth0
+uuid=991e5453-ac77-4e00-b201-e3fadbabd89b
+type=ethernet
+autoconnect-priority=-999
+autoconnect=yes	
+interface-name=eth0
+
+[ethernet]
+
+[ipv4]
+method=manual
+addresses=192.168.13.167/24
+gateway=192.168.13.254
+dns=192.168.13.186;192.168.13.251;192.168.10.110
+
+[ipv6]
+addr-gen-mode=eui64
+method=auto
+
+[proxy]
+```
+# 重启系统进行应用
+[root@localhost ~]# reboot
+````
+
+
+
+
+
 ## 3. 网络配置
 
 ```bash
@@ -70,7 +127,7 @@ id=eth0						# connection id
 uuid=31bbdaf8-a3d4-456c-b93e-3b608abaa28b
 type=ethernet				# device type为ethernet
 autoconnect-priority=-999
-autoconnect=yes
+autoconnect=yes				# 开机自动连接
 interface-name=eth0			# device名称
 
 [ethernet]
@@ -964,6 +1021,133 @@ Virt Type                      : xenpv
 
 
 
+
+
+
+# 二、RockyLinux9.5物理机安装
+
+## 1. 安装步骤
+
+1. 系统选择U盘启动（U盘已提前将`Rocky Linux 9.5 Minimal ISO`刻入U盘）
+2. 选择`Install Rocky Linux 9.5`进行安装
+3. 配置`Installation source`，使用哪个安装源进行安装
+4. 配置`Software Selection`，安装软件的类型，例如最小安装、GUI安装等
+5. 配置`Installation Destination`，将系统安装到哪个硬盘，并进行分区配置，可进行LVM和标准分区配置，`/boot、/boot/efi`分区大小配置为2GiB，`/`分区大小配置为所有
+6. 配置`Root Password`，并勾选`Allow root SSH login with password`，使Root可远程访问系统
+7. 选择`Begin Installation`进行安装
+
+
+
+## 2. 安装过程问题解决
+
+### 2.1.1 问题一：安装系统卡住
+
+安装`Rocky Linux 9.5 Minimal ISO`时卡住，无法正常安装
+
+![](./image/rockylinux/rockylinux02.jpg)
+
+![](./image/rockylinux/rockylinux03.jpg)
+
+
+
+### 2.1.2 解决一：安装系统卡住
+
+**原因：**
+
+从上面报错截图中可看出，是命令行内核启动参数`inst.stage2`或者`inst.repo`出现错误。重新通过U盘引导进行安装，在安装界面时用`方向键`选择`Install Rocky Linux 9.5`，按键盘`e`键进行参数配置，可看出`inst.stage2`的默认启动参数中LABEL为`Rocky-9-5-x86_64`，而实际的启动U盘分区LABEL为`Rocky-9-5-x`，可从`解决步骤`中看出实际LABEL，从而导致找不到安装设备。
+
+![](./image/rockylinux/rockylinux04.jpg)
+
+![](./image/rockylinux/rockylinux05.jpg)
+
+
+
+**解决步骤：**
+
+1. 进入`Troubleshooting`模式，使用命令`blkid`或者`lsblk`查看block的信息，可以看出/dev/sda4的LABEL为`Rocky-9-5-x`
+
+   ![](./image/rockylinux/rockylinux06.jpg)
+
+2. 重新通过U盘引导进行安装，在安装界面时用`方向键`选择`Install Rocky Linux 9.5`，按键盘`e`进行参数配置，编辑`linuxefi`中的参数`inst.stage2`，完整值为`inst.stage2=hd:LABEL=Rocky-9-5-x`，然后按`Ctrl-x`或者按`F10`进行配置应用
+
+
+
+
+
+### 2.2.1 问题二：安装源出错
+
+进行配置安装源时，手动选择`ISO分区`后，仍然报`设置基础软件仓库时出错`信息
+
+![](./image/rockylinux/rockylinux07.jpg)
+
+
+
+
+
+### 2.2.2 解决二：安装源出错
+
+**原因：**
+
+因为U盘有2个分区，一个为`ISO分区`，另外一个为`空的分区`，所以需要手动选择，但是手动选择`ISO分区`后，仍然报`设置基础软件仓库时出错`信息
+
+
+
+**解决步骤：**
+
+1. 拔掉启动U盘，将`Rocky Linux 9.5 Minimal ISO`放入另外一个为`空的分区`
+2. 从U盘启动引导安装，需要执行`解决一：安装系统卡住`步骤，直至正常安装界面打开
+3. 选择安装源 - 选择`空的分区` - 选中放入的`Rocky Linux 9.5 Minimal ISO` - 点击左上角完成
+
+![](./image/rockylinux/rockylinux08.jpg)
+
+
+
+
+
+
+
+
+
+# 其它问题
+
+
+
+## 1.NetworkManager unable to configure IPv6 route
+
+```bash
+[root@g2-pro-mysql03 ~]# tail -f /var/log/messages 
+Mar 25 16:56:52 localhost NetworkManager[904]: <warn>  [1742893012.8841] l3cfg[c9dea18990fd9a28,ifindex=2]: unable to configure IPv6 route: type unicast fe80::/64 dev 2 metric 1024 mss 0 rt-src ipv6ll
+Mar 25 16:56:54 localhost NetworkManager[904]: <warn>  [1742893014.8864] ipv6ll[15915f9016c9fe6e,ifindex=2]: changed: no IPv6 link local address to retry after Duplicate Address Detection failures (back off)
+Mar 25 16:57:04 localhost NetworkManager[904]: <warn>  [1742893024.8876] platform-linux: do-add-ip6-address[2: fe80::926f:18ff:fe07:c457]: failure 13 (Permission denied - ipv6: IPv6 is disabled on this device)
+Mar 25 16:57:04 localhost NetworkManager[904]: <warn>  [1742893024.8876] l3cfg[c9dea18990fd9a28,ifindex=2]: unable to configure IPv6 route: type unicast fe80::/64 dev 2 metric 1024 mss 0 rt-src ipv6ll
+```
+
+原因：配置了`net.ipv6.conf.all.disable_ipv6=1`，所以系统不支持ipv6功能
+
+解决方案：
+
+```bash
+# 禁用内核参数
+[root@g2-pro-mysql03 ~]# cat /etc/sysctl.conf | grep disable_ipv6
+#net.ipv6.conf.all.disable_ipv6=1
+# 从启用到禁用直接重新，这里是从禁用到启用则需要重启系统才能生效
+[root@g2-pro-mysql03 ~]# reboot 
+# 验证
+[root@g2-pro-mysql03 ~]# sysctl -a | grep disable_ipv6
+net.ipv6.conf.all.disable_ipv6 = 0
+net.ipv6.conf.default.disable_ipv6 = 0
+net.ipv6.conf.eth0.disable_ipv6 = 0
+net.ipv6.conf.lo.disable_ipv6 = 0
+# 可以看到已经有inet6的IP地址了
+[root@g2-pro-mysql03 ~]# ip a s eth0
+2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP group default qlen 1000
+    link/ether 90:6f:18:07:c4:57 brd ff:ff:ff:ff:ff:ff
+    altname enp2s0
+    inet 192.168.13.167/24 brd 192.168.13.255 scope global noprefixroute eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::926f:18ff:fe07:c457/64 scope link noprefixroute 
+       valid_lft forever preferred_lft forever
+```
 
 
 
