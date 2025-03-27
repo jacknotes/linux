@@ -959,6 +959,49 @@ server {
 
 
 
+## FAQ
+
+### 1. 实际已同步但显示项目未同步
+
+**问题描述：**设备1同步到设备2时，设备2其实已经同步完成了，但是在`远程设备`菜单下，确显示还有1222个项目未同步，并且所有项目大小为0，修改者ID并不是2个设备的ID
+
+**原因：**可能是数据残留，因为之前删除过几次再添加新设备的。
+
+**解决：**删除元数据目录，让其重新创建数据元数据，并不是同步的文件数据目录哈，别删除错。
+
+默认存储路径（版本差异）
+
+1. v1.27.0及以上版本
+   - **数据目录**：`$HOME/.local/state/syncthing` 或 `$XDG_STATE_HOME/syncthing`
+   - **配置文件目录**：与数据目录分离，存放配置文件如`config.xml` 和证书文件。
+2. v1.27.0之前版本
+   - **数据目录**：与配置文件合并，默认路径为 `$HOME/.config/syncthing`（Linux/macOS）或 `%LocalAppData%\Syncthing`（Windows）
+
+```bash
+# v1.27.0及以上版本的数据目录
+[root@hw-blog syncthing]# ll -h /root/.local/state/syncthing/
+total 44K
+-rw-r--r-- 1 root root  794 Jul 25  2024 cert.pem
+-rw------- 1 root root  23K Mar 27 22:08 config.xml
+-rw-r--r-- 1 root root  782 Jul 25  2024 https-cert.pem
+-rw------- 1 root root  288 Jul 25  2024 https-key.pem
+drwxr-xr-x 2 root root 4.0K Mar 27 22:07 index-v0.14.0.db
+-rw------- 1 root root  288 Jul 25  2024 key.pem
+
+# 删除或移动元数据
+[root@hw-blog syncthing]# mv /root/.local/state/syncthing/index-v0.14.0.db /tmp/
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 # 10. WinMerge
