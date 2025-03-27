@@ -1,5 +1,9 @@
 # immich
 
+
+
+**简介：**
+
 我叫 Alex。我学的是电气工程师，后来因为热爱解决问题而成为一名软件工程师。
 
 我们和新生儿躺在床上，我的妻子说：“我们开始收集很多宝宝的照片和视频，我不想再为这个不能提名字的应用程序付费了。你总是想为我做点什么，那么你为什么不为我开发一个可以做到这一点的应用程序呢？”
@@ -83,14 +87,15 @@ b8607cd87d96   ghcr.io/immich-app/immich-server:release             "tini -- /bi
 
 ## 2. 访问immich
 1. 浏览器访问http://172.168.2.40:2283
-![](./image/immich/01.jpg)
+
+  ![](./image/immich/01.jpg)
 
 2. 创建用户并配置硬盘限额
-![](./image/immich/02.jpg)
+  ![](./image/immich/02.jpg)
 
 3. 下载immich移动应用
-3.1 用新用户登录并更改密码
-3.2 配置地址连接immich服务，地址为：`http://172.168.2.40:2283/api`
+  3.1 用新用户登录并更改密码
+  3.2 配置地址连接immich服务，地址为：`http://172.168.2.40:2283/api`
 
 
 
@@ -343,9 +348,9 @@ root@hw2:/etc/nginx# curl -s https://immich.test.com:8443 | grep immich
 
 
 
-## FAQ
+## [FAQ](https://immich.app/docs/FAQ/#why-is-background-backup-on-ios-not-working)
 
-### 为什么 iOS 上的后台备份不起作用[？](https://immich.app/docs/FAQ/#why-is-background-backup-on-ios-not-working)
+### 1. 为什么 iOS 上的后台备份不起作用？
 
 在 iOS（iPhone 和 iPad）上，操作系统会根据多种因素确定某个应用是否可以调用后台任务，而 Immich 应用无法控制其中大部分因素。要增加后台备份任务运行的可能性，请按照以下步骤操作：
 
