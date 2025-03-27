@@ -275,27 +275,45 @@ http {
     }
     server {
         listen       8443 ssl;
-        server_name  immich.test.com;
-        ssl_certificate /etc/letsencrypt/live/test.com/fullchain.pem;
-        ssl_certificate_key /etc/letsencrypt/live/test.com/privkey.pem;
+        server_name  immich.markli.cn;
+        ssl_certificate /etc/letsencrypt/live/markli.cn/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/markli.cn/privkey.pem;
         ssl_session_timeout 1d;
+        ssl_session_cache shared:MozSSL:10m;  # about 40000 sessions
         ssl_session_tickets off;
         ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305;
         ssl_protocols TLSv1.2 TLSv1.3;
         ssl_prefer_server_ciphers off;
+
         location / {
                 add_header Strict-Transport-Security "max-age=31536000";
-                proxy_pass http://127.0.0.1:8024;
                 proxy_set_header    Host            $host;
                 proxy_set_header    X-Real-IP       $remote_addr;
                 proxy_set_header    X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header    X-Forwarded-Proto $scheme;
                 proxy_hide_header   X-Powered-By;
+                # enalbe websockets
+                proxy_http_version 1.1;
+                proxy_set_header   Upgrade    $http_upgrade;
+                proxy_set_header   Connection "upgrade";
+                proxy_redirect     off;
+                # set timeout
+                proxy_read_timeout 600s;
+                proxy_send_timeout 600s;
+                send_timeout       600s;
+                client_max_body_size 10000M;
+                proxy_pass http://127.0.0.1:8024;
         }
     }
 }
 ```
 
+> nginx反向代理immich时，需要开启`websockets`功能，否则前端会报`服务器离线 未知`，配置后正常显示`服务器在线 v1.130.2`
+
+
+
 **nginx启动和测试**
+
 ```bash
 root@hw2:~# systemctl enable nginx 
 Synchronizing state of nginx.service with SysV service script with /lib/systemd/systemd-sysv-install.
@@ -320,3 +338,19 @@ root@hw2:/etc/nginx# curl -s https://immich.test.com:8443 | grep immich
     class="absolute z-[1000] flex h-screen w-screen place-content-center place-items-center bg-immich-bg dark:bg-immich-dark-bg dark:text-immich-dark-fg"
   <body class="bg-immich-bg dark:bg-immich-dark-bg">
 ```
+
+
+
+
+
+## FAQ
+
+### 为什么 iOS 上的后台备份不起作用[？](https://immich.app/docs/FAQ/#why-is-background-backup-on-ios-not-working)
+
+在 iOS（iPhone 和 iPad）上，操作系统会根据多种因素确定某个应用是否可以调用后台任务，而 Immich 应用无法控制其中大部分因素。要增加后台备份任务运行的可能性，请按照以下步骤操作：
+
+- 在 iOS 设置中为 Immich 启用后台应用程序刷新`Settings > General > Background App Refresh`。
+- 不需要时请禁用**低功耗模式**，因为这可以防止应用程序在后台运行。
+- 对不需要运行后台任务的应用禁用后台应用刷新。这将减少 Immich 对后台任务调用的竞争。
+- 更频繁地使用 Immich 应用程序。
+
