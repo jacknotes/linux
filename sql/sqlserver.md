@@ -1186,7 +1186,7 @@ drop user WN010
 --批量授予存储过程
 use homsomdb
 SELECT 'GRANT EXECUTE,VIEW DEFINITION ON[dbo].[' + name + ']TO [WN010]' AS t_sql FROM sys.procedures
--- SELECT 'GRANT EXECUTE,VIEW DEFINITION,ALTER ON[dbo].[' + name + ']TO [hs\prod-dbuser]' AS t_sql FROM sys.procedures
+-- SELECT 'GRANT EXECUTE,VIEW DEFINITION,ALTER ON[dbo].[' + name + ']TO [hs\testuser]' AS t_sql FROM sys.procedures
 GRANT EXECUTE,VIEW DEFINITION  ON [dbo].[AutomaticTicketing_GetRecord]TO [WN010]
 -- revoke EXECUTE,VIEW DEFINITION on [dbo].[AutomaticTicketing_GetRecord] from [WN010]
 
@@ -1196,9 +1196,9 @@ GRANT EXECUTE,VIEW DEFINITION  ON [dbo].[AutomaticTicketing_GetRecord]TO [WN010]
 ```
 -- 数据库级别权限
 USE topway
-GRANT SHOWPLAN TO [HS\prod-dbuser]
+GRANT SHOWPLAN TO [HS\testuser]
 -- 服务器级别权限
-GRANT SHOWPLAN TO [HS\prod-dbuser] AS SERVER
+GRANT SHOWPLAN TO [HS\testuser] AS SERVER
 
 -- 脚本生成
 SELECT 'USE ' + name + '; GRANT SHOWPLAN TO [test];' 
@@ -1212,7 +1212,7 @@ USE topway;
 GO
  
 DECLARE @loginname VARCHAR(32);
-SET @loginname='[hs\prod-dbuser]'
+SET @loginname='[hs\testuser]'
 
 ---给用户授予查看存储过程定义的权限
 SELECT  'GRANT EXECUTE,VIEW DEFINITION,ALTER ON ' + SCHEMA_NAME(schema_id) + '.'
@@ -1367,12 +1367,17 @@ GO
 SELECT * 
 FROM sys.database_permissions
 WHERE major_id = OBJECT_ID('[dbo].[AirTicketAnalysis]')
-  AND grantee_principal_id = USER_ID('hs\prod-dbuser');
+  AND grantee_principal_id = USER_ID('hs\testuser');
 
 -- 配置存储过程权限
 USE topway20231218
 GO
-GRANT EXECUTE ON [dbo].[AirTicketAnalysis] TO [hs\prod-dbuser];
+GRANT EXECUTE ON [dbo].[AirTicketAnalysis] TO [hs\testuser];
+-- GRANT EXECUTE ON OBJECT::dbo.AirTicketAnalysis TO [hs\testuser];
+
+
+-- 取消存储过程权限
+REVOKE EXECUTE ON [dbo].[AirTicketAnalysis] TO [hs\testuser]
 
 
 -- 查看用户角色 
@@ -1388,6 +1393,24 @@ EXEC sp_addrolemember 'db_owner', 'test';
 EXEC sp_addrolemember 'db_datawriter', 'test';
 
 exec sp_droprolemember 'db_datawriter', 'test';
+
+
+
+
+-- 配置表类型权限 
+-- 切换数据库
+use your_db;
+-- 授予用户表类型dbo.IntlProtocolBandingData权限EXECUTE,REFERENCES,VIEW DEFINITION
+GRANT EXECUTE,REFERENCES,VIEW DEFINITION ON TYPE::dbo.IntlProtocolBandingData TO [hs\prod-dbuser];
+-- 查看当前用户表类型权限 
+SELECT * FROM fn_my_permissions('dbo.IntlProtocolBandingData', 'TYPE');
+
+entity_name	subentity_name	permission_name
+dbo.IntlProtocolBandingData		REFERENCES
+dbo.IntlProtocolBandingData		EXECUTE
+dbo.IntlProtocolBandingData		VIEW DEFINITION
+dbo.IntlProtocolBandingData		TAKE OWNERSHIP
+dbo.IntlProtocolBandingData		CONTROL
 ```
 
 
