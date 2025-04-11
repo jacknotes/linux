@@ -2,9 +2,9 @@
 
 
 
-## prometheus特点
+## 1. prometheus特点
 
-### 优点
+**优点**
 
 1. 监控精度高，可以精确到1~5秒的采集精度
 2. 集群部署的速度、监控脚本的制作（在熟练后）非常快捷
@@ -16,7 +16,7 @@
 
 
 
-### 缺点
+**缺点**
 
 1. 目前不支持集群，只能自己workaround
 2. 学习成本太大，尤其是其独有的数学命令行（非常强大的同时，又极其难学），中文资料极少，本身的各种数学模型的概念很复杂。
@@ -25,7 +25,8 @@
 
 
 
-### 时间序列数据
+**时间序列数据**
+
 按照时间顺序记录系统、设备状态变化的数据被称为时序数据。
 
 **应用场景:**
@@ -40,6 +41,7 @@
 2. 存储成本低，存储占用空间小
 
 **特征：**
+
 1. 多维度数据模型（cpu,内存，存储，网络）
 2. 灵活的查询语言（promQL）
 3. 不依赖分布式存储，单个服务器节点是自主的
@@ -56,7 +58,7 @@
 
 
 
-### prometheus工作原理
+## 2. prometheus工作原理
 
 * prometheus本身是一个以进程方式启动，之后（有exporters等插件加入）以多进程和多线程实现监控数据收集 计算 查询 更新 存储 的这样一个C/S模型运行模式。
 
@@ -82,9 +84,9 @@
 
 
 
-### 组件
+**组件**
 
-**exporter的类型**
+exporter的类型:
 
 1. prometheus
 2. alertmanager
@@ -99,9 +101,7 @@
 
 
 
-### prometheus配置文件及promQL
-
-
+## 3. prometheus配置文件及promQL
 
 **prometheus.yml配置文件详解**
 
@@ -205,11 +205,9 @@ irate()
 
 
 
+## 4. prometheus-book文档
 
-## prometheus-book文档
-
-
-### 查询操作
+### 4.1 查询操作
 
 ```
 #查询时间序列
@@ -298,7 +296,7 @@ or
 
 
 
-### PromQL聚合函数
+### 4.2 PromQL聚合函数
 
 ```
 sum (求和)
@@ -352,13 +350,7 @@ dot1dStpPortDesignatedBridge{app="huawei-dsw4", dot1dStpPort="1", dot1dStpPortDe
 
 
 
-
-
-
-
-
-
-### httpAPI
+### 4.3 httpAPI
 
 ```bash
 "resultType": "matrix" | "vector" | "scalar" | "string"有四种数据类型，分别是：区间向量，瞬时向量，标量，字符串
@@ -511,18 +503,16 @@ BLOCK ULID                  MIN TIME       MAX TIME       NUM SAMPLES  NUM CHUNK
 
 
 
-## 部署
+## 5. 部署
 
-### 环境
+**环境**
 
 192.168.15.202(node3): prometheus(收集存储),grafana(可视化)
 192.168.15.201(node2): by monitor machine(web,mysql..)
 
 
 
-### 安装
-
-
+### 5.1 安装prometheus
 
 **软件下载**
 
@@ -645,7 +635,7 @@ WantedBy=multi-user.target
 
 
 
-### 服务配置
+**服务配置**
 
 ```bash
 [root@node3 /usr/local/prometheus]# systemctl daemon-reload
@@ -659,7 +649,7 @@ tcp6       0      0 :::9090                 :::*                    LISTEN      
 
 
 
-### 安装node_exporter
+### 5.2 安装node_exporter
 
 ```bash
 [root@node2 /download]# tar xf /download/node_exporter-0.18.1.linux-amd64.tar.gz -C /usr/local/
@@ -706,7 +696,7 @@ node_export有默认常用的监控项，有些没有开启的监控项，可以
 
 
 
-### 安装mysqld_exporter
+### 5.3 安装mysqld_exporter
 
 **node2安装mysqld_exporter**
 ```bash
@@ -776,11 +766,9 @@ services:
 
 
 
-### 安装cAdvisor
+### 5.4 安装cAdvisor
 
-
-
-#### 二进制
+**二进制安装**
 
 ```bash
 [root@node3 /download]# wget https://github.com/google/cadvisor/releases/latest
@@ -809,7 +797,7 @@ tcp6       0      0 :::8080                 :::*                    LISTEN      
 
 
 
-#### docker
+**docker安装**
 
 ```bash
 docker run -d \
@@ -828,7 +816,7 @@ tcp6       0      0 :::7070                 :::*                    LISTEN      
 
 
 
-### 安装redis_exporter
+### 5.5 安装redis_exporter
 
 ```bash
 wget https://github.com/oliver006/redis_exporter/releases/download/v1.11.1/redis_exporter-v1.11.1.linux-amd64.tar.gz
@@ -881,7 +869,7 @@ systemctl start redis_exporter
 
 
 
-### 安装mysqld_exporter
+### 5.6 安装mysqld_exporter
 
 ```bash
 wget https://github.com/prometheus/mysqld_exporter/releases/download/v0.12.1/mysqld_exporter-0.12.1.linux-amd64.tar.gz
@@ -973,7 +961,7 @@ WantedBy=multi-user.target
 
 
 
-### 安装windows_exporter
+### 5.7 安装windows_exporter
 
 windows_exporter客户端使用版本为windows_exporter-0.13.0-amd64.msi，此版本不能采集windows server 2003系统。
 wmi_exporter客户端使用版本为wmi_exporter-0.8.3-386.msi,此版本可以采集windows server 2003系统。
@@ -1005,7 +993,7 @@ irate(windows_process_cpu_time_total{process=~"w3wp.*", instance="192.168.13.205
 
 
 
-### 安装snmp_exporter
+### 5.8 安装snmp_exporter
 
 ```bash
 [root@prometheus download]# tar xf snmp_exporter-0.19.0.linux-amd64.tar.gz -C /usr/local/
@@ -1087,7 +1075,7 @@ WantedBy=multi-user.target
 -----------------
 ```
 
-###  snmp_exporter监控DELL idrac
+###  5.9 snmp_exporter监控DELL idrac
 
 ```bash
 # 下载idrac MIB，在驱动下载中搜索MIB
@@ -1192,7 +1180,7 @@ cp: overwrite ‘/usr/local/snmp_exporter-two/snmp.yml’? y
 
 
 
-### snmp_exporter监控网络设备
+### 5.10 snmp_exporter监控网络设备
 
 **SNMPv2、SNMPv3**
 
@@ -1207,7 +1195,7 @@ SNMPv2-MIB::sysDescr.0 = STRING: Linux sfos-x86_64.localdomain 4.18.0-240.el8.x8
 
 
 
-#### **snmp_exporter监控华为交换机**
+**snmp_exporter监控华为交换机**
 
 华为交换机型号：S5735-L24T4S-A1 S5735 V200R022C00SPC500
 
@@ -1215,7 +1203,7 @@ SNMPv2-MIB::sysDescr.0 = STRING: Linux sfos-x86_64.localdomain 4.18.0-240.el8.x8
 
 
 
-##### 1. 华为交换机开启snmp
+#### 5.10.1 华为交换机开启snmp
 
 ```
 snmp-agent
@@ -1246,11 +1234,9 @@ snmp-agent target-host trap address udp-domain 192.168.13.236 params securitynam
 
 
 
+#### 5.10.2 pometheus生成snmp.yaml
 
-
-##### 2. pometheus生成snmp.yaml
-
-###### 2.1 安装generator
+##### 5.10.2.1 安装generator
 
 ```bash
 # 安装generator工具
@@ -1260,7 +1246,7 @@ go build
 ./generator --help
 ```
 
-###### 2.2 配置generator.yml
+##### 5.10.2.2 配置generator.yml
 
 ```bash
 # 将下载好的mib文件放到mib目录
@@ -1375,9 +1361,7 @@ FutureMatrix Versatile Routing Platform Software
 
 
 
-
-
-##### 3. 配置prometheus
+#### 5.10.3 配置prometheus
 
 ```bash
 # 应用新生成的snmp.yaml
@@ -1417,9 +1401,9 @@ FutureMatrix Versatile Routing Platform Software
 [root@prometheus prometheus]# curl -X POST http://localhost:9090/-/reload
 ```
 
-##### 
 
-##### 4. snmp报错
+
+#### 5.10.4 snmp报错
 
 ```
 An error has occurred while serving metrics:
@@ -1451,7 +1435,7 @@ An error has occurred while serving metrics:
 
 
 
-### 安装SQL_EXPORTER
+### 5.11 安装SQL_EXPORTER
 
 ```bash
 [root@prometheus download]# tar xf sql_exporter-0.5.linux-amd64.tar.gz -C /usr/local/
@@ -1490,7 +1474,7 @@ WantedBy=multi-user.target
 
 
 
-#### sql_exporter权限授予
+#### 5.11.1 sql_exporter权限授予
 
 ```
 -- 设置变量
@@ -1515,9 +1499,7 @@ use ActivityDB; CREATE USER [sql_exporter] FOR LOGIN [sql_exporter]; exec sp_add
 
 
 
-#### 用户管理
-
-
+#### 5.11.2 用户管理
 
 **创建登录账户、用户账户、赋权**
 
@@ -1553,7 +1535,7 @@ exec(@sql)
 
 
 
-### 安装grafana
+### 5.12 安装grafana
 
 ```bash
 [root@node3 /download]# wget https://dl.grafana.com/oss/release/grafana-7.0.3-1.x86_64.rpm
@@ -1576,8 +1558,7 @@ percona模板连接：https://github.com/percona/grafana-dashboards #percon专�
 
 
 
-#### 添加dashboard
-
+#### 5.12.1 添加dashboard
 
 **常用的第三方模板，数据来源均为prometheus**
 
@@ -1610,7 +1591,7 @@ docker cadvisor: 8321
 cadvisor: 11277
 
 
-#### grafana+onealert报警
+#### 5.12.2 grafana+onealert报警
 在睿象云（onealert）上注册帐号，可以使用webhook勾子.
 在grafana的alert模块增加notify channel中添加webhook类型的通道。
 在需要报警的图表中编辑alert子菜单，进行名称、触发条件、发送内容等设置。
@@ -1619,12 +1600,10 @@ cadvisor: 11277
 
 
 
+## 6. 企业级监控数据采集方法
 
 
-## 企业级监控数据采集方法
-
-
-### prometheus后台运行方式
+### 6.1 prometheus后台运行方式
 
 1. nohup &
 
@@ -1654,7 +1633,7 @@ cadvisor: 11277
 
     
 
-### prometheus数据
+### 6.2 prometheus数据
 
 ```bash
 # 长串字母目录是prometheus历史保留数据，而近期的数据实际上保留在内存中，并且按照一定间隔存放在wal/（冷备份）目录中，防止突然断电或者重启，以用来恢复内存中的数据。
@@ -1690,7 +1669,7 @@ scrape_configs:  #抓取数据的配置
 
 ​    
 
-### 安装pushgateway
+### 6.3 安装pushgateway
 
 ```bash
 [root@node3 /download]# axel -n 30 https://github.com/prometheus/pushgateway/releases/download/v1.0.1/pushgateway-1.0.1.linux-amd64.tar.gz
@@ -1776,7 +1755,7 @@ EOF
 
 
 
-#### pushgateway的优缺点
+### 6.4 pushgateway的优缺点
 
 **优点**
 灵活，自定义编写脚本，中小型企业中一般只使用node_exporter和mysqld_exporter
@@ -1791,9 +1770,7 @@ EOF
 
 
 
-#### 脚本
-
-**采集网络丢包率，延迟，抖动数据**
+**采集网络丢包率，延迟，抖动数据脚本**
 
 ```bash
 [root@node3 ~]# cat ./pushgateway-ping.sh
@@ -1862,11 +1839,9 @@ EOF
 
 
 
-## 生产部署
+## 7. 生产部署
 
-
-
-### 安装grafana
+### 7.1 安装grafana
 
 1. 安装并启动grafana
 2. 添加prometheus数据源
@@ -1893,7 +1868,7 @@ ehlo_identity =            #这里不能写，否则会被网易识别为垃圾�
 
 
 
-### 监控指标
+### 7.2 监控指标
 
 
 **cpu**
@@ -1945,7 +1920,7 @@ netstat_wait_connections
 
 
 
-### pagerduty报警平台
+### 7.3 pagerduty报警平台
 pagedury默认只有14天试用期，购买一个月几百元。
 1. 注册新账号
 2. 创建新的service
@@ -1953,9 +1928,7 @@ pagedury默认只有14天试用期，购买一个月几百元。
 
 
 
-
-
-### AlertManager
+### 7.4 AlertManager
 
 ```
 在告警规则文件中，我们可以将一组相关的规则设置定义在一个group下。在每一个group中我们可以定义多个告警规则(rule)。一条告警规则主要由以下几部分组成：
@@ -1976,7 +1949,7 @@ ALERTS{alertname="<alert name>", alertstate="pending|firing", <additional alert 
 
 
 
-#### 定义告警规则
+#### 7.4.1 定义告警规则
 ```
 [root@node1 /usr/local/prometheus]# cat /usr/local/prometheus/rules/alert.yaml 
 groups:
@@ -2010,7 +1983,7 @@ groups:
 
 
 
-### 安装alertmanager
+#### 7.4.2 安装alertmanager
 
 ```bash
 [root@node3 /download]# tar xf alertmanager-0.20.0.linux-amd64.tar.gz -C /usr/local/
@@ -2040,7 +2013,7 @@ WantedBy=multi-user.target
 
 
 
-### 关联prometheus
+#### 7.4.3 关联prometheus
 
 ```bash
 [root@node1 /usr/local/prometheus]# tail /usr/local/prometheus/prometheus.yml
@@ -2053,7 +2026,7 @@ alerting:
 
 
 
-### alertmanager配置文件详解
+#### 7.4.4 alertmanager配置文件详解
 ```
 --alertmanager参数
 resolve_timeout:该参数定义了当Alertmanager持续多长时间未接收到告警后标记告警状态为resolved（已解决）。该参数的定义可能会影响到告警恢复通知的接收时间，可根据自己的实际场景进行定义，其默认值为5分钟
@@ -2067,7 +2040,9 @@ match:通过设置match规则判断当前告警中是否存在标签labelname并
 每一个告警都会从配置文件中顶级的route进入路由树，需要注意的是顶级的route必须匹配所有告警(即不能有任何的匹配设置match和match_re)，每一个路由都可以定义自己的接受人以及匹配规则。默认情况下，告警进入到顶级route后会遍历所有的子节点，直到找到最深的匹配route，并将告警发送到该route定义的receiver中。但如果route中设置continue的值为false，那么告警在匹配到第一个子节点之后就直接停止。如果continue为true，报警则会继续进行后续子节点的匹配。如果当前告警匹配不到任何的子节点，那该告警将会基于当前路由节点的接收器配置方式进行处理。
 ```
 
-### alertmanager与SMTP邮件集成
+
+
+#### 7.4.5 alertmanager与SMTP邮件集成
 
 ```bash
 [root@node3 /usr/local/alertmanager]# cat alertmanager.yml 
@@ -2186,7 +2161,7 @@ instance: localhost:9100
 
 
 
-### 屏蔽告警通知
+#### 7.4.6 屏蔽告警通知
 
 Alertmanager提供了方式可以帮助用户控制告警通知的行为，包括预先定义的抑制机制和临时定义的静默规则。
 
@@ -2257,7 +2232,7 @@ receivers:
 
 
 
-## exporter
+## 8. exporter使用案例
 
 [document](https://github.com/prometheus)
 
@@ -2280,7 +2255,7 @@ API服务	AWS ECS Exporter， Docker Cloud Exporter, Docker Hub Exporter, GitHub
 
 
 
-### mysqld-exporter
+### 8.1 mysqld-exporter
 
 ```bash
 [root@node1 /usr/local/blackbox_exporter]# cat /usr/lib/systemd/system/mysqld_exporter.service 
@@ -2302,7 +2277,7 @@ WantedBy=multi-user.target
 
 
 
-### blackbox_exporter
+### 8.2 blackbox_exporter
  ```bash
    ----黑盒监控即以用户的身份测试服务的外部可见性，常见的黑盒监控包括HTTP探针、TCP探针等用于检测站点或者服务的可访问性，以及访问效率等。
     [root@node3 /download]# tar xf blackbox_exporter-0.17.0.linux-amd64.tar.gz -C /usr/local/
@@ -2425,11 +2400,7 @@ WantedBy=multi-user.target
 
 
 
-
-
-
-
-### Prometheus的Relabeling机制
+### 8.3 Prometheus的Relabeling机制
 
 在Prometheus所有的Target实例中，都包含一些默认的Metadata标签信息。可以通过Prometheus UI的Targets页面中查看这些实例的Metadata标签的内容：默认情况下，当Prometheus加载Target实例完成后，这些Target时候都会包含一些默认的标签：
 __address__：当前Target实例的访问地址<host>:<port>  #例如:http://127.0.0.1:9115
@@ -2500,11 +2471,7 @@ relabel_configs注解：
 
 
 
-
-
-
-
-### consul
+### 8.4 consul
 
 ```bash
 [root@prometheus prometheus]# docker run -d --restart=always --name consul -p 8500:8500 consul
@@ -2634,7 +2601,9 @@ curl -X PUT --data @consul-0.json http://192.168.13.236:8500/v1/agent/service/re
 ```
 
 
-### rabbitmq_exporter
+
+### 8.5 rabbitmq_exporter
+
 ```bash
 REFERENCE: https://github.com/kbudde/rabbitmq_exporter
 ---
@@ -2735,7 +2704,7 @@ groups:
 
 
 
-### nginx-vts-exporter 
+### 8.6 nginx-vts-exporter 
 
 Nginx的监控模块，能够提供JSON格式的数据产出，主要用于收集Nginx的监控数据，并给Prometheus提供监控接口，默认端口号9913。
 监控Nginx-vts-exporter提供的Nginx数据，并存储在时序数据库中，可以使用PromQL对时序数据进行查询和聚合。
@@ -2890,9 +2859,7 @@ prometheus:
 
 
 
-
-
-### grafana+zabbix显示 
+### 8.7 grafana+zabbix显示 
 1. grafana-cli plugins install alexanderzobnin-zabbix-app    --安装grafana zabbix插件
 2. vim /etc/grafana/grafana.ini    --添加允许未注册的插件装载
 allow_loading_unsigned_plugins = alexanderzobnin-zabbix-datasource
@@ -2902,8 +2869,9 @@ allow_loading_unsigned_plugins = alexanderzobnin-zabbix-datasource
 
 
 
+### 8.8 nginx反向代理
 
-### nginx反向代理prometheus+alertmanager+blackbox
+**prometheus+alertmanager+blackbox**
 
 ```
 nginx中配置prometheus和alertmanager时需要注意：
@@ -3055,7 +3023,7 @@ http {
 
 
 
-### ipmi_exporter
+### 8.9 ipmi_exporter
 
 ```bash
 axel -n 30 https://github.com/prometheus-community/ipmi_exporter/releases/download/v1.4.0/ipmi_exporter-1.4.0.linux-amd64.tar.gz
@@ -3083,7 +3051,7 @@ systemctl start ipmi_exporter.service && systemctl enable ipmi_exporter.service
 
 
 
-### vmware_esxi
+### 8.10 vmware_esxi
 
 ```bash
 --config.env
@@ -3181,7 +3149,7 @@ curl -X POST http://localhost:9090/-/reload
 
 
 
-### haproxy_exporter
+### 8.11 haproxy_exporter
 
 ```
 --下载配置haproxy_exporter
@@ -3266,7 +3234,7 @@ root@prometheus01:/usr/local/prometheus# cat prometheus.yml
 
 
 
-### 监控tomcat
+### 8.12 监控tomcat
 
 ```bash
 root@k8s-master01:~/k8s/yaml/prometheus-case/app-monitor-case/tomcat/tomcat-image# cat Dockerfile
@@ -3355,7 +3323,7 @@ root@prometheus01:/usr/local/prometheus# cat prometheus.yml
 
 
 
-## prometheus联绑集群
+## 9. prometheus联绑集群
 
 ```
 环境：
@@ -3367,7 +3335,8 @@ root@prometheus01:/usr/local/prometheus# cat prometheus.yml
 ```
 
 
-### 安装prometheus-server
+
+### 9.1 安装prometheus-server
 
 ```bash
 root@prometheus01:/usr/local/src# tar xf prometheus-2.33.4.linux-amd64.tar.gz -C /usr/local/
@@ -3406,7 +3375,8 @@ root@prometheus01:/usr/local/src# systemctl status prometheus.service | grep Act
 ```
 
 
-### 安装prometheus-federate01
+
+### 9.2 安装prometheus-federate01
 
 ```bash
 root@prometheus02:/usr/local/src# tar xf prometheus-2.33.4.linux-amd64.tar.gz -C /usr/local/
@@ -3446,7 +3416,7 @@ root@prometheus02:/usr/local/src# systemctl status prometheus.service | grep Act
 
 
 
-### 安装prometheus-federate02
+### 9.3 安装prometheus-federate02
 ```bash
 root@prometheus03:/usr/local/src# tar xf prometheus-2.33.4.linux-amd64.tar.gz -C /usr/local/
 root@prometheus03:/usr/local/src# ln -sv /usr/local/prometheus-2.33.4.linux-amd64/ /usr/local/prometheus
@@ -3484,9 +3454,7 @@ root@prometheus03:/usr/local/src# systemctl status prometheus.service | grep Act
 
 
 
-### 配置prometheus
-
-
+### 9.4 配置prometheus
 
 **prometheus-federate01**
 
@@ -3636,7 +3604,7 @@ root@prometheus02:/usr/local/prometheus/file_sd_configs# curl -XPOST http://loca
 
 
 
-### prometheus升级 
+### 9.5 prometheus升级 
 **prometheus2.19.3升级到prometheus2.33.4**
 
 ```bash
@@ -3654,9 +3622,9 @@ systemctl start prometheus
 
 
 
-## 笔记小记
+## 小记
 
-### 20210830--使用amtool进行命令行邮件告警
+### 1. 20210830--使用amtool进行命令行邮件告警
 ```
 例如：需要在"2021-08-30 11:28:01"进行邮件告警，则可以设置如下
 [root@prometheus alertmanager]# ./amtool --alertmanager.url=http://localhost:9093 alert add alertname=test severity=High job=test instance='http://192.168.13.236:9093' --annotation=summary='summary of the alert' --annotation=description='description of the alert' --start="2021-08-30T03:28:01+08:00"
@@ -3682,8 +3650,8 @@ email,webhook
 
 
 
-### 20210830--promtool工作使用
-```
+### 2. 20210830--promtool工作使用
+```bash
 --命令行查询表达式
 [root@prometheus prometheus]# ./promtool query instant http://localhost:9090 '(1 - ((node_memory_Buffers_bytes{job=~".*node_exporter.*"} + node_memory_Cached_bytes{job=~".*node_exporter.*"} + node_memory_MemFree_bytes{job=~".*node_exporter.*"}) / node_memory_MemTotal_bytes{job=~".*node_exporter.*"})) * 100 > 85'
 {app="mysql", env="test", instance="192.168.13.116:9100", job="consul-node_exporter", mysqld_exporter="192.168.13.116:9104", project="services", team="ops"} => 95.62319001386963 @[1630295649.293]
@@ -3692,11 +3660,8 @@ email,webhook
 dba
 ops
 tiger
-```
-
 
 #20220426--nginx生产编译参数
-```bash
 [root@reverse01 tengine-2.3.2]# ./configure --prefix=/usr/local/nginx --user=nginx --group=nginx --with-pcre=/download/pcre-8.44 --with-http_ssl_module --with-http_flv_module --with-http_stub_status_module --with-http_gzip_static_module --with-http_sub_module --with-stream --with-http_realip_module  --with-stream_ssl_module  --with-http_auth_request_module --with-http_gzip_static_module --with-http_random_index_module --add-module=modules/ngx_http_upstream_session_sticky_module --add-module=modules/ngx_http_upstream_check_module --add-module=/download/ngx_http_substitutions_filter_module --add-module=/download/nginx-module-vts-0.1.17
 
 
@@ -3719,7 +3684,7 @@ WantedBy=multi-user.target
 
 
 
-### 20221116--alertmanager更新配置
+### 3. 20221116--alertmanager更新配置
 ```bash
 [root@prometheus alertmanager]# cat alertmanager.yml 
 global:

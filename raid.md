@@ -1,13 +1,13 @@
-﻿# Centos7配置软RAID 1
+﻿# 1. Centos7配置软RAID 1
 ---
 准备两块新硬盘，最好是同容量同转速的，新加硬盘必需重新启动系统才能读取：
 
 1. 列出所有磁盘：
 [root@linux-node1 ~]# fdisk -l
 2. [root@linux-node1 ~]# fdisk /dev/sdb
-3. 新建分区/dev/sdb1，并更改ID为fd，按w退出并保存 
+3. 新建分区/dev/sdb1，并更改ID为fd（Linux raid autodetect类型），按w退出并保存 
 4. [root@linux-node1 ~]# fdisk /dev/sdc
-5. 新建分区/dev/sdc1，并更改ID为fd，按w退出并保存
+5. 新建分区/dev/sdc1，并更改ID为fdLinux raid autodetect类型），按w退出并保存
 6. 使用partprobe /dev/sdb,partprobe /dev/sdc命令让linux内核重新读取硬盘参数
 7. 使用mdadm -C /dev/md0 -l 1 -a yes -n 2 /dev/sdb1 /dev/sdc1命令新建一个md0 软RAID
 8. mkfs -t ext4 /dev/md0格式化RAID分区
@@ -19,13 +19,13 @@
 
 
 
-# ubuntu 18.04.5
+# 2. ubuntu 18.04.5
 ---
 
-### 插曲：
-1. 在制作软RAID之前，安装ubuntu18,04.5安装了两次，第一次安装在500G的 /dev/sda机械硬盘{安装一半中止安装}
+## 2.1 小插曲
+1. 在制作软RAID之前，安装ubuntu18.04.5安装了两次，第一次安装在500G的 /dev/sda机械硬盘{安装一半中止安装}
 2. 第二次安装在240G的 /dev/sdb固态硬盘，最终以固态硬盘为系统盘启动
-3. 在系统中查看到/目录下挂载了LV，但是通过lvdisplay查看到有两块盘都挂载在/目录下，但有一个是活动，一个未活动，想删除未活动的，没有命令，最后重启后生效，以下是过程
+3. 在系统中查看到根目录下挂载了LV，但是通过lvdisplay查看到有两块盘都挂载在/目录下，但有一个是活动，一个未活动，想删除未活动的，没有命令，最后重启后生效，以下是过程
 ```
 root@ubuntu-18:/etc/apt# pvdisplay
   --- Physical volume ---
@@ -175,7 +175,9 @@ root@ubuntu-18:/etc/apt# lvdisplay
 ```
 
 
-### 制作软RAID 1
+
+## 2.2 制作软RAID 1
+
 ```
 # 安装软raid工具 
 root@office:~# apt install -y mdadm
@@ -377,7 +379,10 @@ unused devices: <none>
 
 ```
 
-### 创建LVM on 软RAID
+
+
+## 2.3 创建LVM on 软RAID
+
 ```
 # 在软RAID之上创建LVM分区
 root@office:~# fdisk -l /dev/md0
@@ -566,14 +571,14 @@ tmpfs                           tmpfs     827M     0  827M   0% /run/user/0
 
 
 
-# 软RAID
+# 3. 软RAID
 
 **datetime: 20240508**
 **OS: CentOS7**
 
 
 
-## 1. 创建软RAID1
+## 3.1 创建软RAID1
 
 ```bash
 # 创建分区/dev/sda1, /dev/sdb1
@@ -592,6 +597,7 @@ sdc               8:32   0 223.6G  0 disk
 
 
 # 创建软RAID1
+[root@testhoteles ~]# yum install mdadm -y
 [root@testhoteles ~]# mdadm --create --verbose /dev/md1 --level=1 --raid-devices=2 /dev/sda1 /dev/sdb1
 mdadm: partition table exists on /dev/sda1
 mdadm: partition table exists on /dev/sda1 but will be lost or
@@ -739,7 +745,7 @@ Consistency Policy : bitmap
 
 
 
-## 2. raid停止和重组装 
+## 3.2 raid停止和重组装 
 
 ```bash
 [root@testhoteles ~]# lsblk
@@ -820,7 +826,7 @@ Consistency Policy : bitmap
 
 
 
-## 3. 保存已有的陈列配置
+## 3.3 保存已有的陈列配置
 
 ```bash
 [root@testhoteles ~]# mdadm --detail --scan > /etc/mdadm.conf
@@ -830,7 +836,7 @@ ARRAY /dev/md1 metadata=1.2 name=testhoteles.hs.com:1 UUID=611ac412:b50551be:6cf
 
 
 
-## 4. 挂载并开机启动
+## 3.4 挂载并开机启动
 
 ```bash
 [root@testhoteles ~]# mkfs -t xfs /dev/md1
@@ -843,11 +849,37 @@ ARRAY /dev/md1 metadata=1.2 name=testhoteles.hs.com:1 UUID=611ac412:b50551be:6cf
 
 # CentOS7更新initramfs，避免raid名称变成md127，在对raid有更新的情况下，都需要更新一下initramfs的，以保证在启动时能正确的找到raid信息
 [root@testhoteles ~]# dracut --mdadmconf --fstab --add="mdraid" --filesystems "xfs ext4 ext3" --add-drivers="raid1" --force /boot/initramfs-$(uname -r).img $(uname -r) -M
+
+# 检查是否配置生效
+[root@syslog ~]# ls /boot/initramfs-$(uname -r).img 
+/boot/initramfs-3.10.0-1160.119.1.el7.x86_64.img
+# 查看/boot/initramfs-3.10.0-1160.119.1.el7.x86_64.img镜像中所有文件，通过过滤条件进行查看
+[root@syslog ~]# lsinitrd /boot/initramfs-$(uname -r).img | grep -E 'mdraid|raid1|xfs|ext4|ext3'
+Arguments: --mdadmconf --fstab --add 'mdraid' --filesystems 'xfs ext4 ext3' --add-drivers 'raid1' --force -M
+mdraid
+-rwxr-xr-x   1 root     root          265 Sep 12  2013 usr/lib/dracut/hooks/cleanup/99-mdraid-needshutdown.sh
+-rwxr-xr-x   1 root     root          910 Sep 12  2013 usr/lib/dracut/hooks/pre-mount/10-mdraid-waitclean.sh
+-rw-r--r--   1 root     root        22232 Jun  4  2024 usr/lib/modules/3.10.0-1160.119.1.el7.x86_64/kernel/drivers/md/raid1.ko.xz
+drwxr-xr-x   2 root     root            0 Apr  9 13:57 usr/lib/modules/3.10.0-1160.119.1.el7.x86_64/kernel/fs/ext4
+-rw-r--r--   1 root     root       224256 Jun  4  2024 usr/lib/modules/3.10.0-1160.119.1.el7.x86_64/kernel/fs/ext4/ext4.ko.xz
+drwxr-xr-x   2 root     root            0 Apr  9 13:57 usr/lib/modules/3.10.0-1160.119.1.el7.x86_64/kernel/fs/xfs
+-rw-r--r--   1 root     root       348176 Jun  4  2024 usr/lib/modules/3.10.0-1160.119.1.el7.x86_64/kernel/fs/xfs/xfs.ko.xz
+-rwxr-xr-x   3 root     root            0 Apr  9 13:57 usr/sbin/fsck.ext3
+-rwxr-xr-x   3 root     root       256560 Apr  9 13:57 usr/sbin/fsck.ext4
+-rwxr-xr-x   1 root     root          433 Oct  1  2020 usr/sbin/fsck.xfs
+-rwxr-xr-x   1 root     root          708 Sep 12  2013 usr/sbin/mdraid-cleanup
+-rwxr-xr-x   1 root     root         1951 Sep 30  2020 usr/sbin/mdraid_start
+-rwxr-xr-x   1 root     root       590208 Apr  9 13:57 usr/sbin/xfs_db
+-rwxr-xr-x   1 root     root          747 Oct  1  2020 usr/sbin/xfs_metadump
+-rwxr-xr-x   1 root     root       576720 Apr  9 13:57 usr/sbin/xfs_repair
+## 查看/boot/initramfs-3.10.0-1160.119.1.el7.x86_64.img镜像中的文件etc/mdadm.conf的内容
+[root@syslog ~]# lsinitrd /boot/initramfs-$(uname -r).img -f etc/mdadm.conf 
+ARRAY /dev/md1 metadata=1.2 name=syslog:1 UUID=2b810998:9c4d6da4:cfac8aa3:2c176956
 ```
 
 
 
-## 5. 模拟软RAID故障和修复
+## 3.5 模拟软RAID故障和修复
 
 ```bash
 # 手动停掉一个设备(当设备显示磨损迹象时，例如通过SMART)
@@ -987,7 +1019,7 @@ Consistency Policy : bitmap
 
 
 
-## 6. 扩容软RAID，RAID0和RAID5可以
+## 3.6 扩容软RAID，RAID0和RAID5可以
 
 ```bash
 mdadm /dev/md5 -a /dev/sde1
@@ -997,7 +1029,9 @@ xfs_growfs -d /mnt
 
 
 
-## 7. 清除阵列超级块信息(在将分区用于其他目的之前必须这样做)
+## 3.7 清除软RAID超级块信息
+
+将软RAID其中一个分区独立出来时，用于其他目的之前必须清除软RAID超级块信息，因为只有清除了此数据后，该分区才干净可用于挂载、或者当做其它软RAID成员使用。
 
 ```bash
 # 清除硬盘超级块信息
@@ -1067,3 +1101,261 @@ Consistency Policy : bitmap
        2       8        1        0      spare rebuilding   /dev/sda1
        1       8       17        1      active sync   /dev/sdb1
 ```
+
+
+
+
+
+# 4. LVM VG同名冲突问题
+
+新机器：安装`CentOS 7`操作系统，有`/dev/centos/root`和`/dev/centos/swap` LV，VG名称为`centos`
+
+旧机器：也是`CentOS 7`操作系统有`/dev/centos/root`和`/dev/centos/swap` LV，VG名称为`centos`
+
+> 因为旧机器有坏道，elasticsearch7服务读取索引报错，无法继续使用，所以需要重新更换新磁盘，将此旧磁盘数据迁移到新硬盘之上
+
+问题：新机器和旧机器都有VG名称为`centos`，该如何迁移数据
+
+
+
+## 4.1 当前LVM信息
+
+**PV信息**
+
+```bash
+[root@syslog ~]# pvdisplay 
+  --- Physical volume ---
+  PV Name               /dev/sda2
+  VG Name               centos
+  PV Size               223.08 GiB / not usable 3.00 MiB
+  Allocatable           yes (but full)
+  PE Size               4.00 MiB
+  Total PE              57108
+  Free PE               0
+  Allocated PE          57108
+  PV UUID               pUfIZ0-Fmwd-Y3IT-E794-ZNZa-RfkU-wtFeTE
+   
+  --- Physical volume ---
+  PV Name               /dev/sdd2
+  VG Name               centos
+  PV Size               <1.82 TiB / not usable 4.00 MiB
+  Allocatable           yes (but full)
+  PE Size               4.00 MiB
+  Total PE              476806
+  Free PE               0
+  Allocated PE          476806
+  PV UUID               ZAsYXD-fdeV-AGoV-oP0P-BmiK-yZ7p-dgPTp2
+```
+
+**VG信息**
+
+```bash
+[root@syslog ~]# vgdisplay 
+  --- Volume group ---
+  VG Name               centos
+  System ID             
+  Format                lvm2
+  Metadata Areas        1
+  Metadata Sequence No  7
+  VG Access             read/write
+  VG Status             resizable
+  MAX LV                0
+  Cur LV                2
+  Open LV               2
+  Max PV                0
+  Cur PV                1
+  Act PV                1
+  VG Size               <223.08 GiB
+  PE Size               4.00 MiB
+  Total PE              57108
+  Alloc PE / Size       57108 / <223.08 GiB
+  Free  PE / Size       0 / 0   
+  VG UUID               0kZqzY-CU3x-WO5g-Yhsu-WPsV-34O8-beg0Fc
+   
+  --- Volume group ---
+  VG Name               centos
+  System ID             
+  Format                lvm2
+  Metadata Areas        1
+  Metadata Sequence No  7
+  VG Access             read/write
+  VG Status             resizable
+  MAX LV                0
+  Cur LV                2
+  Open LV               0
+  Max PV                0
+  Cur PV                1
+  Act PV                1
+  VG Size               <1.82 TiB
+  PE Size               4.00 MiB
+  Total PE              476806
+  Alloc PE / Size       476806 / <1.82 TiB
+  Free  PE / Size       0 / 0   
+  VG UUID               b8uQE2-lSBQ-pszt-jYwa-XX9n-KS0z-wLGdqS
+```
+
+LV信息
+
+```bash
+[root@syslog ~]# lvdisplay 
+  --- Logical volume ---
+  LV Path                /dev/centos/swap
+  LV Name                swap
+  VG Name                centos
+  LV UUID                n0pO4Z-Htyg-O0Tt-Fb0P-ccnN-QnOB-9Y1Vl5
+  LV Write Access        read/write
+  LV Creation host, time localhost.localdomain, 2025-04-07 17:23:21 +0800
+  LV Status              available
+  # open                 2
+  LV Size                7.81 GiB
+  Current LE             2000
+  Segments               1
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     256
+  Block device           253:1
+   
+  --- Logical volume ---
+  LV Path                /dev/centos/root
+  LV Name                root
+  VG Name                centos
+  LV UUID                ofjacO-gWSX-2Yif-05ic-0bcy-fAVg-S2eSLn
+  LV Write Access        read/write
+  LV Creation host, time localhost.localdomain, 2025-04-07 17:23:22 +0800
+  LV Status              available
+  # open                 1
+  LV Size                <215.27 GiB
+  Current LE             55108
+  Segments               2
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     256
+  Block device           253:0
+   
+  --- Logical volume ---
+  LV Path                /dev/centos/swap
+  LV Name                swap
+  VG Name                centos
+  LV UUID                WJ7f1U-BCz1-LOZg-djAZ-GvIR-t06P-3F4KKD
+  LV Write Access        read/write
+  LV Creation host, time syslog, 2024-09-23 14:38:28 +0800
+  LV Status              NOT available
+  LV Size                7.81 GiB
+  Current LE             2000
+  Segments               1
+  Allocation             inherit
+  Read ahead sectors     auto
+   
+  --- Logical volume ---
+  LV Path                /dev/centos/root
+  LV Name                root
+  VG Name                centos
+  LV UUID                waqOcy-ettH-58z1-WogT-GgDY-v97j-fTij7p
+  LV Write Access        read/write
+  LV Creation host, time syslog, 2024-09-23 14:38:32 +0800
+  LV Status              NOT available
+  LV Size                1.81 TiB
+  Current LE             474806
+  Segments               2
+  Allocation             inherit
+  Read ahead sectors     auto
+```
+
+
+
+## 4.2 识别冲突的VG信息
+
+```bash
+[root@syslog ~]# pvs
+  PV         VG     Fmt  Attr PSize    PFree
+  /dev/sda2  centos lvm2 a--  <223.08g    0 
+  /dev/sdd2  centos lvm2 a--    <1.82t    0 
+  
+[root@syslog ~]# vgs -v
+    Cache: Duplicate VG name centos: Prefer existing 0kZqzY-CU3x-WO5g-Yhsu-WPsV-34O8-beg0Fc vs new b8uQE2-lSBQ-pszt-jYwa-XX9n-KS0z-wLGdqS
+    Cache: Duplicate VG name centos: Prefer existing b8uQE2-lSBQ-pszt-jYwa-XX9n-KS0z-wLGdqS vs new 0kZqzY-CU3x-WO5g-Yhsu-WPsV-34O8-beg0Fc
+    Archiving volume group "centos" metadata (seqno 7).
+    Archiving volume group "centos" metadata (seqno 7).
+    Creating volume group backup "/etc/lvm/backup/centos" (seqno 7).
+    Cache: Duplicate VG name centos: Prefer existing 0kZqzY-CU3x-WO5g-Yhsu-WPsV-34O8-beg0Fc vs new b8uQE2-lSBQ-pszt-jYwa-XX9n-KS0z-wLGdqS
+    Archiving volume group "centos" metadata (seqno 7).
+    Archiving volume group "centos" metadata (seqno 7).
+    Creating volume group backup "/etc/lvm/backup/centos" (seqno 7).
+  VG     Attr   Ext   #PV #LV #SN VSize    VFree VG UUID                                VProfile
+  centos wz--n- 4.00m   1   2   0 <223.08g    0  0kZqzY-CU3x-WO5g-Yhsu-WPsV-34O8-beg0Fc         
+  centos wz--n- 4.00m   1   2   0   <1.82t    0  b8uQE2-lSBQ-pszt-jYwa-XX9n-KS0z-wLGdqS  
+```
+
+
+
+## 4.3 根据UUID重命名VG（例如将原VG名centos改为centos_old）
+
+```bash
+[root@syslog ~]# vgrename b8uQE2-lSBQ-pszt-jYwa-XX9n-KS0z-wLGdqS centos_old 
+  Processing VG centos because of matching UUID b8uQE2-lSBQ-pszt-jYwa-XX9n-KS0z-wLGdqS
+  Volume group "b8uQE2-lSBQ-pszt-jYwa-XX9n-KS0z-wLGdqS" successfully renamed to "centos_old"
+
+[root@syslog ~]# vgs -v
+    Archiving volume group "centos" metadata (seqno 7).
+    Creating volume group backup "/etc/lvm/backup/centos" (seqno 7).
+  VG         Attr   Ext   #PV #LV #SN VSize    VFree VG UUID                                VProfile
+  centos     wz--n- 4.00m   1   2   0 <223.08g    0  0kZqzY-CU3x-WO5g-Yhsu-WPsV-34O8-beg0Fc         
+  centos_old wz--n- 4.00m   1   2   0   <1.82t    0  b8uQE2-lSBQ-pszt-jYwa-XX9n-KS0z-wLGdqS         
+```
+
+
+
+## 4.4 激活并验证新VG
+
+```bash
+[root@syslog ~]# vgchange -ay centos_old 
+  2 logical volume(s) in volume group "centos_old" now active
+[root@syslog ~]# lvscan 
+  ACTIVE            '/dev/centos/swap' [7.81 GiB] inherit
+  ACTIVE            '/dev/centos/root' [<215.27 GiB] inherit
+  ACTIVE            '/dev/centos_old/swap' [7.81 GiB] inherit
+  ACTIVE            '/dev/centos_old/root' [1.81 TiB] inherit
+```
+
+
+
+## 4.5 挂载外部硬盘到本机目录
+
+```bash
+[root@syslog ~]# mount /dev/centos_old/root /mnt/
+[root@syslog ~]# ls /mnt
+bin  boot  data  dev  download  etc  home  lib  lib64  media  mnt  opt  proc  root  run  sbin  shell  srv  sys  tmp  usr  var  windows
+### elasticsearch和docker数据在此目录
+[root@syslog ~]# ls /mnt/data/
+docker  rsyslog
+```
+
+> 然后使用`rsync -avrPz SOURCE/* DEST/`或者`cp -ar`命令进行数据迁移
+>
+> ```
+> -a: archive
+> -v: verbose
+> -r: recursive
+> -P: progress
+> -z: compress
+> SOURCE/*: 同步源目录下所有数据
+> DEST/：到目标目录之下
+> ```
+
+> 如果磁盘有坏道，可以使用dd命令
+>
+> ```
+> dd if=/dev/sda of=/dev/sdb bs=64k conv=noerror,sync status=progress
+> ```
+>
+> conv=noerror,sync：
+> 该参数组合是处理坏道的关键。noerror允许dd在读取错误时继续执行而非终止，sync则用零填充无法读取的块，确保目标设备与源设备的块对齐。
+
+
+
+
+
+
+
+
+
