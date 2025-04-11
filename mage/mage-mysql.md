@@ -10073,3 +10073,77 @@ RECORD LOCKS space id 789 page no 3 n bits 72 index `PRIMARY` of table `your_sch
    ```
 
 这样可以手动结束死锁事务。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# MariaDB
+
+## 1.用户创建和授权
+
+```mysql
+MariaDB [(none)]> create user 'admin'@'localhost' identified via unix_socket or mysql_native_password using password('pass');
+MariaDB [(none)]> grant all on *.* to 'admin'@'localhost' with grant option;
+MariaDB [(none)]> show grants for 'admin'@'localhost'\G
+*************************** 1. row ***************************
+Grants for admin@localhost: GRANT ALL PRIVILEGES ON *.* TO `admin`@`localhost` IDENTIFIED VIA unix_socket OR mysql_native_password USING '*32A74631B3D01D69B36739B9FB9AB85FDFC9BF3A' WITH GRANT OPTION
+```
+
+
+
+### 1.1 默认认证机制：`unix_socket`插件
+
+1. **认证插件的作用**
+   MariaDB从10.4版本开始，默认将`root@localhost`账户的认证方式设置为`unix_socket`。此插件通过操作系统的用户身份验证机制（如Unix域套接字）自动授权用户，无需密码：
+   - **本地连接时**：当用户以系统`root`身份运行`mysql -u root`命令时，`unix_socket`插件会检查当前操作系统的用户ID（UID）是否与数据库账户关联的用户名匹配。若匹配，则直接授权访问。
+   - **远程TCP/IP连接时**：需使用密码或其他认证方式（如`mysql_native_password`），因为`unix_socket`仅适用于本地套接字连接。
+2. **Debian/Ubuntu系统的特殊配置**
+   在Debian系发行版中，MariaDB默认将`root@localhost`绑定到`unix_socket`认证。这种设计旨在简化系统维护任务（如日志轮换、服务启停），并增强安全性，因为只有系统`root`用户才能以数据库`root`身份登录，避免了密码泄露风险。
+3. **IDENTIFIED VIA与USE的语法冲突**
+   - `IDENTIFIED VIA` 是MariaDB特有的语法，用于指定认证插件（如`unix_socket`或`mysql_native_password`），而MySQL中使用`IDENTIFIED WITH`。
+   - `use password('pass')`存在拼写错误，正确语法应为`USING PASSWORD('pass')`。
+4. **多认证插件的兼容性**
+   - 在**MariaDB 10.4+**中支持通过`OR`逻辑指定多个认证插件（如同时允许Unix套接字和密码登录），但MySQL仅支持单一认证插件。
+5. **WITH GRANT OPTION的位置错误**
+   - `WITH GRANT OPTION`应作为`GRANT`语句的独立子句，而非附加在认证配置后。
+6. **PASSWORD()函数的弃用问题**
+   - `PASSWORD()`函数在MySQL 5.7+已弃用，直接使用明文密码即可。
+
+
+
+## 1.2 使用指定认证插件登录
+
+```sh
+$ mysql -u admin -p --protocol=tcp --default-auth=mysql_native_password
+```
+
+
+
+### 1.3 重新初始化mariadb
+
+```sh
+# 重新初始化
+mariadb-install-db \
+  --user=mysql \
+  --datadir=/var/lib/mysql \
+  --auth-root-authentication-method=normal  
+
+# 是否除匿名用户、是否开启unix_socket、配置'root'@'localhost'密码
+/usr/bin/mariadb-secure-installation
+```
+
