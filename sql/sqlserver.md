@@ -887,7 +887,12 @@ OUTER APPLY(
 > OUTER APPLY()工作原理是把左表当做目标表，把子集表当做源表，拿源表的每一行去跟目标表的行去比较(字段必须相对应连接)，当源表和目标表匹配到时则保留，如果未匹配到，则目标表显示，源表显示为NULL。子集表中ORDER BY比top优先级高。(类似LEFT JOIN，与LEFT JOIN不同的是OUTER APPLY()是拿子集表的多行跟左表的一行去比较)
 
 
-#常用操作SQL
+
+
+# 常用操作SQL
+
+## 1. 查询数据库会话
+```sql
 select spid as ProcessID,db_name(dbid) as DBNAME,loginame as UserName,count(dbid) as Connection 
 from master.sys.sysprocesses 
 where dbid > 4
@@ -912,8 +917,6 @@ order by physical_io desc
 
 kill 122
 
-
-#Step for 20210223
 
 select 
 	t1.session_id,
@@ -946,12 +949,14 @@ left join sys.dm_exec_connections t1 on t1.session_id=t2.session_id
 order by t2.logical_reads desc
 
 --kill 63 
+```
 
 
----
-DATETIME: 20210302
-Description: 数据库镜像操作
---删除镜像，并将原先正在还原的数据库设为可操作
+
+## 2. 数据库镜像操作
+
+```sql
+-- 删除镜像，并将原先正在还原的数据库设为可操作
 alter database test set partner off;
 restore database test with recovery;
 
@@ -979,9 +984,12 @@ GO
 
 -- 注意
 主机和镜像服务器的数据库服务都需要使用域控的hs\administrator账户启用，在配置镜像时都使用hs\administrator
+```
 
 
---主备切换
+
+## 3. 主备切换
+```
 【1】.在高安全模式下：
 在主机执行:
 use master;
@@ -1016,33 +1024,48 @@ USE [master]
 GO
 ALTER DATABASE Demo1 SET WITNESS OFF
 GO
---https://www.cnblogs.com/gered/p/10601202.html
+-- 参考链接：https://www.cnblogs.com/gered/p/10601202.html
+```
 
----
-DATETIME: 20210302
-Description: 数据库备份还原脚本 
-#Full Backup
+
+
+## 4. 数据库备份还原脚本
+```sql
+-- Full Backup
 BACKUP DATABASE [test] TO  DISK =test_202102020200_diff.bak  WITH NOFORMAT  
 , NOINIT,  NAME = N'test-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
 
-#Different Backup
+-- Different Backup
 BACKUP DATABASE [test] TO  DISK =test_202102020300_diff.bak  WITH  DIFFERENTIAL, NOFORMAT
 , NOINIT,  NAME = N'test-差异 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10
 
-#Transaction Log Backup
+-- Transaction Log Backup
 BACKUP LOG test TO  DISK =test_202102022300_log.trn WITH NAME=N'ehomsom 日志'
 
+----数据库备份
+--#Full Backup
+BACKUP DATABASE [FinanceDB20210304] TO  DISK ='I:\tmpBackupDB\FinanceDB_full.bak'  WITH NOFORMAT  
+, NOINIT,  NAME = N'[FinanceDB20210304]-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
 
----
-DATETIME: 20210304
-Description: 数据库还原脚本 
-----数据库还原1
+--#Different Backup
+BACKUP DATABASE [FinanceDB20210304] TO  DISK ='I:\tmpBackupDB\FinanceDB_diff.bak'  WITH  DIFFERENTIAL, NOFORMAT
+, NOINIT,  NAME = N'[FinanceDB20210304]-差异 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10
+
+--#Transaction Log Backup
+BACKUP LOG [FinanceDB20210304] TO  DISK ='I:\tmpBackupDB\FinanceDB_log.trn' WITH NAME=N'[FinanceDB20210304] 日志'
+```
+
+**数据库还原脚本**
+
+```sql
+-- 还原数据库FinanceDB
 use master
 go
 
 create database FinanceDB20210304
 GO
---还原完整备份
+
+-- 还原全量备份
 RESTORE DATABASE FinanceDB20210304
 FROM
 DISK='K:\2020\11\FinanceDB_20201101020001_full.bak'
@@ -1050,14 +1073,16 @@ WITH MOVE 'FinanceDB' TO 'F:\TmpDb\FinanceDB20210304.mdf',
 MOVE 'FinanceDB_log' TO 'F:\TmpDb\FinanceDB20210304_log.ldf',
 STATS = 10, REPLACE,NORECOVERY
 GO
---还原差异备份
+
+-- 还原差异备份
 RESTORE DATABASE FinanceDB20210304
 FROM
 DISK='K:\2020\11\FinanceDB_20201107030000_diff.bak'
 WITH STATS = 10,
 REPLACE,RECOVERY
 GO
---还原事物日志备份
+
+-- 还原事务日志备份
 RESTORE LOG sms2018
 FROM
 DISK = N'L:\2018\10\SMS20181022230000_log.trn'
@@ -1065,7 +1090,7 @@ WITH STATS = 10, RECOVERY ,STOPAT='2018-10-22 14:30:00'
 GO
 
 
-----数据库还原2
+-- 还原数据库topway
 USE master
 GO
 
@@ -1096,8 +1121,6 @@ WITH FILE=2,RECOVERY,REPLACE,STATS=10 --,STOPAT='2021-03-04 20:25:00' --时间�
 GO
 
 
----------------
-
 --参数说明：
 --WITH MOVE TO：重新指定文件的路径，WITH MOVE
 --TO数量取决于数据库文件数量
@@ -1105,25 +1128,12 @@ GO
 --REPLACE：覆盖现有数据库
 --NORECOVERY：不对数据库进行任何操作，不回滚未
 --提交的事务
-
-
----------------
-----数据库备份
---#Full Backup
-BACKUP DATABASE [FinanceDB20210304] TO  DISK ='I:\tmpBackupDB\FinanceDB_full.bak'  WITH NOFORMAT  
-, NOINIT,  NAME = N'[FinanceDB20210304]-完整 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10  
-
---#Different Backup
-BACKUP DATABASE [FinanceDB20210304] TO  DISK ='I:\tmpBackupDB\FinanceDB_diff.bak'  WITH  DIFFERENTIAL, NOFORMAT
-, NOINIT,  NAME = N'[FinanceDB20210304]-差异 数据库 备份', SKIP, NOREWIND, NOUNLOAD,  STATS = 10
-
---#Transaction Log Backup
-BACKUP LOG [FinanceDB20210304] TO  DISK ='I:\tmpBackupDB\FinanceDB_log.trn' WITH NAME=N'[FinanceDB20210304] 日志'
+```
 
 
 
-#20210628
---查询死锁
+## 5. 查询死锁
+```sql
 select    
     request_session_id spid,   
     OBJECT_NAME(resource_associated_entity_id) tableName    
@@ -1131,14 +1141,15 @@ from
     sys.dm_tran_locks   
 where    
     resource_type='OBJECT' 
-
---杀死死锁进程
+	
+	
+-- 杀死死锁进程
 kill 354 
 
---显示死锁相关信息
+-- 显示死锁相关信息
 exec sp_who2 354
 
---SQLServer查看用户连接数
+-- SQLServer查看用户连接数
 SELECT login_name,  
        Count(0) user_count  
 FROM   Sys.dm_exec_requests dr WITH(nolock)  
@@ -1151,39 +1162,304 @@ GROUP  BY login_name
 ORDER  BY user_count DESC 
 
 
+-- 查询死锁的存储过程
+USE [master]
+GO
+/****** Object:  StoredProcedure [dbo].[sp_who_lock_TMP]    Script Date: 2025/4/14 15:06:13 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ 
+ALTER PROCEDURE [dbo].[sp_who_lock_TMP]
+AS
+    BEGIN
+        DECLARE @spid INT ,
+            @bl INT ,
+            @intTransactionCountOnEntry INT ,
+            @intRowcount INT ,
+            @intCountProperties INT ,
+            @intCounter INT
+ 
+        CREATE TABLE #tmp_lock_who
+            (
+              id INT IDENTITY(1, 1) ,
+              spid SMALLINT ,
+              bl SMALLINT
+            )
+ 
+        IF @@ERROR <> 0
+            RETURN @@ERROR
+ 
+        INSERT INTO #tmp_lock_who ( spid, bl )
+                SELECT 0, blocked
+                    FROM ( SELECT *
+                            FROM sys.sysprocesses
+                            WHERE blocked > 0
+                         ) a
+                    WHERE NOT EXISTS ( SELECT *
+                                        FROM ( SELECT *
+                                                FROM sys.sysprocesses
+                                                WHERE blocked > 0
+                                             ) b
+                                        WHERE a.blocked = spid )
+                UNION
+                SELECT spid, blocked
+                    FROM sys.sysprocesses
+                    WHERE blocked > 0
+ 
+        IF @@ERROR <> 0
+            RETURN @@ERROR
+ 
+       -- 找到临时表的记录数
+        SELECT @intCountProperties = COUNT(*), @intCounter = 1
+            FROM #tmp_lock_who
+ 
+        IF @@ERROR <> 0
+            RETURN @@ERROR
+ 
+        IF @intCountProperties = 0
+            SELECT N'现在没有阻塞和死锁信息' AS message
+       -- 循环开始
+        WHILE @intCounter <= @intCountProperties
+            BEGIN
+              -- 取第一条记录
+                SELECT @spid = spid, @bl = bl
+                    FROM #tmp_lock_who
+                    WHERE Id = @intCounter
+                BEGIN
+                    IF @spid = 0
+                        SELECT N'引起数据库死锁的是: ' + CAST(@bl AS VARCHAR(10))
+                                + N'进程号,其执行的SQL语法如下'
+                    ELSE
+                        SELECT N'进程号SPID：' + CAST(@spid AS VARCHAR(10))
+                                + N'被进程号SPID：' + CAST(@bl AS VARCHAR(10)) N'阻塞,其当前进程执行的SQL语法如下'
+                    DBCC INPUTBUFFER (@bl )
+                END
+ 
+              -- 循环指针下移
+                SET @intCounter = @intCounter + 1
+            END
+ 
+ 
+        DROP TABLE #tmp_lock_who
+ 
+        RETURN 0
+    END
+--
+```
 
---202109161156 
---新建用户
-create login WN010 with password='123456',check_policy=off,check_expiration=off
-create user WN010 for login WN010 with default_schema = dbo 
---新建组
-EXEC sp_addrole 'updateroler10'
-GRANT UPDATE TO updateroler10
+
+
+## 6. 用户管理
+
+```sql
+-- 进入系统数据库
+use master 
+go 
+
+-- 创建登录用户
+create login ops with password='123456',check_policy=off,check_expiration=off,DEFAULT_DATABASE=master;
+
+-- 创建数据库用户并绑定登录用户
+use test
+create user ops for login ops with default_schema = dbo 
 go
---授予组权限
-exec sp_addrolemember 'db_datareader','WN010'    --通过加入数据库角色，赋予数据库用户db_datareader权限
-exec sp_addrolemember 'updateroler10','WN010'    --再授予更新权限
+use topway20250408
+create user ops for login ops with default_schema = dbo 
+go
+
+
+-- 新建角色并授予角色权限
+use test
+go
+EXEC sp_addrole 'hs_ops_role'
+GRANT UPDATE TO hs_ops_role
+go
+
+use topway20250408
+EXEC sp_addrole 'hs_ops_role'
+GRANT UPDATE TO hs_ops_role
+go
+
+
+
+-- 赋予数据库用户特定角色权限
+use test
+exec sp_addrolemember 'db_datareader','ops'		-- 通过加入数据库角色，赋予数据库用户db_datareader权限
+exec sp_addrolemember 'hs_ops_role','ops'			-- 再授予更新权限
+go 
+
+use topway20250408
+exec sp_addrolemember 'db_datareader','ops'		-- 通过加入数据库角色，赋予数据库用户db_datareader权限
+exec sp_addrolemember 'hs_ops_role','ops'			-- 再授予更新权限
 go 
 
 
---1. 启用、禁用登录账户
-alter login WN010 disable
-alter login WN010 enable
---2. 修改登录账户名称与密码
-alter login WN010 with name = WNCS
-alter login WN010 with password = '123456'
---3.删除SQLServer登录账户
-select * from sys.sysprocesses where loginame='WN010'  
-kill 154       
-drop login WN010     
---4. 修改数据库用户名、密码、数据库用户
-alter user WN010 with name = WNCS
-alter user WN010 with default_schema = sys
---5.删除数据库用户  
-drop user WN010
+-- 进入test数据库测试
+use test
+go 
+-- 测试权限，模拟登录用户ops
+EXECUTE AS USER = 'ops';
+-- 查看当前登录名
+select USER_NAME();
+-- 测试SELECT权限（应成功）
+SELECT * FROM Orders
+-- 测试UPDATE权限（应成功）
+UPDATE Orders SET Amount = '888' WHERE OrderID = 101;
+-- 测试DELETE权限（应失败）
+DELETE FROM Orders WHERE OrderID = 101;
+-- 退出模拟登录用户
+REVERT;
 
 
---批量授予存储过程
+
+-- 数据库级别，查看指定角色db_datareader中有哪些用户
+SELECT 
+    dp.name AS UserName,
+    r.name AS RoleName
+FROM 
+    sys.database_role_members drm
+JOIN 
+    sys.database_principals r ON drm.role_principal_id = r.principal_id
+JOIN 
+    sys.database_principals dp ON drm.member_principal_id = dp.principal_id
+WHERE 
+    r.name = 'db_datareader';
+	
+
+
+-- 查看所有用户对应的所有角色权限
+use test;
+EXEC sp_helpuser;
+-- 查看指定用户对应的角色权限
+use test;
+EXEC sp_helpuser ops;
+-- UserName	RoleName	LoginName	DefDBName	DefSchemaName	UserID	SID
+-- ops	hs_ops_role	ops	master	dbo	46        	0x05C2B6064623A94DA5A6E89716C61791
+-- ops	db_datareader	ops	master	dbo	46        	0x05C2B6064623A94DA5A6E89716C61791
+
+-- 为用户删除角色
+use test;
+EXEC sp_droprolemember 'hs_ops_role', 'ops';
+
+-- 再次查看指定用户对应的角色权限
+use test;
+EXEC sp_helpuser ops;
+-- UserName	RoleName	LoginName	DefDBName	DefSchemaName	UserID	SID
+-- ops	db_datareader	ops	master	dbo	6         	0x05C2B6064623A94DA5A6E89716C61791
+
+
+
+-- 服务器级别，查看登录用户是否启用或禁用
+SELECT name AS 登录名, 
+       type_desc AS 类型, 
+       create_date AS 创建时间, 
+       case when is_disabled=0 then N'启用'
+		when is_disabled=1 then N'禁用' 
+		else '' END AS 是否禁用
+FROM sys.server_principals
+WHERE type IN ('U', 'S', 'G')  -- U: Windows用户, S: SQL登录, G: Windows组
+and name = 'ops'
+
+
+
+-- 服务器级别，启用、禁用登录账户
+alter login ops disable
+alter login ops enable
+
+
+
+-- 服务器级别，修改登录用户名称
+alter login ops with name = operator
+-- 服务器级别，修改登录用户密码
+alter login operator with password = '666666'
+-- 数据库级别，修改登录用户默认架构
+use test;
+alter user ops with default_schema = sys
+
+
+
+
+-- 再次查看指定用户对应的角色权限
+use test;
+EXEC sp_helpuser ops;
+-- UserName	RoleName	LoginName	DefDBName	DefSchemaName	UserID	SID
+-- ops	db_datareader	operator	master	sys	6         	0x05C2B6064623A94DA5A6E89716C61791
+
+use topway20250408;
+EXEC sp_helpuser ops;
+-- UserName	RoleName	LoginName	DefDBName	DefSchemaName	UserID	SID
+-- ops	hs_ops_role	operator	master	sys	46        	0x05C2B6064623A94DA5A6E89716C61791
+-- ops	db_datareader	operator	master	sys	46        	0x05C2B6064623A94DA5A6E89716C61791
+
+
+-- 为数据库用户删除角色，记住是数据库用户而不是登录用户
+use test;
+EXEC sp_droprolemember 'db_datareader', 'ops';
+
+use topway20250408;
+EXEC sp_droprolemember 'hs_ops_role', 'ops';
+EXEC sp_droprolemember 'db_datareader', 'ops';
+
+
+-- 再次查看指定用户对应的角色权限
+use test;
+EXEC sp_helpuser ops;
+-- UserName	RoleName	LoginName	DefDBName	DefSchemaName	UserID	SID
+-- ops	public	operator	master	sys	6         	0x05C2B6064623A94DA5A6E89716C61791
+
+use topway20250408;
+EXEC sp_helpuser ops;
+-- UserName	RoleName	LoginName	DefDBName	DefSchemaName	UserID	SID
+-- ops	public	operator	master	sys	46        	0x05C2B6064623A94DA5A6E89716C61791
+
+
+-- 删除数据库用户
+use test
+drop user ops 
+
+use topway20250408
+drop user ops 
+
+
+-- 删除登录用户
+drop login operator
+-- 无法删除登录名 'operator'，因为该用户当前正处于登录状态。
+
+-- 查看客户端连接
+SELECT 
+    conn.session_id,
+    conn.client_net_address,
+    sess.host_name,
+    sess.program_name,
+    sess.login_name,
+    sess.last_request_start_time,
+    sess.last_request_end_time,
+    sess.status
+FROM 
+    sys.dm_exec_connections AS conn
+    INNER JOIN sys.dm_exec_sessions AS sess
+        ON conn.session_id = sess.session_id
+where login_name = 'operator'
+
+-- session_id	client_net_address	host_name	program_name	login_name	last_request_start_time	last_request_end_time	status
+-- 61	172.168.2.219	HS-UA-TSJ-0132	Microsoft SQL Server Management Studio	operator	2025-04-14 17:41:03.390	2025-04-14 17:41:03.390	sleeping
+-- 65	172.168.2.219	HS-UA-TSJ-0132	Microsoft SQL Server Management Studio	operator	2025-04-14 17:41:03.383	2025-04-14 17:41:03.383	sleeping
+
+-- 结束客户端连接
+kill 61
+kill 65
+
+-- 删除登录用户
+drop login operator
+```
+
+
+
+## 7. 授予存储过程、执行计划、视图等权限
+```sql
+---- 授予存储过程权限
 use homsomdb
 SELECT 'GRANT EXECUTE,VIEW DEFINITION ON[dbo].[' + name + ']TO [WN010]' AS t_sql FROM sys.procedures
 -- SELECT 'GRANT EXECUTE,VIEW DEFINITION,ALTER ON[dbo].[' + name + ']TO [hs\testuser]' AS t_sql FROM sys.procedures
@@ -1191,37 +1467,34 @@ GRANT EXECUTE,VIEW DEFINITION  ON [dbo].[AutomaticTicketing_GetRecord]TO [WN010]
 -- revoke EXECUTE,VIEW DEFINITION on [dbo].[AutomaticTicketing_GetRecord] from [WN010]
 
 
-**批量授予执行计划权限**
-
-```
+---- 授予执行计划权限
 -- 数据库级别权限
 USE topway
 GRANT SHOWPLAN TO [HS\testuser]
 -- 服务器级别权限
 GRANT SHOWPLAN TO [HS\testuser] AS SERVER
 
--- 脚本生成
+-- 批量脚本生成
 SELECT 'USE ' + name + '; GRANT SHOWPLAN TO [test];' 
 FROM sys.databases;
-```
 
 
 
-```bash
+---- 授予其它权限
 USE topway;
 GO
  
 DECLARE @loginname VARCHAR(32);
 SET @loginname='[hs\testuser]'
 
----给用户授予查看存储过程定义的权限
+-- 给用户授予查看存储过程定义的权限
 SELECT  'GRANT EXECUTE,VIEW DEFINITION,ALTER ON ' + SCHEMA_NAME(schema_id) + '.'
         + QUOTENAME(name) + ' TO ' + @loginname + ';'
 FROM    sys.procedures where is_ms_shipped=0
 ORDER BY 1 ;
  
  
---给用户授予查看自定义函数定义的权限, 'SQL_TABLE_VALUED_FUNCTION'此表值函数无执行权限
+-- 给用户授予查看自定义函数定义的权限, 'SQL_TABLE_VALUED_FUNCTION'此表值函数无执行权限
 SELECT  'GRANT EXECUTE,VIEW DEFINITION ON ' + SCHEMA_NAME(schema_id) + '.'
         + QUOTENAME(name) + ' TO ' + @loginname + ';'
 FROM    sys.objects
@@ -1229,14 +1502,14 @@ WHERE   type_desc IN ( 'SQL_SCALAR_FUNCTION','AGGREGATE_FUNCTION' );
 ORDER BY 1 ;
 
  
---给用户授予查看视图定义的权限
+-- 给用户授予查看视图定义的权限
 SELECT  'GRANT VIEW DEFINITION ON ' + SCHEMA_NAME(schema_id) + '.'
         + QUOTENAME(name) + ' TO ' + @loginname + ';'
 FROM    sys.views;
 ORDER BY 1 ;
  
  
---给用户授予查看表定义的权限
+-- 给用户授予查看表定义的权限
 SELECT 'GRANT VIEW DEFINITION ON ' + SCHEMA_NAME(schema_id) 
       + QUOTENAME(name) + ' TO ' + @loginname + ';' 
 FROM sys.tables
@@ -1244,9 +1517,11 @@ ORDER BY 1 ;
 ```
 
 
-## 创建登录账户、用户账户、赋权
+
+## 8. sql_exporter登录账户创建、数据库账户创建、赋权
 
 ```sql
+--
 DECLARE @sql VARCHAR(max)
 
 SET @sql=CAST('use master;CREATE LOGIN [sql_exporter] WITH PASSWORD=N''qICJEasdqwDiOSrdT96'', DEFAULT_DATABASE=[master], CHECK_EXPIRATION=OFF, CHECK_POLICY=OFF; GRANT VIEW SERVER STATE TO [sql_exporter];
@@ -1257,41 +1532,10 @@ from master.sys.databases  where state=0
 
 select @sql
 exec(@sql)
-```
+--
 
 
-## 删除用户
-
-```sql
-DECLARE @sql VARCHAR(max)
-
-SET @sql=CAST('' AS VARCHAR(max))
-
-select @sql=@sql+CAST('use '+name+';DROP USER [sql_exporter];'+CHAR(10) AS VARCHAR(max)) 
-from master.sys.databases  where state=0
-
-select @sql=@sql+CAST('use master;DROP LOGIN [sql_exporter];' +CHAR(10) AS VARCHAR(max)) 
-
-select @sql
-exec(@sql)
-
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
---sql_exporter权限授予
+---- sql_exporter权限授予
 -- 设置变量
 DECLARE @sql VARCHAR(max)
 -- 新建登录用户并授权查看服务器状态、查看任何定义权限给用户语句
@@ -1308,18 +1552,37 @@ CREATE LOGIN [sql_exporter] WITH PASSWORD=N'qICJEasdqwDiOSrdT96',DEFAULT_DATABAS
 GRANT VIEW SERVER STATE TO [sql_exporter];
 GRANT VIEW ANY DEFINITION TO [sql_exporter];
 use ActivityDB; CREATE USER [sql_exporter] FOR LOGIN [sql_exporter]; exec sp_addrolemember N'db_datareader', N'sql_exporter';
+```
+
+**sql_exporter用户删除**
+```sql
+DECLARE @sql VARCHAR(max)
+
+SET @sql=CAST('' AS VARCHAR(max))
+
+select @sql=@sql+CAST('use '+name+';DROP USER [sql_exporter];'+CHAR(10) AS VARCHAR(max)) 
+from master.sys.databases  where state=0
+
+select @sql=@sql+CAST('use master;DROP LOGIN [sql_exporter];' +CHAR(10) AS VARCHAR(max)) 
+
+select @sql
+exec(@sql)
+```
 
 
-## sqlserver主键重置为0
+
+
+## 9. 其它常用查询
+```sql
+-- sqlserver主键重置为0
 dbcc checkident('BspDateInfo',reseed,0)	# 参数1：表名，参数2：固定参数，表示重新设置，参数3：重置ID为0，插入下一条数据则为1
 
-
-# 查看当前的实际活跃连接数
+-- 查看当前的实际活跃连接数
 SELECT COUNT(*) AS active_connections
 FROM sys.dm_exec_sessions
 WHERE session_id > 50; -- 排除系统会话
 
-# 查看sqlserver连接情况
+-- 查看sqlserver连接情况
 SELECT 
     conn.session_id,
     conn.client_net_address,
@@ -1334,13 +1597,13 @@ FROM
     INNER JOIN sys.dm_exec_sessions AS sess
         ON conn.session_id = sess.session_id;
 
-# 查看死锁
+-- 查看死锁
 exec [dbo].[sp_who_lock]
 
-# 查看sqlserver系统配置
+-- 查看sqlserver系统配置
 SELECT * FROM sys.configurations
 
-# 查看当前的最大工作线程数和affinity mask设置
+-- 查看当前的最大工作线程数和affinity mask设置
 SELECT
     configuration_id,
     name,
@@ -1352,16 +1615,14 @@ WHERE
     name = 'max worker threads' OR
     name = 'affinity mask';
 
-# 修改 max worker threads 和 affinity mask 设置
+-- 修改 max worker threads 和 affinity mask 设置
 EXEC sp_configure 'max worker threads', <desired_number>;
 RECONFIGURE;
 EXEC sp_configure 'affinity mask', <hexadecimal_value>;
 RECONFIGURE;
 
 
-## 20240919小记
-```
--- 检查权限： 检查当前用户是否有执行存储过程的权限
+-- 检查权限： 检查当前用户或者'hs\testuser'用户是否有执行存储过程的权限
 USE topway20231218
 GO
 SELECT * 
@@ -1380,20 +1641,27 @@ GRANT EXECUTE ON [dbo].[AirTicketAnalysis] TO [hs\testuser];
 REVOKE EXECUTE ON [dbo].[AirTicketAnalysis] TO [hs\testuser]
 
 
--- 查看用户角色 
-USE topway20231218
-GO
-EXEC sp_helpuser 'test';
+-- 查看当前数据库用户有哪些权限
+use test;
+EXEC sp_helpuser ops;
+-- UserName	RoleName	LoginName	DefDBName	DefSchemaName	UserID	SID
+-- ops	hs_ops_role	ops	master	dbo	46        	0x05C2B6064623A94DA5A6E89716C61791
+-- ops	db_datareader	ops	master	dbo	46        	0x05C2B6064623A94DA5A6E89716C61791
 
 
--- 为用户添加角色
-USE topway20231218
-GO
-EXEC sp_addrolemember 'db_owner', 'test';
-EXEC sp_addrolemember 'db_datawriter', 'test';
-
-exec sp_droprolemember 'db_datawriter', 'test';
-
+-- 查看角色有哪些用户，显示用户名称
+SELECT 
+    dp.name AS UserName,
+    r.name AS RoleName
+FROM 
+    sys.database_role_members drm
+JOIN 
+    sys.database_principals r ON drm.role_principal_id = r.principal_id
+JOIN 
+    sys.database_principals dp ON drm.member_principal_id = dp.principal_id
+WHERE 
+    r.name = 'db_datareader';
+	
 
 
 
@@ -1404,20 +1672,131 @@ use your_db;
 GRANT EXECUTE,REFERENCES,VIEW DEFINITION ON TYPE::dbo.IntlProtocolBandingData TO [hs\prod-dbuser];
 -- 查看当前用户表类型权限 
 SELECT * FROM fn_my_permissions('dbo.IntlProtocolBandingData', 'TYPE');
-
+-- 以下是输出结果
 entity_name	subentity_name	permission_name
 dbo.IntlProtocolBandingData		REFERENCES
 dbo.IntlProtocolBandingData		EXECUTE
 dbo.IntlProtocolBandingData		VIEW DEFINITION
 dbo.IntlProtocolBandingData		TAKE OWNERSHIP
 dbo.IntlProtocolBandingData		CONTROL
+
+
+
+
+
+
+-- 查看死锁
+exec [dbo].[sp_who_lock]
+--kill 1012
+
+
+-- 查看当前的实际活跃连接数
+SELECT COUNT(*) AS active_connections
+FROM sys.dm_exec_sessions
+WHERE session_id > 50; 
+
+-- 查看客户端连接
+SELECT 
+    conn.session_id,
+    conn.client_net_address,
+    sess.host_name,
+    sess.program_name,
+    sess.login_name,
+    sess.last_request_start_time,
+    sess.last_request_end_time,
+    sess.status
+FROM 
+    sys.dm_exec_connections AS conn
+    INNER JOIN sys.dm_exec_sessions AS sess
+        ON conn.session_id = sess.session_id;
+
+-- 查看当前活动的会话:
+SELECT
+    sess.session_id,
+    sess.login_name,
+    req.status,
+    req.command,
+    sess.cpu_time,
+		sess.memory_usage,
+		sess.total_scheduled_time,
+    req.total_elapsed_time,
+    sqltext.text
+FROM
+    sys.dm_exec_sessions AS sess
+JOIN
+    sys.dm_exec_requests AS req
+    ON sess.session_id = req.session_id
+CROSS APPLY
+    sys.dm_exec_sql_text(req.sql_handle) AS sqltext
+ORDER BY
+    req.total_elapsed_time,sess.cpu_time,sess.memory_usage DESC;
+
+
+
+
+
+
+-- DBCC LOGINFO(EtermSrv_SysDB);
+
+--------------- ldf文件收缩 -----------
+------ 0. 进入数据库
+----use [ITConfigDB]
+
+------ 1. 查看当前打开的事务
+----DBCC OPENTRAN;
+
+------ 2. 备份事务日志
+----BACKUP LOG [ITConfigDB] TO DISK = 'E:\test\ITConfigDB_20250408103501.trn';
+
+------ 3. 执行检查点
+----CHECKPOINT;
+
+------ 4. 查看日志文件状态
+----DBCC LOGINFO([ITConfigDB]);
+
+------ 5. 收缩日志文件
+----DBCC SHRINKFILE ([ITConfigDB_log], 1);
+
+------ 6. 重复备份和收缩（如果需要）
+----BACKUP LOG [ITConfigDB] TO DISK = 'E:\test\ITConfigDB_20250408103502.trn';
+----DBCC SHRINKFILE ([ITConfigDB_log], 1);
+
+
+--------------------------------
+---- 批量写入事务日志，是head-log移到最前面
+-- 查看日志head-log
+-- DBCC LOGINFO([TravelReportDB]);
+
+-- 查看测试表TestInsertLog
+-- select count(1) from TestInsertLog;
+
+---- 创建测试表TestInsertLog
+--CREATE TABLE TestInsertLog (
+--    ID INT IDENTITY(1,1) PRIMARY KEY,
+--    DataValue NVARCHAR(100)
+--);
+
+-- 批量插入数据到测试表TestInsertLog
+--INSERT INTO TestInsertLog (DataValue)
+--SELECT TOP 100000 -- 调整为你需要的行数
+--    NEWID()
+--FROM sys.objects a
+--CROSS JOIN sys.objects b;
+
+-- 删除测试表TestInsertLog
+-- drop table TestInsertLog;
+------------------------------
+-------------------------------------
+
+-- DBCC LOGINFO([OperationLogsDB]);
+
+
+
 ```
 
 
-</pre>
 
-
-## sqlserver数据库ldf日志文件收缩
+## 10. sqlserver数据库ldf日志文件收缩
 
 [参考网址](https://www.cnblogs.com/gallen-n/p/6555283.html)
 
@@ -1524,3 +1903,46 @@ RecoveryUnitId	FileId	FileSize	StartOffset	FSeqNo	Status	Parity	CreateLSN
 0	2	20971520	346554368	0	0	0	20451000000409600346
 0	2	20971520	367525888	0	0	0	20451000003071200346
 ```
+
+
+
+
+
+## 11. 服务器角色
+
+**`sysadmin`权限的核心定义与作用**
+
+1. 权限范围
+   - `sysadmin`是SQL Server的固定服务器角色，其成员拥有**所有权限**，包括但不限于：
+
+- 创建/删除数据库、用户、角色
+- 修改服务器配置（如内存分配、网络设置）、重启或关闭实例
+- 管理审计日志、安全策略、操作系统文件（通过`xp_cmdshell`执行命令）
+- 覆盖其他用户的权限，甚至移除其他`sysadmin`成员
+  - 与`sa`账户的关系：`sa`默认属于`sysadmin`且不可移除。
+
+2. 与其他角色的对比
+
+- **Serveradmin**：仅管理服务器级配置（如内存、关闭实例），无法控制数据库或用户。
+- **Securityadmin**：管理登录名和密码，但权限范围远小于`sysadmin`。
+- **Public角色**：所有登录默认加入，但初始无权限。
+
+
+
+```sql
+-- 此方法兼容SQL Server 2012及以上版本 
+ALTER SERVER ROLE sysadmin ADD MEMBER test;
+ALTER SERVER ROLE sysadmin drop MEMBER test;
+
+-- 适用于所有版本，但未来可能被弃用
+EXEC sp_addsrvrolemember 'test', 'sysadmin';
+EXEC sp_dropsrvrolemember 'test', 'sysadmin';
+
+-- 查看是否属于sysadm角色 
+SELECT IS_SRVROLEMEMBER('sysadmin', 'test') AS IsSysadmin;
+```
+
+
+
+
+
