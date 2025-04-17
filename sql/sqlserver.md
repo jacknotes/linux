@@ -1029,7 +1029,7 @@ GO
 
 
 
-## 4. 数据库备份还原脚本
+## 4. 备份还原脚本
 ```sql
 -- Full Backup
 BACKUP DATABASE [test] TO  DISK =test_202102020200_diff.bak  WITH NOFORMAT  
@@ -1457,7 +1457,57 @@ drop login operator
 
 
 
-## 7. 授予存储过程、执行计划、视图等权限
+## 7. 授予权限
+
+授予存储过程、执行计划、视图等权限
+
+- **对象级权限**：
+
+  ```sql
+  -- 授予用户对存储过程的执行权限,OBJECT::dbo表示对特定数据库对象（如表、视图、存储过程）的权限控制。例如，dbo.sp_CalculateSalary表示属于dbo架构的表。
+  GRANT EXECUTE ON OBJECT::dbo.sp_CalculateSalary TO UserC;
+  
+  -- TYPE指用户定义数据类型（UDT），TYPE::dbo表示对属于dbo架构的自定义数据类型的权限。
+  GRANT EXECUTE ON TYPE::dbo.PhoneNumber TO UserB;
+  ```
+
+  
+
+- **架构级权限**：
+
+  ```sql
+  -- 禁止角色修改dbo架构下的所有对象
+  DENY ALTER ON SCHEMA::dbo TO Role_Developers;
+  ```
+
+  
+
+- **数据库级权限**：
+
+  ```sql
+  -- 允许用户创建新表
+  GRANT CREATE TABLE TO UserD;
+  ```
+
+  
+
+- **除了上述类型，SQL Server还支持以下安全对象（Securable）的权限管理：**
+
+  | **对象类型**         | **描述**               | **适用权限示例**                                      |
+  | -------------------- | ---------------------- | ----------------------------------------------------- |
+  | **DATABASE**         | 数据库级别的权限       | `CREATE TABLE`, `BACKUP DATABASE`, `ALTER ANY USER`   |
+  | **SERVER**           | 服务器级别的权限       | `CREATE DATABASE`, `ALTER SERVER ROLE`, `CONNECT SQL` |
+  | **ENDPOINT**         | 通信端点（如HTTP端点） | `ALTER`, `CONNECT`, `TAKE OWNERSHIP`                  |
+  | **LOGIN**            | 服务器登录账户         | `IMPERSONATE`, `CONTROL`, `ALTER ANY LOGIN`           |
+  | **ROLE**             | 数据库角色或服务器角色 | `ALTER`, `CONTROL`, `ADD MEMBER`                      |
+  | **ASSEMBLY**         | 程序集（CLR集成）      | `EXECUTE`, `REFERENCES`, `ALTER`                      |
+  | **FULLTEXT CATALOG** | 全文目录               | `CONTROL`, `REFERENCES`                               |
+  | **SYMMETRIC KEY**    | 对称密钥               | `VIEW DEFINITION`, `ALTER`, `REFERENCES`              |
+  | **CERTIFICATE**      | 证书                   | `CONTROL`, `TAKE OWNERSHIP`                           |
+  | **SEQUENCE**         | 序列对象               | `UPDATE`, `CONTROL`                                   |
+
+
+
 ```sql
 ---- 授予存储过程权限
 use homsomdb
@@ -1514,11 +1564,16 @@ SELECT 'GRANT VIEW DEFINITION ON ' + SCHEMA_NAME(schema_id)
       + QUOTENAME(name) + ' TO ' + @loginname + ';' 
 FROM sys.tables
 ORDER BY 1 ;
+
+
+
 ```
 
 
 
-## 8. sql_exporter登录账户创建、数据库账户创建、赋权
+## 8. sql_exporter账户
+
+sql_exporter登录账户创建、数据库账户创建、赋权
 
 ```sql
 --
@@ -1791,12 +1846,21 @@ ORDER BY
 -- DBCC LOGINFO([OperationLogsDB]);
 
 
+---- 获取所有数据库名称
+-- 方法1：使用sys.databases视图（推荐）
+SELECT name AS DatabaseName 
+FROM sys.databases 
+WHERE database_id > 4  -- 排除系统数据库
+ORDER BY name;
+
+-- 方法2：使用sp_databases存储过程
+EXEC sp_databases;
 
 ```
 
 
 
-## 10. sqlserver数据库ldf日志文件收缩
+## 10. ldf日志文件收缩
 
 [参考网址](https://www.cnblogs.com/gallen-n/p/6555283.html)
 
@@ -1930,6 +1994,7 @@ RecoveryUnitId	FileId	FileSize	StartOffset	FSeqNo	Status	Parity	CreateLSN
 
 
 ```sql
+---- 对登录用户进行添加和移除服务器角色
 -- 此方法兼容SQL Server 2012及以上版本 
 ALTER SERVER ROLE sysadmin ADD MEMBER test;
 ALTER SERVER ROLE sysadmin drop MEMBER test;
@@ -1940,9 +2005,767 @@ EXEC sp_dropsrvrolemember 'test', 'sysadmin';
 
 -- 查看是否属于sysadm角色 
 SELECT IS_SRVROLEMEMBER('sysadmin', 'test') AS IsSysadmin;
+
+
+-- 查看所有登录用户及对应的类型
+USE master;
+GO
+SELECT name, type_desc
+FROM sys.server_principals
+WHERE type_desc IN ('SQL_LOGIN', 'WINDOWS_LOGIN', 'WINDOWS_GROUP', 'CERTIFICATE', 'ASYMMETRIC_KEY', 'EXTERNAL_LOGIN');
+
+-- 查看服务器所有角色
+SELECT name, type_desc FROM sys.server_principals WHERE type = 'R';
+
+-- 查看所有登录用户对应的服务器角色
+USE master;
+SELECT SrvRole = g.name, MemberName = u.name, MemberSID = u.sid 
+FROM sys.server_principals u, sys.server_principals g, sys.server_role_members m 
+WHERE g.principal_id = m.role_principal_id AND u.principal_id = m.member_principal_id 
+ORDER BY 1, 2;
+
+
+-- 查看服务器角色成员
+USE master;
+GO
+SELECT SRM.role_principal_id, SP.name AS Role_Name,
+       SRM.member_principal_id, SP2.name AS Member_Name
+FROM sys.server_role_members AS SRM
+JOIN sys.server_principals AS SP
+ON SRM.role_principal_id = SP.principal_id
+JOIN sys.server_principals AS SP2
+ON SRM.member_principal_id = SP2.principal_id
+ORDER BY SP.name, SP2.name;
+
+
+-- 查看服务器角色的所有权限
+SELECT *
+FROM sys.fn_builtin_permissions('SERVER')
+ORDER BY permission_name;
+
+-- 查看所有服务器角色
+SELECT name, type_desc 
+FROM sys.server_principals 
+WHERE type_desc = 'SERVER_ROLE' 
+AND is_fixed_role = 1;  -- 仅显示固定角色
+
+-- 查看服务器角色成员
+SELECT 
+    r.name AS RoleName, 
+    m.name AS MemberName 
+FROM sys.server_role_members rm
+JOIN sys.server_principals r ON rm.role_principal_id = r.principal_id
+JOIN sys.server_principals m ON rm.member_principal_id = m.principal_id;
+
+
+-- 使用系统存储过程查看服务器角色成员
+EXEC sp_helpsrvrolemember;
+
+-- 查看数据库系统自带角色
+use db;
+exec sp_helprole;
+
+-- 使用系统存储过程查看服务器角色权限
+EXEC sp_srvrolepermission;
+
+-- 查看服务器角色成员
+EXEC sp_helpsrvrolemember 'sysadmin';
+
+-- 查看数据库角色成员
+EXEC sp_helprolemember 'hs_ops';  -- 指定角色名
+SELECT 
+    roles.name AS RoleName,
+    members.name AS MemberName,
+    members.type_desc AS MemberType
+FROM sys.database_role_members rm
+JOIN sys.database_principals roles ON rm.role_principal_id = roles.principal_id
+JOIN sys.database_principals members ON rm.member_principal_id = members.principal_id
+WHERE roles.name = 'db_owner';
+
+
+-- 查看所有数据库角色及其权限描述
+use topway20250408;
+SELECT 
+    r.name AS RoleName, 
+    p.permission_name AS Permission,
+    o.name AS ObjectName,
+    p.state_desc AS PermissionState
+FROM sys.database_principals r
+JOIN sys.database_permissions p ON r.principal_id = p.grantee_principal_id
+LEFT JOIN sys.objects o ON p.major_id = o.object_id
+WHERE r.type = 'R' and r.name='hs_ops' and p.permission_name = 'EXECUTE'
+order by o.name
 ```
 
 
 
 
+
+## 12. 批量添加用户角色权限
+
+### 1. 添加登录用户并对所有数据库赋予指定角色权限
+
+```sql
+-- 创建登录用户，并赋予所有数据库指定角色权限，除开系统数据库
+-- 虽然执行多次报错，但是添加角色是生效的
+DECLARE @DatabaseName NVARCHAR(128);
+DECLARE @USER NVARCHAR(100);
+DECLARE @ROLE NVARCHAR(100);
+DECLARE @ROLE02 NVARCHAR(100);
+DECLARE @ROLE03 NVARCHAR(100);
+DECLARE @CREATE_USER_SQL NVARCHAR(MAX);
+
+SET @USER='markli'
+-- SET @USER='CHINAMI-1PLNOIJ\administrator'
+SET @ROLE='db_datareader'
+SET @ROLE02='db_datawriter'
+SET @ROLE03='db_owner'
+-- windows用户
+--SET @CREATE_USER_SQL = N'use master; create login [' + @USER + '] FROM WINDOWS;'
+SET @CREATE_USER_SQL = N'use master; create login ' + @USER + ' with password=''123456'',check_policy=off,check_expiration=off,DEFAULT_DATABASE=master;'
+EXEC sp_executesql @CREATE_USER_SQL;
+SET @CREATE_USER_SQL = N''
+
+DECLARE db_cursor CURSOR FOR 
+SELECT name FROM sys.databases WHERE database_id > 4;
+
+OPEN db_cursor;
+FETCH NEXT FROM db_cursor INTO @DatabaseName;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	SET @CREATE_USER_SQL = N'
+    USE ' + QUOTENAME(@DatabaseName) + ';
+    create user ['+ @USER +'] for login ['+ @USER +'] with default_schema = dbo;
+	exec sp_addrolemember ' + @ROLE + ',['+ @USER +'];
+	';
+
+	SET @CREATE_USER_SQL = @CREATE_USER_SQL + N'
+	exec sp_addrolemember ' + @ROLE02 + ',['+ @USER +'];
+	exec sp_addrolemember ' + @ROLE03 + ',['+ @USER +'];
+	';
+
+	-- select @CREATE_USER_SQL
+	EXEC sp_executesql @CREATE_USER_SQL;
+
+    FETCH NEXT FROM db_cursor INTO @DatabaseName;
+END;
+
+CLOSE db_cursor;
+DEALLOCATE db_cursor;
+```
+
+**优化版**
+
+```sql
+-- 创建登录用户，并赋予所有数据库指定角色权限，除开系统数据库
+-- 虽然执行多次报错，但是添加角色是生效的
+DECLARE @DatabaseName NVARCHAR(128);
+DECLARE @USER NVARCHAR(100);
+DECLARE @ROLE NVARCHAR(100);
+DECLARE @ROLE02 NVARCHAR(100);
+DECLARE @ROLE03 NVARCHAR(100);
+DECLARE @CREATE_USER_SQL NVARCHAR(MAX);
+
+SET @USER='prod-dbuser-ddl'
+-- SET @USER='CHINAMI-1PLNOIJ\administrator'
+SET @ROLE='db_ddladmin'
+--SET @ROLE02='db_datawriter'
+--SET @ROLE03='db_owner'
+-- windows用户
+--SET @CREATE_USER_SQL = N'use master; create login [' + @USER + '] FROM WINDOWS;'
+SET @CREATE_USER_SQL = N'use master; create login [' + @USER + '] with password=''123456'',check_policy=off,check_expiration=off,DEFAULT_DATABASE=master;'
+
+
+DECLARE db_cursor CURSOR FOR 
+SELECT name FROM sys.databases WHERE database_id > 4;
+
+OPEN db_cursor;
+FETCH NEXT FROM db_cursor INTO @DatabaseName;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	SET @CREATE_USER_SQL += N'
+    USE ' + QUOTENAME(@DatabaseName) + ';
+    create user ['+ @USER +'] for login ['+ @USER +'];
+	exec sp_addrolemember ' + @ROLE + ',['+ @USER +'];
+	';
+
+	--SET @CREATE_USER_SQL = @CREATE_USER_SQL + N'
+	--exec sp_addrolemember ' + @ROLE02 + ',['+ @USER +'];
+	--exec sp_addrolemember ' + @ROLE03 + ',['+ @USER +'];
+	--';
+
+    FETCH NEXT FROM db_cursor INTO @DatabaseName;
+END;
+
+CLOSE db_cursor;
+DEALLOCATE db_cursor;
+
+select @CREATE_USER_SQL
+-- EXEC sp_executesql @CREATE_USER_SQL;
+```
+
+
+
+
+
+### 2. 查看指定用户所有数据库的权限
+
+```sql
+-- 查看所有数据库指定用户的角色权限，除开系统数据库
+DECLARE @DatabaseName NVARCHAR(128);
+DECLARE @SQL NVARCHAR(MAX);
+DECLARE @USER NVARCHAR(100);
+
+SET @USER='markli'
+-- SET @USER='CHINAMI-1PLNOIJ\administrator'
+DECLARE db_cursor CURSOR FOR 
+SELECT name FROM sys.databases WHERE database_id > 4;
+
+OPEN db_cursor;
+FETCH NEXT FROM db_cursor INTO @DatabaseName;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    SET @SQL = N'
+    USE ' + QUOTENAME(@DatabaseName) + ';
+    SELECT 
+        DB_NAME() COLLATE Chinese_PRC_CI_AS AS DatabaseName,
+        USER_NAME(p.grantee_principal_id) COLLATE Chinese_PRC_CI_AS AS UserName,
+        p.permission_name COLLATE Chinese_PRC_CI_AS AS Permission,
+        p.state_desc COLLATE Chinese_PRC_CI_AS AS PermissionState,
+        CASE 
+            WHEN p.class = 0 THEN ''Database''
+            WHEN p.class = 3 THEN ''Schema''
+            WHEN p.class = 4 THEN ''Database Principal''
+            ELSE ''Other''
+        END AS SecurableType
+    FROM sys.database_permissions p
+    WHERE USER_NAME(p.grantee_principal_id) = '''+ @USER + '''
+    UNION ALL
+    SELECT 
+        DB_NAME() COLLATE Chinese_PRC_CI_AS AS DatabaseName,
+        '''+ @USER + ''' COLLATE Chinese_PRC_CI_AS AS UserName,
+        role.name COLLATE Chinese_PRC_CI_AS AS Permission,
+        ''GRANT'' COLLATE Chinese_PRC_CI_AS AS PermissionState,
+        ''Role Membership'' COLLATE Chinese_PRC_CI_AS AS SecurableType
+    FROM sys.database_role_members rm
+    JOIN sys.database_principals role ON rm.role_principal_id = role.principal_id
+    JOIN sys.database_principals userp ON rm.member_principal_id = userp.principal_id
+    WHERE userp.name = '''+ @USER + ''';';
+
+	--select @SQL
+    EXEC sp_executesql @SQL;
+    FETCH NEXT FROM db_cursor INTO @DatabaseName;
+END;
+
+CLOSE db_cursor;
+DEALLOCATE db_cursor;
+```
+
+**response**
+
+```
+DatabaseName	UserName	Permission	PermissionState	SecurableType
+test	markli	CONNECT	GRANT	Database
+test	markli	db_owner	GRANT	Role Membership
+test	markli	db_datareader	GRANT	Role Membership
+test	markli	db_datawriter	GRANT	Role Membership
+
+topway20250408	markli	CONNECT	GRANT	Database
+topway20250408	markli	db_owner	GRANT	Role Membership
+topway20250408	markli	db_datareader	GRANT	Role Membership
+topway20250408	markli	db_datawriter	GRANT	Role Membership
+```
+
+**优化版**
+
+```sql
+-- 查看所有数据库指定用户的角色权限，除开系统数据库
+DECLARE @DatabaseName NVARCHAR(128);
+DECLARE @SQL NVARCHAR(MAX)=N'';
+DECLARE @USER NVARCHAR(100);
+
+SET @USER='HS\prod-dbuser-ddl'
+-- SET @USER='CHINAMI-1PLNOIJ\administrator'
+DECLARE db_cursor CURSOR FOR 
+SELECT name FROM sys.databases WHERE database_id > 4;
+
+OPEN db_cursor;
+FETCH NEXT FROM db_cursor INTO @DatabaseName;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+    SET @SQL += N'
+    USE ' + QUOTENAME(@DatabaseName) + ';
+    SELECT 
+        DB_NAME() COLLATE Chinese_PRC_CI_AS AS DatabaseName,
+        USER_NAME(p.grantee_principal_id) COLLATE Chinese_PRC_CI_AS AS UserName,
+        p.permission_name COLLATE Chinese_PRC_CI_AS AS Permission,
+        p.state_desc COLLATE Chinese_PRC_CI_AS AS PermissionState,
+        CASE 
+            WHEN p.class = 0 THEN ''Database''
+            WHEN p.class = 3 THEN ''Schema''
+            WHEN p.class = 4 THEN ''Database Principal''
+            ELSE ''Other''
+        END AS SecurableType
+    FROM sys.database_permissions p
+    WHERE USER_NAME(p.grantee_principal_id) = '''+ @USER + '''
+    UNION ALL
+    SELECT 
+        DB_NAME() COLLATE Chinese_PRC_CI_AS AS DatabaseName,
+        '''+ @USER + ''' COLLATE Chinese_PRC_CI_AS AS UserName,
+        role.name COLLATE Chinese_PRC_CI_AS AS Permission,
+        ''GRANT'' COLLATE Chinese_PRC_CI_AS AS PermissionState,
+        ''Role Membership'' COLLATE Chinese_PRC_CI_AS AS SecurableType
+    FROM sys.database_role_members rm
+    JOIN sys.database_principals role ON rm.role_principal_id = role.principal_id
+    JOIN sys.database_principals userp ON rm.member_principal_id = userp.principal_id
+    WHERE userp.name = '''+ @USER + ''';
+	';
+
+
+    FETCH NEXT FROM db_cursor INTO @DatabaseName;
+END;
+
+CLOSE db_cursor;
+DEALLOCATE db_cursor;
+
+select @SQL
+--EXEC sp_executesql @SQL;
+```
+
+
+
+
+
+
+
+### 3. 删除登录用户和所有数据库的用户
+
+```sql
+-- 删除指定登录用户及数据库用户，并解除数据库用户授权，除开系统数据库
+DECLARE @DatabaseName NVARCHAR(128);
+DECLARE @USER NVARCHAR(100);
+DECLARE @DROP_USER_SQL NVARCHAR(MAX);
+
+SET @USER='prod-dbuser-ddl'
+-- SET @USER='CHINAMI-1PLNOIJ\administrator'
+SET @DROP_USER_SQL = N'use master; drop login [' + @USER + '];' 
+
+DECLARE db_cursor CURSOR FOR 
+SELECT name FROM sys.databases WHERE database_id > 4;
+
+OPEN db_cursor;
+FETCH NEXT FROM db_cursor INTO @DatabaseName;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	SET @DROP_USER_SQL += N'
+    USE ' + QUOTENAME(@DatabaseName) + ';
+    drop user ['+ @USER +'];
+	';
+
+    FETCH NEXT FROM db_cursor INTO @DatabaseName;
+END;
+
+CLOSE db_cursor;
+DEALLOCATE db_cursor;
+
+select @DROP_USER_SQL;
+--EXEC sp_executesql @DROP_USER_SQL;
+```
+
+**再次查看指定用户所有数据库的权限**
+
+```
+DatabaseName	UserName	Permission	PermissionState	SecurableType
+
+```
+
+> 已经为空，权限无
+
+
+
+**优化版**
+
+```sql
+-- 删除指定登录用户及数据库用户，并解除数据库用户授权，除开系统数据库
+DECLARE @DatabaseName NVARCHAR(128);
+DECLARE @USER NVARCHAR(100);
+DECLARE @DROP_USER_SQL NVARCHAR(MAX);
+
+SET @USER='prod-dbuser-ddl'
+-- SET @USER='CHINAMI-1PLNOIJ\administrator'
+SET @DROP_USER_SQL = N'use master; drop login [' + @USER + '];' 
+
+DECLARE db_cursor CURSOR FOR 
+SELECT name FROM sys.databases WHERE database_id > 4;
+
+OPEN db_cursor;
+FETCH NEXT FROM db_cursor INTO @DatabaseName;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	SET @DROP_USER_SQL += N'
+    USE ' + QUOTENAME(@DatabaseName) + ';
+    drop user ['+ @USER +'];
+	';
+
+    FETCH NEXT FROM db_cursor INTO @DatabaseName;
+END;
+
+CLOSE db_cursor;
+DEALLOCATE db_cursor;
+
+select @DROP_USER_SQL;
+--EXEC sp_executesql @DROP_USER_SQL;
+```
+
+
+
+
+
+
+
+### 4. 添加角色并授予角色权限-当前对象
+
+```sql
+-- 创建角色并授予角色权限
+DECLARE @ROLE NVARCHAR(MAX)
+DECLARE @ROLE_sql NVARCHAR(MAX)
+DECLARE @sql NVARCHAR(MAX) = '';
+DECLARE @DatabaseName NVARCHAR(128);
+
+set @ROLE='role_ops'
+
+DECLARE db_cursor CURSOR FOR 
+SELECT name FROM sys.databases WHERE database_id > 4;
+
+OPEN db_cursor;
+FETCH NEXT FROM db_cursor INTO @DatabaseName;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	---- 创建角色
+	set @ROLE_sql=N'
+    USE ' + QUOTENAME(@DatabaseName) + ';
+	CREATE ROLE ' + @ROLE + ';'
+
+	select @ROLE_sql;
+	EXEC sp_executesql @ROLE_sql;
+
+	
+	----- 授予表
+	-- 赋予当前数据库所有表的SELECT, INSERT, UPDATE, DELETE权限给角色@ROLE
+	SELECT @sql += 'GRANT SELECT, INSERT, UPDATE, DELETE ON ' 
+		+ QUOTENAME(SCHEMA_NAME(schema_id)) + '.' 
+		+ QUOTENAME(name) + ' TO ' + @ROLE + ';'
+	FROM sys.tables;
+
+	select @sql;
+	EXEC sp_executesql @sql;
+
+	---- 授予执行计划
+	set @sql=N''
+	SELECT @sql = N'GRANT SHOWPLAN TO ' + @ROLE + ';'
+
+	select @sql;
+	EXEC sp_executesql @sql;
+
+	
+	---- 授予存储过程
+	set @sql=N''
+	-- 授予执行权限
+	SELECT @sql = N'GRANT EXECUTE ON DATABASE::' + @DatabaseName + ' TO ' + @ROLE + ';'
+
+	select @sql;
+	EXEC sp_executesql @sql;
+
+	-- 授予ALTER和VIEW DEFINITION权限
+	DECLARE @sql_proc NVARCHAR(MAX) = '';
+	SELECT @sql_proc += 'GRANT VIEW DEFINITION,ALTER ON ' 
+	    + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' 
+	    + QUOTENAME(name) + ' TO ' + @ROLE + ';'
+	FROM sys.procedures;
+	
+	select @sql_proc;
+	EXEC sp_executesql @sql_proc;
+
+
+	---- 授予函数
+	-- 表值函数
+	DECLARE @sql_func NVARCHAR(MAX) = '';
+	SELECT @sql_func += 'GRANT ALTER,VIEW DEFINITION ON ' 
+	    + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' 
+	    + QUOTENAME(name) + ' TO ' + @ROLE + ';'
+	FROM sys.objects 
+	WHERE type IN ('FN', 'IF', 'TF');
+	
+	select @sql_func;
+	EXEC sp_executesql @sql_func;
+
+
+	---- 授予视图
+	DECLARE @sql_view NVARCHAR(MAX) = '';
+	SELECT @sql_view += 'GRANT SELECT, ALTER, VIEW DEFINITION ON ' 
+	    + QUOTENAME(SCHEMA_NAME(schema_id)) + '.' 
+	    + QUOTENAME(name) + ' TO ' + @ROLE + ';'
+	FROM sys.views;
+
+	select @sql_view;
+	EXEC sp_executesql @sql_view;
+
+
+    FETCH NEXT FROM db_cursor INTO @DatabaseName;
+END;
+
+CLOSE db_cursor;
+DEALLOCATE db_cursor;
+```
+
+
+
+### 5. 添加角色并授予角色权限-所有对象
+
+```sql
+-- 创建角色并授予角色权限
+DECLARE @ROLE NVARCHAR(MAX)='role_ops_all';
+DECLARE @sql NVARCHAR(MAX) = '';
+DECLARE @DatabaseName NVARCHAR(128);
+
+DECLARE db_cursor CURSOR FOR 
+SELECT name FROM sys.databases WHERE database_id > 4;
+
+OPEN db_cursor;
+FETCH NEXT FROM db_cursor INTO @DatabaseName;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	---- 创建角色
+	SET @sql=N'
+    USE ' + QUOTENAME(@DatabaseName) + ';
+	CREATE ROLE ' + @ROLE + ';'
+	SELECT @sql;
+	EXEC sp_executesql @sql;
+	
+	----- 授予数据库下所有表和视图
+	-- 赋予当前数据库所有表的SELECT, INSERT, UPDATE, DELETE权限给角色@ROLE
+	SELECT @sql = 'GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::dbo TO ' + @ROLE + ';'
+	SELECT @sql;
+	EXEC sp_executesql @sql;
+
+	---- 授予数据库下所有执行计划
+	SELECT @sql = N'GRANT SHOWPLAN TO ' + @ROLE + ';'
+	SELECT @sql;
+	EXEC sp_executesql @sql;
+
+	---- 授予数据库下所有存储过程和函数
+	SELECT @sql = 'GRANT EXECUTE,VIEW DEFINITION,ALTER ON SCHEMA::dbo TO ' + @ROLE + ';'
+	SELECT @sql;
+	EXEC sp_executesql @sql;
+
+    FETCH NEXT FROM db_cursor INTO @DatabaseName;
+END;
+
+CLOSE db_cursor;
+DEALLOCATE db_cursor;
+```
+
+
+
+### 6. 查看所有数据库角色及其权限描述
+
+`仅限自定义角色`，因为固定角色（例如db_owner）的权限是预定义的，由系统隐式授予，而非通过显式的`GRANT`语句分配。
+
+```sql
+-- 查看所有数据库角色及其权限描述，可添加特定条件进行筛选
+use topway20250408;
+SELECT 
+    r.name AS RoleName, 
+    p.permission_name AS Permission,
+    o.name AS ObjectName,
+    p.state_desc AS PermissionState
+FROM sys.database_principals r
+JOIN sys.database_permissions p ON r.principal_id = p.grantee_principal_id
+LEFT JOIN sys.objects o ON p.major_id = o.object_id
+WHERE r.type = 'R' and r.name='role_ops' --and p.permission_name = 'EXECUTE'
+order by o.name
+```
+
+
+
+### 7. 查看所有数据库指定角色中的成员，除开系统数据库
+
+```sql
+-- 查看所有数据库指定角色中的成员，除开系统数据库
+DECLARE @DatabaseName NVARCHAR(128);
+DECLARE @ROLE_SQL NVARCHAR(MAX);
+DECLARE @ROLE NVARCHAR(100) = 'role_ops';
+
+DECLARE db_cursor CURSOR FOR 
+SELECT name FROM sys.databases WHERE database_id > 4;
+
+OPEN db_cursor;
+FETCH NEXT FROM db_cursor INTO @DatabaseName;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	-- 创建临时表存储角色成员信息
+	DROP TABLE IF EXISTS #RoleMembers;
+	CREATE TABLE #RoleMembers (
+	    RoleName NVARCHAR(128),
+	    MemberName NVARCHAR(128),
+	    MemberSID VARBINARY(85),
+	    DatabaseName NVARCHAR(128)
+	);
+
+	SET @ROLE_SQL = N'
+	USE ' + QUOTENAME(@DatabaseName) + ';
+	INSERT INTO #RoleMembers (RoleName, MemberName, MemberSID) EXEC sp_helprolemember ' + @ROLE + ';
+	UPDATE #RoleMembers SET DatabaseName = ''' + @DatabaseName + ''' where DatabaseName is null;
+	SELECT DatabaseName, RoleName, MemberName, MemberSID FROM #RoleMembers;
+	';
+
+	--select @ROLE_SQL
+
+	EXEC sp_executesql @ROLE_SQL;
+    FETCH NEXT FROM db_cursor INTO @DatabaseName;
+END;
+
+CLOSE db_cursor;
+DEALLOCATE db_cursor;
+```
+
+
+
+### 8. 查看所有数据库指定角色中的成员，除开系统数据库
+
+```sql
+-- 删除所有数据库指定角色，除开系统数据库
+DECLARE @DatabaseName NVARCHAR(128);
+DECLARE @ROLE NVARCHAR(100);
+DECLARE @DROP_ROLE_SQL NVARCHAR(MAX);
+
+SET @ROLE='role_ops'
+
+DECLARE db_cursor CURSOR FOR 
+SELECT name FROM sys.databases WHERE database_id > 4;
+
+OPEN db_cursor;
+FETCH NEXT FROM db_cursor INTO @DatabaseName;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+	SET @DROP_ROLE_SQL = N'
+    USE ' + QUOTENAME(@DatabaseName) + ';
+    drop role ['+ @ROLE +'];
+	';
+	EXEC sp_executesql @DROP_ROLE_SQL;
+
+    FETCH NEXT FROM db_cursor INTO @DatabaseName;
+END;
+
+CLOSE db_cursor;
+DEALLOCATE db_cursor;
+```
+
+
+
+
+
+
+
+## 13. 孤立用户处理
+
+孤立用户是指数据库中存在用户名，但其对应的 SQL Server 登录名（在 `master` 数据库的 `syslogins` 表中）已丢失或 SID（安全标识符）不匹配的情况
+
+**典型场景**：
+
+1. 跨服务器还原数据库时，目标服务器未创建与原服务器相同的登录名。
+2. 重装 SQL Server 或仅还原用户数据库后，登录名未同步重建。
+
+```sql
+-- 查看当前数据库孤立的用户
+---- 是 SQL Server 中修复孤立用户的关键工具，适用于需手动关联用户与登录名的场景。
+-- sp_change_users_login ACTION有3个操作模式：REPORT、AUTO_FIX、UPDATE_ONE
+-- REPORT：列出当前数据库所有孤立用户及其 SID(不支持windows登录用户)，适用场景：诊断问题，权限要求：db_owner
+-- AUTO_FIX：自动创建同名登录名并关联用户（可选密码），适用场景：快速修复，权限要求：sysadmin
+-- UPDATE_ONE：手动关联用户到现有登录名，适用场景：精确控制映射关系，权限要求：db_owner
+use [topway20250408];
+go
+sp_change_users_login 'REPORT'
+GO
+-- superpm	0x9C2C1E89F2D4A5418EEC2839C3CD9A63
+-- YWB	0xF29D2611188B1945B80628BB83D65B81
+-- dbbackup	0xE9E835A237473C4CB0F77021942E0FF9
+
+
+
+-- 创建新登录用户
+-- 创建非windows登录用户时不会自动关联数据库用户，所以需要关联孤立数据库用户
+-- 创建windows登录用户则可以自动关联数据库用户，无需再关联
+use master; 
+create login test with password='pass@123',check_policy=off,check_expiration=off;
+
+
+-- 方式1：
+use [topway20250408];
+go
+-- 关联用户
+sp_change_users_login 'update_one', 'YWB', 'cachedproject'
+GO
+
+use [topway20250408];
+go
+sp_change_users_login 'REPORT'
+GO
+-- superpm	0x9C2C1E89F2D4A5418EEC2839C3CD9A63
+-- dbbackup	0xE9E835A237473C4CB0F77021942E0FF9
+
+
+
+
+---- 方式2：对孤立用户进行绑定
+-- 在新版本中使用 ALTER USER 替代，支持windows登录用户
+use [topway20250408];
+go
+-- 执行第1次成功
+ALTER USER superpm WITH LOGIN = test;
+-- 执行第2次报错，无法将用户重新映射到登录名 'test'，因为该登录名已映射到数据库中的用户，违反了单数据库内一对一映射规则
+-- 需要先解绑test登录用户，或创建新的登录用户绑定到此数据库用户
+ALTER USER dbbackup WITH LOGIN = test;
+
+-- 查看当前数据库用户映射关系
+SELECT dp.name AS [User], sp.name AS [Login]
+FROM sys.database_principals dp
+LEFT JOIN sys.server_principals sp ON dp.sid = sp.sid
+WHERE dp.name = 'superpm';
+-- superpm	test
+
+
+---- 解绑superpm数据库用户，释放test登录用户
+-- 备份用户权限（可选）
+EXEC sp_helpuser 'superpm';
+-- 删除用户（需先转移对象所有权）
+DROP USER superpm;
+-- 创建不关联登录名的用户（仅限包含数据库）
+CREATE USER superpm WITHOUT LOGIN;
+-- 禁用登录名（阻止服务器级连接）
+ALTER LOGIN test DISABLE;
+-- 或撤销数据库访问权限，DENY CONNECT仅阻止用户访问当前数据库，不影响其他数据库
+USE [topway20250408];
+DENY CONNECT TO [superpm];
+
+-- 执行第3次成功
+ALTER USER dbbackup WITH LOGIN = test;
+
+-- 再次查看当前数据库用户映射关系
+SELECT dp.name AS [User], sp.name AS [Login]
+FROM sys.database_principals dp
+LEFT JOIN sys.server_principals sp ON dp.sid = sp.sid
+WHERE dp.name = 'dbbackup';
+-- dbbackup	test
+```
 
