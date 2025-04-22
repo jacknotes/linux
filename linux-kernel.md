@@ -185,6 +185,49 @@ Linux k8s-node04 5.4.187-1.el7.elrepo.x86_64 #1 SMP Mon Mar 21 17:34:42 EDT 2022
 
 
 
+## 使用示例
+释放缓存，使用`/proc/sys/vm/drop_caches`参数，此参数只能写不能查看
+```bash
+root@ansible:/download# ls -l /proc/sys/vm/drop_caches
+--w------- 1 root root 0 Apr 22 17:45 /proc/sys/vm/drop_caches
+
+# 释放页缓存
+root@ansible:/download# free
+              total        used        free      shared  buff/cache   available
+Mem:        1948932      422776       81924        9700     1444232     1335560
+Swap:        995236         524      994712
+root@ansible:/download# echo 1 > /proc/sys/vm/drop_caches
+root@ansible:/download# free
+              total        used        free      shared  buff/cache   available
+Mem:        1948932      422828     1209448        9692      316656     1343428
+Swap:        995236         524      994712
+
+
+# 释放目录项和inode缓存
+root@ansible:/download# free
+              total        used        free      shared  buff/cache   available
+Mem:        1948932      423160     1206908        9692      318864     1343076
+Swap:        995236         524      994712
+root@ansible:/download# echo 2 > /proc/sys/vm/drop_caches
+root@ansible:/download# free
+              total        used        free      shared  buff/cache   available
+Mem:        1948932      292136     1385328        9672      271468     1497172
+Swap:        995236         524      994712
+
+
+# 释放所有缓存
+root@ansible:/download# free
+              total        used        free      shared  buff/cache   available
+Mem:        1948932      282872     1394380        9672      271680     1506412
+Swap:        995236         524      994712
+root@ansible:/download# echo 3 > /proc/sys/vm/drop_caches
+root@ansible:/download# free
+              total        used        free      shared  buff/cache   available
+Mem:        1948932      282168     1396496        9672      270268     1507064
+Swap:        995236         524      994712
+
+```
+
 
 
 
