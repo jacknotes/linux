@@ -1,14 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
 # Zookeeper
 
 ## 1. 什么是Zookeeper
@@ -39,6 +28,18 @@ Zookeeper是一个分布式开源框架，提供了协调分布式应用的基�
 Zookeeper集群的角色： Leader 和 follower
 
 只要集群中有半数以上节点存活，集群就能提供服务
+
+**zookeeper Port:**
+
+* 2181：客户端与ZooKeeper集群通信的主要端口，用于接收客户端的连接请求、数据读写操作（如节点创建、删除、监听等）
+  * 工作机制：客户端通过TCP长连接与此端口建立会话，ZooKeeper通过心跳机制（`tickTime`参数控制）维持连接活性，默认心跳间隔为2000毫秒
+  * 配置项：在配置文件`zoo.cfg`中通过`clientPort`参数定义，默认值为2181
+* 2888：集群内部机器间通信端口，主要用于Leader与Follower之间的数据同步。
+  * 工作机制：Leader节点监听此端口，Follower通过此端口向Leader发送数据同步请求，数据同步基于ZAB协议（ZooKeeper Atomic Broadcast），确保事务日志（ZXID）在集群内一致
+  * 配置项：在`zoo.cfg`中，集群节点配置格式为`server.x=ip:2888:3888`，其中2888为数据同步端口
+* 3888：专用于Leader选举的通信端口
+  * 工作机制：当Leader宕机或集群初始化时，节点通过3888端口发起选举投票，基于ZXID和myid值（服务器唯一标识）确定新Leader，选举过程中，节点间通过3888端口交换投票信息，遵循“多数派原则”（Quorum）达成一致
+  * 容错性：若节点无法通过3888端口连接其他节点（如防火墙限制），选举将失败并导致集群不可用
 
 
 
@@ -445,6 +446,14 @@ $ docker run \
 
 
 
+### 4.3 安装PrettyZoo
+
+[PrettyZoo](https://github.com/vran-dev/PrettyZoo)是由 JavaFX 和 Apache Curator Framework 创建的[Zookeeper](https://zookeeper.apache.org/) GUI ，支持Windows、Mac、Linux系统，由于作者精力问题，于2024-01-09停止维护，仓库只读，目前还是可以下载作用，[下载地址](https://github.com/vran-dev/PrettyZoo/releases/download/v2.1.1/prettyZoo-win.msi)
+
+
+
+
+
 
 
 
@@ -562,28 +571,62 @@ kafka：
 
 
 
-### 3.4 Kafka Leader的选举机制
+### 3.4 Kafka Controller的选举机制
 
-#### 3.4.1 Kafka的Leader是什么
+在kafka中`Controller`也称之为`Leader`
+
+#### 3.4.1 Kafka的Controller是什么
 
 * 首先Kafka会将接收到的消息分区（partition），每个主题（topic）的消息有不同的分区。这样一方面消息的存储就不会受到单一服务器存储空间大小的限制，另一方面消息的处理也可以在多个服务器上并行。
-* 其次为了保证高可用，每个分区都会有一定数量的副本（replica）。这样如果有部分服务器不可用，副本所在的服务器就会接替上来，保证应用的持续性。
-* 但是，为了保证较高的处理效率，消息的读写都是在固定的一个副本上完成。这个副本就是所谓的Leader，而其他副本则是Follower。而Follower则会定期地到Leader上同步数据。
+* 其次为了保证高可用，每个分区都会有一定数量的副本（replicate）。这样如果有部分服务器不可用，副本所在的服务器就会接替上来，保证应用的持续性。
+* 为了保证较高的处理效率，消息的读写都是在固定的一个副本上完成。这个副本就是所谓的Controller，而其他副本则是Replicate。而Replicates则会定期地到Controller上同步数据。
 
 
 
-#### 3.4.2 Leader选举
+#### 3.4.2 Controller选举
 
-* 如果某个分区所在的服务器出了问题不可用，kafka会从该分区的其他副本中选择一个作为新的Leader。之后所有的读写就会转移到这个新的Leader上。现在的问题是应当选择哪个作为新的Leader。显然，只有那些跟Leader保持同步的Follower才应该被选作新的Leader。
-* Kafka会在Zookeeper上针对每个Topic维护一个称为ISR（in-sync replica，已同步的副本）的集合，该集合中是一些分区的副本。只有当这些副本都跟Leader中的副本同步了之后，kafka才会认为消息已提交，并反馈给消息的生产者。如果这个集合有增减，kafka会更新zookeeper上的记录。
-* 如果某个分区的Leader不可用，Kafka就会从ISR集合中选择一个副本作为新的Leader。
+* 实际上，Broker 在启动时，会尝试去 ZooKeeper 中创建 /controller 节点。Kafka 当前选举控制器的规则是：第一个成功创建 /controller 节点的 Broker 会被指定为控制器。
+
+* 如果某个分区所在的服务器出了问题不可用，kafka会从该分区的其他副本中选择一个作为新的Controller。之后所有的读写就会转移到这个新的Controller上。现在的问题是应当选择哪个作为新的Controller。显然，只有那些跟Controller保持同步的Replicate才应该被选作新的Controller。
+* Kafka会在Zookeeper上针对每个Topic维护一个称为ISR（in-sync replica，已同步的副本）的集合，该集合中是一些分区的副本。只有当这些副本都跟Controller中的副本同步了之后，kafka才会认为消息已提交，并反馈给消息的生产者。如果这个集合有增减，kafka会更新zookeeper上的记录。
+* 如果某个分区的Controller不可用，Kafka就会从ISR集合中选择一个副本作为新的Controller。
 * 显然通过ISR，kafka需要的冗余度较低，可以容忍的失败数比较高。假设某个topic有f+1个副本，kafka可以容忍f个服务器不可用。
-
 * 为什么不用少数服从多数的方法？
   * 少数服从多数是一种比较常见的一致性算法和Leader选举法。它的含义是只有超过半数的副本同步了，系统才会认为数据已同步；选择Leader时也是从超过半数的同步的副本中选择。这种算法需要较高的冗余度。譬如只允许一台机器失败，需要有三个副本；而如果只容忍两台机器失败，则需要五个副本。而kafka的ISR集合方法，分别只需要两个和三个副本。
 * 如果所有的ISR副本都失败了怎么办？
   * 此时有两种方法可选，一种是等待ISR集合中的副本复活，一种是选择任何一个立即可用的副本，而这个副本不一定是在ISR集合中。这两种方法各有利弊，实际生产中按需选择。
   * 如果要等待ISR副本复活，虽然可以保证一致性，但可能需要很长时间。而如果选择立即可用的副本，则很可能该副本并不一致。
+* 如何避免脑裂：
+  * Kafka是通过使用epoch number（纪元编号，也称为隔离令牌）来完成的。epoch number只是单调递增的数字，第一次选出Controller时，epoch number值为1，如果再次选出新的Controller，则epoch number将为2，依次单调递增。
+  * 每个新选出的controller通过Zookeeper 的条件递增操作获得一个全新的、数值更大的epoch number 。其他Broker 在知道当前epoch number 后，如果收到由controller发出的包含较旧(较小)epoch number的消息，就会忽略它们，即Broker根据最大的epoch number来区分当前最新的controller。
+
+
+
+
+#### 3.4.3 Controller作用
+
+1. 主题管理：
+   	1. 创建、删除Topic，以及增加Topic分区等操作都是由控制器执行。
+2. 分区重分配：
+   1. 执行Kafka的reassign脚本对Topic分区重分配的操作，也是由控制器实现。
+      如果集群中有一个Controller异常退出，控制器会检查这个broker是否有分区的副本Controller，如果有那么这个分区就需要一个新的Controller，此时控制器就会去遍历其他副本，决定哪一个成为新的Controller，同时更新分区的ISR集合。
+   2. 如果有一个Broker加入集群中，那么控制器就会通过Broker ID去判断新加入的Broker中是否含有现有分区的副本，如果有就会从分区副本中去同步数据。
+3. Preferred Controller选举：
+   1. 因为在Kafka集群长时间运行中，broker的宕机或崩溃是不可避免的，Controller就会发生转移，即使broker重新回来，也不会是Controller了。在众多Controller的转移过程中，就会产生Controller不均衡现象，可能一小部分broker上有大量的Controller，影响了整个集群的性能，所以就需要把Controller调整回最初的broker上，这就需要Preferred Controller选举。
+4. 集群成员管理：
+   1. 控制器能够监控新broker的增加，broker的主动关闭与被动宕机，进而做其他工作。这也是利用Zookeeper的ZNode模型和Watcher机制，控制器会监听Zookeeper中/brokers/ids下临时节点的变化。同时对broker中的leader节点进行调整。
+   2. 比如，控制器组件会利用 Watch 机制检查 ZooKeeper 的 /brokers/ids 节点下的子节点数量变更。目前，当有新 Broker 启动后，它会在 /brokers 下创建专属的 znode 节点。一旦创建完毕，ZooKeeper 会通过 Watch 机制将消息通知推送给控制器，这样，控制器就能自动地感知到这个变化，进而开启后续的新增 Broker 作业。
+   3. 侦测 Broker 存活性则是依赖于刚刚提到的另一个机制：临时节点。每个 Broker 启动后，会在 /brokers/ids 下创建一个临时 znode。当 Broker 宕机或主动关闭后，该 Broker 与 ZooKeeper 的会话结束，这个 znode 会被自动删除。同理，ZooKeeper 的 Watch 机制将这一变更推送给控制器，这样控制器就能知道有 Broker 关闭或宕机了，从而进行“善后”。
+5. 元数据服务：
+   1. 控制器上保存了最全的集群元数据信息，其他所有broker会定期接收控制器发来的元数据更新请求，从而更新其内存中的缓存数据。
+
+
+
+
+
+
+
+
 
 
 
@@ -631,15 +674,34 @@ Kafka版本：kafka_2.12-2.2.2
 ### 4.1 安装zookeeper
 
 ```bash
+# 配置jdk环境
+[root@jack ~/jdk]# tar xf jdk-8u201-linux-x64.tar.gz -C /usr/local/
+[root@jack ~/jdk]# ln -sv /usr/local/jdk1.8.0_201/ /usr/local/jdk
+‘/usr/local/jdk’ -> ‘/usr/local/jdk1.8.0_201/’
+[root@jack ~/jdk]# /usr/local/jdk/bin/java -version
+java version "1.8.0_201"
+Java(TM) SE Runtime Environment (build 1.8.0_201-b09)
+Java HotSpot(TM) 64-Bit Server VM (build 25.201-b09, mixed mode)
+[root@jack ~/jdk]# cat >> /etc/profile.d/jdk.sh << EOF
+#!/bin/sh
+JAVA_HOME=/usr/local/jdk
+export PATH=\$PATH:\$JAVA_HOME/bin
+EOF
+[root@kafka01 ~/jdk]# java -version
+-bash: java: command not found
+[root@kafka01 ~/jdk]# . /etc/profile
+[root@kafka01 ~/jdk]# java -version
+java version "1.8.0_201"
+Java(TM) SE Runtime Environment (build 1.8.0_201-b09)
+Java HotSpot(TM) 64-Bit Server VM (build 25.201-b09, mixed mode)
+
+
+
+# 配置zookeeper
 [root@jack kafka]# curl -L -O http://apache.fayea.com/zookeeper/zookeeper-3.4.14/zookeeper-3.4.14.tar.gz
 [root@jack kafka]# tar xf zookeeper-3.4.14.tar.gz -C /usr/local/
 [root@jack kafka]# ln -sv /usr/local/zookeeper-3.4.14/ /usr/local/zookeeper
-
-[root@jack kafka]# cat /etc/profile.d/jdk.sh 
-#!/bin/sh
-JAVA_HOME=/usr/local/jdk
-export PATH=$PATH:$JAVA_HOME/bin
-
+r
 [root@jack kafka]# cat /etc/profile.d/zookeeper.sh 
 #!/bin/sh
 ZOOKEEPER_HOME=/usr/local/zookeeper
@@ -651,7 +713,8 @@ export PATH=$PATH:$ZOOKEEPER_HOME/bin
 tickTime=2000   		# 每隔tickTime时间就会发送一个心跳
 initLimit=10			# 定义了Follower节点初始化连接到Leader并完成数据同步的最大时间，单位为 tickTime的倍数。若超时，Leader会断开连接，导致Follower无法加入集群
 syncLimit=5				# 定义了Leader与Follower之间心跳检测的超时时间，单位为tickTime的倍数。若 Follower在此时长内未响应，Leader会认为其离线并剔除。
-dataDir=/tmp/zookeeper  # Zookeeper保存数据的目录，默认情况下Zookeeper将写数据的日志文件也保存在这个目录里
+dataDir=/tmp/zookeeper/data  	# Zookeeper数据目录
+dataLogDir=/tmp/zookeeper/log  # Zookeeper事务日志目录
 clientPort=2181  		# 这个端口就是客户端连接Zookeeper服务器的端口，Zookeeper会监听这个端口，接受客户端的访问请求
 
 [root@jack conf]# zkServer.sh start  # 启动zookeeper
@@ -937,7 +1000,7 @@ Topic:topic	PartitionCount:3	ReplicationFactor:3	Configs:segment.bytes=107374182
 
 
 
-### 5.3 测试集群
+### 5.3 kafka集群测试
 
 ```bash
 # 模拟生产者进行生产消息
@@ -1026,7 +1089,7 @@ Topic:topic	PartitionCount:3	ReplicationFactor:3	Configs:segment.bytes=107374182
 [root@jack ~]# /usr/local/kafka/bin//kafka-console-consumer.sh --bootstrap-server localhost:9092,localhost:9093,localhost:9094 --topic topic
 ```
 
-> 1. 当zookeeper集群只有一个节点在线时，则你只能通过监听端口来判断zookerper是否在线。通过zkServer.sh status是看不出来的。
+> 1. 当zookeeper集群只有一个节点在线时，则你只能通过监听端口来判断zookeeper是否在线。通过zkServer.sh status是看不出来的。
 > 2. 当你的kafka集群生产者连接的是kafka03，消费者连接的也是kafka03，此时当node3的kafka故障，则你的生产者和消费者会报错误日志，不能连接9094端口进行消息队列的执行。只能连接9092或9093端口进行生产和消费。
 > 3. 只有生产者和消费者像上面这样进行生产和消费时，当其中任意2台broker故障时，生产者和消费者都能正常实现消息传输，因为Replicas为3，所以还会有1台broker是正常的
 
@@ -1038,7 +1101,7 @@ Topic:topic	PartitionCount:3	ReplicationFactor:3	Configs:segment.bytes=107374182
 
 1. zookeeper为多节点集群，当某台节点故障时，会自动选择新的leader进行故障转移。
 2. 当zookeeper恢复备份时，复制zookeeper的安装包，并更改配置文件，然后在自己的data数据目录下新建一个myid文件，文件内容为自己所在的服务器id，等于本机zoo.cfg配置文件中server.1中的ID1。重启zookeeper服务会自动加入zookeeper集群
-3. kafka多台集群，当某台集群故障时，只需要重新让好的kafka broker加入，并重启服务，此新的broker会从之前topic的leader中自动同步数据到新的broker，集群ID必须和故障的broker ID一样，否则不会同步topic信息
+3. kafka多台节点集群，当某台节点故障时，只需要重新让好的kafka broker加入，并重启服务，此新的broker会从之前topic的leader中自动同步数据到新的broker，集群ID必须和故障的broker ID一样，否则不会同步topic信息
 
 >  有多个节点时，把ReplicationFactor设成节点数量，可使集群高可用
 
@@ -1087,6 +1150,148 @@ topic           2          -               21              -               consu
 mygroup  					#此时已经有了这个消费组
 console-consumer-13507
 ```
+
+
+
+### 5.6 kafka生产环境配置参数
+
+```bash
+############################# Server Basics #############################
+#broker 的 id,必须唯一
+broker.id=0
+
+############################# Socket Server Settings #############################
+#监听地址
+listeners=PLAINTEXT://192.168.1.6:9092
+
+#Broker 用于处理网络请求的线程数
+num.network.threads=6
+
+#Broker 用于处理 I/O 的线程数，推荐值 8 * 磁盘数
+num.io.threads=120
+
+#在网络线程停止读取新请求之前，可以排队等待 I/O 线程处理的最大请求个数
+queued.max.requests=1000
+
+#socket 发送缓冲区大小
+socket.send.buffer.bytes=102400
+
+#socket 接收缓冲区大小
+socket.receive.buffer.bytes=102400
+
+#socket 接收请求的最大值（防止 OOM）
+socket.request.max.bytes=104857600
+
+
+############################# Log Basics #############################
+
+#数据目录
+log.dirs=/data1,/data2,/data3,/data4,/data5,/data6,/data7,/data8,/data9,/data10,/data11,/data12,/data13,/data14,/data15
+
+#清理过期数据线程数
+num.recovery.threads.per.data.dir=3
+
+#单条消息最大 10 M
+message.max.bytes=10485760
+
+############################# Topic Settings #############################
+
+#不允许自动创建 Topic
+auto.create.topics.enable=false
+
+#不允许 Unclean Leader 选举。
+unclean.leader.election.enable=false
+
+#不允许定期进行 Leader 选举。
+auto.leader.rebalance.enable=false
+
+#默认分区数
+num.partitions=3
+
+#默认分区副本数
+default.replication.factor=3
+
+#当生产者将 acks 设置为 "all"（或"-1"）时，此配置指定必须确认写入的副本的最小数量，才能认为写入成功
+min.insync.replicas=2
+
+#允许删除主题
+delete.topic.enable=true
+
+############################# Log Flush Policy #############################
+
+#建议由操作系统使用默认设置执行后台刷新
+#日志落盘消息条数阈值
+#log.flush.interval.messages=10000
+#日志落盘时间间隔
+#log.flush.interval.ms=1000
+#检查是否达到flush条件间隔
+#log.flush.scheduler.interval.ms=200
+
+############################# Log Retention Policy #############################
+
+#日志留存时间 7 天
+log.retention.hours=168
+
+#最多存储 58TB 数据
+log.retention.bytes=63771674411008
+                    
+#日志文件中每个 segment 的大小为 1G
+log.segment.bytes=1073741824
+
+#检查 segment 文件大小的周期 5 分钟
+log.retention.check.interval.ms=300000
+
+#开启日志压缩
+log.cleaner.enable=true
+
+#日志压缩线程数
+log.cleaner.threads=8
+
+############################# Zookeeper #############################
+
+#Zookeeper 连接参数
+zookeeper.connect=192.168.1.6:2181,192.168.1.7:2181,192.168.1.8:2181
+
+#连接 Zookeeper 的超时时间
+zookeeper.connection.timeout.ms=6000
+
+
+############################# Group Coordinator Settings #############################
+
+#为了缩短多消费者首次平衡的时间，这段延时期间 10s 内允许更多的消费者加入组
+group.initial.rebalance.delay.ms=10000
+
+#心跳超时时间默认 10s，设置成 6s 主要是为了让 Coordinator 能够更快地定位已经挂掉的 Consumer
+session.timeout.ms = 6s。
+
+#心跳间隔时间，session.timeout.ms >= 3 * heartbeat.interval.ms。
+heartbeat.interval.ms=2s
+
+#最长消费时间 5 分钟
+max.poll.interval.ms=300000
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1221,121 +1426,1962 @@ Broker 端调优很重要的一个方面，就是合理地设置 Broker 端参�
 
 
 
-## 7. kafka生产环境配置
+## 7. 生产环境kafka集群
+
+zookeeper版本：ZooKeeper 3.8.4
+
+kafka版本：kafka 2.7.2
+
+
+
+### 7.1 zookeeper集群部署
+
+版本：ZooKeeper 3.8.4，程序安装方法见上面，这里省略
 
 ```bash
-############################# Server Basics #############################
-#broker 的 id,必须唯一
-broker.id=0
+root@ansible:~# ansible zookeeper -m shell -a 'cat /usr/local/zookeeper/conf/zoo.cfg'
+172.168.2.17 | CHANGED | rc=0 >>
+tickTime=2000
+initLimit=10
+syncLimit=5
+dataDir=/data/zookeeper/data
+dataLogDir=/data/zookeeper/log
+maxClientCnxns=1000
+minSessionTimeout=4000
+maxSessionTimeout=40000
+snapCount=100000
+autopurge.snapRetainCount=3
+autopurge.purgeInterval=12
+clientPort=2281
+server.1=172.168.2.17:2288:3388
+server.2=172.168.2.18:2288:3388
+server.3=172.168.2.19:2288:3388
+## 4 character command
+#4lw.commands.whitelist=*
+## prometheus enable
+metricsProvider.exportJvmInfo=true
+metricsProvider.className=org.apache.zookeeper.metrics.prometheus.PrometheusMetricsProvider
+metricsProvider.httpPort=7000
 
-############################# Socket Server Settings #############################
-#监听地址
-listeners=PLAINTEXT://192.168.1.6:9092
+172.168.2.18 | CHANGED | rc=0 >>
+tickTime=2000
+initLimit=10
+syncLimit=5
+dataDir=/data/zookeeper/data
+dataLogDir=/data/zookeeper/log
+maxClientCnxns=1000
+minSessionTimeout=4000
+maxSessionTimeout=40000
+snapCount=100000
+autopurge.snapRetainCount=3
+autopurge.purgeInterval=12
+clientPort=2281
+server.1=172.168.2.17:2288:3388
+server.2=172.168.2.18:2288:3388
+server.3=172.168.2.19:2288:3388
+## 4 character command
+#4lw.commands.whitelist=*
+## prometheus enable
+metricsProvider.exportJvmInfo=true
+metricsProvider.className=org.apache.zookeeper.metrics.prometheus.PrometheusMetricsProvider
+metricsProvider.httpPort=7000
 
-#Broker 用于处理网络请求的线程数
-num.network.threads=6
-
-#Broker 用于处理 I/O 的线程数，推荐值 8 * 磁盘数
-num.io.threads=120
-
-#在网络线程停止读取新请求之前，可以排队等待 I/O 线程处理的最大请求个数
-queued.max.requests=1000
-
-#socket 发送缓冲区大小
-socket.send.buffer.bytes=102400
-
-#socket 接收缓冲区大小
-socket.receive.buffer.bytes=102400
-
-#socket 接收请求的最大值（防止 OOM）
-socket.request.max.bytes=104857600
-
-
-############################# Log Basics #############################
-
-#数据目录
-log.dirs=/data1,/data2,/data3,/data4,/data5,/data6,/data7,/data8,/data9,/data10,/data11,/data12,/data13,/data14,/data15
-
-#清理过期数据线程数
-num.recovery.threads.per.data.dir=3
-
-#单条消息最大 10 M
-message.max.bytes=10485760
-
-############################# Topic Settings #############################
-
-#不允许自动创建 Topic
-auto.create.topics.enable=false
-
-#不允许 Unclean Leader 选举。
-unclean.leader.election.enable=false
-
-#不允许定期进行 Leader 选举。
-auto.leader.rebalance.enable=false
-
-#默认分区数
-num.partitions=3
-
-#默认分区副本数
-default.replication.factor=3
-
-#当生产者将 acks 设置为 "all"（或"-1"）时，此配置指定必须确认写入的副本的最小数量，才能认为写入成功
-min.insync.replicas=2
-
-#允许删除主题
-delete.topic.enable=true
-
-############################# Log Flush Policy #############################
-
-#建议由操作系统使用默认设置执行后台刷新
-#日志落盘消息条数阈值
-#log.flush.interval.messages=10000
-#日志落盘时间间隔
-#log.flush.interval.ms=1000
-#检查是否达到flush条件间隔
-#log.flush.scheduler.interval.ms=200
-
-############################# Log Retention Policy #############################
-
-#日志留存时间 7 天
-log.retention.hours=168
-
-#最多存储 58TB 数据
-log.retention.bytes=63771674411008
-                    
-#日志文件中每个 segment 的大小为 1G
-log.segment.bytes=1073741824
-
-#检查 segment 文件大小的周期 5 分钟
-log.retention.check.interval.ms=300000
-
-#开启日志压缩
-log.cleaner.enable=true
-
-#日志压缩线程数
-log.cleaner.threads=8
-
-############################# Zookeeper #############################
-
-#Zookeeper 连接参数
-zookeeper.connect=192.168.1.6:2181,192.168.1.7:2181,192.168.1.8:2181
-
-#连接 Zookeeper 的超时时间
-zookeeper.connection.timeout.ms=6000
+172.168.2.19 | CHANGED | rc=0 >>
+tickTime=2000
+initLimit=10
+syncLimit=5
+dataDir=/data/zookeeper/data
+dataLogDir=/data/zookeeper/log
+maxClientCnxns=1000
+minSessionTimeout=4000
+maxSessionTimeout=40000
+snapCount=100000
+autopurge.snapRetainCount=3
+autopurge.purgeInterval=12
+clientPort=2281
+server.1=172.168.2.17:2288:3388
+server.2=172.168.2.18:2288:3388
+server.3=172.168.2.19:2288:3388
+## 4 character command
+#4lw.commands.whitelist=*
+## prometheus enable
+metricsProvider.exportJvmInfo=true
+metricsProvider.className=org.apache.zookeeper.metrics.prometheus.PrometheusMetricsProvider
+metricsProvider.httpPort=7000
 
 
-############################# Group Coordinator Settings #############################
+root@ansible:~# ansible zookeeper -m shell -a 'cat /data/zookeeper/data/myid'
+172.168.2.18 | CHANGED | rc=0 >>
+2
+172.168.2.19 | CHANGED | rc=0 >>
+3
+172.168.2.17 | CHANGED | rc=0 >>
+1
 
-#为了缩短多消费者首次平衡的时间，这段延时期间 10s 内允许更多的消费者加入组
-group.initial.rebalance.delay.ms=10000
+root@ansible:~# ansible zookeeper -m shell -a 'cat /usr/lib/systemd/system/zookeeper.service'
+172.168.2.17 | CHANGED | rc=0 >>
+[Unit]
+Description=zookeeper service
+After=network.target
 
-#心跳超时时间默认 10s，设置成 6s 主要是为了让 Coordinator 能够更快地定位已经挂掉的 Consumer
-session.timeout.ms = 6s。
+[Service]
+Type=forking
+Environment="JAVA_HOME=/usr/local/jdk"
+Environment="JVMFLAGS=-Xmx256m -Xms256m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+ExecStart=/usr/local/zookeeper/bin/zkServer.sh start
+ExecStop=/usr/local/zookeeper/bin/zkServer.sh stop
+Restart=on-failure
+RemainAfterExit=true
 
-#心跳间隔时间，session.timeout.ms >= 3 * heartbeat.interval.ms。
-heartbeat.interval.ms=2s
+[Install]
+WantedBy=multi-user.target
+172.168.2.18 | CHANGED | rc=0 >>
+[Unit]
+Description=zookeeper service
+After=network.target
 
-#最长消费时间 5 分钟
-max.poll.interval.ms=300000
+[Service]
+Type=forking
+Environment="JAVA_HOME=/usr/local/jdk"
+Environment="JVMFLAGS=-Xmx256m -Xms256m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+ExecStart=/usr/local/zookeeper/bin/zkServer.sh start
+ExecStop=/usr/local/zookeeper/bin/zkServer.sh stop
+Restart=on-failure
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
+172.168.2.19 | CHANGED | rc=0 >>
+[Unit]
+Description=zookeeper service
+After=network.target
+
+[Service]
+Type=forking
+Environment="JAVA_HOME=/usr/local/jdk"
+Environment="JVMFLAGS=-Xmx256m -Xms256m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+ExecStart=/usr/local/zookeeper/bin/zkServer.sh start
+ExecStop=/usr/local/zookeeper/bin/zkServer.sh stop
+Restart=on-failure
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
+
+# 查看运行zookeeper的进程,得知有2个参数，-Xmx1000m -Xmx256m
+# JVM对重复参数的处理遵循“后定义覆盖先定义”的规则。若同一参数多次出现，以最后一次定义的值为准
+root@ansible:~# ansible zookeeper -m shell -a 'ps -ef | grep Xmx'
+172.168.2.17 | CHANGED | rc=0 >>
+keeper-server/src/main/resources/lib/*.jar:/usr/local/zookeeper/bin/../conf: -Xmx1000m -Xmx256m -Xms256m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.local.only=false org.apache
+172.168.2.18 | CHANGED | rc=0 >>
+keeper-server/src/main/resources/lib/*.jar:/usr/local/zookeeper/bin/../conf: -Xmx1000m -Xmx256m -Xms256m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.local.only=false org.apache
+172.168.2.19 | CHANGED | rc=0 >>
+keeper-server/src/main/resources/lib/*.jar:/usr/local/zookeeper/bin/../conf: -Xmx1000m -Xmx256m -Xms256m -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.local.only=false org.apache
+
+# 查看zookeeper角色状态
+root@ansible:~# ansible zookeeper -m shell -a '/usr/local/zookeeper/bin/zkServer.sh status'
+172.168.2.17 | CHANGED | rc=0 >>
+Client port found: 2281. Client address: localhost. Client SSL: false.
+Mode: follower
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+172.168.2.19 | CHANGED | rc=0 >>
+Client port found: 2281. Client address: localhost. Client SSL: false.
+Mode: leader
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+172.168.2.18 | CHANGED | rc=0 >>
+Client port found: 2281. Client address: localhost. Client SSL: false.
+Mode: follower
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+
+# 查看zookeeper数据
+[root@kafka01 /data/zookeeper]# tree .
+.
+├── data
+│   ├── myid
+│   ├── version-2
+│   │   ├── acceptedEpoch
+│   │   ├── currentEpoch
+│   │   └── snapshot.0
+│   └── zookeeper_server.pid
+└── log
+    └── version-2
+        └── log.100000001
+
+
+
+# 模拟leader节点172.168.2.19故障
+root@ansible:~# ansible 172.168.2.19 -m shell -a 'systemctl stop zookeeper'
+172.168.2.19 | CHANGED | rc=0 >>
+
+# 查看zookeeper集群角色状态，此时节点172.168.2.17为leader了，集群容错1个节点故障
+root@ansible:~# ansible zookeeper -m shell -a '/usr/local/zookeeper/bin/zkServer.sh status'
+172.168.2.17 | CHANGED | rc=0 >>
+Client port found: 2281. Client address: localhost. Client SSL: false.
+Mode: leader
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+172.168.2.18 | CHANGED | rc=0 >>
+Client port found: 2281. Client address: localhost. Client SSL: false.
+Mode: follower
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+172.168.2.19 | FAILED | rc=1 >>
+Client port found: 2281. Client address: localhost. Client SSL: false.
+Error contacting service. It is probably not running.ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfgnon-zero return code
+
+
+
+# 再次恢复172.168.2.19节点
+root@ansible:~# ansible 172.168.2.19 -m shell -a 'systemctl start zookeeper'
+root@ansible:~# ansible zookeeper -m shell -a '/usr/local/zookeeper/bin/zkServer.sh status | grep Mode'
+172.168.2.19 | CHANGED | rc=0 >>
+Mode: follower
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+172.168.2.18 | CHANGED | rc=0 >>
+Mode: follower
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+172.168.2.17 | CHANGED | rc=0 >>
+Mode: leader
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+
 ```
+
+
+
+![](.\image\zookeeper\zookeeper04.png)
+
+
+
+
+
+
+
+### 7.2 prometheus监控zookeeper
+
+#### 7.2.1 更改zookeeper配置
+
+要求版本必须达到3.6或以上，用的是官方自带的监控信息，我们上面使用的是`ZooKeeper 3.8.4`因此满足要求
+
+更改zookeeper配置文件`zoo.cfg`，所有zookeeper节点都需要开启
+
+```bash
+# 添加如下配置
+[root@kafka01 /usr/local/zookeeper]# vim conf/zoo.cfg
+## prometheus enable
+metricsProvider.exportJvmInfo=true
+metricsProvider.className=org.apache.zookeeper.metrics.prometheus.PrometheusMetricsProvider
+metricsProvider.httpPort=7000
+
+[root@kafka01 /usr/local/zookeeper]# systemctl restart zookeeper
+[root@kafka01 /usr/local/zookeeper]# ss -tnlp | grep 7000
+LISTEN     0      50        [::]:7000                  [::]:*                   users:(("java",pid=7808,fd=49))
+
+[root@kafka01 /usr/local/zookeeper]# curl -s http://172.168.2.17:7000/metrics | head -n 10
+# HELP connection_request_count connection_request_count
+# TYPE connection_request_count counter
+connection_request_count 2.0
+# HELP response_packet_cache_hits response_packet_cache_hits
+# TYPE response_packet_cache_hits counter
+response_packet_cache_hits 0.0
+# HELP large_requests_rejected large_requests_rejected
+# TYPE large_requests_rejected counter
+large_requests_rejected 0.0
+# HELP unsuccessful_handshake unsuccessful_handshake
+```
+
+
+
+#### 7.2.2 更改prometheus配置
+
+**consul配置**
+
+```bash
+[root@prometheus zookeeper]# cat consul-zookeeper-172.168.2.1*
+{
+  "Name": "zookeeper_ops",
+  "ID": "zookeeper_ops-172.168.2.17",
+  "Tags": [
+    "zookeeper_ops"
+  ],
+  "Address": "172.168.2.17",
+  "Port": 7000,
+  "Meta": {
+    "app": "zookeeper_ops-node01",
+    "env": "ops",
+    "project": "service",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://172.168.2.17:7000/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}
+{
+  "Name": "zookeeper_ops",
+  "ID": "zookeeper_ops-172.168.2.18",
+  "Tags": [
+    "zookeeper_ops"
+  ],
+  "Address": "172.168.2.18",
+  "Port": 7000,
+  "Meta": {
+    "app": "zookeeper_ops-node02",
+    "env": "ops",
+    "project": "service",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://172.168.2.18:7000/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}
+{
+  "Name": "zookeeper_ops",
+  "ID": "zookeeper_ops-172.168.2.19",
+  "Tags": [
+    "zookeeper_ops"
+  ],
+  "Address": "172.168.2.19",
+  "Port": 7000,
+  "Meta": {
+    "app": "zookeeper_ops-node03",
+    "env": "ops",
+    "project": "service",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://172.168.2.19:7000/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}
+
+# 应用consul配置
+[root@prometheus zookeeper]# for i in `ls *`;do consul registry $i;done
+```
+
+
+
+**porometheus配置**
+
+```bash
+[root@prometheus prometheus]# vim prometheus.yml
+  - job_name: 'zookeeper-ops'
+    scrape_interval: 15s
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_service]
+        regex: zookeeper_ops.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - source_labels: [__meta_consul_service_address]
+        action: replace
+        target_label: ip
+
+
+#prometheus规则配置
+[root@prometheus rules]# cat zookeeper.rule 
+groups:
+- name: zookeeper-alert
+  rules:
+  - alert: ZooKeeper server is down
+    expr:  up{job="zookeeper-ops"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Instance {{ $labels.instance }} ZooKeeper server is down"
+      description: "{{ $labels.instance }} of job {{$labels.job}} ZooKeeper server is down: [{{ $value }}]."
+
+  - alert: create too many znodes
+    expr: znode_count{job="zookeeper-ops"} > 1000000
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Instance {{ $labels.instance }} create too many znodes"
+      description: "{{ $labels.instance }} of job {{$labels.job}} create too many znodes: [{{ $value }}]."
+
+  - alert: create too many connections
+    expr: num_alive_connections{job="zookeeper-ops"} > 50 # suppose we use the default maxClientCnxns: 60
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Instance {{ $labels.instance }} create too many connections"
+      description: "{{ $labels.instance }} of job {{$labels.job}} create too many connections: [{{ $value }}]."
+
+  - alert: znode total occupied memory is too big
+    expr: approximate_data_size{job="zookeeper-ops"} /1024 /1024 > 1 * 1024 # more than 1024 MB(1 GB)
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Instance {{ $labels.instance }} znode total occupied memory is too big"
+      description: "{{ $labels.instance }} of job {{$labels.job}} znode total occupied memory is too big: [{{ $value }}] MB."
+
+  - alert: set too many watch
+    expr: watch_count{job="zookeeper-ops"} > 10000
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Instance {{ $labels.instance }} set too many watch"
+      description: "{{ $labels.instance }} of job {{$labels.job}} set too many watch: [{{ $value }}]."
+
+  - alert: a leader election happens
+    expr: increase(election_time_count{job="zookeeper-ops"}[5m]) > 0
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Instance {{ $labels.instance }} a leader election happens"
+      description: "{{ $labels.instance }} of job {{$labels.job}} a leader election happens: [{{ $value }}]."
+
+  - alert: open too many files
+    expr: open_file_descriptor_count{job="zookeeper-ops"} > 300
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Instance {{ $labels.instance }} open too many files"
+      description: "{{ $labels.instance }} of job {{$labels.job}} open too many files: [{{ $value }}]."
+
+  - alert: fsync time is too long
+    expr: rate(fsynctime_sum{job="zookeeper-ops"}[1m]) > 100
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Instance {{ $labels.instance }} fsync time is too long"
+      description: "{{ $labels.instance }} of job {{$labels.job}} fsync time is too long: [{{ $value }}]."
+
+  - alert: take snapshot time is too long
+    expr: rate(snapshottime_sum{job="zookeeper-ops"}[5m]) > 100
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Instance {{ $labels.instance }} take snapshot time is too long"
+      description: "{{ $labels.instance }} of job {{$labels.job}} take snapshot time is too long: [{{ $value }}]."
+
+  - alert: avg latency is too high
+    expr: avg_latency{job="zookeeper-ops"} > 100
+    for: 1m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Instance {{ $labels.instance }} avg latency is too high"
+      description: "{{ $labels.instance }} of job {{$labels.job}} avg latency is too high: [{{ $value }}]."
+
+  - alert: JvmMemoryFillingUp
+    expr: jvm_memory_bytes_used{job="zookeeper-ops"} / jvm_memory_bytes_max{job="zookeeper-ops",area="heap"} > 0.8
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "JVM memory filling up (instance {{ $labels.instance }})"
+      description: "JVM memory is filling up (> 80%)\n labels: {{ $labels }}  value = {{ $value }}\n"
+
+
+# 应用prometheus配置
+[root@prometheus prometheus]# postp
+```
+
+
+
+#### 7.2.3 配置grafana
+
+ID：10465
+
+![](.\image\zookeeper\zookeeper05.png)
+
+![](.\image\zookeeper\zookeeper06.png)
+
+![](.\image\zookeeper\zookeeper07.png)
+
+
+
+
+
+
+
+
+
+### 7.3 kafka集群部署
+
+版本：kafka 2.7.2，程序安装方法见上面，这里省略
+
+[kafka config documents](https://kafka.apache.org/27/documentation.html)
+
+
+
+**硬件配置关键影响因素**
+
+1. **磁盘性能**
+   - **SSD vs HDD**：SSD顺序写入速度可达3-4 GB/s（3副本协议），HDD通常限制在100-200 MB/s。
+   - 容量规划：需覆盖7天保留周期，例如日增1TB数据需7TB存储。
+2. **内存与页缓存**
+   - 页缓存大小应≥最大日志段（默认1GB），堆内存建议≤6GB。
+   - 消费者依赖页缓存，内存不足时吞吐量下降30%以上。
+3. **网络带宽**
+   - 千兆网卡：峰值吞吐约100 MB/s，需匹配业务流量（如50 MB/s业务需2*冗余）。
+4. **CPU与压缩**
+   - 推荐32核CPU，支持消息压缩（如LZ4提升吞吐20%-50%）
+
+
+
+
+
+#### 7.3.1 kafka配置
+
+```bash
+## 查看server.properties配置
+root@ansible:/etc/ansible/roles/kafka# ansible kafka -m shell -a 'cat /usr/local/kafka/config/server.properties'
+172.168.2.19 | CHANGED | rc=0 >>
+broker.id=3
+listeners=PLAINTEXT://172.168.2.19:9192
+# 处理网络请求的线程数，建议设置为CPU核数+1
+num.network.threads=3
+# 处理磁盘I/O的线程数，建议为CPU核数的2倍，最大不超过3倍
+num.io.threads=4
+# 调整TCP缓冲区大小（如128KB-4MB），提升网络吞吐，默认为102400
+socket.send.buffer.bytes=4096000
+socket.receive.buffer.bytes=4096000
+# 套接字请求中的最大字节数，默认104857600byte
+socket.request.max.bytes=209715200
+# Kafka 允许的最大记录批量大小（如果启用压缩，则压缩后的大小），默认为1048588
+message.max.bytes=5242940
+# 尝试为每个分区获取消息的字节数。这不是绝对最大值，如果获取的第一个非空分区中的第一个记录批次大于此值，则仍将返回该记录批次以确保能够继续处理，不要小于 message.max.byte。默认为1048576
+replica.fetch.max.bytes=5242880
+# kafka数据存储目录
+log.dirs=/data/kafka/log
+# 分区数需根据Topic吞吐量和消费者并发数动态调整。建议：单个分区吞吐≈50MB/s，总分区数=目标吞吐/50。消费者数量≤分区，默认为1
+num.partitions=3
+# 启动和关闭时用于日志恢复的每个数据目录的线程数，默认为1
+num.recovery.threads.per.data.dir=1
+# 每次获取响应所需的最小字节数。如果字节数不足，则最多等待 replica.fetch.wait.max.ms配置的时间，默认为1
+# 在大流量的场景下调大此值可以减少网络开销，但是在中小流量场景下会有延迟，调成1即恢复消息实时效果
+replica.fetch.min.bytes=1024
+# 从属副本发出的每个 fetcher 请求的最长等待时间。该值在任何时候都应小于 replica.lag.time.max.ms 值，以防止 ISR 因吞吐量低而频繁收缩，默认为500
+replica.fetch.wait.max.ms=500
+# 如果追随者没有发送任何获取请求，或者至少在这段时间内没有消耗到领导者的日志结束偏移量，则领导者将从 ISR 中移除该追随者，默认为30000
+replica.lag.time.max.ms=30000
+# fetcher配置多可以提高follower的I/O并发度,相应负载会增大，需要根据机器硬件资源做权衡，建议适当调大
+num.replica.fetchers=3
+# 单个日志文件的最大大小，建议：根据业务日志生成速率调整，例如每天生成500GB日志可设为2GB，默认为1073741824
+log.segment.bytes=1073741824
+# 日志保留时长
+log.retention.hours=72
+# 删除日志前日志的最大大小
+log.retention.bytes=-1
+# 日志清理器检查是否有日志可删除的频率，默认为300000
+log.retention.check.interval.ms=600000
+# 偏移量topic的复制系数（设置得更高以确保可用性），需确保集群中Broker数量≥，默认为3
+offsets.topic.replication.factor=3
+# 事务主题的复制系数（设置得更高以确保可用性），需确保集群中Broker数量≥，默认为3
+transaction.state.log.replication.factor=3
+# 必须确认写入事务主题才算成功的最小副本数，确保事务日志至少2个副本同步，避免单点故障导致事务中断
+transaction.state.log.min.isr=2
+# 默认副本数，生产环境建议≥3，确保数据冗余，默认为1
+default.replication.factor=3
+# 连接zookeeper服务的地址
+zookeeper.connect=172.168.2.17:2281,172.168.2.18:2281,172.168.2.19:2281
+# 连接zookeeper的超时时间（以毫秒为单位）
+zookeeper.connection.timeout.ms=10000
+# 组协调器在执行首次重新平衡之前等待更多消费者加入新组的时间。延迟越长，重新平衡的次数可能越少，但处理开始的时间也会越长，默认为3000
+group.initial.rebalance.delay.ms=0
+# 网络请求的套接字超时时间，默认为30000
+replica.fetch.wait.max.ms=30000
+
+172.168.2.17 | CHANGED | rc=0 >>
+broker.id=1
+listeners=PLAINTEXT://172.168.2.17:9192
+# 处理网络请求的线程数，建议设置为CPU核数+1
+num.network.threads=3
+# 处理磁盘I/O的线程数，建议为CPU核数的2倍，最大不超过3倍
+num.io.threads=4
+# 调整TCP缓冲区大小（如128KB-4MB），提升网络吞吐，默认为102400
+socket.send.buffer.bytes=4096000
+socket.receive.buffer.bytes=4096000
+# 套接字请求中的最大字节数，默认104857600byte
+socket.request.max.bytes=209715200
+# Kafka 允许的最大记录批量大小（如果启用压缩，则压缩后的大小），默认为1048588
+message.max.bytes=5242940
+# 尝试为每个分区获取消息的字节数。这不是绝对最大值，如果获取的第一个非空分区中的第一个记录批次大于此值，则仍将返回该记录批次以确保能够继续处理，不要小于 message.max.byte。默认为1048576
+replica.fetch.max.bytes=5242880
+# kafka数据存储目录
+log.dirs=/data/kafka/log
+# 分区数需根据Topic吞吐量和消费者并发数动态调整。建议：单个分区吞吐≈50MB/s，总分区数=目标吞吐/50。消费者数量≤分区，默认为1
+num.partitions=3
+# 启动和关闭时用于日志恢复的每个数据目录的线程数，默认为1
+num.recovery.threads.per.data.dir=1
+# 每次获取响应所需的最小字节数。如果字节数不足，则最多等待 replica.fetch.wait.max.ms配置的时间，默认为1
+# 在大流量的场景下调大此值可以减少网络开销，但是在中小流量场景下会有延迟，调成1即恢复消息实时效果
+replica.fetch.min.bytes=1024
+# 从属副本发出的每个 fetcher 请求的最长等待时间。该值在任何时候都应小于 replica.lag.time.max.ms 值，以防止 ISR 因吞吐量低而频繁收缩，默认为500
+replica.fetch.wait.max.ms=500
+# 如果追随者没有发送任何获取请求，或者至少在这段时间内没有消耗到领导者的日志结束偏移量，则领导者将从 ISR 中移除该追随者，默认为30000
+replica.lag.time.max.ms=30000
+# fetcher配置多可以提高follower的I/O并发度,相应负载会增大，需要根据机器硬件资源做权衡，建议适当调大
+num.replica.fetchers=3
+# 单个日志文件的最大大小，建议：根据业务日志生成速率调整，例如每天生成500GB日志可设为2GB，默认为1073741824
+log.segment.bytes=1073741824
+# 日志保留时长
+log.retention.hours=72
+# 删除日志前日志的最大大小
+log.retention.bytes=-1
+# 日志清理器检查是否有日志可删除的频率，默认为300000
+log.retention.check.interval.ms=600000
+# 偏移量topic的复制系数（设置得更高以确保可用性），需确保集群中Broker数量≥，默认为3
+offsets.topic.replication.factor=3
+# 事务主题的复制系数（设置得更高以确保可用性），需确保集群中Broker数量≥，默认为3
+transaction.state.log.replication.factor=3
+# 必须确认写入事务主题才算成功的最小副本数，确保事务日志至少2个副本同步，避免单点故障导致事务中断
+transaction.state.log.min.isr=2
+# 默认副本数，生产环境建议≥3，确保数据冗余，默认为1
+default.replication.factor=3
+# 连接zookeeper服务的地址
+zookeeper.connect=172.168.2.17:2281,172.168.2.18:2281,172.168.2.19:2281
+# 连接zookeeper的超时时间（以毫秒为单位）
+zookeeper.connection.timeout.ms=10000
+# 组协调器在执行首次重新平衡之前等待更多消费者加入新组的时间。延迟越长，重新平衡的次数可能越少，但处理开始的时间也会越长，默认为3000
+group.initial.rebalance.delay.ms=0
+# 网络请求的套接字超时时间，默认为30000
+replica.fetch.wait.max.ms=30000
+
+172.168.2.18 | CHANGED | rc=0 >>
+broker.id=2
+listeners=PLAINTEXT://172.168.2.18:9192
+# 处理网络请求的线程数，建议设置为CPU核数+1
+num.network.threads=3
+# 处理磁盘I/O的线程数，建议为CPU核数的2倍，最大不超过3倍
+num.io.threads=4
+# 调整TCP缓冲区大小（如128KB-4MB），提升网络吞吐，默认为102400
+socket.send.buffer.bytes=4096000
+socket.receive.buffer.bytes=4096000
+# 套接字请求中的最大字节数，默认104857600byte
+socket.request.max.bytes=209715200
+# Kafka 允许的最大记录批量大小（如果启用压缩，则压缩后的大小），默认为1048588
+message.max.bytes=5242940
+# 尝试为每个分区获取消息的字节数。这不是绝对最大值，如果获取的第一个非空分区中的第一个记录批次大于此值，则仍将返回该记录批次以确保能够继续处理，不要小于 message.max.byte。默认为1048576
+replica.fetch.max.bytes=5242880
+# kafka数据存储目录
+log.dirs=/data/kafka/log
+# 分区数需根据Topic吞吐量和消费者并发数动态调整。建议：单个分区吞吐≈50MB/s，总分区数=目标吞吐/50。消费者数量≤分区，默认为1
+num.partitions=3
+# 启动和关闭时用于日志恢复的每个数据目录的线程数，默认为1
+num.recovery.threads.per.data.dir=1
+# 每次获取响应所需的最小字节数。如果字节数不足，则最多等待 replica.fetch.wait.max.ms配置的时间，默认为1
+# 在大流量的场景下调大此值可以减少网络开销，但是在中小流量场景下会有延迟，调成1即恢复消息实时效果
+replica.fetch.min.bytes=1024
+# 从属副本发出的每个 fetcher 请求的最长等待时间。该值在任何时候都应小于 replica.lag.time.max.ms 值，以防止 ISR 因吞吐量低而频繁收缩，默认为500
+replica.fetch.wait.max.ms=500
+# 如果追随者没有发送任何获取请求，或者至少在这段时间内没有消耗到领导者的日志结束偏移量，则领导者将从 ISR 中移除该追随者，默认为30000
+replica.lag.time.max.ms=30000
+# fetcher配置多可以提高follower的I/O并发度,相应负载会增大，需要根据机器硬件资源做权衡，建议适当调大
+num.replica.fetchers=3
+# 单个日志文件的最大大小，建议：根据业务日志生成速率调整，例如每天生成500GB日志可设为2GB，默认为1073741824
+log.segment.bytes=1073741824
+# 日志保留时长
+log.retention.hours=72
+# 删除日志前日志的最大大小
+log.retention.bytes=-1
+# 日志清理器检查是否有日志可删除的频率，默认为300000
+log.retention.check.interval.ms=600000
+# 偏移量topic的复制系数（设置得更高以确保可用性），需确保集群中Broker数量≥，默认为3
+offsets.topic.replication.factor=3
+# 事务主题的复制系数（设置得更高以确保可用性），需确保集群中Broker数量≥，默认为3
+transaction.state.log.replication.factor=3
+# 必须确认写入事务主题才算成功的最小副本数，确保事务日志至少2个副本同步，避免单点故障导致事务中断
+transaction.state.log.min.isr=2
+# 默认副本数，生产环境建议≥3，确保数据冗余，默认为1
+default.replication.factor=3
+# 连接zookeeper服务的地址
+zookeeper.connect=172.168.2.17:2281,172.168.2.18:2281,172.168.2.19:2281
+# 连接zookeeper的超时时间（以毫秒为单位）
+zookeeper.connection.timeout.ms=10000
+# 组协调器在执行首次重新平衡之前等待更多消费者加入新组的时间。延迟越长，重新平衡的次数可能越少，但处理开始的时间也会越长，默认为3000
+group.initial.rebalance.delay.ms=0
+# 网络请求的套接字超时时间，默认为30000
+replica.fetch.wait.max.ms=30000
+
+
+## 查看kafka.service配置
+root@ansible:/etc/ansible/roles/kafka# ansible kafka -m shell -a 'cat /usr/lib/systemd/system/kafka.service'
+172.168.2.17 | CHANGED | rc=0 >>
+[Unit]
+Description=kafka service
+After=network.target
+
+[Service]
+Type=forking
+Environment="JAVA_HOME=/usr/local/jdk"
+Environment="KAFKA_HEAP_OPTS=-Xmx256m -Xms256m"
+ExecStart=/usr/local/kafka/bin/kafka-server-start.sh -daemon /usr/local/kafka/config/server.properties
+ExecStop=/usr/local/kafka/bin/kafka-server-stop.sh
+Restart=on-failure
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
+
+
+172.168.2.19 | CHANGED | rc=0 >>
+[Unit]
+Description=kafka service
+After=network.target
+
+[Service]
+Type=forking
+Environment="JAVA_HOME=/usr/local/jdk"
+Environment="KAFKA_HEAP_OPTS=-Xmx256m -Xms256m"
+ExecStart=/usr/local/kafka/bin/kafka-server-start.sh -daemon /usr/local/kafka/config/server.properties
+ExecStop=/usr/local/kafka/bin/kafka-server-stop.sh
+Restart=on-failure
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
+
+
+172.168.2.18 | CHANGED | rc=0 >>
+[Unit]
+Description=kafka service
+After=network.target
+
+[Service]
+Type=forking
+Environment="JAVA_HOME=/usr/local/jdk"
+Environment="KAFKA_HEAP_OPTS=-Xmx256m -Xms256m"
+ExecStart=/usr/local/kafka/bin/kafka-server-start.sh -daemon /usr/local/kafka/config/server.properties
+ExecStop=/usr/local/kafka/bin/kafka-server-stop.sh
+Restart=on-failure
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
+---
+```
+
+
+
+#### 7.3.2 kafka集群测试
+
+##### 7.3.2.1 测试消息生产消费
+
+**创建topic**
+
+```bash
+[root@kafka01 ~]# /usr/local/kafka/bin/kafka-topics.sh --create --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic topic01
+Created topic topic01.
+
+# 可看出此topic: topic01总共有3个分区，每个分区有3个副本，并显示Leader在哪个broker.id上，以及当前Isr有几个可用
+[root@kafka01 ~]# /usr/local/kafka/bin/kafka-topics.sh --describe --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic topic01
+Topic: topic01  PartitionCount: 3       ReplicationFactor: 3    Configs: segment.bytes=1073741824,max.message.bytes=5242940,retention.bytes=-1
+        Topic: topic01  Partition: 0    Leader: 2       Replicas: 2,3,1 Isr: 2,3,1
+        Topic: topic01  Partition: 1    Leader: 3       Replicas: 3,1,2 Isr: 3,1,2
+        Topic: topic01  Partition: 2    Leader: 1       Replicas: 1,2,3 Isr: 1,2,3       
+```
+
+**生产消费场景**
+
+```bash
+# 生产者
+[root@kafka01 ~]# /usr/local/kafka/bin/kafka-console-producer.sh --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic topic01
+>Hello Kafka!
+
+# 消费者
+[root@kafka02 /usr/local/kafka]# /usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic topic01 --from-beginning
+Hello Kafka!
+```
+
+
+
+##### 7.3.2.2 常用脚本使用
+
+###### 1. 验证生产者功能
+
+```bash
+# 验证生产者功能，生成测试消息并输出发送结果。
+[root@kafka01 /usr/local/kafka/bin]# ./kafka-verifiable-producer.sh  --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192  --topic test --max-messages 100
+{"timestamp":1746620159248,"name":"startup_complete"}
+{"timestamp":1746620174082,"name":"producer_send_success","key":null,"value":"94","topic":"test","partition":2,"offset":33074}
+{"timestamp":1746620174087,"name":"producer_send_success","key":null,"value":"95","topic":"test","partition":2,"offset":33075}
+{"timestamp":1746620174087,"name":"producer_send_success","key":null,"value":"96","topic":"test","partition":2,"offset":33076}
+{"timestamp":1746620174087,"name":"producer_send_success","key":null,"value":"97","topic":"test","partition":2,"offset":33077}
+.....
+{"timestamp":1746620183130,"name":"producer_send_success","key":null,"value":"93","topic":"test","partition":1,"offset":34663}
+{"timestamp":1746620183141,"name":"shutdown_complete"}
+{"timestamp":1746620183142,"name":"tool_data","sent":100,"acked":100,"target_throughput":-1,"avg_throughput":4.184450581638631}
+
+```
+
+
+
+###### 2. 查询Broker上各日志目录的磁盘占用情况
+
+```bash
+# 查询Broker上各日志目录的磁盘占用情况，用于监控存储空间。
+[root@kafka01 /usr/local/kafka/bin]# ./kafka-log-dirs.sh --describe --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192
+Querying brokers for log directories information
+Received log directory information from brokers 1,2,3
+{"version":1,"brokers":[{"broker":1,"logDirs":[{"logDir":"/data/kafka/log","error":null,"partitions":[{"partition":"__consumer_offsets-11","size":998,"offsetLag":0,"isFuture":false},{"partition":"test-1","size":3802037,"offsetLag":0,"isFuture":false},{"partition":"__consumer_offsets-44","size":0,"offsetLag":0,"isFuture":false}.....
+
+# 检查Broker支持的API版本，验证客户端与Broker的兼容性。
+[root@kafka01 /usr/local/kafka/bin]# ./kafka-broker-api-versions.sh  --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192
+172.168.2.18:9192 (id: 2 rack: null) -> (
+        Produce(0): 0 to 8 [usable: 8],
+        Fetch(1): 0 to 12 [usable: 12],
+        ListOffsets(2): 0 to 5 [usable: 5],
+        Metadata(3): 0 to 9 [usable: 9],
+        LeaderAndIsr(4): 0 to 4 [usable: 4],
+        StopReplica(5): 0 to 3 [usable: 3],
+        UpdateMetadata(6): 0 to 6 [usable: 6],
+        ControlledShutdown(7): 0 to 3 [usable: 3],
+        OffsetCommit(8): 0 to 8 [usable: 8],
+        OffsetFetch(9): 0 to 7 [usable: 7],
+        FindCoordinator(10): 0 to 3 [usable: 3],
+        JoinGroup(11): 0 to 7 [usable: 7],
+        Heartbeat(12): 0 to 4 [usable: 4],
+        LeaveGroup(13): 0 to 4 [usable: 4],
+        SyncGroup(14): 0 to 5 [usable: 5],
+        DescribeGroups(15): 0 to 5 [usable: 5],
+        ListGroups(16): 0 to 4 [usable: 4],
+        SaslHandshake(17): 0 to 1 [usable: 1],
+        ApiVersions(18): 0 to 3 [usable: 3],
+        CreateTopics(19): 0 to 6 [usable: 6],
+        DeleteTopics(20): 0 to 5 [usable: 5],
+        DeleteRecords(21): 0 to 2 [usable: 2],
+        InitProducerId(22): 0 to 4 [usable: 4],
+        OffsetForLeaderEpoch(23): 0 to 3 [usable: 3],
+        AddPartitionsToTxn(24): 0 to 2 [usable: 2],
+        AddOffsetsToTxn(25): 0 to 2 [usable: 2],
+        EndTxn(26): 0 to 2 [usable: 2],
+        WriteTxnMarkers(27): 0 [usable: 0],
+        TxnOffsetCommit(28): 0 to 3 [usable: 3],
+        DescribeAcls(29): 0 to 2 [usable: 2],
+        CreateAcls(30): 0 to 2 [usable: 2],
+        DeleteAcls(31): 0 to 2 [usable: 2],
+        DescribeConfigs(32): 0 to 3 [usable: 3],
+        AlterConfigs(33): 0 to 1 [usable: 1],
+        AlterReplicaLogDirs(34): 0 to 1 [usable: 1],
+        DescribeLogDirs(35): 0 to 2 [usable: 2],
+        SaslAuthenticate(36): 0 to 2 [usable: 2],
+        CreatePartitions(37): 0 to 3 [usable: 3],
+        CreateDelegationToken(38): 0 to 2 [usable: 2],
+        RenewDelegationToken(39): 0 to 2 [usable: 2],
+        ExpireDelegationToken(40): 0 to 2 [usable: 2],
+        DescribeDelegationToken(41): 0 to 2 [usable: 2],
+        DeleteGroups(42): 0 to 2 [usable: 2],
+        ElectLeaders(43): 0 to 2 [usable: 2],
+        IncrementalAlterConfigs(44): 0 to 1 [usable: 1],
+        AlterPartitionReassignments(45): 0 [usable: 0],
+        ListPartitionReassignments(46): 0 [usable: 0],
+        OffsetDelete(47): 0 [usable: 0],
+        DescribeClientQuotas(48): 0 [usable: 0],
+        AlterClientQuotas(49): 0 [usable: 0],
+        DescribeUserScramCredentials(50): 0 [usable: 0],
+        AlterUserScramCredentials(51): 0 [usable: 0],
+        AlterIsr(56): 0 [usable: 0],
+        UpdateFeatures(57): 0 [usable: 0]
+)
+```
+
+
+
+###### 3. 分区平衡
+
+```bash
+# 分区平衡，此./kafka-preferred-replica-election.sh脚本是阶级的，新版本使用./kafka-preferred-replica-election.sh脚本替代
+# 将指定topic的partition的leader重新平衡到Replicas副本中的第1个broker
+[root@kafka01 /usr/local/kafka/bin]# ./kafka-topics.sh --describe --topic topic001 --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192
+Topic: topic001 PartitionCount: 3       ReplicationFactor: 3    Configs: segment.bytes=1073741824,max.message.bytes=5242940,retention.bytes=-1
+        Topic: topic001 Partition: 0    Leader: 3       Replicas: 3,1,2 Isr: 2,1,3
+        Topic: topic001 Partition: 1    Leader: 2       Replicas: 1,2,3 Isr: 2,1,3
+        Topic: topic001 Partition: 2    Leader: 2       Replicas: 2,3,1 Isr: 2,1,3
+[root@kafka01 /usr/local/kafka/bin]# ./kafka-leader-election.sh --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic topic001 --partition 1 --election-type preferred
+Successfully completed leader election (PREFERRED) for partitions topic001-1
+[root@kafka01 /usr/local/kafka/bin]# ./kafka-topics.sh --describe --topic topic001 --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192
+Topic: topic001 PartitionCount: 3       ReplicationFactor: 3    Configs: segment.bytes=1073741824,max.message.bytes=5242940,retention.bytes=-1
+        Topic: topic001 Partition: 0    Leader: 3       Replicas: 3,1,2 Isr: 2,1,3
+        Topic: topic001 Partition: 1    Leader: 1       Replicas: 1,2,3 Isr: 2,1,3
+        Topic: topic001 Partition: 2    Leader: 2       Replicas: 2,3,1 Isr: 2,1,3
+```
+
+
+
+###### 4. kafka集群镜像操作
+
+```bash
+# 将源集群的某些topic或者所有topic镜像到目标集群中
+## 创建源集群的地址和消费组配置文件
+[root@kafka01 /usr/local/kafka]# cat >> /tmp/mirror-consumer.properties << EOF
+bootstrap.servers=172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192　　#指源集群的代理地址
+group.id=mirror　　　　#消费组名
+EOF
+## 创建目标集群的地址配置文件
+[root@kafka01 /usr/local/kafka]# cat >> /tmp/mirror-producer.properties << EOF
+bootstrap.servers=172.168.2.20:9092
+EOF
+## 
+[root@kafka01 /usr/local/kafka]# bin/kafka-mirror-maker.sh  --consumer.config /tmp/mirror-consumer.properties --producer.config /tmp/mirror-producer.properties --whitelist test-mirror
+```
+
+> 参数 --whitelist 指定要复制的主题，支持正则；
+>
+> 参数 --blacklist 指定不需要复制的主题；
+
+
+
+
+
+
+
+
+
+##### 7.3.2.3 模拟kafka Controller故障
+
+###### 1. 第一次模拟kafka Controller故障
+
+```bash
+# 连接zookeeper
+[root@kafka03 /usr/local/kafka]# /usr/local/zookeeper/bin/zkCli.sh -server 172.168.2.17:2281
+[zk: 172.168.2.17:2281(CONNECTED) 1] ls /
+[admin, brokers, cluster, config, consumers, controller, controller_epoch, feature, isr_change_notification, latest_producer_id_block, log_dir_event_notification, zookeeper]
+# brokerid为3的就是controller
+[zk: 172.168.2.17:2281(CONNECTED) 1] get /controller
+{"version":1,"brokerid":3,"timestamp":"1746711323205"}
+
+# 通过zookeeper获取到的brokerid去kafka查找对应的broker IP地址，从以下命令可以看出controller是172.168.2.19:9192
+[root@kafka03 /usr/local/kafka]# ./bin/kafka-broker-api-versions.sh  --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 | grep 172.168
+172.168.2.18:9192 (id: 2 rack: null) -> (
+172.168.2.19:9192 (id: 3 rack: null) -> (
+172.168.2.17:9192 (id: 1 rack: null) -> (
+
+# 查看kafka Controller是哪个broker
+[root@kafka03 /usr/local/kafka]# ip a s eth0 | grep 172
+    inet 172.168.2.19/24 brd 172.168.2.255 scope global noprefixroute eth0
+[root@kafka03 /usr/local/kafka]# systemctl stop kafka.service
+[root@kafka03 /usr/local/kafka]# systemctl is-active kafka.service
+failed
+```
+
+**broker3服务已经Down掉，此时只有broker1和broker2在线**
+
+![](./image/kafka/kafka13.png)
+
+
+
+**生产者生产消息**
+
+```bash
+[root@kafka02 ~]#  /usr/local/kafka/bin/kafka-console-producer.sh --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic test-0508
+>hello 123
+>hello 456
+
+```
+
+**消费者消费消息，不是消费组形式进行消费**
+
+```bash
+## 第一批测试
+# broker 1
+[root@kafka01 ~]# /usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic test-0508
+hello 123
+hello 456
+
+# broker 2
+[root@kafka02 ~]# /usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic test-0508
+hello 123
+hello 456
+
+
+# broker 3无消息,因为在broker 3节点上使用消费者脚本进行测试，传入的地址包括本机地址172.168.2.19:9192，默认连接的是本机，并且不会重试连接到其它节点，所以无法连接kafka服务，所以无法获取消息
+[root@kafka01 ~]# /usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic test-0508
+
+
+
+## 第二批测试
+[root@kafka01 ~]# /usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic test-0508
+hello 123
+hello 456
+mi.com
+ok.com
+baidu.com
+
+[root@kafka02 ~]# /usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic test-0508
+hello 123
+hello 456
+mi.com
+ok.com
+baidu.com
+
+# broker 3,连接地址变更为不包括本机地址进行消息测试，此时正常连接kafka服务
+[root@kafka03 ~]# /usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192 --topic test-0508
+baidu.com
+```
+
+
+
+
+
+###### 2. 第二次模拟kafka Controller故障
+
+```bash
+# 查看Controller节点，节点在brokerid 1（172.168.2.17:9192）
+[root@kafka03 /usr/local/kafka]#  /usr/local/zookeeper/bin/zkCli.sh -server 172.168.2.17:2281
+Connecting to 172.168.2.17:2281
+[zk: 172.168.2.17:2281(CONNECTED) 1] get /controller
+{"version":1,"brokerid":1,"timestamp":"1746772679904"}
+
+# 查看在线的broker对应的ID
+[root@kafka03 /usr/local/kafka]# ./bin/kafka-broker-api-versions.sh  --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 | grep 172.168
+172.168.2.18:9192 (id: 2 rack: null) -> (
+172.168.2.17:9192 (id: 1 rack: null) -> (
+
+#  第二次模拟kafka Controller故障
+[root@kafka01 ~]# ip a s eth0 | grep 172
+    inet 172.168.2.17/24 brd 172.168.2.255 scope global noprefixroute eth0
+[root@kafka01 ~]# systemctl stop kafka.service
+[root@kafka01 ~]# systemctl is-active kafka.service
+failed
+```
+
+**broker1服务已经Down掉，此时只有broker2在线**
+
+![](./image/kafka/kafka14.png)
+
+
+
+**生产者生产消息**
+
+```bash
+[root@kafka02 ~]# /usr/local/kafka/bin/kafka-console-producer.sh --bootstrap-server 172.168.2.18:9192 --topic test-0508
+>kafka01
+>kafka02
+>kafka03
+>kafka04
+>kafka05
+>kafka06
+>kafka07
+>kafka08
+>kafka09
+```
+
+**消费者消费消息，以消费组形式进行消费**
+
+```bash
+# 消费组console-consumer-0508的 消费者1
+[root@kafka01 ~]# /usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server 172.168.2.18:9192 --topic test-0508 --group console-consumer-0508
+[root@kafka01 ~]# /usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server 172.168.2.18:9192 --topic test-0508 --group console-consumer-0508
+kafka02
+kafka04
+kafka06
+kafka09
+
+# 消费组console-consumer-0508的 消费者2
+[root@kafka02 ~]# /usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server 172.168.2.18:9192 --topic test-0508 --group console-consumer-0508
+kafka07
+
+# 消费组console-consumer-0508的 消费者3
+[root@kafka03 ~]# /usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server 172.168.2.18:9192 --topic test-0508 --group console-consumer-0508
+kafka01
+kafka03
+kafka05
+kafka08
+
+```
+
+
+
+###### 3. Kafka Controller故障总结
+
+1. 测试集群有3个broker，因为测试的topic有3个副本，所以故障2个broker也不导致kafka集群故障不可使用。
+2. 使用指定消费组进行消费时，此消费组中的消费者竞争消息，就是一条消息只能被消费组中的一个消费者消费。
+3. 若多个消费者均未指定消费组，每个消费者会被分配一个独立的默认消费组。这意味着这些消费者属于不同的消费组，每个消费者可以独立消费Topic的全部消息，形成多播模式（即消息被广播到所有消费者）
+
+
+
+
+
+
+
+##### 7.3.2.4 模拟zokkeper Leader故障
+
+###### 1. 第一次模拟Leader故障
+
+```bash
+# 查看Leader是哪个节点，从以下命令可以看出Leader节点是172.168.2.18
+root@ansible:~# ansible zookeeper -m shell -a '/usr/local/zookeeper/bin/zkServer.sh status | grep Mode'
+172.168.2.17 | CHANGED | rc=0 >>
+Mode: followerZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+172.168.2.19 | CHANGED | rc=0 >>
+Mode: followerZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+172.168.2.18 | CHANGED | rc=0 >>
+Mode: leaderZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+
+# 停止Leader节点172.168.2.18
+root@ansible:~# ansible 172.168.2.18 -m shell -a 'systemctl stop zookeeper'
+172.168.2.18 | CHANGED | rc=0 >>
+
+# 再次查看Leader是哪个节点，结果显示Leader节点是172.168.2.19，此时集群为3节点，在线节点有172.168.2.19、172.168.2.17，共两个节点在线
+root@ansible:~# ansible zookeeper -m shell -a '/usr/local/zookeeper/bin/zkServer.sh status | grep Mode'
+172.168.2.17 | CHANGED | rc=0 >>
+Mode: followerZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+172.168.2.19 | CHANGED | rc=0 >>
+Mode: leaderZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+172.168.2.18 | FAILED | rc=1 >>
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfgnon-zero return code
+```
+
+
+
+**第一次模拟kafka生产消息和消费消息**
+
+**生产者生产消息**
+
+```bash
+[root@kafka02 ~]# /usr/local/kafka/bin/kafka-console-producer.sh --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic test-0508
+>hello zookeeper
+```
+
+**消费者消费信息**
+
+```bash
+# broker 1
+[root@kafka01 ~]# /usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic test-0508
+hello zookeeper
+
+# broker 2
+[root@kafka02 ~]# /usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic test-0508
+hello zookeeper
+
+# broker 3
+[root@kafka03 ~]# /usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic test-0508
+hello zookeeper
+```
+
+> 小结：3节点集群在线时，Down掉1个Leader对Kafka无影响，此时Zookeeper也是可用的
+
+
+
+
+
+###### 2. 第二次模拟Leader故障
+
+```bash
+# 查看Leader是哪个节点，结果看出172.168.2.19为Leader
+root@ansible:~# ansible zookeeper -m shell -a '/usr/local/zookeeper/bin/zkServer.sh status | grep Mode'
+172.168.2.17 | CHANGED | rc=0 >>
+Mode: followerZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+172.168.2.18 | FAILED | rc=1 >>
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfgnon-zero return code
+172.168.2.19 | CHANGED | rc=0 >>
+Mode: leaderZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+
+# 停止Leader节点172.168.2.19
+root@ansible:~# ansible 172.168.2.19 -m shell -a 'systemctl stop zookeeper'
+172.168.2.19 | CHANGED | rc=0 >>
+
+# 再次查看Leader是哪个节点，结果显示集群已故障，因为2个节点172.168.2.19和172.168.2.18已经Down掉，1个节点无法运行集群，所以所有节点都是Down掉的（集群也就是Down掉的）
+root@ansible:~# ansible zookeeper -m shell -a '/usr/local/zookeeper/bin/zkServer.sh status | grep Mode'
+[WARNING]: Invalid characters were found in group names but not replaced, use -vvvv to see details
+172.168.2.19 | FAILED | rc=1 >>
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfgnon-zero return code
+172.168.2.17 | FAILED | rc=1 >>
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfgnon-zero return code
+172.168.2.18 | FAILED | rc=1 >>
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfgnon-zero return code
+```
+
+> 小结：Zookeeper集群3节点最多故障1个，当故障2个时，整个Zookeeper集群将故障
+
+
+
+
+
+**第二次模拟kafka生产消息和消费消息**
+
+**生产者生产消息**
+
+```bash
+[root@kafka02 ~]# /usr/local/kafka/bin/kafka-console-producer.sh --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic test-0508
+>hello zookeeper
+>hello zk
+```
+
+**消费者消费消息**
+
+```bash
+# broker 1
+[root@kafka01 ~]# /usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic test-0508
+hello zookeeper
+
+
+# broker 2
+[root@kafka02 ~]# /usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic test-0508
+hello zookeeper
+
+
+# broker 3
+[root@kafka03 ~]# /usr/local/kafka/bin/kafka-console-consumer.sh --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic test-0508
+hello zookeeper
+
+
+```
+
+> 小结：当整个Zookeeper集群Down掉后，kafka集群将会Down掉，无法服务
+
+
+
+
+
+
+
+
+
+###### 3. Zookeeper Leader故障总结
+
+1. Zookeeper集群3节点在线时，Down掉1个Leader节点对Zookeeper无影响，此时Kafka也是可用的。
+2. Zookeeper集群3节点最多故障1个，当故障2个时，整个Zookeeper集群将故障。
+3. Kafka集群受Zookeeper影响
+   * 如果Zookeep集群故障，则整个Kafka集群故障
+   * 如果Zookeep集群正常，判断Kafka集群是否正常则只看Kafka集群，如果Kafka集群是3节点、Topic是3副本，那么Kafka节点可以Down掉2个，只要有1个副本在线，则Kafka集群将可用。
+
+
+
+
+
+
+
+#### 7.3.3 kafka集群压测
+
+##### 7.3.3.1 生产者压力测试
+
+```bash
+[root@kafka01 /usr/local/kafka]# bin/kafka-producer-perf-test.sh  --topic test --record-size 100 --num-records 100000 --throughput -1 --producer-props bootstrap.servers=172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192
+[2025-05-06 10:48:45,772] WARN [Producer clientId=producer-1] Error while fetching metadata with correlation id 1 : {test=LEADER_NOT_AVAILABLE} (org.apache.kafka.clients.NetworkClient)
+100000 records sent, 38372.985418 records/sec (3.66 MB/sec), 425.51 ms avg latency, 689.00 ms max latency, 515 ms 50th, 631 ms 95th, 667 ms 99th, 689 ms 99.9th.
+```
+
+> **参数表示：**
+>
+> --record-size：表示一条信息有多大，单位是字节
+>
+> --num-records：表示总共发送多少条信息
+>
+> --throughput：表示每秒多少条信息，设成-1，表示不限流，可测出生产者最大吞吐量
+>
+> 
+>
+> **输出结果：**
+>
+> 一共写入100000条消息，吞吐量为3.66 MB/sec，每次写入的平均延迟为425.51毫秒，最大的延迟为689.00毫秒
+
+
+
+
+
+##### 7.3.3.2 消费者压力测试
+
+```bash
+[root@kafka01 /usr/local/kafka]# bin/kafka-consumer-perf-test.sh --broker-list 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic test --fetch-size 10000 --messages 10000000 --threads 1
+WARNING: option [threads] and [num-fetch-threads] have been deprecated and will be ignored by the test
+start.time, end.time, data.consumed.in.MB, MB.sec, data.consumed.in.nMsg, nMsg.sec, rebalance.time.ms, fetch.time.ms, fetch.MB.sec, fetch.nMsg.sec
+WARNING: Exiting before consuming the expected number of messages: timeout (10000 ms) exceeded. You can use the --timeout option to increase the timeout.
+2025-05-06 10:50:23:134, 2025-05-06 10:50:34:932, 9.5367, 0.8083, 100000, 8476.0129, 1746499823640, -1746499811842, -0.0000, -0.0001
+```
+
+> **参数表示：**
+>
+> --fetch-size：表示每次fetch的数据的大小，**高吞吐场景**：增大`fetch-size`（如4MB），减少网络请求次数，**低延迟场景**：减小`fetch-size`（如512KB），加快单次响应速度 
+>
+> --messages：表示 总共要消费的消息个数，必填项
+>
+> --threads：表示消费线程数，通常与Topic分区数匹配以实现并行消费，避免资源闲置或争抢
+>
+> --num-fetch-threads：表示Fetch请求的线程数，适用于高并发场景
+>
+> --group：消费者组ID，默认生成随机组ID（如`perf-consumer-69057`）
+>
+>  
+>
+> **输出结果：**
+>
+> start.time：开始时间，2025-05-06 10:50:23:134
+>
+> end.time：结果时间，2025-05-06 10:50:34:932
+>
+> data.consumed.in.MB：总共消费数据：9.5367MB
+>
+> MB.sec：吞吐量：0.8083MB/sec
+>
+> data.consumed.in.nMsg：总共消费消息条数：100000条
+>
+> nMsg.sec：平均每秒消费条数：8476.0129条
+
+
+
+
+
+##### 7.3.3.3 创建单分区进行压测
+
+```bash
+# 创建topic
+[root@kafka01 /usr/local/kafka]# bin/kafka-topics.sh --create --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic test002 --partitions 1 --replication-factor 1
+Created topic test002.
+
+# 生产者进行生产消息
+[root@kafka01 /usr/local/kafka]# bin/kafka-producer-perf-test.sh  --topic test002 --record-size 100 --num-records 1000000 --throughput -1 --producer-props bootstrap.servers=172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192
+642581 records sent, 128362.2 records/sec (12.24 MB/sec), 1255.2 ms avg latency, 1679.0 ms max latency.
+1000000 records sent, 137703.112090 records/sec (13.13 MB/sec), 1476.75 ms avg latency, 2021.00 ms max latency, 1552 ms 50th, 1974 ms 95th, 2001 ms 99th, 2008 ms 99.9th.
+
+# 消费者进行消费消息
+[root@kafka01 /usr/local/kafka]# bin/kafka-consumer-perf-test.sh --broker-list 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic test002 --fetch-size 10000 --messages 1000000 --threads 1
+WARNING: option [threads] and [num-fetch-threads] have been deprecated and will be ignored by the test
+start.time, end.time, data.consumed.in.MB, MB.sec, data.consumed.in.nMsg, nMsg.sec, rebalance.time.ms, fetch.time.ms, fetch.MB.sec, fetch.nMsg.sec
+2025-05-06 13:30:47:445, 2025-05-06 13:30:52:706, 95.3674, 18.1272, 1000000, 190077.9320, 1746509447907, -1746509442646, -0.0000, -0.0006
+```
+
+
+
+##### 7.3.3.4 创建多分区进行压测
+
+```bash
+# 创建topic
+[root@kafka01 /usr/local/kafka]# bin/kafka-topics.sh --create --bootstrap-server 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic test003 --partitions 3 --replication-factor 3
+Created topic test003.
+
+# 生产者进行生产消息
+[root@kafka01 /usr/local/kafka]# bin/kafka-producer-perf-test.sh  --topic test003 --record-size 100 --num-records 1000000 --throughput -1 --producer-props bootstrap.servers=172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192
+308713 records sent, 61705.6 records/sec (5.88 MB/sec), 1643.2 ms avg latency, 2723.0 ms max latency.
+602340 records sent, 119892.5 records/sec (11.43 MB/sec), 2452.3 ms avg latency, 4294.0 ms max latency.
+33004 records sent, 6599.5 records/sec (0.63 MB/sec), 5517.5 ms avg latency, 8089.0 ms max latency.
+1000000 records sent, 60056.453066 records/sec (5.73 MB/sec), 2629.84 ms avg latency, 8437.00 ms max latency, 2184 ms 50th, 8223 ms 95th, 8336 ms 99th, 8407 ms 99.9th.
+
+# 消费者进行消费消息
+[root@kafka01 /usr/local/kafka]# bin/kafka-consumer-perf-test.sh --broker-list 172.168.2.17:9192,172.168.2.18:9192,172.168.2.19:9192 --topic test003 --fetch-size 10000 --messages 1000000 --threads 3
+WARNING: option [threads] and [num-fetch-threads] have been deprecated and will be ignored by the test
+start.time, end.time, data.consumed.in.MB, MB.sec, data.consumed.in.nMsg, nMsg.sec, rebalance.time.ms, fetch.time.ms, fetch.MB.sec, fetch.nMsg.sec
+2025-05-06 13:45:50:944, 2025-05-06 13:45:57:060, 95.3674, 15.5931, 1000000, 163505.5592, 1746510351401, -1746510345285, -0.0000, -0.0006
+
+```
+
+
+
+
+
+
+
+
+
+
+
+### 7.4 prometheus监控kafka
+
+#### 7.4.1 kafka_exporter监控kafka--方式一
+
+```bash
+[root@kafka01 ~]# curl -OL ~ /https://github.com/danielqsj/kafka_exporter/releases/download/v1.9.0/kafka_exporter-1.9.0.linux-amd64.tar.gz
+[root@kafka01 ~]# tar xf kafka_exporter-1.9.0.linux-amd64.tar.gz -C /usr/local/
+[root@kafka01 ~]# ln -sv /usr/local/kafka_exporter-1.9.0.linux-amd64/ /usr/local/kafka_exporter
+
+[root@kafka01 /usr/local/kafka_exporter]# systemctl cat kafka_exporter
+# /usr/lib/systemd/system/kafka_exporter.service
+[Unit]
+Description=https://github.com/danielqsj/kafka_exporter
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/kafka_exporter/kafka_exporter --kafka.server=172.168.2.17:9192 --web.listen-address=0.0.0.0:9308
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
+[root@kafka01 /usr/local/kafka_exporter]# systemctl daemon-reload && systemctl enable kafka_exporter
+Created symlink from /etc/systemd/system/multi-user.target.wants/kafka_exporter.service to /usr/lib/systemd/system/kafka_exporter.service.
+[root@kafka01 /usr/local/kafka_exporter]# systemctl start kafka_exporter
+[root@kafka01 /usr/local/kafka_exporter]# systemctl is-active kafka_exporter
+active
+[root@kafka01 /usr/local/kafka_exporter]# ss -tnlp | grep 9308
+LISTEN     0      128       [::]:9308                  [::]:*                   users:(("kafka_exporter",pid=55476,fd=6))
+
+# 获取metrics
+[root@kafka01 /usr/local/kafka_exporter]# curl -s http://172.168.2.17:9308/metrics | head -n 3
+# HELP go_gc_duration_seconds A summary of the wall-time pause (stop-the-world) duration in garbage collection cycles.
+# TYPE go_gc_duration_seconds summary
+go_gc_duration_seconds{quantile="0"} 0
+
+```
+
+
+
+#### 7.4.2 配置prometheus和grafana--方式一
+
+**配置prometheus和consul**
+
+```bash
+## prometheus配置
+[root@prometheus prometheus]# cat prometheus.yml
+  - job_name: 'kafka_exporter-ops'
+    scrape_interval: 15s
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_service]
+        regex: kafka_exporter-ops.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - source_labels: [__meta_consul_service_address]
+        action: replace
+        target_label: ip
+# 重载prometheus使配置生效
+[root@prometheus prometheus]# postp
+
+
+## consul配置
+[root@prometheus kafka]# cat consul-kafka-172.168.2.17.json
+{
+  "Name": "kafka_exporter-ops",
+  "ID": "kafka_exporter-ops-172.168.2.17",
+  "Tags": [
+    "kafka_exporter-ops"
+  ],
+  "Address": "172.168.2.17",
+  "Port": 9308,
+  "Meta": {
+    "app": "kafka_exporter-ops-cluster",
+    "env": "ops",
+    "project": "service",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://172.168.2.17:9308/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}
+# 注册到consul
+[root@prometheus kafka]# consul registry consul-kafka-172.168.2.17.json
+```
+
+![](.\image\kafka\kafka04.png)
+
+
+
+**配置grafana**
+
+DashboardID: 7589
+
+![](.\image\kafka\kafka05.png)
+
+
+
+
+
+
+
+#### 7.4.3 Kminion监控kafka--方式二
+
+[kminion yaml配置文件](https://github.com/redpanda-data/kminion/blob/master/docs/reference-config.yaml)通过配置变量`CONFIG_FILEPATH`引用，[kminion yaml配置文件](https://github.com/redpanda-data/kminion/blob/master/docs/reference-config.yaml)所有配置选项也可通过环境变量进行配置，环境变量名称是自动生成的，所有内容均大写，并在每个缩进处添加下划线，如: `kafka.rackId => KAFKA_RACKID`
+
+**部署kminion**
+
+```bash
+root@ansible:~# docker pull redpandadata/kminion:v2.2.12
+root@ansible:~# docker run -d \
+	--name kminion \
+	-p 18080:8080 \
+	--add-host="kafka01:172.168.2.17" \
+	--add-host="kafka02:172.168.2.18" \
+	--add-host="kafka03:172.168.2.19" \
+	-e KAFKA_BROKERS="kafka01:9192,kafka02:9192,kafka03:9192" \
+	redpandadata/kminion:v2.2.12
+root@ansible:~# docker ps -a
+CONTAINER ID        IMAGE                          COMMAND             CREATED             STATUS              PORTS                     NAMES
+58f4fd3da401        redpandadata/kminion:v2.2.12   "/app/kminion"      3 seconds ago       Up 2 seconds        0.0.0.0:18080->8080/tcp   kminion
+
+# 查看是否正常运行
+root@ansible:~# docker logs -f kminion
+{"level":"info","ts":"2025-04-29T08:50:03.333Z","logger":"main","msg":"started kminion","version":"v2.2.12","built_at":"2025-03-13"}
+{"level":"info","ts":"2025-04-29T08:50:03.333Z","logger":"main","msg":"connecting to Kafka seed brokers, trying to fetch cluster metadata","seed_brokers":"kafka01:9192,kafka02:9192,kafka03:9192"}
+{"level":"info","ts":1745916603.3327503,"caller":"app/config.go:62","msg":"the env variable 'CONFIG_FILEPATH' is not set, therefore no YAML config will be loaded"}
+{"level":"info","ts":"2025-04-29T08:50:03.347Z","logger":"main","msg":"successfully connected to kafka cluster"}
+{"level":"info","ts":"2025-04-29T08:50:03.351Z","logger":"main","msg":"listening on address","listen_address":":8080"}
+
+## 查看metrics是否正常获取
+root@ansible:~# curl -s http://172.168.2.12:18080/metrics | head -n 3
+# HELP go_gc_duration_seconds A summary of the wall-time pause (stop-the-world) duration in garbage collection cycles.
+# TYPE go_gc_duration_seconds summary
+go_gc_duration_seconds{quantile="0"} 0
+```
+
+
+
+
+
+#### 7.4.4 配置prometheus和grafana--方式二
+
+```bash
+# prometheus配置
+[root@prometheus kafka]# tail -n 20 /usr/local/prometheus/prometheus.yml 
+
+  - job_name: 'kminion-ops'
+    scrape_interval: 15s
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_service]
+        regex: kminion-ops.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - source_labels: [__meta_consul_service_address]
+        action: replace
+        target_label: ip
+[root@prometheus kafka]# postp
+
+
+# consul配置
+[root@prometheus kafka]# cat consul-kminion-172.168.2.12.json
+{
+  "Name": "kminion-ops",
+  "ID": "kminion-ops-172.168.2.12",
+  "Tags": [
+    "kminion-ops"
+  ],
+  "Address": "172.168.2.12",
+  "Port": 18080,
+  "Meta": {
+    "app": "kafka-ops-cluster",
+    "env": "ops",
+    "project": "service",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://172.168.2.12:18080/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}
+[root@prometheus kafka]# consul registry consul-kminion-172.168.2.12.json 
+```
+
+![](.\image\kafka\kafka06.png)
+
+
+
+**grafana配置**
+
+DashboardID:
+
+* [14012](https://grafana.com/grafana/dashboards/14012)
+* [14013](https://grafana.com/grafana/dashboards/14013)
+* [14014](https://grafana.com/grafana/dashboards/14014)
+
+![](.\image\kafka\kafka07.png)
+
+![](.\image\kafka\kafka08.png)
+
+![](.\image\kafka\kafka09.png)
+
+
+
+
+
+
+
+#### 7.4.5 jmx_exporter监控kafka--方式三
+
+**jmx_exporter提供两种用法：**
+
+* 一种是启动独立的进程。JVM 启动时指定参数，暴露 JMX 的 RMI 接口，JMX_Exporter 调用 RMI 获取 JVM 运行时状态数据，转换为 Prometheus metrics 格式，并暴露端口让 Prometheus 采集。
+* 一种是JVM进程内启动，通过java agent的形式运行，进程内读取 JVM 运行时状态数据，转换为 Prometheus metrics 格式，并暴露端口让 Prometheus 采集。官方比较推荐使用这种方式。
+
+
+
+##### 7.4.5.1 java agent方式部署jmx_exporter
+
+1. 下载[jmx_prometheus_javaagent-1.2.0.jar](https://github.com/prometheus/jmx_exporter/releases/download/1.2.0/jmx_prometheus_javaagent-1.2.0.jar)程序
+2. 下载kafka规则文件[kafka-2_0_0.yml](https://raw.githubusercontent.com/prometheus/jmx_exporter/refs/heads/main/examples/kafka-2_0_0.yml)
+
+```bash
+root@ansible:/download# curl -OL https://github.com/prometheus/jmx_exporter/releases/download/1.2.0/jmx_prometheus_javaagent-1.2.0.jar
+root@ansible:/download# curl -OL https://raw.githubusercontent.com/prometheus/jmx_exporter/refs/heads/main/examples/kafka-2_0_0.yml
+root@ansible:/download# scp jmx_prometheus_javaagent-1.2.0.jar kafka-2_0_0.yml root@172.168.2.17:~
+
+# 切换到172.168.2.17
+[root@kafka01 ~]# mkdir -p /usr/local/jmx_prometheus_javaagent
+[root@kafka01 ~]# mv jmx_prometheus_javaagent-1.2.0.jar kafka-2_0_0.yml /usr/local/jmx_prometheus_javaagent/
+[root@kafka01 /usr/local/jmx_prometheus_javaagent]# ll
+total 8728
+-rw-r--r-- 1 root root 8931326 May  6 15:58 jmx_prometheus_javaagent-1.2.0.jar
+-rw-r--r-- 1 root root    3445 May  6 16:01 kafka-2_0_0.yml
+[root@kafka01 /usr/local/jmx_prometheus_javaagent]# ln -sv jmx_prometheus_javaagent-1.2.0.jar jmx_prometheus_javaagent.jar
+[root@kafka01 /usr/local/jmx_prometheus_javaagent]# ln -sv kafka-2_0_0.yml kafka-rules.yml
+[root@kafka01 /usr/local/jmx_prometheus_javaagent]# cat kafka-rules.yml
+lowercaseOutputName: true
+
+rules:
+# Special cases and very specific rules
+- pattern : kafka.server<type=(.+), name=(.+), clientId=(.+), topic=(.+), partition=(.*)><>Value
+  name: kafka_server_$1_$2
+  type: GAUGE
+  labels:
+    clientId: "$3"
+    topic: "$4"
+    partition: "$5"
+- pattern : kafka.server<type=(.+), name=(.+), clientId=(.+), brokerHost=(.+), brokerPort=(.+)><>Value
+  name: kafka_server_$1_$2
+  type: GAUGE
+  labels:
+    clientId: "$3"
+    broker: "$4:$5"
+- pattern : kafka.coordinator.(\w+)<type=(.+), name=(.+)><>Value
+  name: kafka_coordinator_$1_$2_$3
+  type: GAUGE
+
+# Generic per-second counters with 0-2 key/value pairs
+- pattern: kafka.(\w+)<type=(.+), name=(.+)PerSec\w*, (.+)=(.+), (.+)=(.+)><>Count
+  name: kafka_$1_$2_$3_total
+  type: COUNTER
+  labels:
+    "$4": "$5"
+    "$6": "$7"
+- pattern: kafka.(\w+)<type=(.+), name=(.+)PerSec\w*, (.+)=(.+)><>Count
+  name: kafka_$1_$2_$3_total
+  type: COUNTER
+  labels:
+    "$4": "$5"
+- pattern: kafka.(\w+)<type=(.+), name=(.+)PerSec\w*><>Count
+  name: kafka_$1_$2_$3_total
+  type: COUNTER
+
+# Quota specific rules
+- pattern: kafka.server<type=(.+), user=(.+), client-id=(.+)><>([a-z-]+)
+  name: kafka_server_quota_$4
+  type: GAUGE
+  labels:
+    resource: "$1"
+    user: "$2"
+    clientId: "$3"
+- pattern: kafka.server<type=(.+), client-id=(.+)><>([a-z-]+)
+  name: kafka_server_quota_$3
+  type: GAUGE
+  labels:
+    resource: "$1"
+    clientId: "$2"
+- pattern: kafka.server<type=(.+), user=(.+)><>([a-z-]+)
+  name: kafka_server_quota_$3
+  type: GAUGE
+  labels:
+    resource: "$1"
+    user: "$2"
+
+# Generic gauges with 0-2 key/value pairs
+- pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.+), (.+)=(.+)><>Value
+  name: kafka_$1_$2_$3
+  type: GAUGE
+  labels:
+    "$4": "$5"
+    "$6": "$7"
+- pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.+)><>Value
+  name: kafka_$1_$2_$3
+  type: GAUGE
+  labels:
+    "$4": "$5"
+- pattern: kafka.(\w+)<type=(.+), name=(.+)><>Value
+  name: kafka_$1_$2_$3
+  type: GAUGE
+
+# Emulate Prometheus 'Summary' metrics for the exported 'Histogram's.
+#
+# Note that these are missing the '_sum' metric!
+- pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.+), (.+)=(.+)><>Count
+  name: kafka_$1_$2_$3_count
+  type: COUNTER
+  labels:
+    "$4": "$5"
+    "$6": "$7"
+- pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.*), (.+)=(.+)><>(\d+)thPercentile
+  name: kafka_$1_$2_$3
+  type: GAUGE
+  labels:
+    "$4": "$5"
+    "$6": "$7"
+    quantile: "0.$8"
+- pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.+)><>Count
+  name: kafka_$1_$2_$3_count
+  type: COUNTER
+  labels:
+    "$4": "$5"
+- pattern: kafka.(\w+)<type=(.+), name=(.+), (.+)=(.*)><>(\d+)thPercentile
+  name: kafka_$1_$2_$3
+  type: GAUGE
+  labels:
+    "$4": "$5"
+    quantile: "0.$6"
+- pattern: kafka.(\w+)<type=(.+), name=(.+)><>Count
+  name: kafka_$1_$2_$3_count
+  type: COUNTER
+- pattern: kafka.(\w+)<type=(.+), name=(.+)><>(\d+)thPercentile
+  name: kafka_$1_$2_$3
+  type: GAUGE
+  labels:
+    quantile: "0.$4"
+
+# Generic gauges for MeanRate Percent
+# Ex) kafka.server<type=KafkaRequestHandlerPool, name=RequestHandlerAvgIdlePercent><>MeanRate
+- pattern: kafka.(\w+)<type=(.+), name=(.+)Percent\w*><>MeanRate
+  name: kafka_$1_$2_$3_percent
+  type: GAUGE
+- pattern: kafka.(\w+)<type=(.+), name=(.+)Percent\w*><>Value
+  name: kafka_$1_$2_$3_percent
+  type: GAUGE
+- pattern: kafka.(\w+)<type=(.+), name=(.+)Percent\w*, (.+)=(.+)><>Value
+  name: kafka_$1_$2_$3_percent
+  type: GAUGE
+  labels:
+    "$4": "$5"
+---
+```
+
+
+
+##### 7.4.5.2 配置kafka启动参数
+
+```bash
+[root@kafka01 /usr/local/jmx_prometheus_javaagent]# cat /usr/lib/systemd/system/kafka.service
+[Unit]
+Description=kafka service
+After=network.target
+
+[Service]
+Type=forking
+Environment="JAVA_HOME=/usr/local/jdk"
+Environment="KAFKA_HEAP_OPTS=-Xmx768m -Xms768m -javaagent:/usr/local/jmx_prometheus_javaagent/jmx_prometheus_javaagent.jar=9990:/usr/local/jmx_prometheus_javaagent/kafka-rules.yml"
+ExecStart=/usr/local/kafka/bin/kafka-server-start.sh -daemon /usr/local/kafka/config/server.properties
+ExecStop=/usr/local/kafka/bin/kafka-server-stop.sh
+Restart=on-failure
+RemainAfterExit=true
+
+[Install]
+WantedBy=multi-user.target
+```
+
+> 将参数由`Environment="KAFKA_HEAP_OPTS=-Xmx768m -Xms768m"`变更为`Environment="KAFKA_HEAP_OPTS=-Xmx768m -Xms768m -javaagent:/usr/local/jmx_prometheus_javaagent/jmx_prometheus_javaagent.jar=9990:/usr/local/jmx_prometheus_javaagent/kafka-rules.yml"`
+
+
+
+**运行服务**
+
+```bash
+[root@kafka01 /usr/local/jmx_prometheus_javaagent]# systemctl daemon-reload
+[root@kafka01 /usr/local/jmx_prometheus_javaagent]# systemctl restart kafka
+[root@kafka01 /usr/local/jmx_prometheus_javaagent]# ss -tnlp | grep 9990
+LISTEN     0      3         [::]:9990                  [::]:*                   users:(("java",pid=88498,fd=100))
+[root@kafka01 /usr/local/jmx_prometheus_javaagent]# curl -s 127.0.0.1:9990/metrics | head -n 3
+# HELP jmx_config_reload_failure_total Number of times configuration have failed to be reloaded.
+# TYPE jmx_config_reload_failure_total counter
+jmx_config_reload_failure_total 0.0
+```
+
+
+
+#### 7.4.6 配置prometheus和grafana--方式三
+
+```bash
+# 配置consul
+[root@prometheus kafka]# cat consul-jmx_prometheus_javaagent-172.168.2.17.json
+{
+  "Name": "jmx_prometheus_javaagent-ops",
+  "ID": "jmx_prometheus_javaagent-ops-172.168.2.17",
+  "Tags": [
+    "jmx_prometheus_javaagent-ops"
+  ],
+  "Address": "172.168.2.17",
+  "Port": 9990,
+  "Meta": {
+    "app": "kafka-ops-node01",
+    "env": "ops",
+    "project": "service",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://172.168.2.17:9990/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}
+[root@prometheus kafka]# cat consul-jmx_prometheus_javaagent-172.168.2.18.json
+{
+  "Name": "jmx_prometheus_javaagent-ops",
+  "ID": "jmx_prometheus_javaagent-ops-172.168.2.18",
+  "Tags": [
+    "jmx_prometheus_javaagent-ops"
+  ],
+  "Address": "172.168.2.18",
+  "Port": 9990,
+  "Meta": {
+    "app": "kafka-ops-node02",
+    "env": "ops",
+    "project": "service",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://172.168.2.18:9990/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}
+[root@prometheus kafka]# cat consul-jmx_prometheus_javaagent-172.168.2.19.json
+{
+  "Name": "jmx_prometheus_javaagent-ops",
+  "ID": "jmx_prometheus_javaagent-ops-172.168.2.19",
+  "Tags": [
+    "jmx_prometheus_javaagent-ops"
+  ],
+  "Address": "172.168.2.19",
+  "Port": 9990,
+  "Meta": {
+    "app": "kafka-ops-node03",
+    "env": "ops",
+    "project": "service",
+    "team": "ops"
+  },
+  "EnableTagOverride": false,
+  "Check": {
+    "HTTP": "http://172.168.2.19:9990/metrics",
+    "Interval": "10s"
+  },
+  "Weights": {
+    "Passing": 10,
+    "Warning": 1
+  }
+}
+
+[root@prometheus kafka]# consul registry consul-jmx_prometheus_javaagent-172.168.2.17.json 
+[root@prometheus kafka]# consul registry consul-jmx_prometheus_javaagent-172.168.2.18.json 
+[root@prometheus kafka]# consul registry consul-jmx_prometheus_javaagent-172.168.2.19.json 
+
+
+# 配置prometheus
+[root@prometheus kafka]# tail -n 20 /usr/local/prometheus/prometheus.yml 
+  - job_name: 'jmx_prometheus_javaagent-ops'
+    scrape_interval: 15s
+    consul_sd_configs:
+    - server: '192.168.13.236:8500'
+      services: []
+    relabel_configs:
+      - source_labels: [__meta_consul_service]
+        regex: jmx_prometheus_javaagent-ops.*
+        action: keep
+      - regex: __meta_consul_service_metadata_(.+)
+        action: labelmap
+      - source_labels: [__meta_consul_service_address]
+        action: replace
+        target_label: ip
+[root@prometheus kafka]# postp
+```
+
+![](.\image\kafka\kafka11.png)
+
+
+
+**grafana配置**
+
+DashboardID:
+
+* 11962
+* 18276
+
+![](.\image\kafka\kafka12.png)
+
+
+
+
+
+
+
+
+
+### 7.5 kafka-ui部署
+
+```bash
+root@ansible:~# docker run -d \
+	--name kafka-ui \
+	-p 18081:8080 \
+	--add-host="kafka01:172.168.2.17" \
+	--add-host="kafka02:172.168.2.18" \
+	--add-host="kafka03:172.168.2.19" \
+	-e KAFKA_CLUSTERS_0_NAME="kafka-ops" \
+	-e KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS="kafka01:9192,kafka02:9192,kafka03:9192" \
+	provectuslabs/kafka-ui:v0.7.2
+root@ansible:~# docker ps -a | grep kafka-ui
+353c23b583ac        provectuslabs/kafka-ui:v0.7.2   "/bin/sh -c 'java --…"   44 seconds ago      Up 42 seconds       0.0.0.0:18081->8080/tcp   kafka-ui
+```
+
+![](.\image\kafka\kafka10.png)
+
+
 

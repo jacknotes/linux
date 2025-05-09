@@ -2687,7 +2687,7 @@ DEALLOCATE db_cursor;
 2. 重装 SQL Server 或仅还原用户数据库后，登录名未同步重建。
 
 ```sql
--- 查看当前数据库孤立的用户
+-- 查看当前数据库孤立的数据库用户
 ---- 是 SQL Server 中修复孤立用户的关键工具，适用于需手动关联用户与登录名的场景。
 -- sp_change_users_login ACTION有3个操作模式：REPORT、AUTO_FIX、UPDATE_ONE
 -- REPORT：列出当前数据库所有孤立用户及其 SID(不支持windows登录用户)，适用场景：诊断问题，权限要求：db_owner
@@ -2703,20 +2703,14 @@ GO
 
 
 
--- 创建新登录用户
--- 创建非windows登录用户时不会自动关联数据库用户，所以需要关联孤立数据库用户
--- 创建windows登录用户则可以自动关联数据库用户，无需再关联
-use master; 
-create login test with password='pass@123',check_policy=off,check_expiration=off;
-
-
 -- 方式1：
 use [topway20250408];
 go
--- 关联用户
+-- 关联登录用户cachedproject到数据库用户YWB
 sp_change_users_login 'update_one', 'YWB', 'cachedproject'
 GO
 
+-- 此时YWB数据库用户没有被孤立了
 use [topway20250408];
 go
 sp_change_users_login 'REPORT'
@@ -2731,13 +2725,20 @@ GO
 -- 在新版本中使用 ALTER USER 替代，支持windows登录用户
 use [topway20250408];
 go
+
+-- 创建新登录用户
+-- 创建非windows登录用户时不会自动关联数据库用户，所以需要关联孤立数据库用户
+-- 创建windows登录用户则可以自动关联数据库用户，无需再关联
+use master; 
+create login test with password='pass@123',check_policy=off,check_expiration=off;
+
+
 -- 执行第1次成功
 ALTER USER superpm WITH LOGIN = test;
--- 执行第2次报错，无法将用户重新映射到登录名 'test'，因为该登录名已映射到数据库中的用户，违反了单数据库内一对一映射规则
--- 需要先解绑test登录用户，或创建新的登录用户绑定到此数据库用户
+-- 执行第2次报错，无法将用户重新映射到登录名 'test'，因为该登录名已映射到数据库中的用户，违反了单数据库内一对一映射规则，需要先解绑test登录用户，或创建新的登录用户绑定到此数据库用户才行
 ALTER USER dbbackup WITH LOGIN = test;
 
--- 查看当前数据库用户映射关系
+-- 查看当前数据库用户映射关系,superpm为数据库用户
 SELECT dp.name AS [User], sp.name AS [Login]
 FROM sys.database_principals dp
 LEFT JOIN sys.server_principals sp ON dp.sid = sp.sid
@@ -2748,9 +2749,9 @@ WHERE dp.name = 'superpm';
 ---- 解绑superpm数据库用户，释放test登录用户
 -- 备份用户权限（可选）
 EXEC sp_helpuser 'superpm';
--- 删除用户（需先转移对象所有权）
+-- 删除数据库用户（需先转移对象所有权）
 DROP USER superpm;
--- 创建不关联登录名的用户（仅限包含数据库）
+-- 创建不关联登录名的数据库用户（仅限包含数据库）
 CREATE USER superpm WITHOUT LOGIN;
 -- 禁用登录名（阻止服务器级连接）
 ALTER LOGIN test DISABLE;
@@ -2767,5 +2768,30 @@ FROM sys.database_principals dp
 LEFT JOIN sys.server_principals sp ON dp.sid = sp.sid
 WHERE dp.name = 'dbbackup';
 -- dbbackup	test
+```
+
+
+
+```sql
+--查询数据库用户SID
+SELECT name, sid FROM sys.syslogins WHERE name = 'cachedproject'
+SELECT name, sid FROM sys.syslogins WHERE name = 'callcenter'
+SELECT name, sid FROM sys.syslogins WHERE name = 'commonsupersa'
+SELECT name, sid FROM sys.syslogins WHERE name = 'commonuser'
+SELECT name, sid FROM sys.syslogins WHERE name = 'dbbackup'
+SELECT name, sid FROM sys.syslogins WHERE name = 'etermproduct'
+
+
+--添加相同SID的数据库用户
+CREATE LOGIN cachedproject WITH PASSWORD = '1qa2ws3ed', SID = 0x72DAF5292DFDFF418B4E22245909F75A,DEFAULT_DATABASE =master, CHECK_POLICY =OFF
+CREATE LOGIN callcenter WITH PASSWORD = '000', SID = 0x4736E0449658F14197FCBD864C2D24CF,DEFAULT_DATABASE =master, CHECK_POLICY =OFF
+CREATE LOGIN commonsupersa WITH PASSWORD = 'super@homsom+4006', SID = 0xA366E3854913B24C81BAFF64D49B7C3B,DEFAULT_DATABASE =master, CHECK_POLICY =OFF
+CREATE LOGIN commonuser WITH PASSWORD = 'Hs1qa@WS3ed', SID = 0x5AAD19BA7E2C3441A030C67BFD024752,DEFAULT_DATABASE =master, CHECK_POLICY =OFF
+CREATE LOGIN dbbackup WITH PASSWORD = 'lAABHXBtpQGEcrRn#lZRb1TzYa3r#NRk', SID = 0xE9E835A237473C4CB0F77021942E0FF9,DEFAULT_DATABASE =master, CHECK_POLICY =OFF
+CREATE LOGIN etermproduct WITH PASSWORD = '1qa@WS3ed', SID = 0xA160B0EDF4D04446936315F9FD2250B8,DEFAULT_DATABASE =master, CHECK_POLICY =OFF
+
+--查询当前数据库用户有哪些sessionid连接，并删除
+SELECT * FROM sys.dm_exec_sessions WHERE login_name = 'your_login_name';
+KILL session_id;
 ```
 

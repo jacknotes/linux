@@ -3072,6 +3072,29 @@ vim test1.txt test2.txt
 :N 切换上一个文件
 :f 或 :file 或 :ls 查看当前文件名
 
+## 打开另一个文件
+要在 Vim 中打开另一个文件，可以使用以下命令之一：
+:e filename 或 :edit filename：打开或重新打开一个文件。
+:sp filename 或 :split filename：水平分割窗口并打开一个新文件。
+:vsp filename 或 :vsplit filename：垂直分割窗口并打开一个新文件。
+:tabe filename 或 :tabedit filename：在新标签页中打开一个文件。
+
+## 窗口切换
+操作	快捷键/命令	说明
+切换下一个窗口	Ctrl+w w	循环切换所有窗口
+方向键切换	Ctrl+w hjkl	按方向移动到相邻窗口
+快速返回上一窗口	Ctrl+o	类似浏览器返回
+```bash
+# 在本vim编辑的文件中打开另外一个文件
+:vsp 
+# 切换窗口
+Ctrl+w+w 或者 Ctrl+w+l 或者 Ctrl+w+h  
+# 打开新文件
+:e /root/conf-20250508/conf.d-new/backend/backend_iis/backend_iis.conf
+```
+
+
+
 ----指定行范围内匹配的行前或行后添加内容信息。
 --计算修改区间行号1417到
 :set nu
@@ -3376,3 +3399,69 @@ COMMIT
 > 实际数据包流向：
 > 当数据包进入 DOCKER 链并匹配 -i docker0 时，触发 RETURN。
 > 此时数据包会回到 OUTPUT 链，从原本跳转到 DOCKER 链的位置继续向下匹配其他规则
+
+
+
+
+
+## 查看linux系统的安装时间
+```bash
+## centos系统查看
+# 通过系统基础软件包`basesystem`，查看系统安装时间
+[root@hw-blog ~]# rpm -q --qf "%{INSTALLTIME}\n" basesystem | xargs -I{} date -d @{} +"%F %T" 
+2024-02-28 16:43:13
+
+# ext文件系统下查看系统安装时间
+[root@hw-blog ~]# dumpe2fs /dev/vda1 | grep created
+dumpe2fs 1.42.9 (28-Dec-2013)
+Filesystem created:       Wed Feb 28 16:42:37 2024
+
+
+
+## ubuntu系统查看
+# 使用 dpkg 查询安装时间戳
+root@hw2:~# dpkg -S base-files
+base-files: /usr/share/base-files
+root@hw2:~# stat /usr/share/base-files | grep Birth
+ Birth: 2024-07-07 11:15:05.252000000 +0800
+
+# 查看/的安装时间，操作系统内核版本需≥4.11并且glibc库版本需≥2.28
+root@hw2:~# stat / | grep Birth
+ Birth: 2024-07-07 11:14:04.000000000 +0800
+
+# ext文件系统下查看系统安装时间
+root@hw2:~# dumpe2fs /dev/vda1 | grep created
+dumpe2fs 1.46.5 (30-Dec-2021)
+Filesystem created:       Sun Jul  7 11:14:04 2024
+```
+
+
+
+## 通过网络接口查看对应的容器
+```bash
+root@test-k8s-node03:~# ip a s | grep cali6c1cc573a5d  
+778: cali6c1cc573a5d@if4: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default 
+
+root@test-k8s-node03:~# ip r s | grep cali6c1cc573a5d 
+172.20.32.48 dev cali6c1cc573a5d scope link 
+
+root@test-k8s-node03:~# kubectl  get pods -o wide -A | grep 172.20.32.48 
+default          kubeshark-hub-76dd4457d9-6cxbv                                    1/1     Running   0                 62d     172.20.32.48     172.168.2.193   <none>           <none>
+
+root@test-k8s-node03:~# docker ps -a | grep kubeshark-hub | grep -v pause
+fceac93f5fb4        harborrepo.hs.com/k8s/kubeshark/hub                                  "./hub -port 8080 -l…"   2 months ago        Up 2 months                                          k8s_hub_kubeshark-hub-76dd4457d9-6cxbv_default_b483aab9-5b37-438d-a21f-1c542e690546_0
+
+root@test-k8s-node03:~# docker exec fceac93f5fb4 ip a s 
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1000
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+2: tunl0@NONE: <NOARP> mtu 1480 qdisc noop state DOWN qlen 1000
+    link/ipip 0.0.0.0 brd 0.0.0.0
+4: eth0@if778: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP 
+    link/ether 12:87:b1:97:f4:45 brd ff:ff:ff:ff:ff:ff
+    inet 172.20.32.48/32 brd 172.20.32.48 scope global eth0
+       valid_lft forever preferred_lft forever
+```
+
+> 窗口`eth0@if778`接口的索引`778`对应`778: cali6c1cc573a5d@if4`接口的`778`
